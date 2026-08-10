@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-pip \
     python3-pytest \
+    python3-serial \
     python3-rosdep \
     python3-vcstool \
     ros-humble-ament-cmake \
@@ -17,6 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-ament-lint-common \
     ros-humble-launch \
     ros-humble-launch-ros \
+    ros-humble-geometry-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-std-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 ARG USERNAME=ros
@@ -35,4 +40,3 @@ USER ${USERNAME}
 WORKDIR /ros2_ws
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
-

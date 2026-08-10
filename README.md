@@ -2,8 +2,9 @@
 
 Monorepo ROS 2 del robot terrestre autónomo SALUS.
 
-> **Estado:** esqueleto compilable, todavía no operativo. No contiene drivers,
-> navegación ni control capaces de mover el vehículo.
+> **Estado:** migración incremental. El corte de control/batería funciona en
+> simulación, pero el sistema completo todavía no es operativo ni debe usarse
+> para mover el vehículo.
 
 ## Objetivo
 
@@ -58,6 +59,12 @@ Abrir una shell ROS:
 Los directorios `build/`, `install/` y `log/` se crean localmente y no se
 versionan.
 
+Smoke test del primer corte migrado:
+
+```bash
+./tools/smoke_control_sim.sh
+```
+
 ## Instalación nativa opcional
 
 ```bash
@@ -94,4 +101,3 @@ Para orientación rápida de agentes y colaboradores, leer [AGENTS.md](AGENTS.md
 ## Licencia
 
 MIT. Consultar [LICENSE](LICENSE).
-

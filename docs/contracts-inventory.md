@@ -1,6 +1,7 @@
 # Inventario De Contratos Pendientes
 
-Estado: referencia para migración; no son APIs de este repositorio todavía.
+Estado: referencia para migración; la familia control/batería ya tiene su primer
+corte público en `salus_interfaces`.
 
 ## Invariantes funcionales
 
@@ -14,8 +15,8 @@ Estado: referencia para migración; no son APIs de este repositorio todavía.
 
 | Familia | Contratos anteriores | Decisión necesaria |
 | --- | --- | --- |
-| Control | `CmdVelFinal`, `DriveTelemetry` | conservar semántica; revisar nombres/QoS |
-| Batería | `BatteryMissionGuard`, `BatteryState` | mantener separación guardia/SOC |
+| Control | `CmdVelFinal`, `DriveTelemetry` | migrados con campos originales; QoS actual preservado |
+| Batería | `BatteryMissionGuard`, `BatteryState` | migrado; se mantiene separación guardia/SOC |
 | Navegación | goals, cancelación, freno, estado | definir API mínima estable |
 | Ruta/patrulla | ruta, HOME, retorno, acciones | reemplazar JSON libre por contrato versionado |
 | Perfiles | `SetNavigationProfile` | conservar `urban`/`rural` o generalizar |
@@ -30,4 +31,3 @@ Estado: referencia para migración; no son APIs de este repositorio todavía.
 Un contrato solo entra en `salus_interfaces` cuando tiene propietario, clientes,
 unidad/semántica, QoS o timeout, errores esperados, test y decisión de
 compatibilidad. Hasta entonces permanece únicamente en este inventario.
-
