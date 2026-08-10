@@ -1,0 +1,1 @@
+"""SALUS localization package."""

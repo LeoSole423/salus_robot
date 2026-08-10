@@ -1,0 +1,18 @@
+services:
+  ros2:
+    build:
+      context: .
+      args:
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    image: salus-robot:humble-dev
+    container_name: salus_robot_dev
+    network_mode: host
+    volumes:
+      - .:/ros2_ws
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: ${DISPLAY:-}
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+

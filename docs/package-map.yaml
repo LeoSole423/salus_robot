@@ -1,0 +1,80 @@
+schema_version: 1
+project_status: skeleton
+packages:
+  salus_interfaces:
+    owner: shared_contracts
+    build_type: ament_cmake
+    language: interface_definition
+    may_depend_on: []
+    status: skeleton
+  salus_description:
+    owner: robot_model
+    build_type: ament_cmake
+    language: xacro
+    may_depend_on: []
+    status: skeleton
+  salus_hardware:
+    owner: hardware_adapters
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces, salus_description]
+    status: skeleton
+  salus_localization:
+    owner: localization
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces, salus_description]
+    status: skeleton
+  salus_perception:
+    owner: perception
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces, salus_description]
+    status: skeleton
+  salus_control:
+    owner: vehicle_control
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces]
+    status: skeleton
+  salus_navigation:
+    owner: autonomy
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
+    status: skeleton
+  salus_navigation_bt:
+    owner: autonomy_bt
+    build_type: ament_cmake
+    language: cpp
+    may_depend_on: [salus_interfaces]
+    status: skeleton
+  salus_web:
+    owner: operator_bridge
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces]
+    status: skeleton
+  salus_simulation:
+    owner: simulation
+    build_type: ament_cmake
+    language: mixed
+    may_depend_on: [salus_interfaces, salus_description]
+    status: skeleton
+  salus_bringup:
+    owner: system_composition
+    build_type: ament_cmake
+    language: launch
+    may_depend_on:
+      - salus_interfaces
+      - salus_description
+      - salus_hardware
+      - salus_localization
+      - salus_perception
+      - salus_control
+      - salus_navigation
+      - salus_navigation_bt
+      - salus_web
+      - salus_simulation
+    status: skeleton
+

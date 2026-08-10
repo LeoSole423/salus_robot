@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>salus_localization</name><version>0.1.0</version>
+  <description>Localization algorithms and configuration for SALUS.</description>
+  <maintainer email="leonel.sole423@gmail.com">SALUS maintainers</maintainer><license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <test_depend>python3-pytest</test_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
