@@ -14,7 +14,7 @@ paridad y retiro del camino anterior.
 | Origen en ROS2_SALUS | Destino | Estado inicial | Nota |
 | --- | --- | --- | --- |
 | `interfaces` | `salus_interfaces` | parcial | cinco contratos de control/batería migrados |
-| URDF/RViz de `navegacion_gps` | `salus_description` | pendiente | consolidar un modelo canónico |
+| URDF/RViz de `navegacion_gps` | `salus_description` | portado parcial | Xacro canónico de movimiento; medidas sin validar en hardware |
 | MAVROS, RTK, RS16, cámara | `salus_hardware` | pendiente | wrappers; no vendorizar SDK |
 | odometría, EKF, GPS heading | `salus_localization` | pendiente | preservar TF y datum fijo |
 | conversión/filtros LiDAR | `salus_perception` | pendiente | separar vigente/experimental |
@@ -22,7 +22,7 @@ paridad y retiro del camino anterior.
 | Nav2, command server, rutas, zonas | `salus_navigation` | pendiente | separar misión de arbitraje |
 | plugins en `navegacion_gps_bt` | `salus_navigation_bt` | pendiente | caracterizar ABI/BT XML |
 | `map_tools/web_zone_server` | `salus_web` | pendiente | no duplicar nodos de navegación |
-| Gazebo, mundos, normalizadores | `salus_simulation` | pendiente | paridad con contratos reales |
+| Gazebo, mundos, normalizadores | `salus_simulation` | portado parcial | mundo Ackermann sin sensores; paridad A/B pendiente |
 | launches globales V2 | `salus_bringup` | pendiente | reducir a perfiles finales |
 
 ## No migrar de entrada

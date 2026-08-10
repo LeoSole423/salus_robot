@@ -2,6 +2,7 @@ FROM ros:humble-ros-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=humble
+ENV GZ_VERSION=fortress
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -22,6 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-nav-msgs \
     ros-humble-sensor-msgs \
     ros-humble-std-msgs \
+    ros-humble-rosgraph-msgs \
+    ros-humble-tf2-ros \
+    ros-humble-xacro \
+    ros-humble-robot-state-publisher \
+    ros-humble-ros-gz-sim \
+    ros-humble-ros-gz-bridge \
+    liburdfdom-tools \
     && rm -rf /var/lib/apt/lists/*
 
 ARG USERNAME=ros

@@ -12,7 +12,7 @@ packages:
     build_type: ament_cmake
     language: xacro
     may_depend_on: []
-    status: skeleton
+    status: ported_motion_description
   salus_hardware:
     owner: hardware_adapters
     build_type: ament_python
@@ -60,7 +60,7 @@ packages:
     build_type: ament_cmake
     language: mixed
     may_depend_on: [salus_interfaces, salus_description]
-    status: skeleton
+    status: ported_motion_simulation
   salus_bringup:
     owner: system_composition
     build_type: ament_cmake

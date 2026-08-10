@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:property name="wheelbase_m" value="0.94"/>
+  <xacro:property name="track_width_m" value="0.75"/>
+  <xacro:property name="wheel_radius_m" value="0.24"/>
+  <xacro:property name="wheel_width_m" value="0.16"/>
+  <xacro:property name="steering_limit_rad" value="0.5235987756"/>
+
+  <xacro:macro name="wheel" params="name">
+    <link name="${name}_link">
+      <visual>
+        <origin rpy="1.57079632679 0 0"/>
+        <geometry><cylinder radius="${wheel_radius_m}" length="${wheel_width_m}"/></geometry>
+        <material name="black"><color rgba="0.08 0.08 0.08 1"/></material>
+      </visual>
+      <collision>
+        <origin rpy="1.57079632679 0 0"/>
+        <geometry><cylinder radius="${wheel_radius_m}" length="${wheel_width_m}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="2.0"/>
+        <inertia ixx="0.03" ixy="0" ixz="0" iyy="0.03" iyz="0" izz="0.03"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="front_wheel" params="side y">
+    <link name="front_${side}_steer_link">
+      <visual><geometry><box size="0.10 0.08 0.15"/></geometry></visual>
+      <collision><geometry><box size="0.10 0.08 0.15"/></geometry></collision>
+      <inertial><mass value="0.5"/><inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/></inertial>
+    </link>
+    <joint name="front_${side}_steer_joint" type="revolute">
+      <parent link="base_link"/><child link="front_${side}_steer_link"/>
+      <origin xyz="${wheelbase_m} ${y} ${wheel_radius_m}"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${-steering_limit_rad}" upper="${steering_limit_rad}" effort="100" velocity="3.0"/>
+    </joint>
+    <xacro:wheel name="front_${side}_wheel"/>
+    <joint name="front_${side}_wheel_joint" type="continuous">
+      <parent link="front_${side}_steer_link"/><child link="front_${side}_wheel_link"/>
+      <axis xyz="0 1 0"/><limit effort="200" velocity="100"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="salus_chassis">
+    <link name="base_footprint"/>
+    <link name="base_link">
+      <visual>
+        <origin xyz="0.47 0 0.40"/>
+        <geometry><box size="1.20 0.60 0.25"/></geometry>
+        <material name="salus_blue"><color rgba="0.2 0.2 0.8 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0.47 0 0.40"/>
+        <geometry><box size="1.20 0.60 0.25"/></geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0.47 0 0.40"/>
+        <mass value="50.0"/>
+        <inertia ixx="2.0" ixy="0" ixz="0" iyy="3.0" iyz="0" izz="4.0"/>
+      </inertial>
+    </link>
+    <joint name="base_footprint_joint" type="fixed">
+      <parent link="base_footprint"/><child link="base_link"/>
+    </joint>
+
+    <xacro:wheel name="rear_left_wheel"/>
+    <joint name="rear_left_wheel_joint" type="continuous">
+      <parent link="base_link"/><child link="rear_left_wheel_link"/>
+      <origin xyz="0 ${track_width_m / 2.0} ${wheel_radius_m}"/>
+      <axis xyz="0 1 0"/><limit effort="200" velocity="100"/>
+    </joint>
+    <xacro:wheel name="rear_right_wheel"/>
+    <joint name="rear_right_wheel_joint" type="continuous">
+      <parent link="base_link"/><child link="rear_right_wheel_link"/>
+      <origin xyz="0 ${-track_width_m / 2.0} ${wheel_radius_m}"/>
+      <axis xyz="0 1 0"/><limit effort="200" velocity="100"/>
+    </joint>
+
+    <xacro:front_wheel side="left" y="${track_width_m / 2.0}"/>
+    <xacro:front_wheel side="right" y="${-track_width_m / 2.0}"/>
+  </xacro:macro>
+</robot>

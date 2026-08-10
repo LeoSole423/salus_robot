@@ -4,8 +4,8 @@
 
 - Project: `salus_robot`, clean-room successor to `ROS2_SALUS`.
 - ROS distribution: Humble on Ubuntu 22.04.
-- Current milestone: control/battery parity in simulation; full robot remains
-  non-operational.
+- Current milestone: control/battery parity plus isolated Ackermann motion in
+  simulation; full robot remains non-operational.
 - Never claim that a skeleton launch can operate or move the robot.
 
 ## Sources of truth
@@ -41,6 +41,7 @@ architectural compromise.
 ./tools/build.sh
 ./tools/test.sh
 ./tools/smoke_control_sim.sh
+./tools/smoke_motion_sim.sh
 ./tools/shell.sh
 ```
 
