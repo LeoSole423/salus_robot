@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot name="salus_ackermann" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="use_sim" default="false"/>
+
+  <xacro:include filename="components/chassis.xacro"/>
+  <xacro:include filename="components/sensor_mounts.xacro"/>
+  <xacro:include filename="components/gazebo_motion.xacro"/>
+
+  <xacro:salus_chassis/>
+  <xacro:salus_sensor_mounts/>
+
+  <xacro:if value="$(arg use_sim)">
+    <xacro:salus_gazebo_motion/>
+  </xacro:if>
+</robot>

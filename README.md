@@ -3,8 +3,9 @@
 Monorepo ROS 2 del robot terrestre autónomo SALUS.
 
 > **Estado:** migración incremental. El corte de control/batería funciona en
-> simulación, pero el sistema completo todavía no es operativo ni debe usarse
-> para mover el vehículo.
+> simulación. También existe un robot Ackermann mínimo en Gazebo Fortress;
+> el sistema completo todavía no es operativo ni debe usarse para mover el
+> vehículo.
 
 ## Objetivo
 
@@ -63,6 +64,7 @@ Smoke test del primer corte migrado:
 
 ```bash
 ./tools/smoke_control_sim.sh
+./tools/smoke_motion_sim.sh
 ```
 
 ## Instalación nativa opcional
@@ -87,6 +89,17 @@ ros2 launch salus_bringup sim_skeleton.launch.py
 ```
 
 Solo muestran una advertencia y terminan. No son bringups funcionales.
+
+## Simulación parcial de movimiento
+
+```bash
+ros2 launch salus_simulation motion_sim.launch.py
+ros2 launch salus_control control_sim.launch.py
+```
+
+Estos launches aislados conectan `/cmd_vel_final` con un vehículo Ackermann
+simulado mediante `/cmd_vel_gazebo`, `/odom_raw` y `/joint_states`. No incluyen
+localización global, sensores, Nav2 ni un bringup operativo.
 
 ## Flujo de desarrollo
 

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="sensor_mount" params="name xyz rpy">
+    <link name="${name}">
+      <visual><geometry><box size="0.08 0.08 0.04"/></geometry></visual>
+      <inertial><mass value="0.05"/><inertia ixx="0.00005" ixy="0" ixz="0" iyy="0.00005" iyz="0" izz="0.00005"/></inertial>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/><child link="${name}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="salus_sensor_mounts">
+    <xacro:sensor_mount name="lidar_link" xyz="0.92 0 0.65" rpy="0 0.1745 0"/>
+    <xacro:sensor_mount name="imu_link" xyz="0.66 0 0.63" rpy="0 0 0"/>
+    <xacro:sensor_mount name="gps_link" xyz="0.66 0.2 0.62" rpy="0 0 0"/>
+  </xacro:macro>
+</robot>

@@ -23,3 +23,5 @@ jobs:
         run: ./tools/test.sh
       - name: Smoke-test migrated control slice
         run: ./tools/smoke_control_sim.sh
+      - name: Smoke-test simulated vehicle motion
+        run: ./tools/smoke_motion_sim.sh

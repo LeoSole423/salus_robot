@@ -45,11 +45,20 @@ components:
   robot_description:
     source: navegacion_gps/models
     target: salus_description
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_description/urdf/salus_robot.urdf.xacro
+      - src/salus_description/test/test_description.py
+      - docs/migration-evidence/motion-ackermann.md
+    note: Physical dimensions originate in cuatri_real_v2 and remain unvalidated on hardware.
   simulation:
     source: navegacion_gps/worlds
     target: salus_simulation
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_simulation/launch/motion_sim.launch.py
+      - tools/smoke_motion_sim.sh
+    note: Ackermann motion only; sensor simulation and legacy A/B characterization remain pending.
   localization:
     source: navegacion_gps
     target: salus_localization
@@ -78,4 +87,3 @@ components:
     source: navegacion_gps/launch
     target: salus_bringup
     state: pending
-

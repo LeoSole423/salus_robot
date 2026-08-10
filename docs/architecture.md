@@ -42,13 +42,14 @@ puede depender de todos los paquetes, pero ningún subsistema puede depender de
 
 ## Invariantes reservadas
 
-- TF global: `map -> odom -> base_footprint`.
+- TF global reservado: `map -> odom -> base_footprint`; este corte solo
+  implementa los TF físicos bajo `base_footprint`.
 - Control conceptual: `/cmd_vel -> /cmd_vel_safe -> /cmd_vel_final`.
 - Un solo publisher por transformación dinámica.
 - La misma API lógica debe admitir backends real y simulado.
 - HOME, rutas, batería y estados degradados deben ser observables.
 
-Estas invariantes aún no están implementadas.
+La cadena global y el arbitraje completo aún no están implementados.
 
 ## Configuración
 
@@ -62,4 +63,3 @@ locales y datums de sitio no se codifican en los launches.
 Cada subsistema deberá exponer estado tipado y diagnóstico suficiente para
 distinguir entrada ausente, entrada vencida, configuración inválida y fallo de
 backend. Los logs complementan esos contratos, no los reemplazan.
-
