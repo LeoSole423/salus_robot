@@ -1,12 +1,12 @@
 schema_version: 1
-project_status: skeleton
+project_status: migrating
 packages:
   salus_interfaces:
     owner: shared_contracts
     build_type: ament_cmake
     language: interface_definition
     may_depend_on: []
-    status: skeleton
+    status: partial_migration
   salus_description:
     owner: robot_model
     build_type: ament_cmake
@@ -36,7 +36,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: skeleton
+    status: parity_passed_sim
   salus_navigation:
     owner: autonomy
     build_type: ament_python
@@ -77,4 +77,3 @@ packages:
       - salus_web
       - salus_simulation
     status: skeleton
-

@@ -1,0 +1,22 @@
+name: ROS 2 Humble CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository
+        run: python3 tools/validate_repository.py
+      - name: Build development image
+        run: docker compose build
+      - name: Build and test workspace
+        run: ./tools/test.sh
+      - name: Smoke-test migrated control slice
+        run: ./tools/smoke_control_sim.sh
+

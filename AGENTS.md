@@ -4,16 +4,17 @@
 
 - Project: `salus_robot`, clean-room successor to `ROS2_SALUS`.
 - ROS distribution: Humble on Ubuntu 22.04.
-- Current milestone: compileable, non-operational skeleton.
+- Current milestone: control/battery parity in simulation; full robot remains
+  non-operational.
 - Never claim that a skeleton launch can operate or move the robot.
 
 ## Sources of truth
 
-1. Public ROS contracts: `src/salus_interfaces` once introduced.
+1. Public ROS contracts: `src/salus_interfaces`.
 2. Runtime composition: `src/salus_bringup/launch`.
 3. Ownership and dependency rules: `docs/package-map.yaml`.
 4. Architectural decisions: `docs/decisions/`.
-5. Migration status: `docs/migration-map.md`.
+5. Migration status and evidence: `docs/migration-status.yaml`.
 
 The old `ROS2_SALUS`, `cockpit`, and firmware repositories are external
 references. Do not edit them from work scoped to this repository. Do not copy
@@ -39,6 +40,7 @@ architectural compromise.
 ./tools/up.sh
 ./tools/build.sh
 ./tools/test.sh
+./tools/smoke_control_sim.sh
 ./tools/shell.sh
 ```
 
@@ -53,4 +55,3 @@ and an accessible E-stop.
 - public contracts and runtime wiring are documented;
 - real/sim behavior and failure modes have tests;
 - migration status and relevant ADRs are updated.
-

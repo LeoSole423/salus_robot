@@ -1,0 +1,81 @@
+schema_version: 1
+allowed_states:
+  - pending
+  - characterized
+  - ported
+  - parity_passed
+  - hardware_validated
+components:
+  ci_and_migration_harness:
+    source: repository_infrastructure
+    target: repository_infrastructure
+    state: ported
+    evidence:
+      - tools/validate_repository.py
+      - tools/test.sh
+      - tools/smoke_control_sim.sh
+  control_interfaces:
+    source: interfaces
+    target: salus_interfaces
+    state: parity_passed
+    contracts:
+      - CmdVelFinal
+      - DriveTelemetry
+      - BatteryMissionGuard
+      - SetSimBatteryPreset
+      - SetSimBatteryState
+    evidence:
+      - tools/compare_interfaces.py
+  control_core:
+    source: controller_server
+    target: salus_control
+    state: parity_passed
+    evidence:
+      - src/salus_control/test/test_control_logic.py
+      - src/salus_control/test/test_battery_estimator.py
+      - src/salus_control/test/test_sim_gazebo_backend.py
+  controller_uart:
+    source: controller_server/rpy_esp32_comms
+    target: salus_control/rpy_esp32_comms
+    state: ported
+    evidence:
+      - src/salus_control/test/test_uart_controller.py
+      - src/salus_control/test/test_uart_protocol.py
+    note: Preserved and unit-tested, but not connected to hardware in this phase.
+  robot_description:
+    source: navegacion_gps/models
+    target: salus_description
+    state: pending
+  simulation:
+    source: navegacion_gps/worlds
+    target: salus_simulation
+    state: pending
+  localization:
+    source: navegacion_gps
+    target: salus_localization
+    state: pending
+  lidar_perception:
+    source: navegacion_gps
+    target: salus_perception
+    state: pending
+  navigation:
+    source: navegacion_gps
+    target: salus_navigation
+    state: pending
+  navigation_bt:
+    source: navegacion_gps_bt
+    target: salus_navigation_bt
+    state: pending
+  operator_web:
+    source: map_tools
+    target: salus_web
+    state: pending
+  hardware_adapters:
+    source: sensores
+    target: salus_hardware
+    state: pending
+  system_bringup:
+    source: navegacion_gps/launch
+    target: salus_bringup
+    state: pending
+
