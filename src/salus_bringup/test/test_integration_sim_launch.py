@@ -21,8 +21,10 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "global_localization_sim.launch.py",
         "lidar_sim.launch.py",
         "safety_arbitration_sim.launch.py",
+        "navigation_core_sim.launch.py",
     ):
         assert launch_file in contents
+    assert "launch_navigation" in contents
 
 
 def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:

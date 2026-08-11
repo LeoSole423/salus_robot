@@ -14,8 +14,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/NavEvent.msg"
   "msg/NavTelemetry.msg"
   "srv/BrakeNav.srv"
+  "srv/CancelNavGoal.srv"
   "srv/GetNavState.srv"
   "srv/SetManualMode.srv"
+  "srv/SetNavGoalLL.srv"
   "srv/SetSimBatteryPreset.srv"
   "srv/SetSimBatteryState.srv"
   DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs

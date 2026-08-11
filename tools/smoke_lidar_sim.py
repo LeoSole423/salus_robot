@@ -43,13 +43,20 @@ def main() -> int:
     rclpy.init()
     node = LidarSmokeNode()
     try:
-        deadline = time.monotonic() + 25.0
+        # Nav2 adds several lifecycle nodes to the integrated launch.  On a
+        # contended CI runner the GPU-LiDAR bridge may start after those nodes,
+        # so allow a bounded but realistic sensor warm-up window.
+        deadline = time.monotonic() + 45.0
         while time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=0.1)
             if len(node.raw) >= 4 and node.normalized and node.obstacles and node.clean:
                 break
         if not (node.raw and node.normalized and node.obstacles and node.clean):
-            raise RuntimeError("simulated LiDAR did not reach every perception topic")
+            raise RuntimeError(
+                "simulated LiDAR did not reach every perception topic "
+                f"(raw={len(node.raw)}, normalized={len(node.normalized)}, "
+                f"obstacles={len(node.obstacles)}, clean={len(node.clean)})"
+            )
         raw = node.raw[-1]
         if not raw.header.frame_id or raw.width * raw.height == 0:
             raise RuntimeError("raw LiDAR cloud has an invalid frame or contains no points")

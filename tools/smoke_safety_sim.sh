@@ -11,7 +11,7 @@ docker compose run --rm ros2 bash -lc '
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   integration_log="$(mktemp)"
-  ros2 launch salus_bringup integration_sim.launch.py >"${integration_log}" 2>&1 &
+  ros2 launch salus_bringup integration_sim.launch.py launch_navigation:=false >"${integration_log}" 2>&1 &
   integration_pid=$!
   cleanup() {
     exit_code=$?
@@ -29,5 +29,7 @@ docker compose run --rm ros2 bash -lc '
   ros2 node list | grep -qx /nav_command_server
   ros2 node list | grep -qx /collision_monitor
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
+  timeout 5 ros2 topic echo /clock --once >/dev/null
+  sleep 1
   python3 /ros2_ws/tools/smoke_safety_sim.py
 '

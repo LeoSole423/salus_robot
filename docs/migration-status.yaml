@@ -67,7 +67,7 @@ components:
       - src/salus_localization/launch/localization_sim.launch.py
       - src/salus_localization/test/test_ackermann_odometry.py
       - tools/smoke_localization_sim.sh
-    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, map-to-odom EKF, RTK/course-heading gates and stationary gates. Real-bag parity remains pending.
+    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. Real-bag parity remains pending.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception
@@ -86,7 +86,7 @@ components:
       - src/salus_navigation/salus_navigation/nav_command_server.py
       - src/salus_navigation/launch/safety_arbitration_sim.launch.py
       - tools/smoke_safety_sim.py
-    note: Safety arbitration, manual watchdog, brake hold, telemetry and collision-monitor lifecycle are ported in simulation. Nav2 goals, zones and missions remain pending.
+    note: Safety arbitration and a single Nav2 LL goal are ported in simulation. Zones, routes, patrol and HOME remain pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt
