@@ -67,6 +67,7 @@ Smoke test del primer corte migrado:
 ./tools/smoke_control_sim.sh
 ./tools/smoke_motion_sim.sh
 ./tools/smoke_localization_sim.sh
+./tools/smoke_integration_sim.sh
 ```
 
 ## Instalación nativa opcional
@@ -91,6 +92,38 @@ ros2 launch salus_bringup sim_skeleton.launch.py
 ```
 
 Solo muestran una advertencia y terminan. No son bringups funcionales.
+
+## Checkpoint integrado de simulación
+
+Después del build, el stack migrado hasta ahora se inicia con:
+
+```bash
+ros2 launch salus_bringup integration_sim.launch.py
+```
+
+Para abrir Gazebo y RViz:
+
+```bash
+./tools/sim.sh
+```
+
+El helper construye incrementalmente, levanta Docker, carga ROS y ejecuta el
+bringup. Para ejecutarlo sin ventanas: `./tools/sim.sh --headless`.
+
+En otra terminal, los comandos manuales usan el mismo contenedor:
+
+```bash
+./tools/cmd_vel_sim.sh straight  # mantener activo; Ctrl+C para detener
+./tools/cmd_vel_sim.sh left
+./tools/cmd_vel_sim.sh right
+./tools/cmd_vel_sim.sh brake
+```
+
+`./tools/shell.sh` abre una shell ROS en ese mismo contenedor para inspección
+manual de tópicos y TF.
+
+Incluye movimiento, control simulado, localización local/global y LiDAR. Es un
+bringup de depuración; todavía no contiene Nav2, misiones ni Cockpit.
 
 ## Simulación parcial de movimiento
 
