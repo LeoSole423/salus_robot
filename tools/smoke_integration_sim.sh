@@ -24,16 +24,23 @@ docker compose run --rm ros2 bash -lc '
   trap cleanup EXIT
   for _attempt in $(seq 1 120); do
     topics="$(ros2 topic list 2>/dev/null || true)"
-    if grep -qx "/scan_clean" <<<"${topics}" && grep -qx "/odometry/global" <<<"${topics}"; then
+    nodes="$(ros2 node list 2>/dev/null || true)"
+    if grep -qx "/scan_clean" <<<"${topics}" \
+      && grep -qx "/odometry/global" <<<"${topics}" \
+      && grep -qx "/controller_server" <<<"${nodes}" \
+      && grep -qx "/robot_state_publisher" <<<"${nodes}"; then
       break
     fi
     sleep 0.25
   done
+  nodes="$(ros2 node list)"
+  grep -qx "/controller_server" <<<"${nodes}"
+  grep -qx "/robot_state_publisher" <<<"${nodes}"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /odometry/local)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /odometry/global)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /scan_3d_raw)" = "sensor_msgs/msg/PointCloud2"
   test "$(ros2 topic type /scan_clean)" = "sensor_msgs/msg/LaserScan"
-  test "$(ros2 node list | grep -cx /robot_state_publisher)" = "1"
+  test "$(grep -cx /robot_state_publisher <<<"${nodes}")" = "1"
   python3 /ros2_ws/tools/smoke_motion_sim.py
 '
