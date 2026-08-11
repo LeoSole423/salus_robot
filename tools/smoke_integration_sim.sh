@@ -14,12 +14,13 @@ docker compose run --rm ros2 bash -lc '
   integration_pid=$!
   cleanup() {
     exit_code=$?
+    trap - EXIT
     kill -TERM "${integration_pid}" 2>/dev/null || true
     wait "${integration_pid}" 2>/dev/null || true
     if test "${exit_code}" -ne 0 && test -s "${integration_log}"; then
       tail -n 120 "${integration_log}"
     fi
-    exit "${exit_code}"
+    return "${exit_code}"
   }
   trap cleanup EXIT
   for _attempt in $(seq 1 120); do
