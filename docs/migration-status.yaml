@@ -58,7 +58,7 @@ components:
     evidence:
       - src/salus_simulation/launch/motion_sim.launch.py
       - tools/smoke_motion_sim.sh
-    note: Ackermann motion only; sensor simulation and legacy A/B characterization remain pending.
+    note: Ackermann motion plus reduced GPS/LiDAR simulation are ported. Legacy A/B characterization remains pending.
   localization:
     source: navegacion_gps
     target: salus_localization
@@ -76,7 +76,8 @@ components:
       - src/salus_perception/launch/lidar_sim.launch.py
       - src/salus_perception/test/test_scan_filters.py
       - tools/replay_lidar_report.py
-    note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. RS16 bag replay and RViz inspection are required for parity.
+      - tools/smoke_lidar_sim.py
+    note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. The raw Gazebo frame is normalized at /scan_3d; RS16 bag replay and RViz inspection are required for parity.
   navigation:
     source: navegacion_gps
     target: salus_navigation

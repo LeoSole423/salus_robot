@@ -57,7 +57,7 @@ Visualization Manager:
         Value: /odometry/global
     - Class: rviz_default_plugins/PointCloud2
       Name: Raw 3D
-      Enabled: true
+      Enabled: false
       Color: 180; 180; 255
       Color Transformer: FlatColor
       Style: Points

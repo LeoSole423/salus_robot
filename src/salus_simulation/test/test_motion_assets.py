@@ -32,6 +32,21 @@ def test_motion_bridge_preserves_control_and_feedback_endpoints() -> None:
         assert endpoint in bridge
     assert "ROS_TO_GZ" in bridge
     assert bridge.count("GZ_TO_ROS") == 4
+    assert 'ros_topic_name: "/scan_3d_raw"' in bridge
+    assert 'gz_topic_name: "/lidar/points"' in bridge
+    assert 'gz_type_name: "gz.msgs.PointCloudPacked"' in bridge
+
+
+def test_lidar_sensor_and_world_keep_a_detectable_collision_target() -> None:
+    description_root = SIMULATION_DIR.parent / "salus_description" / "urdf"
+    gazebo_motion = (description_root / "components" / "gazebo_motion.xacro").read_text(
+        encoding="utf-8"
+    )
+    world = (SIMULATION_DIR / "worlds" / "empty.world").read_text(encoding="utf-8")
+    assert 'sensor name="lidar_3d_sensor" type="gpu_lidar"' in gazebo_motion
+    assert "<topic>/lidar</topic>" in gazebo_motion
+    assert 'model name="lidar_test_obstacle"' in world
+    assert '<collision name="collision">' in world
 
 
 def test_motion_launch_keeps_simulation_as_an_isolated_partial_launch() -> None:

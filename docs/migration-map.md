@@ -22,7 +22,7 @@ paridad y retiro del camino anterior.
 | Nav2, command server, rutas, zonas | `salus_navigation` | pendiente | separar misión de arbitraje |
 | plugins en `navegacion_gps_bt` | `salus_navigation_bt` | pendiente | caracterizar ABI/BT XML |
 | `map_tools/web_zone_server` | `salus_web` | pendiente | no duplicar nodos de navegación |
-| Gazebo, mundos, normalizadores | `salus_simulation` | portado parcial | mundo Ackermann sin sensores; paridad A/B pendiente |
+| Gazebo, mundos, normalizadores | `salus_simulation` | portado parcial | mundo Ackermann con GPS/LiDAR reducidos; paridad A/B pendiente |
 | launches globales V2 | `salus_bringup` | pendiente | reducir a perfiles finales |
 
 ## No migrar de entrada
