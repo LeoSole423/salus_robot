@@ -96,4 +96,8 @@ components:
   system_bringup:
     source: navegacion_gps/launch
     target: salus_bringup
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_bringup/launch/integration_sim.launch.py
+      - tools/smoke_integration_sim.sh
+    note: Checkpoint integrado de simulación disponible; los bringups operativos finales siguen pendientes.
