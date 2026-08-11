@@ -26,11 +26,12 @@ def test_motion_bridge_preserves_control_and_feedback_endpoints() -> None:
         encoding="utf-8"
     )
     for endpoint in (
-        "/cmd_vel_gazebo", "/cmd_vel_steer", "/odom_raw", "/odom", "/clock", "/gps/fix_raw"
+        "/cmd_vel_gazebo", "/cmd_vel_steer", "/odom_raw", "/odom", "/clock",
+        "/gps/fix_raw", "/scan_3d_raw",
     ):
         assert endpoint in bridge
     assert "ROS_TO_GZ" in bridge
-    assert bridge.count("GZ_TO_ROS") == 3
+    assert bridge.count("GZ_TO_ROS") == 4
 
 
 def test_motion_launch_keeps_simulation_as_an_isolated_partial_launch() -> None:

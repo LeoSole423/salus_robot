@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-pip \
     python3-pytest \
+    python3-numpy \
     python3-serial \
     python3-rosdep \
     python3-vcstool \
@@ -28,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-xacro \
     ros-humble-robot-state-publisher \
     ros-humble-robot-localization \
+    ros-humble-pointcloud-to-laserscan \
+    ros-humble-nav2-collision-monitor \
+    ros-humble-rviz2 \
     ros-humble-ros-gz-sim \
     ros-humble-ros-gz-bridge \
     liburdfdom-tools \

@@ -30,7 +30,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: skeleton
+    status: ported_3d_simulation_pending_rs16_replay
   salus_control:
     owner: vehicle_control
     build_type: ament_python

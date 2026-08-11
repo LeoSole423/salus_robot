@@ -21,3 +21,9 @@
   ros_type_name: "sensor_msgs/msg/NavSatFix"
   gz_type_name: "gz.msgs.NavSat"
   direction: GZ_TO_ROS
+
+- ros_topic_name: "/scan_3d_raw"
+  gz_topic_name: "/scan_3d_raw"
+  ros_type_name: "sensor_msgs/msg/PointCloud2"
+  gz_type_name: "gz.msgs.PointCloudPacked"
+  direction: GZ_TO_ROS
