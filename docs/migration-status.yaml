@@ -62,7 +62,12 @@ components:
   localization:
     source: navegacion_gps
     target: salus_localization
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_localization/launch/localization_sim.launch.py
+      - src/salus_localization/test/test_ackermann_odometry.py
+      - tools/smoke_localization_sim.sh
+    note: Local Ackermann odometry and deterministic simulated IMU are ported; global GPS localization and legacy A/B replay remain pending.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception

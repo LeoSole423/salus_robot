@@ -3,7 +3,8 @@
 Monorepo ROS 2 del robot terrestre autónomo SALUS.
 
 > **Estado:** migración incremental. El corte de control/batería funciona en
-> simulación. También existe un robot Ackermann mínimo en Gazebo Fortress;
+> simulación. También existe un robot Ackermann mínimo en Gazebo Fortress y
+> localización local simulada;
 > el sistema completo todavía no es operativo ni debe usarse para mover el
 > vehículo.
 
@@ -65,6 +66,7 @@ Smoke test del primer corte migrado:
 ```bash
 ./tools/smoke_control_sim.sh
 ./tools/smoke_motion_sim.sh
+./tools/smoke_localization_sim.sh
 ```
 
 ## Instalación nativa opcional
@@ -100,6 +102,17 @@ ros2 launch salus_control control_sim.launch.py
 Estos launches aislados conectan `/cmd_vel_final` con un vehículo Ackermann
 simulado mediante `/cmd_vel_gazebo`, `/odom_raw` y `/joint_states`. No incluyen
 localización global, sensores, Nav2 ni un bringup operativo.
+
+## Localización local parcial
+
+```bash
+ros2 launch salus_localization localization_sim.launch.py
+```
+
+Compone la telemetría del controlador, odometría Ackermann, una IMU simulada
+normalizada y el EKF local. Publica `/wheel/odometry`, `/imu/data` y
+`/odometry/local`; el EKF es la única autoridad de `odom -> base_footprint`.
+No incluye GPS, datum, `map -> odom`, LiDAR ni Nav2.
 
 ## Flujo de desarrollo
 

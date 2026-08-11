@@ -42,6 +42,7 @@ architectural compromise.
 ./tools/test.sh
 ./tools/smoke_control_sim.sh
 ./tools/smoke_motion_sim.sh
+./tools/smoke_localization_sim.sh
 ./tools/shell.sh
 ```
 
