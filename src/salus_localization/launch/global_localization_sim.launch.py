@@ -14,6 +14,7 @@ def generate_launch_description() -> LaunchDescription:
     params = [{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}]
     return LaunchDescription([DeclareLaunchArgument("use_sim_time", default_value="true"),
         Node(package="salus_localization", executable="sim_gps_normalizer", name="sim_gps_normalizer", output="screen", parameters=params),
+        Node(package="salus_localization", executable="global_stationary_gates", name="global_stationary_gates", output="screen", parameters=params),
         Node(package="salus_localization", executable="gps_course_heading", name="gps_course_heading", output="screen", parameters=params),
         Node(package="salus_localization", executable="map_gps_absolute_measurement", name="map_gps_absolute_measurement", output="screen", parameters=params),
         Node(package="robot_localization", executable="navsat_transform_node", name="navsat_transform", output="screen", parameters=[config, {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}], remappings=[("gps/fix", "/gps/fix"), ("odometry/filtered", "/odometry/local"), ("odometry/gps", "/odometry/gps")]),

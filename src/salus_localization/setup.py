@@ -27,6 +27,7 @@ setup(
             "imu_normalizer = salus_localization.imu_normalizer:main",
             "sim_gps_normalizer = salus_localization.sim_gps_normalizer:main",
             "gps_course_heading = salus_localization.gps_course_heading:main",
+            "global_stationary_gates = salus_localization.global_stationary_gates:main",
             "map_gps_absolute_measurement = salus_localization.map_gps_absolute_measurement:main",
         ],
     },
