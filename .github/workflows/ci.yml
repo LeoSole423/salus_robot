@@ -29,3 +29,5 @@ jobs:
         run: ./tools/smoke_localization_sim.sh
       - name: Smoke-test integrated simulation checkpoint
         run: ./tools/smoke_integration_sim.sh
+      - name: Smoke-test safety arbitration simulation
+        run: ./tools/smoke_safety_sim.sh

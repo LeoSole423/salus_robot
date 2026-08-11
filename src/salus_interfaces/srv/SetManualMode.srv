@@ -1,0 +1,5 @@
+bool enabled
+---
+bool ok
+string error
+bool enabled_after

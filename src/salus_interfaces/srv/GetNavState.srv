@@ -1,0 +1,12 @@
+---
+bool ok
+string error
+bool goal_active
+bool manual_enabled
+float64 manual_linear_x_cmd
+float64 manual_angular_z_cmd
+bool cmd_vel_available
+float64 cmd_vel_linear_x
+float64 cmd_vel_angular_z
+float64 robot_lat
+float64 robot_lon

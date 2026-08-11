@@ -30,7 +30,7 @@ class LidarSmokeNode(Node):
 def _has_point_in_front(message: PointCloud2) -> bool:
     for point in point_cloud2.read_points(message, field_names=("x", "y", "z"), skip_nans=True):
         x, y, z = map(float, point)
-        if 3.0 <= x <= 5.0 and abs(y) <= 0.6 and -0.2 <= z <= 1.5:
+        if 3.0 <= x <= 5.0 and 1.4 <= abs(y) <= 2.6 and -0.2 <= z <= 1.5:
             return True
     return False
 
