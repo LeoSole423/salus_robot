@@ -1,0 +1,65 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: map
+    Frame Rate: 30
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 1
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Frame Timeout: 15
+      Show Names: true
+    - Class: rviz_default_plugins/RobotModel
+      Name: Robot
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Raw 3D
+      Enabled: true
+      Topic:
+        Value: /scan_3d_raw
+      Size (Pixels): 2
+      Style: Points
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Normalized 3D
+      Enabled: true
+      Topic:
+        Value: /scan_3d
+      Size (Pixels): 2
+      Style: Points
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Obstacles 3D
+      Enabled: true
+      Topic:
+        Value: /obstacles_cloud
+      Size (Pixels): 4
+      Style: Points
+    - Class: rviz_default_plugins/LaserScan
+      Name: Clean Scan
+      Enabled: true
+      Topic:
+        Value: /scan_clean
+      Size (Pixels): 4
+      Style: Points
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 12
+      Pitch: 0.65
+      Yaw: 0.78
+Window Geometry:
+  Height: 900
+  Width: 1440
