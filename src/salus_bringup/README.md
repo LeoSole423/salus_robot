@@ -22,5 +22,9 @@ Con Gazebo y RViz visibles:
 El helper también carga automáticamente ROS dentro del contenedor. Para CI o
 depuración sin ventanas se puede usar `./tools/sim.sh --headless`.
 
+Para control manual desde el host: `./tools/cmd_vel_sim.sh straight`, `left`,
+`right` o `brake`. La shell de diagnóstico `./tools/shell.sh` usa el mismo
+contenedor que la simulación.
+
 Los launches `*_skeleton.launch.py` se conservan como marcadores de los futuros
 bringups finales `sim.launch.py` y `real.launch.py`.

@@ -5,16 +5,21 @@ cd "${repo_dir}"
 
 docker compose run --rm ros2 bash -lc '
   set -eo pipefail
+  export ROS_DOMAIN_ID=42
+  export GZ_PARTITION="salus_smoke_$$"
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   integration_log="$(mktemp)"
   ros2 launch salus_bringup integration_sim.launch.py >"${integration_log}" 2>&1 &
   integration_pid=$!
   cleanup() {
+    exit_code=$?
     kill -TERM "${integration_pid}" 2>/dev/null || true
     wait "${integration_pid}" 2>/dev/null || true
-    if ! test -s "${integration_log}"; then return; fi
-    tail -n 120 "${integration_log}"
+    if test "${exit_code}" -ne 0 && test -s "${integration_log}"; then
+      tail -n 120 "${integration_log}"
+    fi
+    exit "${exit_code}"
   }
   trap cleanup EXIT
   for _attempt in $(seq 1 120); do
@@ -30,4 +35,5 @@ docker compose run --rm ros2 bash -lc '
   test "$(ros2 topic type /scan_3d_raw)" = "sensor_msgs/msg/PointCloud2"
   test "$(ros2 topic type /scan_clean)" = "sensor_msgs/msg/LaserScan"
   test "$(ros2 node list | grep -cx /robot_state_publisher)" = "1"
+  python3 /ros2_ws/tools/smoke_motion_sim.py
 '

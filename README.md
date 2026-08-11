@@ -110,6 +110,18 @@ Para abrir Gazebo y RViz:
 El helper construye incrementalmente, levanta Docker, carga ROS y ejecuta el
 bringup. Para ejecutarlo sin ventanas: `./tools/sim.sh --headless`.
 
+En otra terminal, los comandos manuales usan el mismo contenedor:
+
+```bash
+./tools/cmd_vel_sim.sh straight  # mantener activo; Ctrl+C para detener
+./tools/cmd_vel_sim.sh left
+./tools/cmd_vel_sim.sh right
+./tools/cmd_vel_sim.sh brake
+```
+
+`./tools/shell.sh` abre una shell ROS en ese mismo contenedor para inspección
+manual de tópicos y TF.
+
 Incluye movimiento, control simulado, localización local/global y LiDAR. Es un
 bringup de depuración; todavía no contiene Nav2, misiones ni Cockpit.
 

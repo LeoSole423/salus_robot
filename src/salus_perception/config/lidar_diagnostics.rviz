@@ -1,55 +1,111 @@
 Panels:
   - Class: rviz_common/Displays
     Name: Displays
+    Property Tree Widget:
+      Expanded: [TF, RobotModel, Raw 3D, Obstacles 3D]
 Visualization Manager:
   Class: ""
   Global Options:
-    Background Color: 30; 30; 30
-    Fixed Frame: map
+    Background Color: 35; 40; 48
+    Fixed Frame: odom
     Frame Rate: 30
   Displays:
     - Class: rviz_default_plugins/Grid
       Name: Grid
       Enabled: true
       Cell Size: 1
+      Plane Cell Count: 30
+      Color: 120; 120; 120
     - Class: rviz_default_plugins/TF
       Name: TF
       Enabled: true
       Frame Timeout: 15
+      Show Axes: true
+      Show Arrows: true
       Show Names: true
+      Marker Scale: 0.5
     - Class: rviz_default_plugins/RobotModel
-      Name: Robot
+      Name: RobotModel
       Enabled: true
+      Description Source: Topic
       Description Topic:
+        Reliability Policy: Best Effort
+        History Policy: Keep Last
+        Depth: 5
         Value: /robot_description
+      Visual Enabled: true
+      Collision Enabled: false
+    - Class: rviz_default_plugins/Odometry
+      Name: Local odometry
+      Enabled: true
+      Color: 0; 180; 255
+      Keep: 25
+      Topic:
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+        Depth: 10
+        Value: /odometry/local
+    - Class: rviz_default_plugins/Odometry
+      Name: Global odometry
+      Enabled: true
+      Color: 255; 180; 0
+      Keep: 25
+      Topic:
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+        Depth: 10
+        Value: /odometry/global
     - Class: rviz_default_plugins/PointCloud2
       Name: Raw 3D
       Enabled: true
-      Topic:
-        Value: /scan_3d_raw
-      Size (Pixels): 2
+      Color: 180; 180; 255
+      Color Transformer: FlatColor
       Style: Points
+      Size (Pixels): 2
+      Use Fixed Frame: true
+      Topic:
+        Reliability Policy: Best Effort
+        History Policy: Keep Last
+        Depth: 5
+        Value: /scan_3d_raw
     - Class: rviz_default_plugins/PointCloud2
       Name: Normalized 3D
       Enabled: true
-      Topic:
-        Value: /scan_3d
-      Size (Pixels): 2
+      Color: 120; 220; 255
+      Color Transformer: FlatColor
       Style: Points
+      Size (Pixels): 2
+      Use Fixed Frame: true
+      Topic:
+        Reliability Policy: Best Effort
+        History Policy: Keep Last
+        Depth: 5
+        Value: /scan_3d
     - Class: rviz_default_plugins/PointCloud2
       Name: Obstacles 3D
       Enabled: true
-      Topic:
-        Value: /obstacles_cloud
-      Size (Pixels): 4
+      Color: 0; 255; 100
+      Color Transformer: FlatColor
       Style: Points
+      Size (Pixels): 4
+      Use Fixed Frame: true
+      Topic:
+        Reliability Policy: Best Effort
+        History Policy: Keep Last
+        Depth: 5
+        Value: /obstacles_cloud
     - Class: rviz_default_plugins/LaserScan
       Name: Clean Scan
       Enabled: true
-      Topic:
-        Value: /scan_clean
-      Size (Pixels): 4
+      Color: 255; 80; 80
       Style: Points
+      Size (Pixels): 5
+      Use Fixed Frame: true
+      Topic:
+        Reliability Policy: Best Effort
+        History Policy: Keep Last
+        Depth: 5
+        Value: /scan_clean
   Tools:
     - Class: rviz_default_plugins/Interact
     - Class: rviz_default_plugins/MoveCamera
