@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-tf2-ros \
     ros-humble-xacro \
     ros-humble-robot-state-publisher \
+    ros-humble-robot-localization \
     ros-humble-ros-gz-sim \
     ros-humble-ros-gz-bridge \
     liburdfdom-tools \

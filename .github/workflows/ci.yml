@@ -25,3 +25,5 @@ jobs:
         run: ./tools/smoke_control_sim.sh
       - name: Smoke-test simulated vehicle motion
         run: ./tools/smoke_motion_sim.sh
+      - name: Smoke-test local simulated localization
+        run: ./tools/smoke_localization_sim.sh
