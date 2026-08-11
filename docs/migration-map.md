@@ -17,7 +17,7 @@ paridad y retiro del camino anterior.
 | URDF/RViz de `navegacion_gps` | `salus_description` | portado parcial | Xacro canónico de movimiento; medidas sin validar en hardware |
 | MAVROS, RTK, RS16, cámara | `salus_hardware` | pendiente | wrappers; no vendorizar SDK |
 | odometría, EKF, GPS heading | `salus_localization` | pendiente | preservar TF y datum fijo |
-| conversión/filtros LiDAR | `salus_perception` | pendiente | separar vigente/experimental |
+| conversión/filtros LiDAR | `salus_perception` | portado parcial | cadena 3D local; falta validación con bag RS16 |
 | `controller_server` y batería | `salus_control` | paridad sim | UART sin validar en hardware |
 | Nav2, command server, rutas, zonas | `salus_navigation` | pendiente | separar misión de arbitraje |
 | plugins en `navegacion_gps_bt` | `salus_navigation_bt` | pendiente | caracterizar ABI/BT XML |
