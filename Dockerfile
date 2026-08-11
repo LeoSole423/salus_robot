@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-robot-localization \
     ros-humble-pointcloud-to-laserscan \
     ros-humble-nav2-collision-monitor \
+    ros-humble-nav2-lifecycle-manager \
     ros-humble-rviz2 \
     ros-humble-ros-gz-sim \
     ros-humble-ros-gz-bridge \

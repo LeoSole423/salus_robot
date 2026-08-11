@@ -51,6 +51,7 @@ def generate_launch_description() -> LaunchDescription:
                 common,
             ),
             _include("salus_perception", "lidar_sim.launch.py"),
+            _include("salus_navigation", "safety_arbitration_sim.launch.py", common),
             _include(
                 "salus_perception",
                 "lidar_diagnostics.launch.py",

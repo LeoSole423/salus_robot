@@ -81,7 +81,12 @@ components:
   navigation:
     source: navegacion_gps
     target: salus_navigation
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_navigation/salus_navigation/nav_command_server.py
+      - src/salus_navigation/launch/safety_arbitration_sim.launch.py
+      - tools/smoke_safety_sim.py
+    note: Safety arbitration, manual watchdog, brake hold, telemetry and collision-monitor lifecycle are ported in simulation. Nav2 goals, zones and missions remain pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt

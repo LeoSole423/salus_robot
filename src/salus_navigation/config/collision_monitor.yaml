@@ -1,0 +1,54 @@
+collision_monitor:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    cmd_vel_in_topic: /cmd_vel
+    cmd_vel_out_topic: /cmd_vel_safe
+    state_topic: /collision_monitor_state
+    expected_planner_frequency: 10.0
+    transform_tolerance: 0.5
+    state_update_rate: 10.0
+    source_timeout: 1.0
+    stop_pub_timeout: 0.5
+    polygons: [footprint, stop_zone, critical_slow_zone, slow_zone]
+    footprint:
+      type: polygon
+      action_type: stop
+      min_points: 3
+      points: [1.05, 0.38, 1.05, -0.38, -0.12, -0.38, -0.12, 0.38]
+      visualize: true
+      enabled: true
+    stop_zone:
+      type: polygon
+      action_type: approach
+      min_points: 3
+      points: [2.05, 0.68, 2.05, -0.68, -0.30, -0.68, -0.30, 0.68]
+      time_before_collision: 2.0
+      simulation_time_step: 0.1
+      polygon_pub_topic: /stop_zone_raw
+      visualize: true
+      enabled: true
+    critical_slow_zone:
+      type: polygon
+      action_type: slowdown
+      min_points: 3
+      points: [3.50, 0.98, 3.50, -0.98, -0.30, -0.98, -0.30, 0.98]
+      slowdown_ratio: 0.4375
+      polygon_pub_topic: /critical_slow_zone_raw
+      visualize: true
+      enabled: true
+    slow_zone:
+      type: polygon
+      action_type: slowdown
+      min_points: 3
+      points: [5.35, 1.18, 5.35, -1.18, -0.30, -1.18, -0.30, 1.18]
+      slowdown_ratio: 0.75
+      polygon_pub_topic: /slow_zone_raw
+      visualize: true
+      enabled: true
+    observation_sources: [scan]
+    scan:
+      type: scan
+      topic: /scan_clean
+      enabled: true

@@ -11,6 +11,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "salus_control",
         "salus_localization",
         "salus_perception",
+        "salus_navigation",
     ):
         assert package in contents
     for launch_file in (
@@ -19,6 +20,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "localization_sim.launch.py",
         "global_localization_sim.launch.py",
         "lidar_sim.launch.py",
+        "safety_arbitration_sim.launch.py",
     ):
         assert launch_file in contents
 

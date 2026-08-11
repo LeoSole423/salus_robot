@@ -7,8 +7,14 @@ import sys
 
 
 CONTRACTS = {
-    "msg": ("BatteryMissionGuard.msg", "CmdVelFinal.msg", "DriveTelemetry.msg"),
-    "srv": ("SetSimBatteryPreset.srv", "SetSimBatteryState.srv"),
+    "msg": (
+        "BatteryMissionGuard.msg", "CmdVelFinal.msg", "DriveTelemetry.msg",
+        "NavEvent.msg", "NavTelemetry.msg",
+    ),
+    "srv": (
+        "BrakeNav.srv", "GetNavState.srv", "SetManualMode.srv",
+        "SetSimBatteryPreset.srv", "SetSimBatteryState.srv",
+    ),
 }
 
 
@@ -43,10 +49,9 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("Interface compatibility passed: 5 contracts")
+    print("Interface compatibility passed: 10 contracts")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

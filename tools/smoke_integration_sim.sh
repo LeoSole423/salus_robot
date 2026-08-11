@@ -42,7 +42,9 @@ docker compose run --rm ros2 bash -lc '
   test "$(ros2 topic type /odometry/global)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /scan_3d_raw)" = "sensor_msgs/msg/PointCloud2"
   test "$(ros2 topic type /scan_clean)" = "sensor_msgs/msg/LaserScan"
+  test "$(ros2 topic type /cmd_vel_safe)" = "geometry_msgs/msg/Twist"
   test "$(grep -cx /robot_state_publisher <<<"${nodes}")" = "1"
   python3 /ros2_ws/tools/smoke_lidar_sim.py
+  python3 /ros2_ws/tools/smoke_safety_sim.py
   python3 /ros2_ws/tools/smoke_motion_sim.py
 '
