@@ -104,9 +104,11 @@ ros2 launch salus_bringup integration_sim.launch.py
 Para abrir Gazebo y RViz:
 
 ```bash
-xhost +local:docker
-ros2 launch salus_bringup integration_sim.launch.py gz_args:=-r rviz:=true
+./tools/sim.sh
 ```
+
+El helper construye incrementalmente, levanta Docker, carga ROS y ejecuta el
+bringup. Para ejecutarlo sin ventanas: `./tools/sim.sh --headless`.
 
 Incluye movimiento, control simulado, localización local/global y LiDAR. Es un
 bringup de depuración; todavía no contiene Nav2, misiones ni Cockpit.

@@ -16,8 +16,11 @@ ros2 launch salus_bringup integration_sim.launch.py
 Con Gazebo y RViz visibles:
 
 ```bash
-ros2 launch salus_bringup integration_sim.launch.py gz_args:=-r rviz:=true
+./tools/sim.sh
 ```
+
+El helper también carga automáticamente ROS dentro del contenedor. Para CI o
+depuración sin ventanas se puede usar `./tools/sim.sh --headless`.
 
 Los launches `*_skeleton.launch.py` se conservan como marcadores de los futuros
 bringups finales `sim.launch.py` y `real.launch.py`.
