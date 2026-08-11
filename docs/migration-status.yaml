@@ -67,11 +67,16 @@ components:
       - src/salus_localization/launch/localization_sim.launch.py
       - src/salus_localization/test/test_ackermann_odometry.py
       - tools/smoke_localization_sim.sh
-    note: Local Ackermann odometry and deterministic simulated IMU are ported; global GPS localization and legacy A/B replay remain pending.
+    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, map-to-odom EKF, RTK/course-heading gates and stationary gates. Real-bag parity remains pending.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception
-    state: pending
+    state: ported
+    evidence:
+      - src/salus_perception/launch/lidar_sim.launch.py
+      - src/salus_perception/test/test_scan_filters.py
+      - tools/replay_lidar_report.py
+    note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. RS16 bag replay and RViz inspection are required for parity.
   navigation:
     source: navegacion_gps
     target: salus_navigation

@@ -20,6 +20,12 @@ ros2 launch salus_localization localization_sim.launch.py
 ./tools/smoke_localization_sim.sh
 ```
 
+`global_localization_sim.launch.py` añade GPS global simulado y el segundo
+EKF. El NavSat raw procede de Gazebo en `/gps/fix_raw`, se normaliza a
+`/gps/fix` con perfiles `ideal`, `f9p_rtk` o `m8n`, y conserva un datum fijo.
+Los gates estacionarios, brújula, servicios de datum y GNSS real no están
+migrados todavía.
+
 La IMU actual se deriva de la odometría de Gazebo para pruebas reproducibles;
 no representa un modelo físico de ruido ni se usa con hardware real.
 
