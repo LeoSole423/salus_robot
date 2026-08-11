@@ -24,7 +24,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_local_simulation
+    status: ported_global_simulation
   salus_perception:
     owner: perception
     build_type: ament_python

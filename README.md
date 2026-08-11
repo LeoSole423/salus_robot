@@ -114,6 +114,17 @@ normalizada y el EKF local. Publica `/wheel/odometry`, `/imu/data` y
 `/odometry/local`; el EKF es la única autoridad de `odom -> base_footprint`.
 No incluye GPS, datum, `map -> odom`, LiDAR ni Nav2.
 
+## Localización GPS global parcial
+
+```bash
+ros2 launch salus_localization global_localization_sim.launch.py
+```
+
+Con los launches de movimiento, control y localización local ya activos, añade
+NavSat de Gazebo, perfiles GPS reproducibles, `/gps/odometry_map`,
+`/odometry/gps`, `/odometry/global` y la autoridad `map -> odom`. Usa un datum
+fijo de simulación; no incluye brújula, datum dinámico, LiDAR ni GNSS real.
+
 ## Flujo de desarrollo
 
 1. Elegir una unidad del [mapa de migración](docs/migration-map.md).
