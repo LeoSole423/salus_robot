@@ -12,6 +12,7 @@ import rclpy
 from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.srv import GetZonesState, SetNavGoalLL, SetZonesGeoJson
 from std_srvs.srv import Trigger
 
@@ -24,7 +25,16 @@ class ZonesSmoke(Node):
         super().__init__("zones_sim_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[Path] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
-        self.create_subscription(OccupancyGrid, "/keepout_filter_mask", self.mask.append, 1)
+        # map_server keeps this map latched. A late smoke subscriber must use
+        # the matching QoS to receive the currently active empty/full mask.
+        mask_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.create_subscription(
+            OccupancyGrid, "/keepout_filter_mask", self.mask.append, mask_qos
+        )
         self.create_subscription(Path, "/plan", self.plans.append, 10)
         self.set_zones = self.create_client(SetZonesGeoJson, "/zones_manager/set_geojson")
         self.get_zones = self.create_client(GetZonesState, "/zones_manager/get_state")
