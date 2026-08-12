@@ -48,7 +48,14 @@ def generate_launch_description() -> LaunchDescription:
             period=3.0,
             actions=[Node(
                 package="salus_navigation", executable="zones_manager", name="zones_manager", output="screen",
-                parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "runtime_dir": runtime_dir, "use_keepout": ParameterValue(use_keepout, value_type=bool)}],
+                parameters=[{
+                    "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                    "runtime_dir": runtime_dir,
+                    "use_keepout": ParameterValue(use_keepout, value_type=bool),
+                    # The map server needs several seconds to decode the full
+                    # legacy grid before it can answer LoadMap.
+                    "service_timeout_s": 15.0,
+                }],
             )],
         ),
     ])
