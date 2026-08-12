@@ -12,7 +12,8 @@ CONTRACTS = {
         "NavEvent.msg", "NavTelemetry.msg",
     ),
     "srv": (
-        "BrakeNav.srv", "CancelNavGoal.srv", "GetNavState.srv", "SetManualMode.srv", "SetNavGoalLL.srv",
+        "BrakeNav.srv", "CancelNavGoal.srv", "GetNavState.srv", "GetZonesState.srv", "SetManualMode.srv", "SetNavGoalLL.srv",
+        "SetZonesGeoJson.srv",
         "SetSimBatteryPreset.srv", "SetSimBatteryState.srv",
     ),
 }
@@ -49,7 +50,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("Interface compatibility passed: 12 contracts")
+    print("Interface compatibility passed: 14 contracts")
     return 0
 
 

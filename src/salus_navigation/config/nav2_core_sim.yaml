@@ -121,6 +121,7 @@ local_costmap:
       footprint: '[[1.05,0.38],[1.05,-0.38],[-0.12,-0.38],[-0.12,0.38]]'
       footprint_padding: 0.05
       plugins: [obstacle_layer, inflation_layer]
+      filters: [keepout_filter]
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
@@ -138,6 +139,10 @@ local_costmap:
         plugin: nav2_costmap_2d::InflationLayer
         inflation_radius: 1.4
         cost_scaling_factor: 1.3
+      keepout_filter:
+        plugin: nav2_costmap_2d::KeepoutFilter
+        enabled: true
+        filter_info_topic: /costmap_filter_info
 
 global_costmap:
   global_costmap:
@@ -156,6 +161,7 @@ global_costmap:
       footprint: '[[1.05,0.38],[1.05,-0.38],[-0.12,-0.38],[-0.12,0.38]]'
       footprint_padding: 0.05
       plugins: [obstacle_layer, inflation_layer]
+      filters: [keepout_filter]
       obstacle_layer:
         plugin: nav2_costmap_2d::ObstacleLayer
         enabled: true
@@ -173,3 +179,7 @@ global_costmap:
         plugin: nav2_costmap_2d::InflationLayer
         inflation_radius: 1.5
         cost_scaling_factor: 1.4
+      keepout_filter:
+        plugin: nav2_costmap_2d::KeepoutFilter
+        enabled: true
+        filter_info_topic: /costmap_filter_info

@@ -22,9 +22,11 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "lidar_sim.launch.py",
         "safety_arbitration_sim.launch.py",
         "navigation_core_sim.launch.py",
+        "navigation_zones_sim.launch.py",
     ):
         assert launch_file in contents
     assert "launch_navigation" in contents
+    assert "use_keepout" in contents
 
 
 def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
@@ -38,5 +40,9 @@ def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
         / "lidar_diagnostics.rviz"
     ).read_text(encoding="utf-8")
     assert 'glob("config/*.rviz")' in perception_setup
-    for topic in ("/scan_3d_raw", "/obstacles_cloud", "/scan_clean"):
+    for topic in (
+        "/scan_3d_raw", "/obstacles_cloud", "/scan_clean",
+        "/keepout_filter_mask", "/global_costmap/costmap",
+        "/local_costmap/costmap",
+    ):
         assert topic in diagnostics

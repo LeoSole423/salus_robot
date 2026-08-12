@@ -1,0 +1,7 @@
+string geojson
+---
+bool ok
+string error
+bool map_reloaded
+uint32 feature_count
+uint32 polygon_count

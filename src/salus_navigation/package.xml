@@ -7,10 +7,14 @@
   <depend>diagnostic_msgs</depend>
   <depend>action_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>geographic_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>nav2_msgs</depend>
   <depend>rclpy</depend>
   <depend>salus_interfaces</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>tf2_ros</depend>
   <exec_depend>nav2_collision_monitor</exec_depend>
   <exec_depend>nav2_controller</exec_depend>
   <exec_depend>nav2_planner</exec_depend>
@@ -18,6 +22,7 @@
   <exec_depend>nav2_bt_navigator</exec_depend>
   <exec_depend>nav2_behaviors</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>robot_localization</exec_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

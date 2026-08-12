@@ -18,6 +18,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetNavState.srv"
   "srv/SetManualMode.srv"
   "srv/SetNavGoalLL.srv"
+  "srv/SetZonesGeoJson.srv"
+  "srv/GetZonesState.srv"
   "srv/SetSimBatteryPreset.srv"
   "srv/SetSimBatteryState.srv"
   DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs

@@ -12,6 +12,7 @@ from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.msg import CollisionMonitorState
+from nav_msgs.msg import OccupancyGrid
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -129,6 +130,7 @@ class NavCommandServer(Node):
         self._last_safe: Twist | None = None
         self._last_safe_stamp_s: float | None = None
         self._last_fix: NavSatFix | None = None
+        self._global_costmap: OccupancyGrid | None = None
         self._last_fix_stamp_s: float | None = None
         self._event_id = 0
         self._failure_code = ""
@@ -149,6 +151,7 @@ class NavCommandServer(Node):
         self.create_subscription(CollisionMonitorState, str(p("collision_monitor_state_topic")), self._on_monitor_state, 10)
         self.create_subscription(LaserScan, str(p("safety_scan_topic")), self._on_scan, qos_profile_sensor_data)
         self.create_subscription(NavSatFix, str(p("gps_topic")), self._on_gps, qos_profile_sensor_data)
+        self.create_subscription(OccupancyGrid, "/global_costmap/costmap", self._on_global_costmap, 1)
         self.create_service(BrakeNav, str(p("brake_service")), self._on_brake)
         self.create_service(SetManualMode, str(p("set_manual_mode_service")), self._on_set_manual_mode)
         self.create_service(GetNavState, str(p("get_state_service")), self._on_get_state)
@@ -192,6 +195,21 @@ class NavCommandServer(Node):
         if math.isfinite(message.latitude) and math.isfinite(message.longitude):
             with self._lock:
                 self._last_fix, self._last_fix_stamp_s = message, self._now_s()
+
+    def _on_global_costmap(self, message: OccupancyGrid) -> None:
+        with self._lock:
+            self._global_costmap = message
+
+    def _goal_in_keepout(self, x_m: float, y_m: float) -> bool:
+        with self._lock:
+            costmap = self._global_costmap
+        if costmap is None or costmap.info.resolution <= 0.0:
+            return False
+        col = int((x_m - costmap.info.origin.position.x) / costmap.info.resolution)
+        row = int((y_m - costmap.info.origin.position.y) / costmap.info.resolution)
+        if not (0 <= col < costmap.info.width and 0 <= row < costmap.info.height):
+            return False
+        return costmap.data[row * costmap.info.width + col] >= 100
 
     def _on_safe(self, message: Twist) -> None:
         with self._lock:
@@ -337,6 +355,12 @@ class NavCommandServer(Node):
         goal.pose.header.stamp = self.get_clock().now().to_msg()
         goal.pose.pose.position.x, goal.pose.pose.position.y = point.x, point.y
         goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = self._quaternion_from_yaw(yaw_deg)
+        if self._goal_in_keepout(point.x, point.y):
+            with self._lock:
+                if epoch == self._goal_epoch:
+                    self._goal_pending, self._goal_result_text = False, "goal lies in keepout zone"
+            self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", "goal lies in keepout zone")
+            return
         self._navigate_client.send_goal_async(goal).add_done_callback(lambda done: self._on_goal_response(done, epoch))
 
     def _on_goal_response(self, future, epoch: int) -> None:

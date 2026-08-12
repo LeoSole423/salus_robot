@@ -42,7 +42,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "SmacPlannerHybrid" in config
     assert "RegulatedPurePursuitController" in config
     assert "/scan_clean" in config
-    assert "keepout" not in config.lower()
+    assert "keepout_filter" in config
     assert "lifecycle_manager" in launch
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree

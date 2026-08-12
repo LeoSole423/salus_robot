@@ -1,13 +1,15 @@
 # salus_navigation
 
-- Responsabilidad: Nav2, goals, rutas, patrulla, HOME, zonas y observabilidad.
-- No contiene: actuación, drivers, bridge web ni plugins BT compilados.
-- Interfaces vigentes: `/cmd_vel_safe`, `/cmd_vel_teleop`, `/cmd_vel_final`,
-  `/nav_command_server/telemetry`, `/nav_command_server/events`, `set_goal_ll`
-  y `cancel_goal`.
-- Estado: arbitraje y navegación Nav2 de un único goal LL portados en
-  simulación. Zonas, rutas, patrulla y HOME siguen pendientes.
-- Prueba: `colcon test --packages-select salus_navigation`,
-  `./tools/smoke_safety_sim.sh` y `./tools/smoke_navigation_core_sim.sh`.
-- Migración: el contrato de arrays se conserva, pero múltiples waypoints y
-  loop se rechazan explícitamente hasta migrar misiones.
+Responsabilidad: navegación segura, Nav2 y zonas no-go. El corte actual ofrece
+un goal LL único y zonas dinámicas GeoJSON en simulación.
+
+- API de zonas: `/zones_manager/set_geojson`, `/zones_manager/get_state` y
+  `/zones_manager/reload_from_disk`.
+- Las zonas se convierten con `/fromLL`, recargan `/keepout_filter_mask` y
+  limpian el costmap global. Los datos operativos persisten en `runtime/zones/`
+  y no se versionan.
+- `use_keepout:=false` publica una máscara vacía; rutas, patrulla, HOME y la
+  operación web siguen fuera de este paquete migrado.
+
+Pruebas: `colcon test --packages-select salus_navigation` y
+`./tools/smoke_navigation_zones_sim.sh`.

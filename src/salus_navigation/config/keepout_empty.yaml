@@ -1,0 +1,7 @@
+image: keepout_empty.pgm
+mode: scale
+resolution: 0.1
+origin: [-150.0, -150.0, 0.0]
+negate: 0
+occupied_thresh: 1.0
+free_thresh: 0.0
