@@ -8,7 +8,6 @@ import sys
 import time
 
 import rclpy
-from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -37,11 +36,11 @@ class NavigationSmoke(Node):
         self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
 
     @staticmethod
-    def goal_request(east_m: float) -> SetNavGoalLL.Request:
+    def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
         request = SetNavGoalLL.Request()
-        request.lat = DATUM_LAT
-        request.lon = DATUM_LON + east_m / (111_320.0 * math.cos(math.radians(DATUM_LAT)))
-        request.yaw_deg = 0.0
+        request.lat = DATUM_LAT + y_m / 111_320.0
+        request.lon = DATUM_LON + x_m / (111_320.0 * math.cos(math.radians(DATUM_LAT)))
+        request.yaw_deg = math.degrees(yaw_rad)
         return request
 
 
@@ -62,10 +61,35 @@ def call(node: NavigationSmoke, client, request, error: str):
     return future.result()
 
 
-def send_goal(node: NavigationSmoke, east_m: float) -> None:
-    response = call(node, node.goal, node.goal_request(east_m), "goal service unavailable")
+def yaw_from_odometry(message: Odometry) -> float:
+    orientation = message.pose.pose.orientation
+    return math.atan2(
+        2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+        1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z),
+    )
+
+
+def destination_from_current_pose(message: Odometry, distance_m: float) -> tuple[float, float, float]:
+    yaw = yaw_from_odometry(message)
+    position = message.pose.pose.position
+    return (
+        position.x + distance_m * math.cos(yaw),
+        position.y + distance_m * math.sin(yaw),
+        yaw,
+    )
+
+
+def send_goal(node: NavigationSmoke, distance_m: float) -> tuple[float, float]:
+    x_m, y_m, yaw_rad = destination_from_current_pose(node.odom[-1], distance_m)
+    response = call(node, node.goal, node.goal_request(x_m, y_m, yaw_rad), "goal service unavailable")
     if not response.ok:
         raise RuntimeError(f"goal rejected: {response.error}")
+    return x_m, y_m
+
+
+def distance_from(start: Odometry, current: Odometry) -> float:
+    start_position, current_position = start.pose.pose.position, current.pose.pose.position
+    return math.hypot(current_position.x - start_position.x, current_position.y - start_position.y)
 
 
 def get_state(node: NavigationSmoke):
@@ -77,8 +101,16 @@ def main() -> int:
     node = NavigationSmoke()
     try:
         wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
-        start_x = node.odom[-1].pose.pose.position.x
-        send_goal(node, 7.0)
+        # The integrated smoke has already exercised manual control and braking.
+        # Restore the navigation precondition explicitly before sending its goal.
+        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        if not response.ok:
+            raise RuntimeError(response.error)
+        response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
+        if not response.ok or response.enabled_after:
+            raise RuntimeError("automatic mode was not restored before navigation")
+        start = node.odom[-1]
+        target_x, target_y = send_goal(node, 7.0)
         wait_for(node, lambda: get_state(node).goal_active, 8.0, "goal was not accepted by Nav2")
         wait_for(
             node,
@@ -86,10 +118,16 @@ def main() -> int:
             10.0,
             "Nav2 did not produce an automatic command",
         )
-        wait_for(node, lambda: node.odom[-1].pose.pose.position.x > start_x + 1.0, 18.0, "robot did not advance toward the LL goal")
+        wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the LL goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
-        if not any(message.nav_result_text == "succeeded" for message in node.telemetry):
-            raise RuntimeError("goal did not report success")
+        if math.hypot(node.odom[-1].pose.pose.position.x - target_x, node.odom[-1].pose.pose.position.y - target_y) > 1.2:
+            raise RuntimeError("Nav2 reported success outside the configured goal tolerance")
+        wait_for(
+            node,
+            lambda: any(message.nav_result_text == "succeeded" for message in node.telemetry),
+            4.0,
+            "goal did not report success",
+        )
 
         node.final.clear()
         send_goal(node, 25.0)
@@ -109,6 +147,9 @@ def main() -> int:
         response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
         if not response.ok or response.enabled_after:
             raise RuntimeError("automatic mode was not restored")
+        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        if not response.ok:
+            raise RuntimeError(response.error)
         print("Navigation core simulation smoke test passed")
         return 0
     finally:
