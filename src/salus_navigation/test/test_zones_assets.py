@@ -15,6 +15,7 @@ def test_zone_contracts_and_launch_are_installed():
     assert "keepout_filter_mask_server" in launch
     assert "costmap_filter_info_server" in launch
     assert "lifecycle_manager_keepout_filters" in launch
+    assert '"bond_timeout": 15.0' in launch
 
 
 def test_costmaps_and_runtime_data_are_separated():

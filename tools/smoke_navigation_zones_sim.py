@@ -73,7 +73,7 @@ def goal_request(x, y, heading):
 def main():
     rclpy.init(); node = ZonesSmoke()
     try:
-        wait_for(node, lambda: node.odom and node.mask, 25.0, "global odometry or keepout mask unavailable")
+        wait_for(node, lambda: node.odom and node.mask, 45.0, "global odometry or keepout mask unavailable")
         current = node.odom[-1]
         response = call(node, node.set_zones, SetZonesGeoJson.Request(geojson=json.dumps(polygon_at(current))), "set zones unavailable")
         if not response.ok or response.polygon_count != 1 or not response.map_reloaded: raise RuntimeError(response.error or "zone was not applied")

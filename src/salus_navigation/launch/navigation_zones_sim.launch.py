@@ -32,7 +32,17 @@ def generate_launch_description() -> LaunchDescription:
         *filter_nodes,
         Node(
             package="nav2_lifecycle_manager", executable="lifecycle_manager", name="lifecycle_manager_keepout_filters", output="screen",
-            parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "autostart": True, "node_names": ["keepout_filter_mask_server", "keepout_costmap_filter_info_server"]}],
+            parameters=[{
+                "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                "autostart": True,
+                # A 3000x3000 PGM reload exceeds the default four-second
+                # bond timeout on shared CI runners.
+                "bond_timeout": 15.0,
+                "node_names": [
+                    "keepout_filter_mask_server",
+                    "keepout_costmap_filter_info_server",
+                ],
+            }],
         ),
         TimerAction(
             period=3.0,
