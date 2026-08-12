@@ -1,0 +1,175 @@
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true
+    global_frame: map
+    robot_base_frame: base_footprint
+    odom_topic: /odometry/local
+    navigators: [navigate_to_pose]
+    navigate_to_pose:
+      plugin: nav2_bt_navigator::NavigateToPoseNavigator
+    default_nav_to_pose_bt_xml: navigation_core.xml
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_is_path_valid_condition_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    expected_planner_frequency: 2.0
+    planner_plugins: [GridBased]
+    robot_base_frame: base_footprint
+    GridBased:
+      plugin: nav2_smac_planner/SmacPlannerHybrid
+      tolerance: 0.5
+      allow_unknown: true
+      max_planning_time: 6.0
+      max_iterations: 3000000
+      motion_model_for_search: DUBIN
+      minimum_turning_radius: 4.0
+      angle_quantization_bins: 64
+      reverse_penalty: 2.8
+      change_penalty: 1.8
+      non_straight_penalty: 1.15
+      cost_penalty: 3.5
+      smooth_path: false
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: true
+    smoother_plugins: [Constrained]
+    robot_base_frame: base_footprint
+    Constrained:
+      plugin: nav2_constrained_smoother/ConstrainedSmoother
+      reversing_enabled: false
+      path_downsampling_factor: 2
+      path_upsampling_factor: 1
+      keep_start_orientation: true
+      keep_goal_orientation: true
+      minimum_turning_radius: 4.0
+
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 20.0
+    transform_tolerance: 0.3
+    odom_topic: /odometry/local
+    robot_base_frame: base_footprint
+    progress_checker_plugins: [progress_checker]
+    goal_checker_plugins: [general_goal_checker]
+    controller_plugins: [FollowPath]
+    progress_checker:
+      plugin: nav2_controller::SimpleProgressChecker
+      required_movement_radius: 0.1
+      movement_time_allowance: 5.0
+    general_goal_checker:
+      plugin: nav2_controller::PositionGoalChecker
+      stateful: true
+      xy_goal_tolerance: 1.2
+    FollowPath:
+      plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+      desired_linear_vel: 1.6
+      lookahead_dist: 3.0
+      min_lookahead_dist: 2.3
+      max_lookahead_dist: 4.5
+      lookahead_time: 2.2
+      use_velocity_scaled_lookahead_dist: true
+      min_approach_linear_velocity: 0.7
+      approach_velocity_scaling_dist: 1.0
+      use_regulated_linear_velocity_scaling: true
+      use_cost_regulated_linear_velocity_scaling: true
+      regulated_linear_scaling_min_radius: 4.0
+      regulated_linear_scaling_min_speed: 1.2
+      use_collision_detection: true
+      max_allowed_time_to_collision_up_to_carrot: 1.5
+      use_rotate_to_heading: false
+      allow_reversing: false
+      max_angular_accel: 3.0
+      transform_tolerance: 0.2
+      use_interpolation: true
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: true
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_footprint
+    transform_tolerance: 0.5
+    behavior_plugins: [wait]
+    wait:
+      plugin: nav2_behaviors/Wait
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: true
+      update_frequency: 5.0
+      publish_frequency: 1.0
+      global_frame: odom
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 30
+      height: 30
+      resolution: 0.1
+      transform_tolerance: 1.0
+      footprint: '[[1.05,0.38],[1.05,-0.38],[-0.12,-0.38],[-0.12,0.38]]'
+      footprint_padding: 0.05
+      plugins: [obstacle_layer, inflation_layer]
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true
+        footprint_clearing_enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan_clean
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          inf_is_valid: true
+          obstacle_max_range: 15.0
+          raytrace_max_range: 20.0
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 1.4
+        cost_scaling_factor: 1.3
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: true
+      update_frequency: 3.0
+      publish_frequency: 0.5
+      global_frame: map
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 300
+      height: 300
+      resolution: 0.25
+      transform_tolerance: 1.0
+      track_unknown_space: false
+      footprint: '[[1.05,0.38],[1.05,-0.38],[-0.12,-0.38],[-0.12,0.38]]'
+      footprint_padding: 0.05
+      plugins: [obstacle_layer, inflation_layer]
+      obstacle_layer:
+        plugin: nav2_costmap_2d::ObstacleLayer
+        enabled: true
+        footprint_clearing_enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan_clean
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          inf_is_valid: true
+          obstacle_max_range: 15.0
+          raytrace_max_range: 20.0
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 1.5
+        cost_scaling_factor: 1.4

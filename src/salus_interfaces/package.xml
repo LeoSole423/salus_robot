@@ -2,7 +2,7 @@
 <package format="3">
   <name>salus_interfaces</name>
   <version>0.1.0</version>
-  <description>Shared ROS interfaces for SALUS; currently an empty skeleton.</description>
+  <description>Shared ROS interfaces for the incrementally migrated SALUS subsystems.</description>
   <maintainer email="leonel.sole423@gmail.com">SALUS maintainers</maintainer>
   <license>MIT</license>
   <buildtool_depend>ament_cmake</buildtool_depend>

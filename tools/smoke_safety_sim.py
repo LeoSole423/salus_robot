@@ -125,6 +125,9 @@ def main() -> int:
         if not response.ok:
             raise RuntimeError(response.error)
         wait_for(node, lambda: any(message.source == CmdVelFinal.SOURCE_SAFETY and message.brake_pct == 100 for message in node.final), 2.0, "brake hold did not publish an E-stop command")
+        response = call(node, node.manual_client, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
+        if not response.ok or response.enabled_after:
+            raise RuntimeError("automatic mode was not restored after the safety smoke")
         print("Safety arbitration simulation smoke test passed")
         return 0
     finally:

@@ -44,7 +44,16 @@ docker compose run --rm ros2 bash -lc '
   test "$(ros2 topic type /scan_clean)" = "sensor_msgs/msg/LaserScan"
   test "$(ros2 topic type /cmd_vel_safe)" = "geometry_msgs/msg/Twist"
   test "$(grep -cx /robot_state_publisher <<<"${nodes}")" = "1"
+  for _attempt in $(seq 1 120); do
+    collision_state="$(ros2 lifecycle get /collision_monitor 2>/dev/null || true)"
+    nav_state="$(ros2 lifecycle get /bt_navigator 2>/dev/null || true)"
+    if grep -q "active" <<<"${collision_state}" && grep -q "active" <<<"${nav_state}"; then break; fi
+    sleep 0.25
+  done
+  grep -q "active" <<<"$(ros2 lifecycle get /collision_monitor)"
+  grep -q "active" <<<"$(ros2 lifecycle get /bt_navigator)"
   python3 /ros2_ws/tools/smoke_lidar_sim.py
   python3 /ros2_ws/tools/smoke_safety_sim.py
   python3 /ros2_ws/tools/smoke_motion_sim.py
+  python3 /ros2_ws/tools/smoke_navigation_core_sim.py
 '
