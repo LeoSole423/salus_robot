@@ -1,0 +1,14 @@
+float64[] lats
+float64[] lons
+float64[] yaws_deg
+string[] waypoint_action_jsons
+string[] waypoint_roles
+bool loop
+float64 leg_spacing_m
+float64 chunk_span_m
+uint32 chunk_max_waypoints
+---
+bool ok
+string error
+uint32 input_waypoint_count
+uint32 expanded_waypoint_count

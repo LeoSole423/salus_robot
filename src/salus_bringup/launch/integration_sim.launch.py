@@ -26,6 +26,7 @@ def generate_launch_description() -> LaunchDescription:
     launch_navigation = LaunchConfiguration("launch_navigation")
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
+    launch_routes = LaunchConfiguration("launch_routes")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -56,6 +57,10 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="runtime/zones",
                 description="Runtime directory for the dynamic keepout mask.",
             ),
+            DeclareLaunchArgument(
+                "launch_routes", default_value="false",
+                description="Start the optional route executor.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -85,6 +90,10 @@ def generate_launch_description() -> LaunchDescription:
                 "navigation_core_sim.launch.py",
                 common,
                 condition=IfCondition(launch_navigation),
+            ),
+            _include(
+                "salus_navigation", "route_executor_sim.launch.py", common,
+                condition=IfCondition(launch_routes),
             ),
             _include(
                 "salus_perception",
