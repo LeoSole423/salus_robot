@@ -63,12 +63,12 @@ jobs:
         run: ./tools/build.sh
       - name: Run core simulation scenarios
         run: |
-          ./tools/smoke_control_sim.sh
-          ./tools/smoke_motion_sim.sh
-          ./tools/smoke_localization_sim.sh
-          ./tools/smoke_lidar_sim.sh
-          ./tools/smoke_safety_sim.sh
-          ./tools/smoke_integration_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_control_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_motion_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_localization_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_lidar_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_safety_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_integration_sim.sh
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,9 +103,9 @@ jobs:
         run: ./tools/build.sh
       - name: Run navigation and mission scenarios
         run: |
-          ./tools/smoke_navigation_core_sim.sh
-          ./tools/smoke_navigation_zones_sim.sh
-          ./tools/smoke_route_executor_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_navigation_core_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_navigation_zones_sim.sh
+          ./tools/run_smoke.sh ./tools/smoke_route_executor_sim.sh
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4

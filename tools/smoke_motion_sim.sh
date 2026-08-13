@@ -19,9 +19,10 @@ docker compose run --rm ros2 bash -lc '
   smoke_wait_topic /clock 30
   smoke_wait_topic /odom_raw 30
   smoke_wait_topic /joint_states 30
-  python3 /ros2_ws/tools/smoke_motion_sim.py
+  smoke_run motion "python3 /ros2_ws/tools/smoke_motion_sim.py"
   test "$(ros2 topic type /odom_raw)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /joint_states)" = "sensor_msgs/msg/JointState"
-  test "$(ros2 topic info /tf -v | grep -c "Publisher count: 1")" -eq 1
+  tf_info="$(ros2 topic info /tf -v)"
+  grep -q "Publisher count: 1" <<<"${tf_info}"
   smoke_note "motion_contracts_valid"
 '

@@ -27,6 +27,21 @@ smoke_start_launch() {
   smoke_note "launch_started:${name}"
 }
 
+# Run a smoke assertion while preserving its stdout/stderr beside the launch
+# log.  This makes failures actionable without relying on CI's truncated
+# terminal output.
+smoke_run() {
+  local name="$1" command="$2" log_file
+  log_file="${SMOKE_ARTIFACT_DIR}/${name}.log"
+  if ! bash -lc "${command}" >"${log_file}" 2>&1; then
+    printf 'Smoke assertion %s failed; output follows:\n' "${name}" >&2
+    cat "${log_file}" >&2 || true
+    return 1
+  fi
+  cat "${log_file}"
+  smoke_note "passed:${name}"
+}
+
 smoke_wait() {
   local description="$1" timeout_s="$2" command="$3"
   local deadline=$((SECONDS + timeout_s))
@@ -64,16 +79,18 @@ smoke_wait_lifecycle() {
 
 smoke_collect_diagnostics() {
   local status="$1"
-  ros2 node list >"${SMOKE_ARTIFACT_DIR}/nodes.txt" 2>&1 || true
-  ros2 topic list -t >"${SMOKE_ARTIFACT_DIR}/topics.txt" 2>&1 || true
-  ros2 service list -t >"${SMOKE_ARTIFACT_DIR}/services.txt" 2>&1 || true
-  ros2 param list >"${SMOKE_ARTIFACT_DIR}/parameters.txt" 2>&1 || true
+  # Collect while the launch is still alive.  Each query is bounded so a
+  # broken discovery service cannot prevent process cleanup.
+  timeout 2 ros2 node list >"${SMOKE_ARTIFACT_DIR}/nodes.txt" 2>&1 || true
+  timeout 2 ros2 topic list -t >"${SMOKE_ARTIFACT_DIR}/topics.txt" 2>&1 || true
+  timeout 2 ros2 service list -t >"${SMOKE_ARTIFACT_DIR}/services.txt" 2>&1 || true
+  timeout 2 ros2 param list >"${SMOKE_ARTIFACT_DIR}/parameters.txt" 2>&1 || true
   for node in /collision_monitor /bt_navigator /planner_server /controller_server \
     /keepout_filter_mask_server /route_executor; do
-    ros2 lifecycle get "${node}" >"${SMOKE_ARTIFACT_DIR}/lifecycle${node//\//_}.txt" 2>&1 || true
+    timeout 2 ros2 lifecycle get "${node}" >"${SMOKE_ARTIFACT_DIR}/lifecycle${node//\//_}.txt" 2>&1 || true
   done
-  ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
-  ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
+  timeout 2 ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
+  timeout 2 ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
     "${SMOKE_READY_EVENTS[*]}" <<'PY'
@@ -97,13 +114,13 @@ PY
 smoke_cleanup() {
   local status=$?
   trap - EXIT
+  smoke_collect_diagnostics "${status}"
   for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
     kill -TERM "${pid}" 2>/dev/null || true
   done
   for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
     wait "${pid}" 2>/dev/null || true
   done
-  smoke_collect_diagnostics "${status}"
   if (( status != 0 )); then
     printf 'Smoke %s failed; diagnostics: %s\n' "${SMOKE_SCENARIO}" "${SMOKE_ARTIFACT_DIR}" >&2
     for log in "${SMOKE_ARTIFACT_DIR}"/*.log; do

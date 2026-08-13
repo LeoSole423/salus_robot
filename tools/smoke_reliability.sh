@@ -12,6 +12,6 @@ scenarios=(
 for attempt in 1 2 3; do
   echo "Smoke reliability pass ${attempt}/3"
   for scenario in "${scenarios[@]}"; do
-    "${repo_dir}/tools/${scenario}"
+    "${repo_dir}/tools/run_smoke.sh" "${repo_dir}/tools/${scenario}"
   done
 done

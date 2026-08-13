@@ -19,6 +19,6 @@ docker compose run --rm ros2 bash -lc '
   smoke_wait_topic_message /scan_3d 30
   smoke_wait_topic_message /obstacles_cloud 30
   smoke_wait_topic_message /scan_clean 30
-  python3 /ros2_ws/tools/smoke_lidar_sim.py
+  smoke_run lidar "python3 /ros2_ws/tools/smoke_lidar_sim.py"
   smoke_note "lidar_obstacle_chain_valid"
 '
