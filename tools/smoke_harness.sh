@@ -7,7 +7,7 @@ smoke_init() {
   SMOKE_TIMEOUT_S="${SMOKE_TIMEOUT_S:-240}"
   SMOKE_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   SMOKE_RUN_ID="${SMOKE_SCENARIO}-$(date -u +%Y%m%dT%H%M%S)-$$"
-  SMOKE_ARTIFACT_DIR="/ros2_ws/artifacts/smokes/${SMOKE_RUN_ID}"
+  SMOKE_ARTIFACT_DIR="${SMOKE_ARTIFACT_ROOT:-/ros2_ws/artifacts/smokes}/${SMOKE_RUN_ID}"
   SMOKE_LAUNCH_PIDS=()
   SMOKE_READY_EVENTS=()
   mkdir -p "${SMOKE_ARTIFACT_DIR}"
