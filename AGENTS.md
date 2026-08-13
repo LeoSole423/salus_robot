@@ -45,6 +45,7 @@ architectural compromise.
 ./tools/smoke_localization_sim.sh
 ./tools/smoke_safety_sim.sh
 ./tools/smoke_navigation_core_sim.sh
+./tools/smoke_navigation_zones_sim.sh
 ./tools/smoke_integration_sim.sh
 ./tools/sim.sh
 ./tools/cmd_vel_sim.sh straight

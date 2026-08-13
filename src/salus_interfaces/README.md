@@ -4,7 +4,7 @@
 - No contiene: nodos, launches, lógica ni contratos legacy automáticos.
 - Interfaces actuales: control/batería, arbitraje y navegación punto a punto:
   `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
-  `SetNavGoalLL` y `CancelNavGoal`.
+  `SetNavGoalLL`, `CancelNavGoal`, `SetZonesGeoJson` y `GetZonesState`.
 - Estado: los contratos listados conservan nombres, campos y constantes del
   sistema anterior bajo el namespace nuevo `salus_interfaces`.
 - Prueba: `colcon test --packages-select salus_interfaces`.

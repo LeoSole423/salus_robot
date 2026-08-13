@@ -30,9 +30,9 @@ docker compose run --rm ros2 bash -lc '
     "salus_interfaces/msg/BatteryMissionGuard"
   for preset in full under_load watching return_home_rest return_home_load \
     stale suspect unavailable; do
-    ros2 service call /sim_battery/set_preset \
-      salus_interfaces/srv/SetSimBatteryPreset "{preset: ${preset}}" | \
-      grep -Eq "applied_preset[:=].*${preset}"
+    response="$(ros2 service call /sim_battery/set_preset \
+      salus_interfaces/srv/SetSimBatteryPreset "{preset: ${preset}}")"
+    grep -Eq "applied_preset[:=].*${preset}" <<<"${response}"
   done
   echo "Control simulation smoke test passed"
 '

@@ -24,6 +24,8 @@ def generate_launch_description() -> LaunchDescription:
     gz_args = LaunchConfiguration("gz_args")
     rviz = LaunchConfiguration("rviz")
     launch_navigation = LaunchConfiguration("launch_navigation")
+    use_keepout = LaunchConfiguration("use_keepout")
+    zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -44,6 +46,16 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="true",
                 description="Start the Nav2 autonomous navigation core.",
             ),
+            DeclareLaunchArgument(
+                "use_keepout",
+                default_value="true",
+                description="Enable dynamic GeoJSON keepout costmap filters.",
+            ),
+            DeclareLaunchArgument(
+                "zones_runtime_dir",
+                default_value="runtime/zones",
+                description="Runtime directory for the dynamic keepout mask.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -58,6 +70,16 @@ def generate_launch_description() -> LaunchDescription:
             ),
             _include("salus_perception", "lidar_sim.launch.py"),
             _include("salus_navigation", "safety_arbitration_sim.launch.py", common),
+            _include(
+                "salus_navigation",
+                "navigation_zones_sim.launch.py",
+                {
+                    "use_sim_time": use_sim_time,
+                    "use_keepout": use_keepout,
+                    "runtime_dir": zones_runtime_dir,
+                },
+                condition=IfCondition(launch_navigation),
+            ),
             _include(
                 "salus_navigation",
                 "navigation_core_sim.launch.py",

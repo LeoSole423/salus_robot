@@ -42,7 +42,10 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "SmacPlannerHybrid" in config
     assert "RegulatedPurePursuitController" in config
     assert "/scan_clean" in config
-    assert "keepout" not in config.lower()
+    assert "keepout_filter" in config
+    source = (ROOT / "salus_navigation" / "nav_command_server.py").read_text(encoding="utf-8")
+    assert '"/keepout_filter_mask"' in source
+    assert "TRANSIENT_LOCAL" in source
     assert "lifecycle_manager" in launch
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree
