@@ -23,11 +23,13 @@ docker compose run --rm ros2 bash -lc '
   }
   trap cleanup EXIT
   for _attempt in $(seq 1 120); do
-    if ros2 node list 2>/dev/null | grep -qx /nav_command_server && ros2 node list 2>/dev/null | grep -qx /collision_monitor; then break; fi
+    nodes="$(ros2 node list 2>/dev/null || true)"
+    if grep -qx /nav_command_server <<<"${nodes}" && grep -qx /collision_monitor <<<"${nodes}"; then break; fi
     sleep 0.25
   done
-  ros2 node list | grep -qx /nav_command_server
-  ros2 node list | grep -qx /collision_monitor
+  nodes="$(ros2 node list)"
+  grep -qx /nav_command_server <<<"${nodes}"
+  grep -qx /collision_monitor <<<"${nodes}"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   timeout 5 ros2 topic echo /clock --once >/dev/null
   sleep 1
