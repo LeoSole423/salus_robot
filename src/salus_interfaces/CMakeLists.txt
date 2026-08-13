@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DriveTelemetry.msg"
   "msg/NavEvent.msg"
   "msg/NavTelemetry.msg"
+  "msg/PathHealth.msg"
   "srv/BrakeNav.srv"
   "srv/CancelNavGoal.srv"
   "srv/GetNavState.srv"

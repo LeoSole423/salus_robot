@@ -1,30 +1,42 @@
-# ADR 0002: Robustecimiento Nav2 sin plugins BT legacy prematuros
+# ADR 0002: Path estable y despeje observable en Nav2
 
 - Estado: aceptada
 - Fecha: 2026-08-13
 
 ## Contexto
 
-El stack legacy registraba dos plugins propios: `IsPathClearanceValid` y
-`TraceReplan`. El primero consulta un validador externo sobre el costmap global;
-el segundo solo emite eventos alrededor de `NavigateThroughPoses`.
+El stack legacy contenía `IsPathClearanceValid`, que evitaba reemplazar una
+ruta segura por pequeñas desviaciones y pedía replanning si el despeje se
+degradaba de forma sostenida. También contenía `TraceReplan`, un trazador
+alrededor de `NavigateThroughPoses`.
 
-El corte actual opera exclusivamente `NavigateToPose`. Nav2 ya invalida planes
-contra el costmap, el filtro keepout y los obstáculos, mientras que
-`collision_monitor` detiene el movimiento local. No hay una fixture reproducible
-que demuestre que el validador adicional evita un fallo que esas capas no cubran.
+Replanificar a una frecuencia fija hace difícil depurar Nav2 y puede convertir
+ruido de pose, inflación aislada o oscilaciones del costmap en cambios de ruta
+sin valor operativo. A la vez, `collision_monitor` sólo protege el movimiento
+inmediato: no reemplaza una comprobación anticipada del path global.
 
 ## Decisión
 
-- No migrar todavía ninguno de los dos plugins a `salus_navigation_bt`.
-- Añadir `nav_observer` fuera del lifecycle de Nav2 para publicar eventos de
-  transición lifecycle, cambio material de plan y bloqueo/desbloqueo local.
-- Reabrir la decisión solo si una prueba de pasillo, despeje o replan demuestra
-  una mejora cuantificable. La futura capa de rutas podrá evaluar `TraceReplan`
-  junto a `NavigateThroughPoses`.
+- Migrar la capacidad útil como `PathHealth`: una política Python pura en
+  `salus_navigation` y un plugin BT C++ delgado en `salus_navigation_bt`.
+- Conservar el path activo mientras sea seguro y alcanzable. Solicitar replan
+  únicamente por cambio de goal, colisión, inflación sostenida, desviación
+  transversal persistente, falta de progreso o fallo de datos.
+- Ante costmap o TF no disponibles/vencidos, publicar `STOP_AND_WAIT`, detener
+  sólo el comando automático y conservar el path hasta recuperarse.
+- Validar una ruta candidata antes de sustituir la ruta vigente. Si la
+  candidata tampoco es válida, detenerse y reintentar sin adoptar una ruta
+  insegura.
+- Mantener la geometría, umbrales, histéresis y métricas fuera del BT. El
+  plugin sólo consulta `/path_health/is_path_valid`; `PathHealth` expone la
+  causa, edad, coste, muestras y error transversal.
+- No migrar `TraceReplan`. `nav_observer` conserva eventos de replan, bloqueo,
+  lifecycle y resultado sin poseer comandos. Se reabrirá sólo si rutas futuras
+  con `NavigateThroughPoses` aportan una necesidad reproducible.
 
 ## Consecuencias
 
-La navegación conserva una sola fuente de control y no duplica validadores ni
-servicios aún no caracterizados. `salus_navigation_bt` pasa a `characterized`,
-no a `ported`; los eventos nuevos son observabilidad, no una API de control.
+La navegación mantiene una única autoridad sobre `/cmd_vel_final`, una ruta
+estable y evidencia explícita de cada cambio. `salus_navigation_bt` queda
+portado para esta coordinación mínima; no incorpora la complejidad ni el ABI
+legacy de `TraceReplan`.

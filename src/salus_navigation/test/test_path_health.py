@@ -1,0 +1,75 @@
+"""Characterization tests for stable-path clearance and replanning policy."""
+
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
+from salus_interfaces.msg import PathHealth
+
+from salus_navigation.path_health import CostmapView, PathHealthPolicy
+
+
+def make_path(points):
+    message = Path(); message.header.frame_id = "map"
+    for x, y in points:
+        pose = PoseStamped(); pose.pose.position.x, pose.pose.position.y = float(x), float(y)
+        message.poses.append(pose)
+    return message
+
+
+def costmap(costs=(), stamp=10.0, resolution=0.25):
+    width = height = 100
+    data = [0] * (width * height)
+    for x, y, cost in costs:
+        data[y * width + x] = cost
+    return CostmapView(resolution, width, height, 0.0, 0.0, stamp, tuple(data))
+
+
+def test_empty_costmap_keeps_path_and_small_error_does_not_replan():
+    policy = PathHealthPolicy(cross_track_confirmations=2)
+    result = policy.evaluate(make_path([(1, 1), (12, 1)]), robot_x=1, robot_y=1.3, costmap=costmap(), now_s=10.0)
+    assert result.state == PathHealth.KEEP_PATH
+    assert result.reason == "path_healthy"
+
+
+def test_lethal_cost_forces_replan():
+    policy = PathHealthPolicy()
+    result = policy.evaluate(make_path([(1, 1), (12, 1)]), robot_x=1, robot_y=1, costmap=costmap([(16, 4, 254)]), now_s=10.0)
+    assert result.state == PathHealth.REPLAN
+    assert result.reason == "path_collision"
+
+
+def test_sustained_inflation_forces_replan_but_single_sample_does_not():
+    path = make_path([(1, 1), (12, 1)])
+    single = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1, costmap=costmap([(16, 4, 120)]), now_s=10.0)
+    sustained = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1, costmap=costmap([(16, 4, 120), (17, 4, 120), (18, 4, 120)]), now_s=10.0)
+    assert single.state == PathHealth.KEEP_PATH
+    assert sustained.state == PathHealth.REPLAN
+    assert sustained.reason == "clearance_degraded"
+
+
+def test_cross_track_requires_persistence_then_respects_cooldown():
+    policy = PathHealthPolicy(cross_track_confirmations=2, cooldown_s=1.5)
+    path = make_path([(1, 1), (12, 1)])
+    first = policy.evaluate(path, robot_x=2, robot_y=2.0, costmap=costmap(), now_s=10.0)
+    second = policy.evaluate(path, robot_x=2, robot_y=2.0, costmap=costmap(), now_s=10.2)
+    third = policy.evaluate(path, robot_x=2, robot_y=2.0, costmap=costmap(), now_s=10.3)
+    assert first.state == PathHealth.KEEP_PATH
+    assert second.reason == "cross_track_error"
+    assert third.state == PathHealth.KEEP_PATH
+
+
+def test_stale_or_missing_data_stops_and_waits():
+    policy = PathHealthPolicy(costmap_timeout_s=1.5)
+    path = make_path([(1, 1), (12, 1)])
+    stale = policy.evaluate(path, robot_x=1, robot_y=1, costmap=costmap(stamp=1.0), now_s=10.0)
+    missing = policy.evaluate(path, robot_x=1, robot_y=1, costmap=None, now_s=10.0)
+    no_tf = policy.evaluate(path, robot_x=1, robot_y=1, costmap=costmap(), now_s=10.0, tf_available=False)
+    assert stale.state == missing.state == no_tf.state == PathHealth.STOP_AND_WAIT
+
+
+def test_progress_stall_forces_replan_after_timeout():
+    policy = PathHealthPolicy(progress_timeout_s=2.0)
+    path = make_path([(1, 1), (12, 1)])
+    policy.evaluate(path, robot_x=1, robot_y=1, costmap=costmap(), now_s=10.0)
+    result = policy.evaluate(path, robot_x=1, robot_y=1, costmap=costmap(stamp=12.5), now_s=12.5)
+    assert result.state == PathHealth.REPLAN
+    assert result.reason == "progress_stalled"

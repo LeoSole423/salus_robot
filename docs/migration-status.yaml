@@ -86,14 +86,16 @@ components:
       - src/salus_navigation/salus_navigation/nav_command_server.py
       - src/salus_navigation/launch/safety_arbitration_sim.launch.py
       - tools/smoke_safety_sim.py
-    note: Safety arbitration, a single Nav2 LL goal and dynamic GeoJSON keepout are ported in simulation. Routes, patrol and HOME remain pending; legacy A/B visual parity is pending.
+    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout and stable path-health replanning are ported in simulation. Routes, patrol and HOME remain pending; legacy A/B visual parity is pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt
-    state: characterized
+    state: ported
     evidence:
       - docs/decisions/0002-nav2-hardening-and-legacy-bt.md
-    note: Los plugins legacy se caracterizaron y no se migran sin una fixture que pruebe una mejora sobre Nav2, keepout y collision_monitor.
+      - src/salus_navigation_bt/src/path_health_condition.cpp
+      - src/salus_navigation/salus_navigation/path_health.py
+    note: La política útil de path estable y despeje se migró como PathHealth; TraceReplan queda diferido hasta justificar NavigateThroughPoses.
   operator_web:
     source: map_tools
     target: salus_web

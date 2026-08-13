@@ -48,6 +48,9 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "TRANSIENT_LOCAL" in source
     assert "lifecycle_manager" in launch
     assert "nav_observer" in launch
+    assert "path_health" in launch
+    assert "IsPathHealthValid" in tree
+    assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree
     assert "Spin" not in tree and "BackUp" not in tree

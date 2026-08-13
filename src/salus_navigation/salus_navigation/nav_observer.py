@@ -10,7 +10,8 @@ from lifecycle_msgs.msg import TransitionEvent
 from nav2_msgs.msg import CollisionMonitorState
 from nav_msgs.msg import Path
 from rclpy.node import Node
-from salus_interfaces.msg import NavEvent, NavTelemetry
+from salus_interfaces.msg import NavEvent, NavTelemetry, PathHealth
+from salus_navigation.nav_command_server import diagnostic_level
 
 
 def plan_signature(path: Path) -> tuple[object, ...]:
@@ -59,6 +60,7 @@ class NavObserver(Node):
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self._on_telemetry, 10)
         self.create_subscription(Path, "/plan", self._on_plan, 10)
         self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self._on_collision, 10)
+        self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
         for name in ("planner_server", "controller_server", "smoother_server", "bt_navigator", "behavior_server"):
             self.create_subscription(TransitionEvent, f"/{name}/transition_event", lambda message, node_name=name: self._on_transition(node_name, message), 10)
 
@@ -66,7 +68,7 @@ class NavObserver(Node):
         self._event_id += 1
         event = NavEvent()
         event.stamp = self.get_clock().now().to_msg()
-        event.severity, event.component = severity, "nav_observer"
+        event.severity, event.component = diagnostic_level(severity), "nav_observer"
         event.code, event.message, event.event_id = code, message, self._event_id
         event.details = [KeyValue(key=str(key), value=str(value)) for key, value in details.items()]
         self._events.publish(event)
@@ -88,6 +90,23 @@ class NavObserver(Node):
                 "collision monitor stopped autonomous motion" if stopped else "collision monitor cleared autonomous motion",
                 polygon=message.polygon_name,
             )
+
+    def _on_path_health(self, message: PathHealth) -> None:
+        details = {
+            "reason": message.reason,
+            "costmap_age_s": message.costmap_age_s,
+            "max_cost": message.max_cost,
+            "checked_samples": message.checked_samples,
+            "cross_track_error_m": message.cross_track_error_m,
+        }
+        if message.reason.startswith("replan_accepted:"):
+            self._emit(DiagnosticStatus.OK, "REPLAN_ACCEPTED", "candidate path accepted", **details)
+        elif message.reason.startswith("replan_rejected:"):
+            self._emit(DiagnosticStatus.WARN, "REPLAN_REJECTED", "candidate path rejected", **details)
+        elif message.state == PathHealth.REPLAN:
+            self._emit(DiagnosticStatus.WARN, "REPLAN_REQUESTED", "active path health requires replanning", **details)
+        elif message.state == PathHealth.STOP_AND_WAIT:
+            self._emit(DiagnosticStatus.ERROR, "PATH_STOP_AND_WAIT", "automatic navigation is waiting for valid path data", **details)
 
     def _on_transition(self, node_name: str, message: TransitionEvent) -> None:
         self._emit(

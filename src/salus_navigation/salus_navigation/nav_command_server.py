@@ -20,7 +20,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from robot_localization.srv import FromLL
 from sensor_msgs.msg import LaserScan, NavSatFix
-from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry
+from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
     BrakeNav,
     CancelNavGoal,
@@ -51,6 +51,8 @@ class CommandArbiter:
         self.scan_stamp_s: float | None = None
         self.monitor_action = CollisionMonitorState.DO_NOTHING
         self.monitor_polygon = ""
+        self.path_health_state = PathHealth.KEEP_PATH
+        self.path_health_reason = "path_health_unavailable"
 
     def scan_is_fresh(self, now_s: float) -> bool:
         return self.scan_stamp_s is not None and now_s - self.scan_stamp_s <= self.monitor_timeout_s
@@ -61,6 +63,10 @@ class CommandArbiter:
     def set_monitor_state(self, message: CollisionMonitorState, _now_s: float | None = None) -> None:
         self.monitor_action = int(message.action_type)
         self.monitor_polygon = str(message.polygon_name)
+
+    def set_path_health(self, message: PathHealth) -> None:
+        self.path_health_state = int(message.state)
+        self.path_health_reason = str(message.reason)
 
     def set_manual_mode(self, enabled: bool) -> None:
         self.manual_enabled = bool(enabled)
@@ -82,6 +88,8 @@ class CommandArbiter:
             return None, "manual_enabled"
         if not self.scan_is_fresh(now_s):
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "scan_stale"
+        if self.path_health_state == PathHealth.STOP_AND_WAIT:
+            return self.stop(CmdVelFinal.SOURCE_SAFETY), "path_health_stop"
         if self.monitor_action == CollisionMonitorState.STOP:
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "collision_stop"
         return self.command(message.linear.x, message.angular.z, 0, CmdVelFinal.SOURCE_AUTO), "auto"
@@ -117,6 +125,7 @@ class NavCommandServer(Node):
             "cmd_vel_safe_topic": "/cmd_vel_safe", "teleop_cmd_topic": "/cmd_vel_teleop",
             "cmd_vel_final_topic": "/cmd_vel_final", "collision_monitor_state_topic": "/collision_monitor_state",
             "safety_scan_topic": "/scan_clean", "gps_topic": "/gps/fix",
+            "path_health_topic": "/path_health",
             "manual_cmd_timeout_s": 0.4, "collision_monitor_timeout_s": 1.0,
             "manual_watchdog_hz": 10.0, "nav_telemetry_hz": 5.0, "brake_hold_publish_hz": 10.0,
             "telemetry_topic": "/nav_command_server/telemetry", "event_topic": "/nav_command_server/events",
@@ -154,6 +163,7 @@ class NavCommandServer(Node):
         self.create_subscription(CollisionMonitorState, str(p("collision_monitor_state_topic")), self._on_monitor_state, 10)
         self.create_subscription(LaserScan, str(p("safety_scan_topic")), self._on_scan, qos_profile_sensor_data)
         self.create_subscription(NavSatFix, str(p("gps_topic")), self._on_gps, qos_profile_sensor_data)
+        self.create_subscription(PathHealth, str(p("path_health_topic")), self._on_path_health, 10)
         self._service_group = MutuallyExclusiveCallbackGroup()
         self._client_group = ReentrantCallbackGroup()
         keepout_qos = QoSProfile(
@@ -207,6 +217,10 @@ class NavCommandServer(Node):
             with self._lock:
                 self._last_fix, self._last_fix_stamp_s = message, self._now_s()
 
+    def _on_path_health(self, message: PathHealth) -> None:
+        with self._lock:
+            self._arbiter.set_path_health(message)
+
     def _on_keepout_mask(self, message: OccupancyGrid) -> None:
         with self._lock:
             self._keepout_mask = message
@@ -232,6 +246,8 @@ class NavCommandServer(Node):
             self._publish(command)
         if reason == "scan_stale":
             self._event(DiagnosticStatus.ERROR, "SAFETY_SCAN_STALE", "automatic command stopped because /scan_clean is stale")
+        elif reason == "path_health_stop":
+            self._event(DiagnosticStatus.ERROR, "PATH_HEALTH_STOP", "automatic command stopped while global path data is unavailable")
 
     def _on_teleop(self, message: CmdVelFinal) -> None:
         with self._lock:

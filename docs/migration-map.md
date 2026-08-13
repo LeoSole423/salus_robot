@@ -19,8 +19,8 @@ paridad y retiro del camino anterior.
 | odometría, EKF, GPS heading | `salus_localization` | pendiente | preservar TF y datum fijo |
 | conversión/filtros LiDAR | `salus_perception` | portado parcial | cadena 3D local; falta validación con bag RS16 |
 | `controller_server` y batería | `salus_control` | paridad sim | UART sin validar en hardware |
-| Nav2, command server, rutas, zonas | `salus_navigation` | portado parcial | goal único Nav2 y arbitraje migrados; rutas y zonas siguen pendientes |
-| plugins en `navegacion_gps_bt` | `salus_navigation_bt` | pendiente | caracterizar ABI/BT XML |
+| Nav2, command server, rutas, zonas | `salus_navigation` | portado parcial | goal único, arbitraje, keepout y path estable migrados; rutas siguen pendientes |
+| plugins en `navegacion_gps_bt` | `salus_navigation_bt` | portado parcial | plugin delgado de salud de path; `TraceReplan` diferido por ADR 0002 |
 | `map_tools/web_zone_server` | `salus_web` | pendiente | no duplicar nodos de navegación |
 | Gazebo, mundos, normalizadores | `salus_simulation` | portado parcial | mundo Ackermann con GPS/LiDAR reducidos; paridad A/B pendiente |
 | launches globales V2 | `salus_bringup` | pendiente | reducir a perfiles finales |

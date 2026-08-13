@@ -20,7 +20,10 @@ docker compose run --rm ros2 bash -lc '
     if ros2 topic list 2>/dev/null | grep -qx "/clock"; then break; fi
     sleep 0.25
   done
-  ros2 topic list | grep -qx "/clock"
+  # Avoid closing ros2 stdout early: head-like pipelines make ros2cli
+  # raise BrokenPipeError on some GitHub runners.
+  clock_topics="$(ros2 topic list)"
+  grep -qx "/clock" <<<"${clock_topics}"
   python3 /ros2_ws/tools/smoke_localization_sim.py
   test "$(ros2 topic type /wheel/odometry)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /imu/data)" = "sensor_msgs/msg/Imu"

@@ -9,7 +9,7 @@ import sys
 CONTRACTS = {
     "msg": (
         "BatteryMissionGuard.msg", "CmdVelFinal.msg", "DriveTelemetry.msg",
-        "NavEvent.msg", "NavTelemetry.msg",
+        "NavEvent.msg", "NavTelemetry.msg", "PathHealth.msg",
     ),
     "srv": (
         "BrakeNav.srv", "CancelNavGoal.srv", "GetNavState.srv", "GetZonesState.srv", "SetManualMode.srv", "SetNavGoalLL.srv",
