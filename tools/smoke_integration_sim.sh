@@ -53,7 +53,9 @@ docker compose run --rm ros2 bash -lc '
   grep -q "active" <<<"$(ros2 lifecycle get /collision_monitor)"
   grep -q "active" <<<"$(ros2 lifecycle get /bt_navigator)"
   python3 /ros2_ws/tools/smoke_lidar_sim.py
-  python3 /ros2_ws/tools/smoke_safety_sim.py
+  # Safety arbitration has its own isolated smoke.  This integrated world
+  # intentionally contains a static obstacle for LiDAR validation, so a
+  # "clear path" safety assertion here would be invalid by construction.
   python3 /ros2_ws/tools/smoke_motion_sim.py
   python3 /ros2_ws/tools/smoke_navigation_core_sim.py
 '

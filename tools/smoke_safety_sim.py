@@ -14,7 +14,7 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
-from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
+from salus_interfaces.msg import CmdVelFinal, NavTelemetry
 from salus_interfaces.srv import BrakeNav, SetManualMode
 
 
@@ -28,7 +28,6 @@ class SafetySmokeNode(Node):
         self.safe: list[Twist] = []
         self.states: list[CollisionMonitorState] = []
         self.telemetry: list[NavTelemetry] = []
-        self.path_health: list[PathHealth] = []
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         # Match the sensor QoS consumed by collision_monitor.  This is a second
         # publisher used only by the smoke test; the normal perception pipeline
@@ -38,7 +37,6 @@ class SafetySmokeNode(Node):
         self.create_subscription(Twist, "/cmd_vel_safe", self.safe.append, 10)
         self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self.states.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
-        self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.manual_client = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
         self.brake_client = self.create_client(BrakeNav, "/nav_command_server/brake")
 
@@ -89,16 +87,6 @@ def main() -> int:
     node = SafetySmokeNode()
     try:
         wait_for(node, lambda: node.telemetry, 20.0, "nav command server did not publish telemetry")
-        # In the integrated launch, Nav2 may still be filling its first
-        # costmap/TF cache.  The command arbiter correctly refuses automatic
-        # motion while PathHealth says STOP_AND_WAIT.  Wait for that safety
-        # precondition instead of making the smoke timing-dependent.
-        wait_for(
-            node,
-            lambda: node.path_health and node.path_health[-1].state != PathHealth.STOP_AND_WAIT,
-            20.0,
-            "path health did not become available for automatic motion",
-        )
         node.publish_scan_and_command(None, 2.0)
         wait_for(
             node,
