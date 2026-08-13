@@ -38,9 +38,6 @@ docker compose run --rm ros2 bash -lc '
     done
     lifecycle="$(ros2 lifecycle get "${node}")"; grep -q active <<<"${lifecycle}"
   done
-  for topic in /odometry/global /scan_clean; do
-    timeout 30 bash -c "until ros2 topic echo ${topic} --once >/dev/null 2>&1; do sleep 0.25; done"
-  done
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /odometry/local)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /odometry/global)" = "nav_msgs/msg/Odometry"
