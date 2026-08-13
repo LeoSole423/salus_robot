@@ -71,7 +71,11 @@ def local_to_map(odometry, forward, lateral):
 
 
 def polygon_at(odometry):
-    points = [local_to_map(odometry, forward, lateral) for forward, lateral in ((2.0, -1.2), (4.5, -1.2), (4.5, 1.2), (2.0, 1.2), (2.0, -1.2))]
+    # Keep the fixture finite and far enough ahead that the Dubins planner
+    # (4 m minimum turning radius) has space to produce a genuine detour.
+    # The zones manager adds the operational 1.5 m degradation halo, so a
+    # closer or wider rectangle accidentally becomes an impassable wall.
+    points = [local_to_map(odometry, forward, lateral) for forward, lateral in ((8.0, -0.5), (10.0, -0.5), (10.0, 0.5), (8.0, 0.5), (8.0, -0.5))]
     return {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"id": "smoke_block", "enabled": True}, "geometry": {"type": "Polygon", "coordinates": [[[lon, lat] for lat, lon in (lat_lon(x, y) for x, y in points)]]}}]}
 
 
@@ -97,12 +101,12 @@ def main():
         wait_for(node, lambda: any(any(value >= 100 for value in item.data) for item in node.mask), 12.0, "keepout mask has no occupied cells")
         state = call(node, node.get_zones, GetZonesState.Request(), "get zones unavailable")
         if not state.mask_ready or "smoke_block" not in state.geojson: raise RuntimeError("zone state was not persisted")
-        blocked_x, blocked_y = local_to_map(current, 3.2, 0.0)
+        blocked_x, blocked_y = local_to_map(current, 9.0, 0.0)
         wait_for(node, lambda: node.mask and mask_contains(node.mask[-1], blocked_x, blocked_y), 4.0, "updated keepout mask does not cover the blocked goal")
         blocked = call(node, node.goal, goal_request(blocked_x, blocked_y, yaw(current)), "goal service unavailable")
         if blocked.ok: raise RuntimeError("goal inside keepout zone was accepted")
         node.plans.clear()
-        destination_x, destination_y = local_to_map(current, 7.0, 0.0)
+        destination_x, destination_y = local_to_map(current, 22.0, 0.0)
         accepted = call(node, node.goal, goal_request(destination_x, destination_y, yaw(current)), "goal service unavailable")
         if not accepted.ok: raise RuntimeError(accepted.error)
         wait_for(node, lambda: node.plans and len(node.plans[-1].poses) > 2, 12.0, "planner did not produce an avoidance plan")
