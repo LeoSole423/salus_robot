@@ -213,7 +213,10 @@ class PathHealthNode(Node):
             result = self._policy._result(PathHealth.STOP_AND_WAIT, "costmap_frame_mismatch", float("inf"), 0, 0, 0.0)
         else:
             try:
-                transform = self._tf_buffer.lookup_transform(
+                # Use the BufferCore query directly: it is non-blocking.  A
+                # service callback must never wait for TF subscription work on
+                # the same executor, otherwise Nav2 can time out its BT tick.
+                transform = self._tf_buffer.lookup_transform_core(
                     path_frame, str(self.get_parameter("base_frame").value), rclpy.time.Time())
                 stamp = transform.header.stamp
                 age = max(0.0, now_s - stamp.sec - stamp.nanosec * 1.0e-9)
@@ -230,8 +233,14 @@ class PathHealthNode(Node):
                         f"candidate_invalid:{result.reason}",
                         result.costmap_age_s, result.max_cost,
                         result.checked_samples, result.cross_track_error_m)
-            except TransformException as exc:
-                result = self._policy._result(PathHealth.STOP_AND_WAIT, str(exc) or "tf_unavailable", float("inf"), 0, 0, 0.0)
+            except Exception as exc:
+                # The BT service has a bounded timeout.  A malformed or
+                # temporarily unavailable TF lookup must become a safe result,
+                # never an unhandled callback that leaves Nav2 waiting.
+                result = self._policy._result(
+                    PathHealth.STOP_AND_WAIT,
+                    f"tf_unavailable:{type(exc).__name__}",
+                    float("inf"), 0, 0, 0.0)
         message = PathHealth(); message.stamp = self.get_clock().now().to_msg(); message.state, message.reason = result.state, result.reason
         message.costmap_age_s, message.max_cost, message.checked_samples, message.cross_track_error_m = result.costmap_age_s, result.max_cost, result.checked_samples, result.cross_track_error_m
         self._pub.publish(message); response.health = message
