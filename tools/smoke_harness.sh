@@ -38,7 +38,10 @@ smoke_run() {
     cat "${log_file}" >&2 || true
     return 1
   fi
-  cat "${log_file}"
+  # The full assertion output is an artifact.  Avoid streaming it back on a
+  # successful run: some ROS CLI tools emit terminal-control or NUL bytes
+  # which make CI logs unreadable.
+  printf 'Smoke assertion %s passed; log: %s\n' "${name}" "${log_file}"
   smoke_note "passed:${name}"
 }
 
@@ -91,6 +94,17 @@ smoke_collect_diagnostics() {
   done
   timeout 2 ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
   timeout 2 ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
+  : >"${SMOKE_ARTIFACT_DIR}/qos.txt"
+  for topic in /odometry/global /scan_clean /cmd_vel_final /path_health; do
+    printf '\n## %s\n' "${topic}" >>"${SMOKE_ARTIFACT_DIR}/qos.txt"
+    timeout 2 ros2 topic info "${topic}" -v >>"${SMOKE_ARTIFACT_DIR}/qos.txt" 2>&1 || true
+  done
+  : >"${SMOKE_ARTIFACT_DIR}/last_states.txt"
+  for topic in /nav_command_server/telemetry /nav_command_server/events /path_health \
+    /route_executor/state; do
+    printf '\n## %s\n' "${topic}" >>"${SMOKE_ARTIFACT_DIR}/last_states.txt"
+    timeout 2 ros2 topic echo "${topic}" --once >>"${SMOKE_ARTIFACT_DIR}/last_states.txt" 2>&1 || true
+  done
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
     "${SMOKE_READY_EVENTS[*]}" <<'PY'
