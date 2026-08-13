@@ -47,6 +47,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert '"/keepout_filter_mask"' in source
     assert "TRANSIENT_LOCAL" in source
     assert "lifecycle_manager" in launch
+    assert "nav_observer" in launch
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree
     assert "Spin" not in tree and "BackUp" not in tree

@@ -11,5 +11,6 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
       maintainer="SALUS maintainers", maintainer_email="leonel.sole423@gmail.com",
       description="Navigation and missions for SALUS.", license="MIT", extras_require={"test": ["pytest"]}, entry_points={"console_scripts": [
           "nav_command_server = salus_navigation.nav_command_server:main",
+          "nav_observer = salus_navigation.nav_observer:main",
           "zones_manager = salus_navigation.zones_manager:main",
       ]})

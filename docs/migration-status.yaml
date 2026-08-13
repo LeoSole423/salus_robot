@@ -90,7 +90,10 @@ components:
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt
-    state: pending
+    state: characterized
+    evidence:
+      - docs/decisions/0002-nav2-hardening-and-legacy-bt.md
+    note: Los plugins legacy se caracterizaron y no se migran sin una fixture que pruebe una mejora sobre Nav2, keepout y collision_monitor.
   operator_web:
     source: map_tools
     target: salus_web

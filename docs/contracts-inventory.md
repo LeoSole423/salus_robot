@@ -21,7 +21,7 @@ corte público en `salus_interfaces`.
 | Ruta/patrulla | ruta, HOME, retorno, acciones | reemplazar JSON libre por contrato versionado |
 | Perfiles | `SetNavigationProfile` | conservar `urban`/`rural` o generalizar |
 | Zonas | GeoJSON y zonas tipadas | elegir una representación canónica |
-| Observabilidad | telemetría, eventos, snapshots | definir retención y severidades |
+| Observabilidad | telemetría, eventos, snapshots | telemetría/eventos básicos y observador Nav2 migrados; snapshots pendientes |
 | Cámara | PTZ, presets y estado | separar control de transporte WebRTC |
 | Simulación | inyección de batería | mantener fuera de la API operativa real |
 | Datum | set/get dinámico | clasificado legacy por defecto |
