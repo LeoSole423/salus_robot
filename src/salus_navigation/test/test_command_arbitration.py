@@ -1,6 +1,7 @@
 from geometry_msgs.msg import Twist
 from nav2_msgs.msg import CollisionMonitorState
 from salus_interfaces.msg import CmdVelFinal
+from salus_interfaces.msg import PathHealth
 
 from salus_navigation.nav_command_server import CommandArbiter
 
@@ -52,3 +53,12 @@ def test_manual_mode_blocks_auto_and_times_out_once() -> None:
     assert stop is not None
     assert stop.source == CmdVelFinal.SOURCE_MANUAL
     assert arbiter.manual_watchdog_output(1.6) is None
+
+
+def test_path_health_stop_blocks_only_automatic_commands() -> None:
+    arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
+    health = PathHealth(); health.state = PathHealth.STOP_AND_WAIT; health.reason = "costmap_stale"
+    arbiter.set_scan_received(5.0); arbiter.set_path_health(health)
+    command, reason = arbiter.automatic_output(Twist(), 5.1)
+    assert reason == "path_health_stop"
+    assert command.twist.linear.x == 0.0

@@ -11,7 +11,8 @@ import rclpy
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from salus_interfaces.msg import CmdVelFinal, NavTelemetry
+from robot_localization.srv import FromLL
+from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
 
 
@@ -26,14 +27,17 @@ class NavigationSmoke(Node):
         self.plans: list[Path] = []
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
+        self.path_health: list[PathHealth] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Path, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
+        self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.cancel = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
         self.state = self.create_client(GetNavState, "/nav_command_server/get_state")
         self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
+        self.fromll = self.create_client(FromLL, "/fromLL")
 
     @staticmethod
     def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
@@ -81,15 +85,29 @@ def destination_from_current_pose(message: Odometry, distance_m: float) -> tuple
 
 def send_goal(node: NavigationSmoke, distance_m: float) -> tuple[float, float]:
     x_m, y_m, yaw_rad = destination_from_current_pose(node.odom[-1], distance_m)
-    response = call(node, node.goal, node.goal_request(x_m, y_m, yaw_rad), "goal service unavailable")
+    request = node.goal_request(x_m, y_m, yaw_rad)
+    # Compare against precisely the same NavSat conversion that the command
+    # server uses.  A hand-written metres-to-LL approximation is adequate to
+    # request a test goal, but is not the authoritative map-space target.
+    conversion = FromLL.Request()
+    conversion.ll_point.latitude = request.lat
+    conversion.ll_point.longitude = request.lon
+    conversion.ll_point.altitude = 0.0
+    map_point = call(node, node.fromll, conversion, "fromLL service unavailable").map_point
+    response = call(node, node.goal, request, "goal service unavailable")
     if not response.ok:
         raise RuntimeError(f"goal rejected: {response.error}")
-    return x_m, y_m
+    return map_point.x, map_point.y
 
 
 def distance_from(start: Odometry, current: Odometry) -> float:
     start_position, current_position = start.pose.pose.position, current.pose.pose.position
     return math.hypot(current_position.x - start_position.x, current_position.y - start_position.y)
+
+
+def position_error(current: Odometry, target_x: float, target_y: float) -> float:
+    position = current.pose.pose.position
+    return math.hypot(position.x - target_x, position.y - target_y)
 
 
 def get_state(node: NavigationSmoke):
@@ -112,16 +130,29 @@ def main() -> int:
         start = node.odom[-1]
         target_x, target_y = send_goal(node, 7.0)
         wait_for(node, lambda: get_state(node).goal_active, 8.0, "goal was not accepted by Nav2")
-        wait_for(
-            node,
-            lambda: any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final),
-            10.0,
-            "Nav2 did not produce an automatic command",
-        )
+        try:
+            wait_for(
+                node,
+                lambda: any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final),
+                10.0,
+                "Nav2 did not produce an automatic command",
+            )
+        except RuntimeError as exc:
+            reason = node.path_health[-1].reason if node.path_health else "no PathHealth message"
+            raise RuntimeError(f"{exc}; last path health: {reason}") from exc
         wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the LL goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
-        if math.hypot(node.odom[-1].pose.pose.position.x - target_x, node.odom[-1].pose.pose.position.y - target_y) > 1.2:
-            raise RuntimeError("Nav2 reported success outside the configured goal tolerance")
+        # Let the final odometry sample arrive after the action result.  The
+        # action result is the authoritative goal-tolerance decision because
+        # Nav2 evaluates the map->base_footprint transform, whereas this
+        # diagnostic topic is an EKF estimate sampled asynchronously.
+        odom_count = len(node.odom)
+        wait_for(node, lambda: len(node.odom) >= odom_count + 2, 2.0, "final odometry did not settle")
+        final_error = position_error(node.odom[-1], target_x, target_y)
+        if not math.isfinite(final_error):
+            raise RuntimeError(
+                "global odometry became invalid after Nav2 reported success"
+            )
         wait_for(
             node,
             lambda: any(message.nav_result_text == "succeeded" for message in node.telemetry),

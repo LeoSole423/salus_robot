@@ -2,8 +2,26 @@
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="3" name="NavigateRecovery">
       <PipelineSequence>
-        <RateController hz="1.0">
-          <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+        <RateController hz="0.333">
+          <RecoveryNode number_of_retries="1" name="StablePathPlanning">
+            <Fallback name="KeepOrReplanPath">
+              <ReactiveSequence name="KeepHealthyPath">
+                <Inverter><GlobalUpdatedGoal/></Inverter>
+                <IsPathValid path="{path}"/>
+                <IsPathHealthValid path="{path}" context="0" expected_state="0" service_name="/path_health/evaluate"/>
+              </ReactiveSequence>
+              <ReactiveSequence name="StopAndWaitForPathData">
+                <IsPathHealthValid path="{path}" context="0" expected_state="2" service_name="/path_health/evaluate"/>
+                <Wait wait_duration="1"/>
+              </ReactiveSequence>
+              <Sequence name="ComputeHealthyPath">
+                <ComputePathToPose goal="{goal}" path="{candidate_path}" planner_id="GridBased"/>
+                <IsPathHealthValid path="{candidate_path}" context="1" expected_state="0" service_name="/path_health/evaluate"/>
+                <CopyPath input_path="{candidate_path}" output_path="{path}"/>
+              </Sequence>
+            </Fallback>
+            <Wait wait_duration="1"/>
+          </RecoveryNode>
         </RateController>
         <FollowPath path="{path}" controller_id="FollowPath"/>
       </PipelineSequence>

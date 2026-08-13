@@ -30,7 +30,10 @@ docker compose run --rm ros2 bash -lc '
     "salus_interfaces/msg/BatteryMissionGuard"
   for preset in full under_load watching return_home_rest return_home_load \
     stale suspect unavailable; do
-    response="$(ros2 service call /sim_battery/set_preset \
+    # `ros2 service call` waits forever when a launch failed after advertising
+    # discovery metadata.  Bound every request so CI reports the missing
+    # backend instead of consuming the whole job timeout.
+    response="$(timeout 15s ros2 service call /sim_battery/set_preset \
       salus_interfaces/srv/SetSimBatteryPreset "{preset: ${preset}}")"
     grep -Eq "applied_preset[:=].*${preset}" <<<"${response}"
   done

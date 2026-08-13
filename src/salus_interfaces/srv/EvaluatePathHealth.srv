@@ -1,0 +1,8 @@
+# Evaluate a Nav2 path without relying on call ordering.
+uint8 ACTIVE=0
+uint8 CANDIDATE=1
+
+nav_msgs/Path path
+uint8 context
+---
+salus_interfaces/PathHealth health

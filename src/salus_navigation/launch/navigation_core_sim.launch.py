@@ -33,6 +33,14 @@ def generate_launch_description() -> LaunchDescription:
         for package, executable, name in nodes
     )
     actions.append(Node(
+        package="salus_navigation", executable="nav_observer", name="nav_observer",
+        output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+    ))
+    actions.append(Node(
+        package="salus_navigation", executable="path_health", name="path_health",
+        output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+    ))
+    actions.append(Node(
         package="nav2_lifecycle_manager", executable="lifecycle_manager", name="lifecycle_manager_navigation",
         output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "autostart": True,
                                         "node_names": [name for _, _, name in nodes]}],
