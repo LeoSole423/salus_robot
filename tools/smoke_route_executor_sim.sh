@@ -8,7 +8,8 @@ docker compose run --rm ros2 bash -lc '
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   log_file="$(mktemp)"
-  ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true >"${log_file}" 2>&1 &
+  free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
+  ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true world:="${free_world}" >"${log_file}" 2>&1 &
   pid=$!
   trap "kill -TERM ${pid} 2>/dev/null || true; wait ${pid} 2>/dev/null || true" EXIT
   for attempt in $(seq 1 160); do ros2 node list 2>/dev/null | grep -qx /route_executor && break; sleep 0.25; done
