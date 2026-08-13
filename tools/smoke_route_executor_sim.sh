@@ -12,8 +12,13 @@ docker compose run --rm ros2 bash -lc '
   ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true world:="${free_world}" >"${log_file}" 2>&1 &
   pid=$!
   trap "kill -TERM ${pid} 2>/dev/null || true; wait ${pid} 2>/dev/null || true" EXIT
-  for attempt in $(seq 1 160); do ros2 node list 2>/dev/null | grep -qx /route_executor && break; sleep 0.25; done
-  ros2 node list | grep -qx /route_executor
+  for attempt in $(seq 1 160); do
+    nodes="$(ros2 node list 2>/dev/null || true)"
+    grep -qx /route_executor <<<"${nodes}" && break
+    sleep 0.25
+  done
+  nodes="$(ros2 node list)"
+  grep -qx /route_executor <<<"${nodes}"
   # The executor is only meaningful once Nav2 has produced fresh costmaps.
   # Waiting on the semantic inputs avoids treating process discovery as
   # operational readiness and avoids relaxing PathHealth freshness rules.
