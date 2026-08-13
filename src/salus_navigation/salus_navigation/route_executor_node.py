@@ -166,11 +166,14 @@ class RouteExecutorNode(Node):
                 self._mission.progress = project(self._chunk, self._pose.x, self._pose.y)
             if message.nav_result_event_id == self._last_result_event_id:
                 return
-            if message.goal_active or message.nav_result_text not in ("succeeded", "aborted", "cancelled"):
+            if message.goal_active or message.nav_result_text not in (
+                    "succeeded", "aborted", "cancelled", "goal rejected"):
                 return
             self._last_result_event_id = message.nav_result_event_id
             if message.nav_result_text == "succeeded":
                 self._advance()
+            elif message.nav_result_text == "goal rejected":
+                self._pause("NAV_GOAL_REJECTED: NavigateToPose goal rejected")
             else:
                 self._pause(f"navigation {message.nav_result_text}")
 
@@ -207,7 +210,7 @@ class RouteExecutorNode(Node):
                 if result is None or not result.ok:
                     raise RuntimeError("empty response" if result is None else result.error)
             except Exception as exc:
-                self._pause(f"goal rejected: {exc}")
+                self._pause(f"NAV_GOAL_REJECTED: {exc}")
 
     def _advance(self) -> None:
         self._mission.reached += 1

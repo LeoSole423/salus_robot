@@ -19,5 +19,23 @@ docker compose run --rm ros2 bash -lc '
   done
   nodes="$(ros2 node list)"
   grep -qx /route_executor <<<"${nodes}"
+  for node in /bt_navigator /planner_server /controller_server; do
+    for attempt in $(seq 1 160); do
+      lifecycle="$(ros2 lifecycle get "${node}" 2>/dev/null || true)"
+      grep -q active <<<"${lifecycle}" && break
+      sleep 0.25
+    done
+    lifecycle="$(ros2 lifecycle get "${node}")"
+    grep -q active <<<"${lifecycle}"
+  done
+  for attempt in $(seq 1 160); do
+    services="$(ros2 service list 2>/dev/null || true)"
+    actions="$(ros2 action list 2>/dev/null || true)"
+    if grep -qx /fromLL <<<"${services}" && grep -qx /navigate_to_pose <<<"${actions}"; then break; fi
+    sleep 0.25
+  done
+  services="$(ros2 service list)"; actions="$(ros2 action list)"
+  grep -qx /fromLL <<<"${services}"
+  grep -qx /navigate_to_pose <<<"${actions}"
   python3 /ros2_ws/tools/smoke_route_executor_sim.py
 '
