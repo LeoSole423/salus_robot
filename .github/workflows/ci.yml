@@ -5,35 +5,112 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: salus-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_BUILDKIT: "1"
+  COMPOSE_DOCKER_CLI_BUILD: "1"
+
 jobs:
-  build-test:
+  build-unit:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Validate repository
-        run: python3 tools/validate_repository.py
+      - uses: docker/setup-buildx-action@v3
       - name: Match container user to runner workspace
         run: |
           echo "SALUS_UID=$(id -u)" >> "$GITHUB_ENV"
           echo "SALUS_GID=$(id -g)" >> "$GITHUB_ENV"
-      - name: Build development image
-        run: docker compose build
-      - name: Build and test workspace
+      - name: Build development image with BuildKit cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: salus-robot:humble-dev
+          build-args: |
+            USER_UID=${{ env.SALUS_UID }}
+            USER_GID=${{ env.SALUS_GID }}
+          cache-from: type=gha,scope=salus-humble
+          cache-to: type=gha,mode=max,scope=salus-humble
+      - name: Validate, build, lint and run unit tests
         run: ./tools/test.sh
-      - name: Smoke-test migrated control slice
-        run: ./tools/smoke_control_sim.sh
-      - name: Smoke-test simulated vehicle motion
-        run: ./tools/smoke_motion_sim.sh
-      - name: Smoke-test local simulated localization
-        run: ./tools/smoke_localization_sim.sh
-      - name: Smoke-test integrated simulation checkpoint
-        run: ./tools/smoke_integration_sim.sh
-      - name: Smoke-test safety arbitration simulation
-        run: ./tools/smoke_safety_sim.sh
-      - name: Smoke-test autonomous navigation core simulation
-        run: ./tools/smoke_navigation_core_sim.sh
-      - name: Smoke-test dynamic keepout zones simulation
-        run: ./tools/smoke_navigation_zones_sim.sh
-      - name: Smoke-test route executor simulation
-        run: ./tools/smoke_route_executor_sim.sh
+
+  simulation-core:
+    needs: build-unit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Match container user to runner workspace
+        run: |
+          echo "SALUS_UID=$(id -u)" >> "$GITHUB_ENV"
+          echo "SALUS_GID=$(id -g)" >> "$GITHUB_ENV"
+      - name: Restore cached development image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: salus-robot:humble-dev
+          build-args: |
+            USER_UID=${{ env.SALUS_UID }}
+            USER_GID=${{ env.SALUS_GID }}
+          cache-from: type=gha,scope=salus-humble
+      - name: Build workspace for this runner
+        run: ./tools/build.sh
+      - name: Run core simulation scenarios
+        run: |
+          ./tools/smoke_control_sim.sh
+          ./tools/smoke_motion_sim.sh
+          ./tools/smoke_localization_sim.sh
+          ./tools/smoke_lidar_sim.sh
+          ./tools/smoke_safety_sim.sh
+          ./tools/smoke_integration_sim.sh
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulation-core-smoke-artifacts
+          path: artifacts/smokes
+          if-no-files-found: warn
+          retention-days: 7
+
+  navigation-missions:
+    needs: build-unit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Match container user to runner workspace
+        run: |
+          echo "SALUS_UID=$(id -u)" >> "$GITHUB_ENV"
+          echo "SALUS_GID=$(id -g)" >> "$GITHUB_ENV"
+      - name: Restore cached development image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: salus-robot:humble-dev
+          build-args: |
+            USER_UID=${{ env.SALUS_UID }}
+            USER_GID=${{ env.SALUS_GID }}
+          cache-from: type=gha,scope=salus-humble
+      - name: Build workspace for this runner
+        run: ./tools/build.sh
+      - name: Run navigation and mission scenarios
+        run: |
+          ./tools/smoke_navigation_core_sim.sh
+          ./tools/smoke_navigation_zones_sim.sh
+          ./tools/smoke_route_executor_sim.sh
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-missions-smoke-artifacts
+          path: artifacts/smokes
+          if-no-files-found: warn
+          retention-days: 7

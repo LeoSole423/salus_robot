@@ -10,7 +10,8 @@ docker compose run --rm ros2 bash -lc '
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   integration_log="$(mktemp)"
-  ros2 launch salus_bringup integration_sim.launch.py >"${integration_log}" 2>&1 &
+  free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
+  ros2 launch salus_bringup integration_sim.launch.py world:="${free_world}" >"${integration_log}" 2>&1 &
   integration_pid=$!
   cleanup() {
     exit_code=$?

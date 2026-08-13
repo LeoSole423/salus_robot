@@ -8,7 +8,8 @@ docker compose run --rm ros2 bash -lc '
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   motion_log="$(mktemp)"; control_log="$(mktemp)"; localization_log="$(mktemp)"
-  ros2 launch salus_simulation motion_sim.launch.py >"${motion_log}" 2>&1 & motion_pid=$!
+  free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
+  ros2 launch salus_simulation motion_sim.launch.py world:="${free_world}" >"${motion_log}" 2>&1 & motion_pid=$!
   ros2 launch salus_control control_sim.launch.py use_sim_time:=true >"${control_log}" 2>&1 & control_pid=$!
   ros2 launch salus_localization localization_sim.launch.py >"${localization_log}" 2>&1 & localization_pid=$!
   cleanup() {

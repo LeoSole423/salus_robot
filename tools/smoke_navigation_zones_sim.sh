@@ -6,7 +6,7 @@ docker compose run --rm ros2 bash -lc '
   set -eo pipefail
   export ROS_DOMAIN_ID=45 GZ_PARTITION="salus_zones_smoke_$$"
   source /opt/ros/humble/setup.bash; source /ros2_ws/install/setup.bash
-  integration_log="$(mktemp)"; ros2 launch salus_bringup integration_sim.launch.py zones_runtime_dir:=runtime/zones-smoke >"${integration_log}" 2>&1 & integration_pid=$!
+  runtime_dir="runtime/zones-smoke-$$"; free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"; integration_log="$(mktemp)"; ros2 launch salus_bringup integration_sim.launch.py zones_runtime_dir:="${runtime_dir}" world:="${free_world}" >"${integration_log}" 2>&1 & integration_pid=$!
   cleanup() { status=$?; trap - EXIT; kill -TERM "${integration_pid}" 2>/dev/null || true; wait "${integration_pid}" 2>/dev/null || true; if test "${status}" -ne 0; then tail -n 180 "${integration_log}"; fi; return "${status}"; }; trap cleanup EXIT
   for _attempt in $(seq 1 160); do nodes="$(ros2 node list 2>/dev/null || true)"; if grep -qx /zones_manager <<<"${nodes}" && grep -qx /keepout_filter_mask_server <<<"${nodes}"; then break; fi; sleep .25; done
   grep -qx /zones_manager <<<"$(ros2 node list)"; grep -qx /keepout_filter_mask_server <<<"$(ros2 node list)"

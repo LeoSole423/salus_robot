@@ -22,6 +22,7 @@ def _include(package: str, launch_file: str, arguments=None, condition=None):
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     gz_args = LaunchConfiguration("gz_args")
+    world = LaunchConfiguration("world")
     rviz = LaunchConfiguration("rviz")
     launch_navigation = LaunchConfiguration("launch_navigation")
     use_keepout = LaunchConfiguration("use_keepout")
@@ -37,6 +38,15 @@ def generate_launch_description() -> LaunchDescription:
                 "gz_args",
                 default_value="-r -s",
                 description="Gazebo arguments; use '-r' for the graphical client.",
+            ),
+            DeclareLaunchArgument(
+                "world",
+                default_value=str(
+                    Path(get_package_share_directory("salus_simulation"))
+                    / "worlds"
+                    / "empty.world"
+                ),
+                description="Gazebo world used by this composed simulation.",
             ),
             DeclareLaunchArgument(
                 "rviz",
