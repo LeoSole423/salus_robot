@@ -19,14 +19,5 @@ docker compose run --rm ros2 bash -lc '
   done
   nodes="$(ros2 node list)"
   grep -qx /route_executor <<<"${nodes}"
-  # The executor is only meaningful once Nav2 has produced fresh costmaps.
-  # Waiting on the semantic inputs avoids treating process discovery as
-  # operational readiness and avoids relaxing PathHealth freshness rules.
-  for topic in /global_costmap/costmap /local_costmap/costmap; do
-    for attempt in $(seq 1 40); do
-      if timeout 1 ros2 topic echo "${topic}" --once >/dev/null 2>&1; then break; fi
-    done
-    timeout 2 ros2 topic echo "${topic}" --once >/dev/null 2>&1
-  done
   python3 /ros2_ws/tools/smoke_route_executor_sim.py
 '
