@@ -80,6 +80,13 @@ def goal_request(x, y, heading):
     return request
 
 
+def mask_contains(mask, x, y):
+    resolution = mask.info.resolution
+    col = math.floor((x - mask.info.origin.position.x) / resolution)
+    row = math.floor((y - mask.info.origin.position.y) / resolution)
+    return 0 <= col < mask.info.width and 0 <= row < mask.info.height and mask.data[row * mask.info.width + col] >= 100
+
+
 def main():
     rclpy.init(); node = ZonesSmoke()
     try:
@@ -91,6 +98,7 @@ def main():
         state = call(node, node.get_zones, GetZonesState.Request(), "get zones unavailable")
         if not state.mask_ready or "smoke_block" not in state.geojson: raise RuntimeError("zone state was not persisted")
         blocked_x, blocked_y = local_to_map(current, 3.2, 0.0)
+        wait_for(node, lambda: node.mask and mask_contains(node.mask[-1], blocked_x, blocked_y), 4.0, "updated keepout mask does not cover the blocked goal")
         blocked = call(node, node.goal, goal_request(blocked_x, blocked_y, yaw(current)), "goal service unavailable")
         if blocked.ok: raise RuntimeError("goal inside keepout zone was accepted")
         node.plans.clear()

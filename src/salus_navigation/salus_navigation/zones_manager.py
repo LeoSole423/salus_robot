@@ -44,6 +44,8 @@ class ZonesManager(Node):
             "degrade_edge_cost": 12, "degrade_min_cost": 1,
             "use_keepout": True,
             "service_timeout_s": 4.0,
+            "initial_reload_retry_s": 1.0,
+            "initial_reload_max_attempts": 20,
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -62,6 +64,9 @@ class ZonesManager(Node):
         self.degrade_edge_cost = min(99, max(1, int(value("degrade_edge_cost"))))
         self.degrade_min_cost = min(self.degrade_edge_cost, max(1, int(value("degrade_min_cost"))))
         self.timeout_s = max(0.2, float(value("service_timeout_s")))
+        self._initial_reload_retry_s = max(0.1, float(value("initial_reload_retry_s")))
+        self._initial_reload_max_attempts = max(1, int(value("initial_reload_max_attempts")))
+        self._initial_reload_attempt = 0
         self._lock = threading.Lock()
         self._service_group = MutuallyExclusiveCallbackGroup()
         self._client_group = ReentrantCallbackGroup()
@@ -77,13 +82,12 @@ class ZonesManager(Node):
         self.create_service(SetZonesGeoJson, "/zones_manager/set_geojson", self._set_geojson, callback_group=self._service_group)
         self.create_service(GetZonesState, "/zones_manager/get_state", self._get_state, callback_group=self._service_group)
         self.create_service(Trigger, "/zones_manager/reload_from_disk", self._reload, callback_group=self._service_group)
-        # Service responses require the executor to be spinning.  Defer this
-        # one-shot initial reload until after construction instead of blocking
-        # the launch thread in the constructor.
+        # Defer and retry the initial reload: the map server is lifecycle
+        # managed independently and may not be active on its first attempt.
         self._initialization_timer = self.create_timer(0.5, self._load_initial_state)
 
     def _load_initial_state(self) -> None:
-        self._initialization_timer.cancel()
+        self._initial_reload_attempt += 1
         try:
             text = self.geojson_path.read_text(encoding="utf-8")
             document = normalize_geojson(json.loads(text))
@@ -93,8 +97,21 @@ class ZonesManager(Node):
             self.get_logger().warning(f"ignoring invalid persisted zones: {exc}")
             document = EMPTY_GEOJSON
         ok, error, _, _ = self._apply(document, persist=not self.geojson_path.exists())
-        if not ok:
+        if ok:
+            self._initialization_timer.cancel()
+            return
+        if self._initial_reload_attempt >= self._initial_reload_max_attempts:
+            self._initialization_timer.cancel()
             self.get_logger().error(f"initial zone mask unavailable: {error}")
+            return
+        self.get_logger().info(
+            "initial zone mask not ready; retrying "
+            f"({self._initial_reload_attempt}/{self._initial_reload_max_attempts}): {error}"
+        )
+        self._initialization_timer.cancel()
+        self._initialization_timer = self.create_timer(
+            self._initial_reload_retry_s, self._load_initial_state
+        )
 
     def _await(self, client, request: Any):
         if not client.wait_for_service(timeout_sec=self.timeout_s):

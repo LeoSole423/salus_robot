@@ -55,6 +55,8 @@ def generate_launch_description() -> LaunchDescription:
                     # The map server needs several seconds to decode the full
                     # legacy grid before it can answer LoadMap.
                     "service_timeout_s": 15.0,
+                    "initial_reload_retry_s": 1.0,
+                    "initial_reload_max_attempts": 20,
                 }],
             )],
         ),
