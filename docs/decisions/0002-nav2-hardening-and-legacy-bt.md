@@ -28,8 +28,9 @@ inmediato: no reemplaza una comprobación anticipada del path global.
   candidata tampoco es válida, detenerse y reintentar sin adoptar una ruta
   insegura.
 - Mantener la geometría, umbrales, histéresis y métricas fuera del BT. El
-  plugin sólo consulta `/path_health/is_path_valid`; `PathHealth` expone la
-  causa, edad, coste, muestras y error transversal.
+  plugin consulta `/path_health/evaluate` con contexto explícito `ACTIVE` o
+  `CANDIDATE`; `PathHealth` expone la causa, edad, coste, muestras y error
+  transversal.
 - No migrar `TraceReplan`. `nav_observer` conserva eventos de replan, bloqueo,
   lifecycle y resultado sin poseer comandos. Se reabrirá sólo si rutas futuras
   con `NavigateThroughPoses` aportan una necesidad reproducible.

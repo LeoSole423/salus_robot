@@ -95,6 +95,7 @@ components:
       - docs/decisions/0002-nav2-hardening-and-legacy-bt.md
       - src/salus_navigation_bt/src/path_health_condition.cpp
       - src/salus_navigation/salus_navigation/path_health.py
+      - docs/migration-evidence/intent/navigation-path-health.md
     note: La política útil de path estable y despeje se migró como PathHealth; TraceReplan queda diferido hasta justificar NavigateThroughPoses.
   operator_web:
     source: map_tools

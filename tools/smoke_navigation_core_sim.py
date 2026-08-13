@@ -12,7 +12,7 @@ from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
-from salus_interfaces.msg import CmdVelFinal, NavTelemetry
+from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
 
 
@@ -27,10 +27,12 @@ class NavigationSmoke(Node):
         self.plans: list[Path] = []
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
+        self.path_health: list[PathHealth] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Path, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
+        self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.cancel = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
         self.state = self.create_client(GetNavState, "/nav_command_server/get_state")
@@ -128,12 +130,16 @@ def main() -> int:
         start = node.odom[-1]
         target_x, target_y = send_goal(node, 7.0)
         wait_for(node, lambda: get_state(node).goal_active, 8.0, "goal was not accepted by Nav2")
-        wait_for(
-            node,
-            lambda: any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final),
-            10.0,
-            "Nav2 did not produce an automatic command",
-        )
+        try:
+            wait_for(
+                node,
+                lambda: any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final),
+                10.0,
+                "Nav2 did not produce an automatic command",
+            )
+        except RuntimeError as exc:
+            reason = node.path_health[-1].reason if node.path_health else "no PathHealth message"
+            raise RuntimeError(f"{exc}; last path health: {reason}") from exc
         wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the LL goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
         # Let the final odometry sample arrive after the action result.  The

@@ -12,7 +12,9 @@ un goal LL único y zonas dinámicas GeoJSON en simulación.
   operación web siguen fuera de este paquete migrado.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
-  desviación transversal. Ante costmap o TF vencidos produce `STOP_AND_WAIT`.
+  desviación transversal. Evalúa la pose desde TF en el frame del path y usa
+  `EvaluatePathHealth` con contexto explícito; ante costmap o TF vencidos
+  produce `STOP_AND_WAIT`.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
   modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).

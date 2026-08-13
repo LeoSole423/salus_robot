@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -16,6 +17,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PathHealth.msg"
   "srv/BrakeNav.srv"
   "srv/CancelNavGoal.srv"
+  "srv/EvaluatePathHealth.srv"
   "srv/GetNavState.srv"
   "srv/SetManualMode.srv"
   "srv/SetNavGoalLL.srv"
@@ -23,7 +25,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetZonesState.srv"
   "srv/SetSimBatteryPreset.srv"
   "srv/SetSimBatteryState.srv"
-  DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs
+  DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs nav_msgs
 )
 
 if(BUILD_TESTING)

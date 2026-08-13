@@ -73,3 +73,16 @@ def test_progress_stall_forces_replan_after_timeout():
     result = policy.evaluate(path, robot_x=1, robot_y=1, costmap=costmap(stamp=12.5), now_s=12.5)
     assert result.state == PathHealth.REPLAN
     assert result.reason == "progress_stalled"
+
+
+def test_candidate_does_not_mutate_active_path_progress_or_hysteresis():
+    policy = PathHealthPolicy(cross_track_confirmations=2, progress_timeout_s=2.0)
+    active = make_path([(1, 1), (12, 1)])
+    policy.evaluate(active, robot_x=1, robot_y=1, costmap=costmap(), now_s=10.0)
+    candidate = make_path([(1, 1), (12, 2)])
+    result = policy.evaluate(
+        candidate, robot_x=1, robot_y=1, costmap=costmap(stamp=12.5), now_s=12.5,
+        track_active_state=False)
+    assert result.state == PathHealth.KEEP_PATH
+    active_result = policy.evaluate(active, robot_x=1, robot_y=1, costmap=costmap(stamp=12.6), now_s=12.6)
+    assert active_result.reason == "progress_stalled"

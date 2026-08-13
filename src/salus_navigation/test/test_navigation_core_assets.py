@@ -49,6 +49,8 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "lifecycle_manager" in launch
     assert "nav_observer" in launch
     assert "path_health" in launch
+    assert "/path_health/evaluate" in tree
+    assert 'context="1"' in tree
     assert "IsPathHealthValid" in tree
     assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree

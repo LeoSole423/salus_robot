@@ -42,6 +42,7 @@ docker compose run --rm ros2 bash -lc '
   test "$(ros2 topic type /cmd_vel_safe)" = "geometry_msgs/msg/Twist"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /plan)" = "nav_msgs/msg/Path"
+  test "$(ros2 service type /path_health/evaluate)" = "salus_interfaces/srv/EvaluatePathHealth"
   test "$(ros2 topic type /global_costmap/costmap)" = "nav_msgs/msg/OccupancyGrid"
   test "$(ros2 topic type /local_costmap/costmap)" = "nav_msgs/msg/OccupancyGrid"
   python3 /ros2_ws/tools/smoke_navigation_core_sim.py
