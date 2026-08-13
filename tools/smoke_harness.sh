@@ -67,8 +67,8 @@ smoke_collect_diagnostics() {
     /keepout_filter_mask_server /route_executor; do
     ros2 lifecycle get "${node}" >"${SMOKE_ARTIFACT_DIR}/lifecycle${node//\//_}.txt" 2>&1 || true
   done
-  timeout 5 ros2 run tf2_ros tf2_echo map base_footprint \
-    >"${SMOKE_ARTIFACT_DIR}/tf_map_base_footprint.txt" 2>&1 || true
+  ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
+  ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
     "${SMOKE_READY_EVENTS[*]}" <<'PY'
