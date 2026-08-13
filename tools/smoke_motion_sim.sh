@@ -13,9 +13,12 @@ docker compose run --rm ros2 bash -lc '
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch motion "ros2 launch salus_simulation motion_sim.launch.py world:=${free_world}"
   smoke_start_launch control "ros2 launch salus_control control_sim.launch.py"
-  smoke_wait_topic_message /clock 30
-  smoke_wait_topic_message /odom_raw 30
-  smoke_wait_topic_message /joint_states 30
+  # The Gazebo /clock bridge can be discovered before ros2cli has a matching
+  # reader. The functional Python scenario below waits on and validates the
+  # actual odometry/joint-state messages.
+  smoke_wait_topic /clock 30
+  smoke_wait_topic /odom_raw 30
+  smoke_wait_topic /joint_states 30
   python3 /ros2_ws/tools/smoke_motion_sim.py
   test "$(ros2 topic type /odom_raw)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /joint_states)" = "sensor_msgs/msg/JointState"

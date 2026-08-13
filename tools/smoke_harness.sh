@@ -47,6 +47,11 @@ smoke_wait_node() {
   smoke_wait "node:${node}" "${timeout_s}" "nodes=\"\$(ros2 node list 2>/dev/null || true)\"; grep -qx '${node}' <<<\"\${nodes}\""
 }
 
+smoke_wait_topic() {
+  local topic="$1" timeout_s="${2:-30}"
+  smoke_wait "topic:${topic}" "${timeout_s}" "topics=\"\$(ros2 topic list 2>/dev/null || true)\"; grep -qx '${topic}' <<<\"\${topics}\""
+}
+
 smoke_wait_topic_message() {
   local topic="$1" timeout_s="${2:-30}"
   smoke_wait "message:${topic}" "${timeout_s}" "timeout 2 ros2 topic echo '${topic}' --once >/dev/null 2>&1"
