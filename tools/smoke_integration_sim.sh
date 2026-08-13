@@ -29,7 +29,10 @@ docker compose run --rm ros2 bash -lc '
     if grep -qx "/scan_clean" <<<"${topics}" \
       && grep -qx "/odometry/global" <<<"${topics}" \
       && grep -qx "/controller_server" <<<"${nodes}" \
-      && grep -qx "/robot_state_publisher" <<<"${nodes}"; then
+      && grep -qx "/robot_state_publisher" <<<"${nodes}" \
+      && grep -qx "/cloud_normalizer" <<<"${nodes}" \
+      && grep -qx "/scan_ground_filter" <<<"${nodes}" \
+      && grep -qx "/scan_noise_filter" <<<"${nodes}"; then
       break
     fi
     sleep 0.25
@@ -37,6 +40,9 @@ docker compose run --rm ros2 bash -lc '
   nodes="$(ros2 node list)"
   grep -qx "/controller_server" <<<"${nodes}"
   grep -qx "/robot_state_publisher" <<<"${nodes}"
+  grep -qx "/cloud_normalizer" <<<"${nodes}"
+  grep -qx "/scan_ground_filter" <<<"${nodes}"
+  grep -qx "/scan_noise_filter" <<<"${nodes}"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /odometry/local)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /odometry/global)" = "nav_msgs/msg/Odometry"
