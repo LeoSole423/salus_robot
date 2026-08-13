@@ -38,7 +38,13 @@ def generate_launch_description() -> LaunchDescription:
     ))
     actions.append(Node(
         package="salus_navigation", executable="path_health", name="path_health",
-        output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+        output="screen", parameters=[{
+            "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+            # Costmap publication can briefly stall while Gazebo/keepout
+            # reloads.  Five seconds still fails safe, but avoids treating a
+            # healthy startup or atomic mask reload as a permanent obstacle.
+            "costmap_timeout_s": 5.0,
+        }],
     ))
     actions.append(Node(
         package="nav2_lifecycle_manager", executable="lifecycle_manager", name="lifecycle_manager_navigation",

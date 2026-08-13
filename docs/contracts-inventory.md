@@ -17,9 +17,9 @@ corte público en `salus_interfaces`.
 | --- | --- | --- |
 | Control | `CmdVelFinal`, `DriveTelemetry` | migrados con campos originales; QoS actual preservado |
 | Batería | `BatteryMissionGuard`, `BatteryState` | migrado; se mantiene separación guardia/SOC |
-| Navegación | `NavTelemetry`, `NavEvent`, freno, modo manual, estado, goals LL, cancelación y zonas GeoJSON | arbitraje, goal único Nav2, keepout dinámico y política estable de path migrados; multi-waypoint sigue pendiente |
+| Navegación | `NavTelemetry`, `NavEvent`, freno, modo manual, estado, goals LL, cancelación y zonas GeoJSON | arbitraje, goal único Nav2, keepout dinámico, path estable y rutas multi-waypoint migrados; recuperación queda pendiente |
 | Salud de path (interna) | `PathHealth` | contrato de diagnóstico entre evaluador y BT; conserva, recalcula o detiene la navegación automática sin exponer una API web |
-| Ruta/patrulla | ruta, HOME, retorno, acciones | reemplazar JSON libre por contrato versionado |
+| Ruta/patrulla | `SetRouteMissionLL`, cancelación y estado de ruta | rutas migradas; HOME, retorno y acciones siguen pendientes |
 | Perfiles | `SetNavigationProfile` | conservar `urban`/`rural` o generalizar |
 | Zonas | GeoJSON y zonas tipadas | elegir una representación canónica |
 | Observabilidad | telemetría, eventos, snapshots | telemetría/eventos básicos y observador Nav2 migrados; snapshots pendientes |

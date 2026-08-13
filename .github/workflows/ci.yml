@@ -35,3 +35,5 @@ jobs:
         run: ./tools/smoke_navigation_core_sim.sh
       - name: Smoke-test dynamic keepout zones simulation
         run: ./tools/smoke_navigation_zones_sim.sh
+      - name: Smoke-test route executor simulation
+        run: ./tools/smoke_route_executor_sim.sh

@@ -26,6 +26,8 @@ def generate_launch_description() -> LaunchDescription:
     launch_navigation = LaunchConfiguration("launch_navigation")
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
+    launch_routes = LaunchConfiguration("launch_routes")
+    world = LaunchConfiguration("world")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -56,10 +58,22 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="runtime/zones",
                 description="Runtime directory for the dynamic keepout mask.",
             ),
+            DeclareLaunchArgument(
+                "launch_routes", default_value="false",
+                description="Start the optional route executor.",
+            ),
+            DeclareLaunchArgument(
+                "world",
+                default_value=str(
+                    Path(get_package_share_directory("salus_simulation"))
+                    / "worlds" / "empty.world"
+                ),
+                description="Gazebo world used by the composed simulation.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
-                {"use_sim_time": use_sim_time, "gz_args": gz_args},
+                {"use_sim_time": use_sim_time, "gz_args": gz_args, "world": world},
             ),
             _include("salus_control", "control_sim.launch.py", common),
             _include("salus_localization", "localization_sim.launch.py", common),
@@ -85,6 +99,10 @@ def generate_launch_description() -> LaunchDescription:
                 "navigation_core_sim.launch.py",
                 common,
                 condition=IfCondition(launch_navigation),
+            ),
+            _include(
+                "salus_navigation", "route_executor_sim.launch.py", common,
+                condition=IfCondition(launch_routes),
             ),
             _include(
                 "salus_perception",

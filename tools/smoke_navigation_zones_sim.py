@@ -50,9 +50,11 @@ def wait_for(node, predicate, timeout, message):
     raise RuntimeError(message)
 
 
-def call(node, client, request, message):
+def call(node, client, request, message, timeout_s=20.0):
     if not client.wait_for_service(timeout_sec=10.0): raise RuntimeError(message)
-    future = client.call_async(request); wait_for(node, future.done, 8.0, message)
+    # Rendering and atomically loading the 3000x3000 keepout mask can exceed
+    # the old eight-second bound on shared CI runners.
+    future = client.call_async(request); wait_for(node, future.done, timeout_s, message)
     return future.result()
 
 

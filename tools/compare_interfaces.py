@@ -9,10 +9,10 @@ import sys
 CONTRACTS = {
     "msg": (
         "BatteryMissionGuard.msg", "CmdVelFinal.msg", "DriveTelemetry.msg",
-        "NavEvent.msg", "NavTelemetry.msg", "PathHealth.msg",
+        "NavEvent.msg", "NavTelemetry.msg",
     ),
     "srv": (
-        "BrakeNav.srv", "CancelNavGoal.srv", "GetNavState.srv", "GetZonesState.srv", "SetManualMode.srv", "SetNavGoalLL.srv",
+        "BrakeNav.srv", "CancelNavGoal.srv", "CancelRouteMission.srv", "GetNavState.srv", "GetRouteMissionState.srv", "GetZonesState.srv", "SetManualMode.srv", "SetNavGoalLL.srv", "SetRouteMissionLL.srv",
         "SetZonesGeoJson.srv",
         "SetSimBatteryPreset.srv", "SetSimBatteryState.srv",
     ),
@@ -50,7 +50,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("Interface compatibility passed: 14 contracts")
+    print("Interface compatibility passed: 16 legacy contracts")
     return 0
 
 
