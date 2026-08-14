@@ -41,6 +41,7 @@ class RouteExecutorNode(Node):
         self._pose = None
         self._chunk = None
         self._target_offset = 0
+        self._checkpoint_cursor = 0
         self._goal_epoch = 0
         self._last_result_event_id = -1
         self._set_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
@@ -184,14 +185,20 @@ class RouteExecutorNode(Node):
             transition(self._mission, RoutePhase.COMPLETED)
             return
         self._target_offset = 0
+        self._checkpoint_cursor = 0
         self._publish_paths()
         self._send_target()
 
     def _send_target(self) -> None:
+        offsets = self._chunk.checkpoint_offsets
+        if not offsets:
+            self._pause("route chunk contains no original checkpoint")
+            return
+        self._target_offset = offsets[self._checkpoint_cursor]
         point = self._chunk.waypoints[self._target_offset]
         request = SetNavGoalLL.Request()
         request.lat, request.lon, request.yaw_deg = point.lat, point.lon, point.yaw_deg
-        has_next = self._target_offset + 1 < len(self._chunk.waypoints)
+        has_next = self._checkpoint_cursor + 1 < len(offsets)
         # The last waypoint of an intermediate chunk is contiguous with the
         # next chunk.  Only the mission's final waypoint requests Nav2's brake.
         after_chunk = next_start(self._mission.prepared, self._chunk)
@@ -214,8 +221,8 @@ class RouteExecutorNode(Node):
 
     def _advance(self) -> None:
         self._mission.reached += 1
-        self._target_offset += 1
-        if self._target_offset < len(self._chunk.waypoints):
+        self._checkpoint_cursor += 1
+        if self._checkpoint_cursor < len(self._chunk.checkpoint_offsets):
             self._send_target()
             return
         self._mission.target_index = next_start(self._mission.prepared, self._chunk)
@@ -285,7 +292,10 @@ class RouteExecutorNode(Node):
             response.input_waypoint_count = 0 if prepared is None else prepared.input_count
             response.expanded_waypoint_count = 0 if prepared is None else len(prepared.waypoints)
             response.current_start_index = mission.target_index
-            response.current_target_index = mission.target_index + self._target_offset
+            target_index = mission.target_index + self._target_offset
+            if prepared is not None and prepared.loop and prepared.waypoints:
+                target_index %= len(prepared.waypoints)
+            response.current_target_index = target_index
             response.active_chunk_size = 0 if self._chunk is None else len(self._chunk.waypoints)
             response.leg_spacing_m = 0.0 if prepared is None else prepared.leg_spacing_m
             response.chunk_span_m = 0.0 if prepared is None else prepared.chunk_span_m
