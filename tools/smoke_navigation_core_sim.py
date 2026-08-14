@@ -10,7 +10,7 @@ from pathlib import Path
 
 import rclpy
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
-from nav_msgs.msg import Odometry, Path
+from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -28,12 +28,12 @@ class NavigationSmoke(Node):
     def __init__(self) -> None:
         super().__init__("navigation_core_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom: list[Odometry] = []
-        self.plans: list[Path] = []
+        self.plans: list[NavPath] = []
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
         self.path_health: list[PathHealth] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
-        self.create_subscription(Path, "/plan", self.plans.append, 10)
+        self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)

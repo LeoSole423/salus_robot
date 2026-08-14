@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import rclpy
-from nav_msgs.msg import Odometry, Path
+from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
@@ -22,8 +22,8 @@ class Smoke(Node):
         self.odom, self.mission_paths, self.chunks, self.final = [], [], [], []
         self.path_health, self.telemetry, self.events = [], [], []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
-        self.create_subscription(Path, "/route_executor/mission_path", self.mission_paths.append, 10)
-        self.create_subscription(Path, "/route_executor/active_chunk_path", self.chunks.append, 10)
+        self.create_subscription(NavPath, "/route_executor/mission_path", self.mission_paths.append, 10)
+        self.create_subscription(NavPath, "/route_executor/active_chunk_path", self.chunks.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(

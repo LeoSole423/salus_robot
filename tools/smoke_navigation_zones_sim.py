@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 import rclpy
-from nav_msgs.msg import OccupancyGrid, Odometry, Path
+from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -25,7 +25,7 @@ DATUM_LAT, DATUM_LON = -31.4858037, -64.2410570
 class ZonesSmoke(Node):
     def __init__(self):
         super().__init__("zones_sim_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
-        self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[Path] = []
+        self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[NavPath] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         # map_server keeps this map latched. A late smoke subscriber must use
         # the matching QoS to receive the currently active empty/full mask.
@@ -37,7 +37,7 @@ class ZonesSmoke(Node):
         self.create_subscription(
             OccupancyGrid, "/keepout_filter_mask", self.mask.append, mask_qos
         )
-        self.create_subscription(Path, "/plan", self.plans.append, 10)
+        self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.set_zones = self.create_client(SetZonesGeoJson, "/zones_manager/set_geojson")
         self.get_zones = self.create_client(GetZonesState, "/zones_manager/get_state")
         self.reload = self.create_client(Trigger, "/zones_manager/reload_from_disk")
