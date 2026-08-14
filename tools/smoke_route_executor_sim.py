@@ -10,6 +10,7 @@ import rclpy
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Odometry, Path as NavPath
+from lifecycle_msgs.srv import GetState
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -18,10 +19,24 @@ from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
     CancelRouteMission, GetRouteMissionState, SetNavGoalLL, SetRouteMissionLL,
 )
-from smoke_runtime import AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps
+from smoke_runtime import (
+    AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps, stamp_ns,
+)
 from tf2_ros import Buffer, TransformListener
 
 LAT, LON = -31.4858037, -64.2410570
+
+
+def startup_evidence_is_ready(evidence):
+    """Pure readiness decision; kept separate for deterministic harness tests."""
+    return (
+        all(evidence["actions"].values())
+        and all(evidence["services"].values())
+        and evidence["odometry_progressive"]
+        and evidence["odometry_finite"]
+        and evidence["telemetry_messages"] >= 2
+        and evidence["bt_state"] == "active"
+    )
 
 
 class Smoke(Node):
@@ -53,8 +68,62 @@ class Smoke(Node):
         self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
         self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
+        self.bt_state = self.create_client(GetState, "/bt_navigator/get_state")
+        self.bt_state_future = None
+        self.bt_state_requested_at = 0.0
+        self.bt_state_label = "unavailable"
+        self.bt_state_requests = 0
+        self.bt_state_timeouts = 0
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+
+    def poll_bt_state(self):
+        now = time.monotonic()
+        if self.bt_state_future is not None:
+            if self.bt_state_future.done():
+                response = self.bt_state_future.result()
+                self.bt_state_label = (
+                    response.current_state.label if response is not None else "invalid response"
+                )
+                self.bt_state_future = None
+            elif now - self.bt_state_requested_at >= 2.0:
+                self.bt_state_future.cancel()
+                self.bt_state_future = None
+                self.bt_state_timeouts += 1
+        if self.bt_state_future is None and self.bt_state.service_is_ready():
+            self.bt_state_future = self.bt_state.call_async(GetState.Request())
+            self.bt_state_requested_at = now
+            self.bt_state_requests += 1
+
+    def startup_evidence(self):
+        odom_stamps = [stamp_ns(message) for message in self.odom[-2:]]
+        return {
+            "actions": {
+                "navigate_to_pose": self.navigate_action.server_is_ready(),
+                "compute_path_to_pose": self.plan_action.server_is_ready(),
+                "follow_path": self.follow_action.server_is_ready(),
+            },
+            "services": {
+                "route_set": self.set.service_is_ready(),
+                "route_state": self.state.service_is_ready(),
+                "route_cancel": self.cancel.service_is_ready(),
+                "fromLL": self.fromll.service_is_ready(),
+                "nav_goal": self.nav_goal.service_is_ready(),
+                "bt_lifecycle": self.bt_state.service_is_ready(),
+            },
+            "odometry_messages": len(self.odom),
+            "odometry_timestamps_ns": odom_stamps,
+            "odometry_progressive": has_increasing_stamps(self.odom),
+            "odometry_finite": bool(self.odom) and finite_odometry(self.odom[-1]),
+            "telemetry_messages": len(self.telemetry),
+            "bt_state": self.bt_state_label,
+            "bt_state_requests": self.bt_state_requests,
+            "bt_state_timeouts": self.bt_state_timeouts,
+        }
+
+    def startup_ready(self):
+        evidence = self.startup_evidence()
+        return startup_evidence_is_ready(evidence)
 
 
 def wait(node, predicate, timeout, error, **kwargs):
@@ -103,6 +172,7 @@ def main():
     runtime = SmokeRuntime(
         node, "routes-free-world",
         Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "route_probe.json",
+        global_timeout_s=210.0,
     )
     node.runtime = runtime
     success = False
@@ -112,26 +182,13 @@ def main():
     )
     acceptance_latency_s = None
     try:
-        runtime.wait_action("/navigate_to_pose", node.navigate_action, timeout_s=20.0)
-        runtime.wait_action("/compute_path_to_pose", node.plan_action, timeout_s=20.0)
-        runtime.wait_action("/follow_path", node.follow_action, timeout_s=20.0)
-        runtime.wait(
-            "fromLL service", node.fromll.service_is_ready, 20.0,
-            observe=lambda: {"service_ready": node.fromll.service_is_ready()},
-        )
-        runtime.wait(
-            "nav command goal service", node.nav_goal.service_is_ready, 20.0,
-            observe=lambda: {"service_ready": node.nav_goal.service_is_ready()},
-        )
+        # Full-stack discovery happens concurrently. A single startup budget
+        # prevents a slow early dependency from consuming several sequential
+        # readiness windows while preserving short functional timeouts below.
         wait(
-            node,
-            lambda: (
-                has_increasing_stamps(node.odom)
-                and finite_odometry(node.odom[-1])
-                and len(node.telemetry) >= 2
-            ),
-            20,
-            "progressive odometry or navigation telemetry unavailable",
+            node, node.startup_ready, 40, "route startup readiness unavailable",
+            stimulate=node.poll_bt_state,
+            observe=node.startup_evidence,
         )
         wait(
             node,
@@ -150,9 +207,6 @@ def main():
                 "cells": len(node.global_costmaps[-1].data) if node.global_costmaps else 0,
             },
         )
-        # Lifecycle is a final confirmation, not the first readiness gate:
-        # Nav2 advertises action services while still inactive.
-        runtime.wait_lifecycle("/bt_navigator", timeout_s=10.0)
         # Require fresh costmaps after activation. This gives Nav2's own TF
         # buffers time to join the graph instead of relying on this probe's TF
         # buffer becoming ready first.
