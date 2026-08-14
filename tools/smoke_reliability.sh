@@ -9,9 +9,18 @@ scenarios=(
   smoke_lidar_sim.sh smoke_safety_sim.sh smoke_integration_sim.sh smoke_navigation_core_sim.sh
   smoke_navigation_zones_sim.sh smoke_route_executor_sim.sh
 )
-for attempt in 1 2 3; do
-  echo "Smoke reliability pass ${attempt}/3"
+repetitions="${SMOKE_REPETITIONS:-3}"
+failures=0
+for ((attempt = 1; attempt <= repetitions; attempt++)); do
+  echo "Smoke reliability pass ${attempt}/${repetitions}"
   for scenario in "${scenarios[@]}"; do
-    "${repo_dir}/tools/run_smoke.sh" "${repo_dir}/tools/${scenario}"
+    if ! "${repo_dir}/tools/run_smoke.sh" "${repo_dir}/tools/${scenario}"; then
+      failures=$((failures + 1))
+      printf 'FAILED: pass=%s scenario=%s\n' "${attempt}" "${scenario}" >&2
+    fi
   done
 done
+if ((failures > 0)); then
+  printf 'Smoke reliability failed: %s scenario runs failed\n' "${failures}" >&2
+  exit 1
+fi

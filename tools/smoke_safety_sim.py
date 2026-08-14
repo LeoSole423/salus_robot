@@ -4,11 +4,9 @@
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import os
 import sys
-import time
 from pathlib import Path
 
 import rclpy
@@ -22,6 +20,7 @@ from sensor_msgs.msg import LaserScan
 from salus_interfaces.msg import CmdVelFinal, NavTelemetry
 from salus_interfaces.srv import BrakeNav, SetManualMode
 from tf2_ros import Buffer, TransformException, TransformListener
+from smoke_runtime import SmokeRuntime
 
 
 class SafetySmokeNode(Node):
@@ -139,12 +138,7 @@ class SafetySmokeNode(Node):
 
 
 def wait_for(node: SafetySmokeNode, predicate, timeout_s: float, error: str) -> None:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.05)
-        if predicate():
-            return
-    raise RuntimeError(error)
+    node.runtime.wait(error, predicate, timeout_s)
 
 
 def drive_until(
@@ -155,39 +149,17 @@ def drive_until(
     timeout_s: float,
     error: str,
 ) -> None:
-    started_at = time.monotonic()
-    deadline = started_at + timeout_s
-    while time.monotonic() < deadline:
-        node.publish_inputs(obstacle_range)
-        rclpy.spin_once(node, timeout_sec=0.05)
-        if predicate():
-            node.phases.append(
-                {
-                    "name": name,
-                    "success": True,
-                    "duration_s": time.monotonic() - started_at,
-                    "inputs_sent": dict(node.inputs_sent),
-                }
-            )
-            return
-    node.phases.append(
-        {
-            "name": name,
-            "success": False,
-            "duration_s": time.monotonic() - started_at,
-            "inputs_sent": dict(node.inputs_sent),
-            "error": error,
-        }
+    node.runtime.wait(
+        name,
+        predicate,
+        timeout_s,
+        stimulate=lambda: node.publish_inputs(obstacle_range),
+        observe=lambda: node.report(),
     )
-    raise RuntimeError(error)
 
 
 def call(node: SafetySmokeNode, client, request, error: str):
-    if not client.wait_for_service(timeout_sec=10.0):
-        raise RuntimeError(error)
-    future = client.call_async(request)
-    wait_for(node, future.done, 5.0, error)
-    return future.result()
+    return node.runtime.call(error, client, request, timeout_s=10.0)
 
 
 def parse_args() -> argparse.Namespace:
@@ -204,7 +176,10 @@ def main() -> int:
     args = parse_args()
     rclpy.init()
     node = SafetySmokeNode()
+    runtime = SmokeRuntime(node, "safety-synthetic-scan", args.report_path)
+    node.runtime = runtime
     success = False
+    failure = None
     try:
         wait_for(node, lambda: bool(node.telemetry), 20.0, "nav command server did not publish telemetry")
         wait_for(
@@ -294,18 +269,19 @@ def main() -> int:
         manual.twist.linear.x = 0.4
         manual.source = CmdVelFinal.SOURCE_MANUAL
         node.final.clear()
-        deadline = time.monotonic() + 3.0
-        while time.monotonic() < deadline:
+        def publish_manual() -> None:
             node.teleop_pub.publish(manual)
             node.inputs_sent["teleop"] += 1
-            rclpy.spin_once(node, timeout_sec=0.05)
-            if any(
+
+        runtime.wait(
+            "manual command",
+            lambda: any(
                 message.source == CmdVelFinal.SOURCE_MANUAL and message.twist.linear.x == 0.4
                 for message in node.final
-            ):
-                break
-        else:
-            raise RuntimeError("manual command was not arbitrated")
+            ),
+            3.0,
+            stimulate=publish_manual,
+        )
         node.phases.append({"name": "manual_command", "success": True})
         wait_for(
             node,
@@ -355,10 +331,11 @@ def main() -> int:
         success = True
         print("Safety arbitration simulation smoke test passed")
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
-        report = node.report() | {"success": success}
-        args.report_path.parent.mkdir(parents=True, exist_ok=True)
-        args.report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        runtime.finish(success, error=failure, evidence=node.report())
         node.destroy_node()
         rclpy.shutdown()
 

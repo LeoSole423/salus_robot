@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "20 4 * * *"
   workflow_dispatch:
+    inputs:
+      repetitions:
+        description: Complete smoke-suite repetitions
+        required: true
+        default: "10"
 
 env:
   DOCKER_BUILDKIT: "1"
@@ -32,6 +37,9 @@ jobs:
           cache-from: type=gha,scope=salus-humble
           cache-to: type=gha,mode=max,scope=salus-humble
       - name: Repeat isolated smoke scenarios three times
+        env:
+          SMOKE_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.repetitions || '3' }}
+          SMOKE_HARD_TIMEOUT_S: "120"
         run: |
           ./tools/build.sh
           ./tools/smoke_reliability.sh

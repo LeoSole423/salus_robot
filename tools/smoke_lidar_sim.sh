@@ -12,13 +12,13 @@ docker compose run --rm ros2 bash -lc '
   source /ros2_ws/tools/smoke_harness.sh
   smoke_init lidar-obstacle
   trap smoke_cleanup EXIT
-  smoke_start_launch lidar "ros2 launch salus_bringup integration_sim.launch.py launch_navigation:=false"
+  smoke_start_launch lidar_launch "ros2 launch salus_bringup integration_sim.launch.py launch_navigation:=false"
   smoke_wait_node /cloud_normalizer 40
   smoke_wait_node /scan_ground_filter 40
   # The persistent Python probe below subscribes to all sensor topics with
   # their real best-effort QoS.  Do not create short-lived ros2cli readers
   # here: discovery under CI can miss one sensor sample despite a healthy
   # perception chain.
-  smoke_run lidar "python3 /ros2_ws/tools/smoke_lidar_sim.py"
+  smoke_run lidar_probe "python3 /ros2_ws/tools/smoke_lidar_sim.py"
   smoke_note "lidar_obstacle_chain_valid"
 '

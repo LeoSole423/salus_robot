@@ -10,8 +10,21 @@ smoke_init() {
   SMOKE_ARTIFACT_DIR="${SMOKE_ARTIFACT_ROOT:-/ros2_ws/artifacts/smokes}/${SMOKE_RUN_ID}"
   SMOKE_LAUNCH_PIDS=()
   SMOKE_READY_EVENTS=()
+  SMOKE_ARTIFACT_NAMES=()
   mkdir -p "${SMOKE_ARTIFACT_DIR}"
   export SMOKE_SCENARIO SMOKE_RUN_ID SMOKE_ARTIFACT_DIR
+}
+
+smoke_reserve_artifact_name() {
+  local name="$1" existing
+  for existing in "${SMOKE_ARTIFACT_NAMES[@]:-}"; do
+    if [[ "${existing}" == "${name}" ]]; then
+      printf 'Smoke artifact name %q is already reserved in scenario %s\n' \
+        "${name}" "${SMOKE_SCENARIO}" >&2
+      return 1
+    fi
+  done
+  SMOKE_ARTIFACT_NAMES+=("${name}")
 }
 
 smoke_note() {
@@ -21,6 +34,7 @@ smoke_note() {
 
 smoke_start_launch() {
   local name="$1" command="$2" log_file
+  smoke_reserve_artifact_name "${name}"
   log_file="${SMOKE_ARTIFACT_DIR}/${name}.log"
   bash -lc "${command}" >"${log_file}" 2>&1 &
   SMOKE_LAUNCH_PIDS+=("$!")
@@ -32,6 +46,7 @@ smoke_start_launch() {
 # terminal output.
 smoke_run() {
   local name="$1" command="$2" log_file
+  smoke_reserve_artifact_name "${name}"
   log_file="${SMOKE_ARTIFACT_DIR}/${name}.log"
   if ! bash -lc "${command}" >"${log_file}" 2>&1; then
     printf 'Smoke assertion %s failed; output follows:\n' "${name}" >&2

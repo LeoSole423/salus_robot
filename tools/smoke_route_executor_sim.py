@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Smoke the route executor through its public ROS contracts."""
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
 from nav_msgs.msg import Odometry, Path
@@ -10,6 +11,7 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelRouteMission, GetRouteMissionState, SetRouteMissionLL
+from smoke_runtime import SmokeRuntime
 
 LAT, LON = -31.4858037, -64.2410570
 
@@ -34,18 +36,11 @@ class Smoke(Node):
 
 
 def wait(node, predicate, timeout, error):
-    until = time.monotonic() + timeout
-    while time.monotonic() < until:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if predicate(): return
-    raise RuntimeError(error)
+    node.runtime.wait(error, predicate, timeout)
 
 
 def call(node, client, request):
-    if not client.wait_for_service(timeout_sec=8): raise RuntimeError("route service unavailable")
-    future = client.call_async(request)
-    wait(node, future.done, 5, "route service timed out")
-    return future.result()
+    return node.runtime.call("route service", client, request, timeout_s=8.0)
 
 
 def request_from_pose(pose, *, loop=False):
@@ -63,6 +58,13 @@ def request_from_pose(pose, *, loop=False):
 
 def main():
     rclpy.init(); node = Smoke()
+    runtime = SmokeRuntime(
+        node, "routes-free-world",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "route_probe.json",
+    )
+    node.runtime = runtime
+    success = False
+    failure = None
     try:
         wait(
             node,
@@ -105,8 +107,16 @@ def main():
         if not result.ok: raise RuntimeError(result.error)
         wait(node, lambda: call(node, node.state, GetRouteMissionState.Request()).status == "CANCELLED", 5, "route was not cancelled")
         print("Route executor simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "odometry": len(node.odom), "mission_paths": len(node.mission_paths),
+            "chunks": len(node.chunks), "final_commands": len(node.final),
+        })
         node.destroy_node(); rclpy.shutdown()
 
 

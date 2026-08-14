@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
@@ -16,6 +17,7 @@ from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
+from smoke_runtime import SmokeRuntime
 
 
 DATUM_LAT = -31.4858037
@@ -54,29 +56,15 @@ class NavigationSmoke(Node):
 
 
 def wait_for(node: NavigationSmoke, predicate, timeout_s: float, error: str) -> None:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if predicate():
-            return
-    raise RuntimeError(error)
+    node.runtime.wait(error, predicate, timeout_s)
 
 
 def call(node: NavigationSmoke, client, request, error: str):
-    if not client.wait_for_service(timeout_sec=8.0):
-        raise RuntimeError(error)
-    future = client.call_async(request)
-    wait_for(node, future.done, 5.0, error)
-    return future.result()
+    return node.runtime.call(error, client, request, timeout_s=8.0)
 
 
 def wait_for_action_server(node: NavigationSmoke, client: ActionClient, name: str) -> None:
-    deadline = time.monotonic() + 15.0
-    while time.monotonic() < deadline:
-        if client.wait_for_server(timeout_sec=0.25):
-            return
-        rclpy.spin_once(node, timeout_sec=0.05)
-    raise RuntimeError(f"Nav2 action server {name} did not become ready")
+    node.runtime.wait_action(name, client)
 
 
 def yaw_from_odometry(message: Odometry) -> float:
@@ -131,6 +119,13 @@ def get_state(node: NavigationSmoke):
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
+    runtime = SmokeRuntime(
+        node, "navigation-free-world",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "navigation_probe.json",
+    )
+    node.runtime = runtime
+    success = False
+    failure = None
     try:
         wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
         # Lifecycle state and action discovery are not sufficient evidence on
@@ -202,8 +197,17 @@ def main() -> int:
         if not response.ok:
             raise RuntimeError(response.error)
         print("Navigation core simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "odometry": len(node.odom), "plans": len(node.plans),
+            "final_commands": len(node.final), "telemetry": len(node.telemetry),
+            "path_health": len(node.path_health),
+        })
         node.destroy_node()
         rclpy.shutdown()
 

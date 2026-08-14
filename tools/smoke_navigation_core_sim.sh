@@ -14,9 +14,6 @@ docker compose run --rm ros2 bash -lc '
   for node in /planner_server /controller_server /smoother_server /bt_navigator /behavior_server; do smoke_wait_node "${node}" 40; done
   smoke_wait_lifecycle /bt_navigator 40
   smoke_wait_topic /cmd_vel 30
-  smoke_wait "service:/fromLL" 40 "services=\"\$(ros2 service list 2>/dev/null || true)\"; grep -qx /fromLL <<<\"\${services}\""
-  smoke_wait "service:/path_health/evaluate" 40 "services=\"\$(ros2 service list 2>/dev/null || true)\"; grep -qx /path_health/evaluate <<<\"\${services}\""
-  smoke_wait "action:/navigate_to_pose" 40 "actions=\"\$(ros2 action list 2>/dev/null || true)\"; grep -qx /navigate_to_pose <<<\"\${actions}\""
   test "$(ros2 topic type /cmd_vel_safe)" = "geometry_msgs/msg/Twist"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /plan)" = "nav_msgs/msg/Path"

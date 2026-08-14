@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -13,6 +14,7 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from salus_interfaces.msg import CmdVelFinal
 from sensor_msgs.msg import JointState
+from smoke_runtime import SmokeRuntime, finite_odometry, has_increasing_stamps
 
 
 class MotionSmokeNode(Node):
@@ -44,15 +46,6 @@ class MotionSmokeNode(Node):
         self.publisher.publish(message)
 
 
-def _spin_for(node: MotionSmokeNode, duration_s: float, command: tuple[float, float, int]) -> None:
-    deadline = time.monotonic() + duration_s
-    while time.monotonic() < deadline:
-        node.command(
-            linear_x=command[0], angular_z=command[1], brake_pct=command[2]
-        )
-        rclpy.spin_once(node, timeout_sec=0.05)
-
-
 def _yaw(message: Odometry) -> float:
     orientation = message.pose.pose.orientation
     return math.atan2(
@@ -64,35 +57,59 @@ def _yaw(message: Odometry) -> float:
 def main() -> int:
     rclpy.init()
     node = MotionSmokeNode()
+    report_path = Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "motion_probe.json"
+    runtime = SmokeRuntime(node, "motion-free-world", report_path)
+    success = False
+    failure = None
     try:
-        deadline = time.monotonic() + 20.0
-        while time.monotonic() < deadline:
-            rclpy.spin_once(node, timeout_sec=0.1)
-            if node.odom_samples and node.joint_states > 0:
-                break
-        if not node.odom_samples or node.joint_states == 0:
-            raise RuntimeError("simulation did not publish odometry and joint states")
+        runtime.wait_publisher_match("command DDS link", node.publisher)
+        runtime.wait_topic_publishers("odom publisher", "/odom_raw")
+        runtime.wait_topic_publishers("joint publisher", "/joint_states")
+        runtime.wait(
+            "progressive motion samples",
+            lambda: has_increasing_stamps(node.odom_samples)
+            and finite_odometry(node.odom_samples[-1]) and node.joint_states >= 2,
+            20.0,
+            stimulate=lambda: node.command(linear_x=0.0, angular_z=0.0, brake_pct=100),
+            observe=lambda: {"odom": len(node.odom_samples), "joint_states": node.joint_states},
+        )
 
-        start_x = node.odom_samples[-1].pose.pose.position.x
-        _spin_for(node, 2.0, (1.0, 0.0, 0))
-        straight_end = node.odom_samples[-1]
-        if straight_end.pose.pose.position.x <= start_x + 0.10:
-            raise RuntimeError("straight command did not produce positive displacement")
+        start = node.odom_samples[-1].pose.pose.position
+        runtime.wait(
+            "straight displacement",
+            lambda: math.hypot(node.odom_samples[-1].pose.pose.position.x - start.x,
+                               node.odom_samples[-1].pose.pose.position.y - start.y) > 0.10,
+            20.0,
+            stimulate=lambda: node.command(linear_x=1.0, angular_z=0.0, brake_pct=0),
+        )
 
-        start_yaw = _yaw(straight_end)
-        _spin_for(node, 2.0, (1.0, 0.20, 0))
-        turn_end = node.odom_samples[-1]
-        if abs(_yaw(turn_end) - start_yaw) <= 0.03:
-            raise RuntimeError("turn command did not change simulated yaw")
+        start_yaw = _yaw(node.odom_samples[-1])
+        runtime.wait(
+            "turn yaw change",
+            lambda: abs(_yaw(node.odom_samples[-1]) - start_yaw) > 0.03,
+            20.0,
+            stimulate=lambda: node.command(linear_x=1.0, angular_z=0.20, brake_pct=0),
+        )
 
-        _spin_for(node, 0.5, (1.0, 0.20, 100))
-        if node.latest_actuation is None:
-            raise RuntimeError("controller did not publish simulated actuation")
-        if abs(node.latest_actuation.linear.x) > 1.0e-9 or abs(node.latest_actuation.angular.z) > 1.0e-9:
-            raise RuntimeError("brake did not produce zero simulated actuation")
+        runtime.wait(
+            "zero brake actuation",
+            lambda: node.latest_actuation is not None
+            and abs(node.latest_actuation.linear.x) <= 1.0e-9
+            and abs(node.latest_actuation.angular.z) <= 1.0e-9,
+            10.0,
+            stimulate=lambda: node.command(linear_x=1.0, angular_z=0.20, brake_pct=100),
+        )
         print("Motion simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "odom_samples": len(node.odom_samples),
+            "joint_states": node.joint_states,
+        })
         node.destroy_node()
         rclpy.shutdown()
 
