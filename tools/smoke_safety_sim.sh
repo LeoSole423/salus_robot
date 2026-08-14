@@ -10,12 +10,16 @@ docker compose run --rm ros2 bash -lc '
   smoke_init safety-synthetic-scan
   trap smoke_cleanup EXIT
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
-  smoke_start_launch safety "ros2 launch salus_bringup integration_sim.launch.py launch_navigation:=false world:=${free_world}"
+  smoke_start_launch motion "ros2 launch salus_simulation motion_sim.launch.py world:=${free_world}"
+  smoke_start_launch control "ros2 launch salus_control control_sim.launch.py use_sim_time:=true"
+  smoke_start_launch odom_tf "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint"
+  smoke_start_launch arbitration "ros2 launch salus_navigation safety_arbitration_sim.launch.py use_sim_time:=true"
+  smoke_wait_node /controller_server 40
   smoke_wait_node /nav_command_server 40
   smoke_wait_node /collision_monitor 40
   smoke_wait_lifecycle /collision_monitor 40
   smoke_wait_topic /clock 30
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
-  smoke_run safety "python3 /ros2_ws/tools/smoke_safety_sim.py"
+  smoke_run safety_probe "python3 /ros2_ws/tools/smoke_safety_sim.py --report-path ${SMOKE_ARTIFACT_DIR}/safety_probe.json"
   smoke_note "safety_arbitration_valid"
 '
