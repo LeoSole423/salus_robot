@@ -214,7 +214,10 @@ def main():
                 f"path_health={health}; nav_result={nav_result!r}; last_event={event_text!r}"
             ) from exc
         state = state_poller.latest
-        if state.active_chunk_size > state.chunk_max_waypoints: raise RuntimeError("chunk exceeds configured waypoint limit")
+        if state.active_chunk_size:
+            target = int(state.current_target_index)
+            if target >= len(state.mission_key_flags) or not state.mission_key_flags[target]:
+                raise RuntimeError("active chunk ends at a synthetic point")
         if not any(message.source == CmdVelFinal.SOURCE_AUTO for message in node.final): raise RuntimeError("route did not reach command chain")
         result = call(node, node.cancel, CancelRouteMission.Request())
         if not result.ok: raise RuntimeError(result.error)

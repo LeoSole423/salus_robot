@@ -9,11 +9,13 @@ import threading
 import uuid
 
 import rclpy
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped
+from nav2_msgs.srv import ClearEntireCostmap
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from robot_localization.srv import FromLL
-from salus_interfaces.msg import NavTelemetry
+from salus_interfaces.msg import NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
     BrakeNav, CancelNavGoal, CancelRouteMission, GetRouteMissionState,
     SetNavGoalLL, SetRouteMissionLL,
@@ -24,6 +26,10 @@ from .route_chunker import build_chunk, next_start
 from .route_model import RouteMission, RoutePhase, RouteWaypoint
 from .route_preparation import prepare, validate_inputs
 from .route_progress import project
+from .route_recovery import (
+    BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
+    resolve_forward_reanchor,
+)
 from .route_state_machine import transition
 
 
@@ -34,6 +40,11 @@ class RouteExecutorNode(Node):
         super().__init__("route_executor")
         self.declare_parameter("waypoint_reached_tolerance_m", 1.2)
         self.declare_parameter("fromll_timeout_s", 2.0)
+        self.declare_parameter("blocked_persistence_s", 1.5)
+        self.declare_parameter("blocked_retry_wait_s", 5.0)
+        self.declare_parameter("blocked_retry_max_attempts", 3)
+        self.declare_parameter("blocked_retry_reanchor_tolerance_m", 8.0)
+        self.declare_parameter("costmap_clear_timeout_s", 3.0)
         self._lock = threading.RLock()
         self._mission = RouteMission()
         self._preparation = None
@@ -44,21 +55,41 @@ class RouteExecutorNode(Node):
         self._checkpoint_cursor = 0
         self._goal_epoch = 0
         self._last_result_event_id = -1
+        self._path_health = None
+        self._collision_stop = False
+        self._nav_failure_code = ""
+        self._recovery = BlockedRecoveryPolicy(
+            persistence_s=float(self.get_parameter("blocked_persistence_s").value),
+            retry_wait_s=float(self.get_parameter("blocked_retry_wait_s").value),
+            max_attempts=int(self.get_parameter("blocked_retry_max_attempts").value),
+        )
+        self._recovery_clears = None
+        self._event_id = 0
         self._set_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self._cancel_goal = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
         self._brake = self.create_client(BrakeNav, "/nav_command_server/brake")
+        self._clear_costmaps = (
+            self.create_client(ClearEntireCostmap, "/local_costmap/clear_entirely_local_costmap"),
+            self.create_client(
+                ClearEntireCostmap,
+                "/global_costmap/clear_entirely_global_costmap",
+            ),
+        )
         self._fromll = [
             self.create_client(FromLL, "/fromLL"),
             self.create_client(FromLL, "/navsat_transform/fromLL"),
         ]
         self.create_subscription(Odometry, "/odometry/global", self._on_pose, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self._on_telemetry, 10)
+        self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
+        self._events = self.create_publisher(NavEvent, "/nav_command_server/events", 10)
         self._mission_path = self.create_publisher(Path, "/route_executor/mission_path", 10)
         self._chunk_path = self.create_publisher(Path, "/route_executor/active_chunk_path", 10)
         self.create_service(SetRouteMissionLL, "/route_executor/set_route_mission_ll", self._set)
         self.create_service(CancelRouteMission, "/route_executor/cancel_route_mission", self._cancel)
         self.create_service(GetRouteMissionState, "/route_executor/get_route_mission_state", self._state)
         self.create_timer(0.1, self._tick_preparation)
+        self.create_timer(0.2, self._tick_recovery)
 
     def _on_pose(self, message: Odometry) -> None:
         self._pose = message.pose.pose.position
@@ -153,8 +184,13 @@ class RouteExecutorNode(Node):
             mission_id=str(uuid.uuid4()), target_index=anchor,
         )
         transition(mission, RoutePhase.ACTIVE)
+        self._recovery.reset()
+        self._recovery_clears = None
         self._mission, self._preparation = mission, None
         self._dispatch()
+
+    def _on_path_health(self, message: PathHealth) -> None:
+        self._path_health = message
 
     def _on_telemetry(self, message: NavTelemetry) -> None:
         with self._lock:
@@ -163,6 +199,9 @@ class RouteExecutorNode(Node):
             if message.manual_enabled:
                 self._pause("manual takeover")
                 return
+            self._collision_stop = bool(message.collision_stop_active)
+            if message.goal_active:
+                self._nav_failure_code = ""
             if self._chunk is not None and self._pose is not None:
                 self._mission.progress = project(self._chunk, self._pose.x, self._pose.y)
             if message.nav_result_event_id == self._last_result_event_id:
@@ -172,11 +211,128 @@ class RouteExecutorNode(Node):
                 return
             self._last_result_event_id = message.nav_result_event_id
             if message.nav_result_text == "succeeded":
+                self._recovery.reset()
                 self._advance()
             elif message.nav_result_text == "goal rejected":
                 self._pause("NAV_GOAL_REJECTED: NavigateToPose goal rejected")
             else:
+                if (message.nav_result_text == "cancelled"
+                        and self._recovery.state != RecoveryState.CLEAR):
+                    return
+                failure = str(message.failure_code or "")
+                if message.nav_result_text == "aborted":
+                    self._nav_failure_code = failure or "NAV_ABORTED"
+                    return
                 self._pause(f"navigation {message.nav_result_text}")
+
+    def _tick_recovery(self) -> None:
+        with self._lock:
+            if self._mission.phase != RoutePhase.ACTIVE:
+                return
+            health = self._path_health
+            reason = "" if health is None else str(health.reason)
+            stopped_for_data = bool(health is not None
+                                    and health.state == PathHealth.STOP_AND_WAIT)
+            tf_fresh = not (stopped_for_data and "tf" in reason.lower())
+            # Every other STOP_AND_WAIT reason is still unavailable path data,
+            # even when its exact producer is not the costmap.
+            costmap_fresh = not (stopped_for_data and tf_fresh)
+            observation = RecoveryObservation(
+                now_s=self._steady_now(),
+                path_state=PathHealth.KEEP_PATH if health is None else int(health.state),
+                path_reason=reason,
+                nav_failure_code=self._nav_failure_code,
+                collision_stop=self._collision_stop,
+                tf_fresh=tf_fresh,
+                costmap_fresh=costmap_fresh,
+                progress_m=(None if self._mission.progress.distance_to_target_m == float("inf")
+                            else self._mission.progress.distance_to_target_m),
+            )
+            decision = self._recovery.observe(observation)
+            if self._recovery_clears is not None:
+                self._check_recovery_clears()
+        if decision.action == RecoveryAction.CANCEL_AND_BRAKE:
+            self._stop_for_recovery(decision)
+        elif decision.action == RecoveryAction.BEGIN_RETRY:
+            self._begin_recovery_retry(decision)
+
+    def _stop_for_recovery(self, decision) -> None:
+        with self._lock:
+            self._goal_epoch += 1
+            self._cancel_goal.call_async(
+                CancelNavGoal.Request()
+            ).add_done_callback(self._log_failed_cancel)
+            self._brake.call_async(
+                BrakeNav.Request(duration_s=0.25, brake_pct=100)
+            ).add_done_callback(self._log_failed_brake)
+        self._event(DiagnosticStatus.WARN, "ROUTE_BLOCKED_WAITING",
+                    "route blocked; waiting before retry",
+                    reason=decision.reason, attempt=decision.attempt,
+                    max_attempts=self._recovery.max_attempts)
+
+    def _begin_recovery_retry(self, decision) -> None:
+        with self._lock:
+            route = self._mission.prepared
+            pose = self._pose
+            resolution = resolve_forward_reanchor(
+                route, current_index=self._mission.target_index,
+                robot_x=None if pose is None else pose.x,
+                robot_y=None if pose is None else pose.y,
+                tolerance_m=float(self.get_parameter("blocked_retry_reanchor_tolerance_m").value),
+            )
+            self._mission.target_index = resolution.resolved_index
+            if not all(client.service_is_ready() for client in self._clear_costmaps):
+                self._finish_recovery(False, "COSTMAP_CLEAR_TIMEOUT")
+                return
+            futures = [client.call_async(ClearEntireCostmap.Request())
+                       for client in self._clear_costmaps]
+            self._recovery_clears = {
+                "futures": futures,
+                "deadline": self._steady_now()
+                + float(self.get_parameter("costmap_clear_timeout_s").value),
+                "resolution": resolution,
+            }
+        self._event(DiagnosticStatus.WARN, "ROUTE_BLOCKED_RETRYING",
+                    "retrying blocked route", reason=decision.reason,
+                    attempt=decision.attempt,
+                    requested_index=resolution.requested_index,
+                    resolved_index=resolution.resolved_index,
+                    reanchor_reason=resolution.reason)
+
+    def _check_recovery_clears(self) -> None:
+        job = self._recovery_clears
+        if job is None:
+            return
+        if all(future.done() for future in job["futures"]):
+            try:
+                if any(future.result() is None for future in job["futures"]):
+                    raise RuntimeError("empty costmap clear response")
+            except Exception as exc:
+                self._finish_recovery(False, f"COSTMAP_CLEAR_FAILED: {exc}")
+                return
+            self._recovery_clears = None
+            self._dispatch()
+        elif self._steady_now() >= job["deadline"]:
+            self._finish_recovery(False, "COSTMAP_CLEAR_TIMEOUT")
+
+    def _finish_recovery(self, accepted: bool, reason: str = "") -> None:
+        self._recovery_clears = None
+        decision = self._recovery.finish_retry(
+            now_s=self._steady_now(), accepted=accepted, reason=reason)
+        if accepted:
+            self._nav_failure_code = ""
+            self._collision_stop = False
+            self._event(DiagnosticStatus.OK, "ROUTE_BLOCKED_CLEARED",
+                        "blocked route retry accepted", attempt=decision.attempt)
+        elif decision.state == RecoveryState.NEEDS_OPERATOR:
+            self._event(DiagnosticStatus.ERROR, "ROUTE_BLOCKED_NEEDS_OPERATOR",
+                        "route requires operator intervention",
+                        reason=decision.reason, attempts=decision.attempt)
+        else:
+            self._event(DiagnosticStatus.WARN, "ROUTE_BLOCKED_RETRY_FAILED",
+                        "blocked route retry failed",
+                        reason=decision.reason, attempt=decision.attempt,
+                        wait_s=decision.wait_remaining_s)
 
     def _dispatch(self) -> None:
         route = self._mission.prepared
@@ -216,8 +372,13 @@ class RouteExecutorNode(Node):
                 result = future.result()
                 if result is None or not result.ok:
                     raise RuntimeError("empty response" if result is None else result.error)
+                if self._recovery.state == RecoveryState.RECOVERING:
+                    self._finish_recovery(True)
             except Exception as exc:
-                self._pause(f"NAV_GOAL_REJECTED: {exc}")
+                if self._recovery.state == RecoveryState.RECOVERING:
+                    self._finish_recovery(False, f"NAV_GOAL_REJECTED: {exc}")
+                else:
+                    self._pause(f"NAV_GOAL_REJECTED: {exc}")
 
     def _advance(self) -> None:
         self._mission.reached += 1
@@ -242,6 +403,8 @@ class RouteExecutorNode(Node):
         with self._lock:
             self._preparation_epoch += 1
             self._preparation = None
+            self._recovery.reset()
+            self._recovery_clears = None
             if self._mission.phase == RoutePhase.ACTIVE:
                 transition(self._mission, RoutePhase.CANCELLED, "cancelled")
             self._goal_epoch += 1
@@ -265,6 +428,16 @@ class RouteExecutorNode(Node):
                 self.get_logger().error("route brake was rejected")
         except Exception as exc:
             self.get_logger().error(f"route brake failed: {exc}")
+
+    def _event(self, severity: int, code: str, message: str, **details) -> None:
+        self._event_id += 1
+        event = NavEvent()
+        event.stamp = self.get_clock().now().to_msg()
+        event.severity, event.component = severity, "route_executor"
+        event.code, event.message, event.event_id = code, message, self._event_id
+        event.details = [KeyValue(key=str(key), value=str(value))
+                         for key, value in details.items()]
+        self._events.publish(event)
 
     def _publish_paths(self) -> None:
         for publisher, points in ((self._mission_path, self._mission.prepared.waypoints), (self._chunk_path, self._chunk.waypoints)):
@@ -300,7 +473,13 @@ class RouteExecutorNode(Node):
             response.leg_spacing_m = 0.0 if prepared is None else prepared.leg_spacing_m
             response.chunk_span_m = 0.0 if prepared is None else prepared.chunk_span_m
             response.chunk_max_waypoints = 0 if prepared is None else prepared.chunk_max_waypoints
-            response.blocked_reason_text = mission.pause_reason
+            recovery = self._recovery.snapshot(self._steady_now())
+            response.blocked_state = recovery.state.value
+            response.blocked_reason_code = recovery.reason
+            response.blocked_reason_text = recovery.reason or mission.pause_reason
+            response.blocked_retry_attempt = recovery.attempt
+            response.blocked_retry_max_attempts = self._recovery.max_attempts
+            response.blocked_wait_remaining_s = recovery.wait_remaining_s
             response.current_checkpoint_index = mission.progress.checkpoint_index
             response.current_progress_expanded_index = mission.progress.expanded_index
             response.current_progress_ratio = mission.progress.ratio
