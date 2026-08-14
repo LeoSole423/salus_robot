@@ -62,12 +62,12 @@ smoke_wait() {
 
 smoke_wait_node() {
   local node="$1" timeout_s="${2:-30}"
-  smoke_wait "node:${node}" "${timeout_s}" "nodes=\"\$(ros2 node list 2>/dev/null || true)\"; grep -qx '${node}' <<<\"\${nodes}\""
+  smoke_wait "node:${node}" "${timeout_s}" "nodes=\"\$(timeout 2 ros2 node list 2>/dev/null || true)\"; grep -qx '${node}' <<<\"\${nodes}\""
 }
 
 smoke_wait_topic() {
   local topic="$1" timeout_s="${2:-30}"
-  smoke_wait "topic:${topic}" "${timeout_s}" "topics=\"\$(ros2 topic list 2>/dev/null || true)\"; grep -qx '${topic}' <<<\"\${topics}\""
+  smoke_wait "topic:${topic}" "${timeout_s}" "topics=\"\$(timeout 2 ros2 topic list 2>/dev/null || true)\"; grep -qx '${topic}' <<<\"\${topics}\""
 }
 
 smoke_wait_topic_message() {
@@ -77,7 +77,19 @@ smoke_wait_topic_message() {
 
 smoke_wait_lifecycle() {
   local node="$1" timeout_s="${2:-30}"
-  smoke_wait "lifecycle:${node}:active" "${timeout_s}" "state=\"\$(ros2 lifecycle get '${node}' 2>/dev/null || true)\"; grep -q active <<<\"\${state}\""
+  local safe_node report_path
+  safe_node="${node#/}"
+  safe_node="${safe_node//\//_}"
+  report_path="${SMOKE_ARTIFACT_DIR}/lifecycle_${safe_node}.json"
+  if python3 /ros2_ws/tools/lifecycle_readiness_probe.py \
+    --node "${node}" --timeout "${timeout_s}" --report-path "${report_path}"; then
+    smoke_note "ready:lifecycle:${node}:active"
+    return 0
+  fi
+  smoke_note "timeout:lifecycle:${node}:active"
+  printf 'Smoke timeout: expected lifecycle %s active within %ss; report: %s\n' \
+    "${node}" "${timeout_s}" "${report_path}" >&2
+  return 1
 }
 
 smoke_collect_diagnostics() {
