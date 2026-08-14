@@ -35,6 +35,15 @@ class PreparedRoute:
 class RouteChunk:
     waypoints: tuple[RouteWaypoint, ...]; start: int; end: int; iteration: int
 
+    @property
+    def checkpoint_offsets(self) -> tuple[int, ...]:
+        """Offsets that represent mission success boundaries.
+
+        Synthetic points remain in ``waypoints`` for geometry, progress and
+        diagnostics, but are never dispatched as independent Nav2 goals.
+        """
+        return tuple(index for index, point in enumerate(self.waypoints) if point.key)
+
 
 @dataclass(frozen=True)
 class RouteProgress:

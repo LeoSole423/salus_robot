@@ -39,6 +39,11 @@ def expand(points: list[RouteWaypoint], spacing_m: float, loop: bool) -> list[Ro
             fraction = step * spacing_m / distance
             if fraction >= 1.0: break
             result.append(RouteWaypoint(first.lat + (second.lat-first.lat)*fraction, first.lon + (second.lon-first.lon)*fraction, first.yaw_deg, first.input_index, False, map_x=(first.map_x or 0.0)+((second.map_x or 0.0)-(first.map_x or 0.0))*fraction, map_y=(first.map_y or 0.0)+((second.map_y or 0.0)-(first.map_y or 0.0))*fraction))
+    if not loop:
+        # ``pairs`` contributes each segment origin.  Preserve the final
+        # original point explicitly so an open route always ends at a real
+        # checkpoint rather than at its last synthetic sample.
+        result.append(points[-1])
     return result
 
 

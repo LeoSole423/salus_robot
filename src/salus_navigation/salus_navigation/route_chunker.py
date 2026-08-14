@@ -1,4 +1,4 @@
-"""Finite route windows.  Loops never hand a complete circuit to Nav2."""
+"""Finite route windows whose boundaries are real mission checkpoints."""
 from .route_model import PreparedRoute, RouteChunk
 
 
@@ -8,16 +8,31 @@ def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteCh
     start %= total; selected = []; distance = 0.0; index = start
     maximum = max(1, route.chunk_max_waypoints)
     limit = max(0.1, route.chunk_span_m)
-    while len(selected) < maximum and (not route.loop or len(selected) < max(1, total-1)):
+    limit_reached = False
+    while not route.loop or len(selected) < max(1, total - 1):
         point = points[index]
         if selected:
             next_distance = selected[-1].distance_to(point)
-            if len(selected) > 1 and distance + next_distance > limit: break
             distance += next_distance
         selected.append(point)
+        limit_reached = len(selected) >= maximum or distance >= limit
         index += 1
         if not route.loop and index >= total: break
         index %= total
+        # Count/span are soft limits.  Once crossed, retain synthetic geometry
+        # until the next original checkpoint so a synthetic point never
+        # becomes a success, brake or action boundary.
+        if limit_reached and point.key and len(selected) > 1:
+            break
+    if route.loop and selected and not selected[-1].key:
+        last_checkpoint = max(
+            (offset for offset, point in enumerate(selected) if point.key),
+            default=-1,
+        )
+        selected = selected[:last_checkpoint + 1]
+        index = (start + len(selected)) % total
+    if selected and not any(point.key for point in selected):
+        raise ValueError("route chunk has no original checkpoint")
     return RouteChunk(tuple(selected), start, (index-1) % total if route.loop else index-1, iteration)
 
 
