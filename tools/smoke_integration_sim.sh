@@ -19,8 +19,7 @@ docker compose run --rm ros2 bash -lc '
   smoke_wait_node /collision_monitor 40
   smoke_wait_lifecycle /bt_navigator 40
   smoke_wait_lifecycle /collision_monitor 40
-  smoke_wait_topic_message /odometry/global 30
-  smoke_wait_topic_message /scan_clean 30
+  smoke_run integration_probe "python3 /ros2_ws/tools/integration_probe.py --timeout 30 --report-path ${SMOKE_ARTIFACT_DIR}/integration_probe.json"
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /odometry/local)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /odometry/global)" = "nav_msgs/msg/Odometry"
