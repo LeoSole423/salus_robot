@@ -8,7 +8,9 @@ import sys
 import time
 
 import rclpy
+from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
@@ -38,6 +40,9 @@ class NavigationSmoke(Node):
         self.state = self.create_client(GetNavState, "/nav_command_server/get_state")
         self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
         self.fromll = self.create_client(FromLL, "/fromLL")
+        self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
+        self.follow_action = ActionClient(self, FollowPath, "/follow_path")
 
     @staticmethod
     def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
@@ -63,6 +68,15 @@ def call(node: NavigationSmoke, client, request, error: str):
     future = client.call_async(request)
     wait_for(node, future.done, 5.0, error)
     return future.result()
+
+
+def wait_for_action_server(node: NavigationSmoke, client: ActionClient, name: str) -> None:
+    deadline = time.monotonic() + 15.0
+    while time.monotonic() < deadline:
+        if client.wait_for_server(timeout_sec=0.25):
+            return
+        rclpy.spin_once(node, timeout_sec=0.05)
+    raise RuntimeError(f"Nav2 action server {name} did not become ready")
 
 
 def yaw_from_odometry(message: Odometry) -> float:
@@ -119,6 +133,12 @@ def main() -> int:
     node = NavigationSmoke()
     try:
         wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
+        # Lifecycle state and action discovery are not sufficient evidence on
+        # a contended runner.  Wait until every action server in the first BT
+        # tick accepts clients before submitting the first high-level goal.
+        wait_for_action_server(node, node.navigate_action, "/navigate_to_pose")
+        wait_for_action_server(node, node.plan_action, "/compute_path_to_pose")
+        wait_for_action_server(node, node.follow_action, "/follow_path")
         # The integrated smoke has already exercised manual control and braking.
         # Restore the navigation precondition explicitly before sending its goal.
         response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
