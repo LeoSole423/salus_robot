@@ -28,4 +28,20 @@ if ! smoke_wait "injected:available-service" 1 true; then
   exit 1
 fi
 [[ " ${SMOKE_READY_EVENTS[*]} " == *" ready:injected:available-service "* ]]
+
+# A launch that ignores TERM must not block scenario teardown indefinitely.
+(
+  export SMOKE_ARTIFACT_ROOT="${temporary_root}/cleanup"
+  source "${repo_dir}/tools/smoke_harness.sh"
+  smoke_init cleanup-selftest
+  smoke_collect_diagnostics() { :; }
+  smoke_start_launch stubborn "trap \"\" TERM; sleep 30"
+  started="${SECONDS}"
+  smoke_cleanup
+  elapsed=$((SECONDS - started))
+  if (( elapsed > 7 )); then
+    echo "stubborn launch exceeded bounded cleanup grace" >&2
+    exit 1
+  fi
+)
 echo "Smoke harness self-test passed"

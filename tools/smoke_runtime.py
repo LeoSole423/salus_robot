@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -45,6 +46,63 @@ class ScenarioReport:
 
 class SmokeTimeout(RuntimeError):
     pass
+
+
+class AsyncServicePoller:
+    """Rate-limited service polling with at most one request in flight."""
+
+    def __init__(self, client, request_factory: Callable[[], Any], *,
+                 interval_s: float = 0.5, response_timeout_s: float = 8.0):
+        self.client = client
+        self.request_factory = request_factory
+        self.interval_s = interval_s
+        self.response_timeout_s = response_timeout_s
+        self.future = None
+        self.sent_at = 0.0
+        self.next_request_at = 0.0
+        self.sent = 0
+        self.responses = 0
+        self.timeouts = 0
+        self.latest = None
+        self.last_error = ""
+
+    def poll(self) -> None:
+        now = time.monotonic()
+        if self.future is not None:
+            if self.future.done():
+                try:
+                    result = self.future.result()
+                    if result is None:
+                        self.last_error = "empty response"
+                    else:
+                        self.latest = result
+                        self.responses += 1
+                        self.last_error = ""
+                except Exception as exc:  # pragma: no cover - rclpy transport detail
+                    self.last_error = f"{type(exc).__name__}: {exc}"
+                self.future = None
+                self.next_request_at = now + self.interval_s
+            elif now - self.sent_at >= self.response_timeout_s:
+                self.future.cancel()
+                self.future = None
+                self.timeouts += 1
+                self.last_error = "response timeout"
+                self.next_request_at = now + self.interval_s
+            return
+        if now >= self.next_request_at and self.client.service_is_ready():
+            self.future = self.client.call_async(self.request_factory())
+            self.sent_at = now
+            self.sent += 1
+
+    def evidence(self) -> dict[str, Any]:
+        return {
+            "service_ready": self.client.service_is_ready(),
+            "request_in_flight": self.future is not None,
+            "requests_sent": self.sent,
+            "responses_received": self.responses,
+            "response_timeouts": self.timeouts,
+            "last_error": self.last_error,
+        }
 
 
 class SmokeRuntime:
@@ -165,6 +223,13 @@ class SmokeRuntime:
                evidence: dict[str, Any] | None = None) -> None:
         if evidence:
             self.report.evidence.update(evidence)
+        self.report.evidence.setdefault("isolation", {
+            "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
+            "gz_partition": os.environ.get("GZ_PARTITION", ""),
+            "run_token": os.environ.get("SMOKE_RUN_TOKEN", ""),
+            "runtime_dir": os.environ.get("SMOKE_RUNTIME_DIR", ""),
+            "probe_pid": os.getpid(),
+        })
         self.report.duration_s = time.monotonic() - self.started
         self.report.state = PhaseState.PASSED.value if success else PhaseState.FAILED.value
         if error is not None:

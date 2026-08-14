@@ -3,9 +3,8 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_dir}"
 
-docker compose run --rm ros2 bash -lc '
+docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-48}" -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-lidar-$$}" -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/direct}" ros2 bash -lc '
   set -eo pipefail
-  export ROS_DOMAIN_ID=48 GZ_PARTITION="salus_lidar_$$"
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   set -u

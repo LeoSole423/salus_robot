@@ -59,3 +59,72 @@ def test_timeout_is_bounded_and_report_is_written(tmp_path, monkeypatch) -> None
     assert time.monotonic() - started < 0.5
     assert report_path.exists()
     assert '"state": "TIMED_OUT"' in report_path.read_text(encoding="utf-8")
+
+
+class FakeFuture:
+    def __init__(self, result=None) -> None:
+        self._done = result is not None
+        self._result = result
+        self.cancelled = False
+
+    def done(self):
+        return self._done
+
+    def result(self):
+        return self._result
+
+    def cancel(self):
+        self.cancelled = True
+
+
+class FakeClient:
+    def __init__(self, future, ready=True) -> None:
+        self.future = future
+        self.ready = ready
+        self.calls = 0
+
+    def service_is_ready(self):
+        return self.ready
+
+    def call_async(self, _request):
+        self.calls += 1
+        return self.future
+
+
+def test_service_poller_allows_only_one_request_in_flight() -> None:
+    future = FakeFuture()
+    client = FakeClient(future)
+    poller = runtime.AsyncServicePoller(client, object, interval_s=0.0, response_timeout_s=5.0)
+    poller.poll()
+    poller.poll()
+    poller.poll()
+    assert client.calls == 1
+    assert poller.evidence()["request_in_flight"]
+
+
+def test_service_poller_records_response_without_request_flood() -> None:
+    response = object()
+    client = FakeClient(FakeFuture(response))
+    poller = runtime.AsyncServicePoller(client, object, interval_s=10.0)
+    poller.poll()
+    poller.poll()
+    assert poller.latest is response
+    assert poller.responses == 1
+    assert client.calls == 1
+
+
+def test_service_poller_waits_for_service_and_bounds_stalled_response(monkeypatch) -> None:
+    now = [10.0]
+    monkeypatch.setattr(runtime.time, "monotonic", lambda: now[0])
+    future = FakeFuture()
+    client = FakeClient(future, ready=False)
+    poller = runtime.AsyncServicePoller(client, object, interval_s=0.0, response_timeout_s=2.0)
+    poller.poll()
+    assert client.calls == 0
+    client.ready = True
+    poller.poll()
+    now[0] = 12.1
+    poller.poll()
+    assert future.cancelled
+    assert poller.timeouts == 1
+    assert poller.future is None

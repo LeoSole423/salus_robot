@@ -13,6 +13,9 @@ smoke_init() {
   SMOKE_ARTIFACT_NAMES=()
   mkdir -p "${SMOKE_ARTIFACT_DIR}"
   export SMOKE_SCENARIO SMOKE_RUN_ID SMOKE_ARTIFACT_DIR
+  printf '%s\n' "${ROS_DOMAIN_ID:-}" >"${SMOKE_ARTIFACT_DIR}/ros_domain_id.txt"
+  printf '%s\n' "${GZ_PARTITION:-}" >"${SMOKE_ARTIFACT_DIR}/gz_partition.txt"
+  printf '%s\n' "${SMOKE_RUNTIME_DIR:-}" >"${SMOKE_ARTIFACT_DIR}/runtime_dir.txt"
 }
 
 smoke_reserve_artifact_name() {
@@ -36,8 +39,10 @@ smoke_start_launch() {
   local name="$1" command="$2" log_file
   smoke_reserve_artifact_name "${name}"
   log_file="${SMOKE_ARTIFACT_DIR}/${name}.log"
-  bash -lc "${command}" >"${log_file}" 2>&1 &
+  # Own a process group so cleanup also reaches ros2 launch descendants.
+  setsid bash -lc "${command}" >"${log_file}" 2>&1 &
   SMOKE_LAUNCH_PIDS+=("$!")
+  printf '%s\n' "${SMOKE_LAUNCH_PIDS[@]}" >"${SMOKE_ARTIFACT_DIR}/launch_pids.txt"
   smoke_note "launch_started:${name}"
 }
 
@@ -111,26 +116,26 @@ smoke_collect_diagnostics() {
   local status="$1"
   # Collect while the launch is still alive.  Each query is bounded so a
   # broken discovery service cannot prevent process cleanup.
-  timeout 2 ros2 node list >"${SMOKE_ARTIFACT_DIR}/nodes.txt" 2>&1 || true
-  timeout 2 ros2 topic list -t >"${SMOKE_ARTIFACT_DIR}/topics.txt" 2>&1 || true
-  timeout 2 ros2 service list -t >"${SMOKE_ARTIFACT_DIR}/services.txt" 2>&1 || true
-  timeout 2 ros2 param list >"${SMOKE_ARTIFACT_DIR}/parameters.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 node list >"${SMOKE_ARTIFACT_DIR}/nodes.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 topic list -t >"${SMOKE_ARTIFACT_DIR}/topics.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 service list -t >"${SMOKE_ARTIFACT_DIR}/services.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 param list >"${SMOKE_ARTIFACT_DIR}/parameters.txt" 2>&1 || true
   for node in /collision_monitor /bt_navigator /planner_server /controller_server \
     /keepout_filter_mask_server /route_executor; do
-    timeout 2 ros2 lifecycle get "${node}" >"${SMOKE_ARTIFACT_DIR}/lifecycle${node//\//_}.txt" 2>&1 || true
+    timeout --kill-after=1s 2s ros2 lifecycle get "${node}" >"${SMOKE_ARTIFACT_DIR}/lifecycle${node//\//_}.txt" 2>&1 || true
   done
-  timeout 2 ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
-  timeout 2 ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 topic info /tf -v >"${SMOKE_ARTIFACT_DIR}/tf_publishers.txt" 2>&1 || true
+  timeout --kill-after=1s 2s ros2 topic info /tf_static -v >"${SMOKE_ARTIFACT_DIR}/tf_static_publishers.txt" 2>&1 || true
   : >"${SMOKE_ARTIFACT_DIR}/qos.txt"
   for topic in /odometry/global /scan_clean /cmd_vel_final /path_health; do
     printf '\n## %s\n' "${topic}" >>"${SMOKE_ARTIFACT_DIR}/qos.txt"
-    timeout 2 ros2 topic info "${topic}" -v >>"${SMOKE_ARTIFACT_DIR}/qos.txt" 2>&1 || true
+    timeout --kill-after=1s 2s ros2 topic info "${topic}" -v >>"${SMOKE_ARTIFACT_DIR}/qos.txt" 2>&1 || true
   done
   : >"${SMOKE_ARTIFACT_DIR}/last_states.txt"
   for topic in /nav_command_server/telemetry /nav_command_server/events /path_health \
     /route_executor/state; do
     printf '\n## %s\n' "${topic}" >>"${SMOKE_ARTIFACT_DIR}/last_states.txt"
-    timeout 2 ros2 topic echo "${topic}" --once >>"${SMOKE_ARTIFACT_DIR}/last_states.txt" 2>&1 || true
+    timeout --kill-after=1s 2s ros2 topic echo "${topic}" --once >>"${SMOKE_ARTIFACT_DIR}/last_states.txt" 2>&1 || true
   done
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
@@ -139,6 +144,7 @@ import json
 import sys
 
 path, scenario, run_id, started, status, timeout_s, events = sys.argv[1:]
+import os
 with open(path, "w", encoding="utf-8") as report:
     json.dump({
         "scenario": scenario,
@@ -147,6 +153,12 @@ with open(path, "w", encoding="utf-8") as report:
         "status": status,
         "smoke_timeout_s": int(timeout_s),
         "readiness": events.split(),
+        "isolation": {
+            "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
+            "gz_partition": os.environ.get("GZ_PARTITION", ""),
+            "run_token": os.environ.get("SMOKE_RUN_TOKEN", ""),
+            "runtime_dir": os.environ.get("SMOKE_RUNTIME_DIR", ""),
+        },
     }, report, indent=2, sort_keys=True)
     report.write("\n")
 PY
@@ -157,9 +169,21 @@ smoke_cleanup() {
   trap - EXIT
   smoke_collect_diagnostics "${status}"
   for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
-    kill -TERM "${pid}" 2>/dev/null || true
+    kill -TERM -- "-${pid}" 2>/dev/null || kill -TERM "${pid}" 2>/dev/null || true
+  done
+  local cleanup_deadline=$((SECONDS + 5)) pid alive
+  while (( SECONDS < cleanup_deadline )); do
+    alive=0
+    for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
+      if kill -0 "${pid}" 2>/dev/null; then alive=1; break; fi
+    done
+    (( alive == 0 )) && break
+    sleep 0.1
   done
   for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
+    if kill -0 "${pid}" 2>/dev/null; then
+      kill -KILL -- "-${pid}" 2>/dev/null || kill -KILL "${pid}" 2>/dev/null || true
+    fi
     wait "${pid}" 2>/dev/null || true
   done
   if (( status != 0 )); then
