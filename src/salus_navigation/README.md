@@ -11,6 +11,9 @@ simulación.
   y no se versionan.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
+- Recuperación de rutas bloqueadas mediante una política pura con espera por
+  datos, cooldown, limpieza de costmaps, reanclaje hacia delante y límite de
+  intentos observable en los campos `blocked_*`.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
   ni invoca Nav2 directamente. Recuperación, acciones, perfiles, patrulla y
   HOME siguen fuera de este corte.
