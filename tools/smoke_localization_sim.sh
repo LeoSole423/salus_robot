@@ -3,29 +3,24 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_dir}"
 
-docker compose run --rm ros2 bash -lc '
+docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-42}" -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-localization-$$}" -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/direct}" ros2 bash -lc '
   set -eo pipefail
-  source /opt/ros/humble/setup.bash
-  source /ros2_ws/install/setup.bash
-  motion_log="$(mktemp)"; control_log="$(mktemp)"; localization_log="$(mktemp)"
-  ros2 launch salus_simulation motion_sim.launch.py >"${motion_log}" 2>&1 & motion_pid=$!
-  ros2 launch salus_control control_sim.launch.py use_sim_time:=true >"${control_log}" 2>&1 & control_pid=$!
-  ros2 launch salus_localization localization_sim.launch.py >"${localization_log}" 2>&1 & localization_pid=$!
-  cleanup() {
-    kill -TERM "${localization_pid}" "${control_pid}" "${motion_pid}" 2>/dev/null || true
-    wait "${localization_pid}" 2>/dev/null || true; wait "${control_pid}" 2>/dev/null || true; wait "${motion_pid}" 2>/dev/null || true
-  }
-  trap cleanup EXIT
-  for _attempt in $(seq 1 80); do
-    if ros2 topic list 2>/dev/null | grep -qx "/clock"; then break; fi
-    sleep 0.25
-  done
-  # Avoid closing ros2 stdout early: head-like pipelines make ros2cli
-  # raise BrokenPipeError on some GitHub runners.
-  clock_topics="$(ros2 topic list)"
-  grep -qx "/clock" <<<"${clock_topics}"
-  python3 /ros2_ws/tools/smoke_localization_sim.py
+  source /opt/ros/humble/setup.bash; source /ros2_ws/install/setup.bash; set -u
+  source /ros2_ws/tools/smoke_harness.sh
+  smoke_init localization-free-world
+  trap smoke_cleanup EXIT
+  free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
+  smoke_start_launch motion_launch "ros2 launch salus_simulation motion_sim.launch.py world:=${free_world}"
+  smoke_start_launch control_launch "ros2 launch salus_control control_sim.launch.py use_sim_time:=true"
+  smoke_start_launch localization_launch "ros2 launch salus_localization localization_sim.launch.py"
+  smoke_wait_topic /clock 30
+  smoke_wait_node /ackermann_odometry 40
+  smoke_wait_node /ekf_filter_node_local 40
+  smoke_wait_topic /wheel/odometry 30
+  smoke_wait_topic /imu/data 30
+  smoke_wait_topic /odometry/local 30
   test "$(ros2 topic type /wheel/odometry)" = "nav_msgs/msg/Odometry"
   test "$(ros2 topic type /imu/data)" = "sensor_msgs/msg/Imu"
   test "$(ros2 topic type /odometry/local)" = "nav_msgs/msg/Odometry"
+  smoke_run localization_probe "python3 /ros2_ws/tools/smoke_localization_sim.py"
 '

@@ -5,16 +5,18 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
-from nav_msgs.msg import OccupancyGrid, Odometry, Path
+from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.srv import GetZonesState, SetNavGoalLL, SetZonesGeoJson
 from std_srvs.srv import Trigger
+from smoke_runtime import SmokeRuntime
 
 
 DATUM_LAT, DATUM_LON = -31.4858037, -64.2410570
@@ -23,7 +25,7 @@ DATUM_LAT, DATUM_LON = -31.4858037, -64.2410570
 class ZonesSmoke(Node):
     def __init__(self):
         super().__init__("zones_sim_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
-        self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[Path] = []
+        self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[NavPath] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         # map_server keeps this map latched. A late smoke subscriber must use
         # the matching QoS to receive the currently active empty/full mask.
@@ -35,7 +37,7 @@ class ZonesSmoke(Node):
         self.create_subscription(
             OccupancyGrid, "/keepout_filter_mask", self.mask.append, mask_qos
         )
-        self.create_subscription(Path, "/plan", self.plans.append, 10)
+        self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.set_zones = self.create_client(SetZonesGeoJson, "/zones_manager/set_geojson")
         self.get_zones = self.create_client(GetZonesState, "/zones_manager/get_state")
         self.reload = self.create_client(Trigger, "/zones_manager/reload_from_disk")
@@ -43,19 +45,11 @@ class ZonesSmoke(Node):
 
 
 def wait_for(node, predicate, timeout, message):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if predicate(): return
-    raise RuntimeError(message)
+    node.runtime.wait(message, predicate, timeout)
 
 
 def call(node, client, request, message, timeout_s=20.0):
-    if not client.wait_for_service(timeout_sec=10.0): raise RuntimeError(message)
-    # Rendering and atomically loading the 3000x3000 keepout mask can exceed
-    # the old eight-second bound on shared CI runners.
-    future = client.call_async(request); wait_for(node, future.done, timeout_s, message)
-    return future.result()
+    return node.runtime.call(message, client, request, timeout_s=timeout_s)
 
 
 def yaw(odometry):
@@ -95,6 +89,13 @@ def mask_contains(mask, x, y):
 
 def main():
     rclpy.init(); node = ZonesSmoke()
+    runtime = SmokeRuntime(
+        node, "keepout-runtime",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "zones_probe.json",
+    )
+    node.runtime = runtime
+    success = False
+    failure = None
     try:
         wait_for(node, lambda: node.odom and node.mask, 45.0, "global odometry or keepout mask unavailable")
         current = node.odom[-1]
@@ -123,8 +124,15 @@ def main():
         state = call(node, node.get_zones, GetZonesState.Request(), "get zones unavailable")
         if json.loads(state.geojson)["features"]: raise RuntimeError("empty persisted zone set did not reload")
         print("Navigation zones simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "odometry": len(node.odom), "masks": len(node.mask), "plans": len(node.plans)
+        })
         node.destroy_node(); rclpy.shutdown()
 
 

@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, PointCloud2
 from sensor_msgs_py import point_cloud2
+from smoke_runtime import SmokeRuntime, has_increasing_stamps
 
 
 class LidarSmokeNode(Node):
@@ -42,21 +44,25 @@ def _has_obstacle_range(message: LaserScan) -> bool:
 def main() -> int:
     rclpy.init()
     node = LidarSmokeNode()
+    runtime = SmokeRuntime(
+        node, "lidar-obstacle",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "lidar_probe.json",
+    )
+    success = False
+    failure = None
     try:
-        # Nav2 adds several lifecycle nodes to the integrated launch.  On a
-        # contended CI runner the GPU-LiDAR bridge may start after those nodes,
-        # so allow a bounded but realistic sensor warm-up window.
-        deadline = time.monotonic() + 45.0
-        while time.monotonic() < deadline:
-            rclpy.spin_once(node, timeout_sec=0.1)
-            if len(node.raw) >= 4 and node.normalized and node.obstacles and node.clean:
-                break
-        if not (node.raw and node.normalized and node.obstacles and node.clean):
-            raise RuntimeError(
-                "simulated LiDAR did not reach every perception topic "
-                f"(raw={len(node.raw)}, normalized={len(node.normalized)}, "
-                f"obstacles={len(node.obstacles)}, clean={len(node.clean)})"
-            )
+        for topic in ("/scan_3d_raw", "/scan_3d", "/obstacles_cloud", "/scan_clean"):
+            runtime.wait_topic_publishers(f"publisher {topic}", topic, timeout_s=30.0)
+        runtime.wait(
+            "continuous lidar chain",
+            lambda: has_increasing_stamps(node.raw, 4)
+            and has_increasing_stamps(node.normalized)
+            and has_increasing_stamps(node.obstacles)
+            and has_increasing_stamps(node.clean),
+            35.0,
+            observe=lambda: {"raw": len(node.raw), "normalized": len(node.normalized),
+                             "obstacles": len(node.obstacles), "clean": len(node.clean)},
+        )
         raw = node.raw[-1]
         if not raw.header.frame_id or raw.width * raw.height == 0:
             raise RuntimeError("raw LiDAR cloud has an invalid frame or contains no points")
@@ -73,8 +79,16 @@ def main() -> int:
         if not _has_obstacle_range(node.clean[-1]):
             raise RuntimeError("clean scan does not retain the collision obstacle")
         print("LiDAR simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "raw": len(node.raw), "normalized": len(node.normalized),
+            "obstacles": len(node.obstacles), "clean": len(node.clean),
+        })
         node.destroy_node()
         rclpy.shutdown()
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate repository conventions without requiring a ROS installation."""
 
+import ast
 from pathlib import Path
 import re
 import sys
@@ -42,6 +43,25 @@ def main() -> int:
                 errors.append(f"{document}: broken link {target}")
         if re.search(r"/home/[^/]+/", text):
             errors.append(f"{document}: contains an absolute home path")
+
+    # Smoke probes commonly need both filesystem paths and ROS Path messages.
+    # Detect duplicate bindings early: Python silently lets the latter import
+    # replace the former, which otherwise only surfaces during CI execution.
+    for probe in sorted((ROOT / "tools").glob("smoke_*_sim.py")):
+        bindings: dict[str, int] = {}
+        tree = ast.parse(probe.read_text(encoding="utf-8"), filename=str(probe))
+        for statement in tree.body:
+            if isinstance(statement, ast.Import):
+                names = [alias.asname or alias.name.split(".")[0] for alias in statement.names]
+            elif isinstance(statement, ast.ImportFrom):
+                names = [alias.asname or alias.name for alias in statement.names]
+            else:
+                continue
+            for name in names:
+                bindings[name] = bindings.get(name, 0) + 1
+        for name, count in sorted(bindings.items()):
+            if count > 1:
+                errors.append(f"{probe}: duplicate imported binding {name!r}")
 
     if errors:
         print("Repository validation failed:", file=sys.stderr)

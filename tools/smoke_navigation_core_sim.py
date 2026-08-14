@@ -4,16 +4,20 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
-import time
+from pathlib import Path
 
 import rclpy
-from nav_msgs.msg import Odometry, Path
+from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
+from nav_msgs.msg import Odometry, Path as NavPath
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
+from smoke_runtime import SmokeRuntime
 
 
 DATUM_LAT = -31.4858037
@@ -24,12 +28,12 @@ class NavigationSmoke(Node):
     def __init__(self) -> None:
         super().__init__("navigation_core_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom: list[Odometry] = []
-        self.plans: list[Path] = []
+        self.plans: list[NavPath] = []
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
         self.path_health: list[PathHealth] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
-        self.create_subscription(Path, "/plan", self.plans.append, 10)
+        self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
@@ -38,6 +42,9 @@ class NavigationSmoke(Node):
         self.state = self.create_client(GetNavState, "/nav_command_server/get_state")
         self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
         self.fromll = self.create_client(FromLL, "/fromLL")
+        self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
+        self.follow_action = ActionClient(self, FollowPath, "/follow_path")
 
     @staticmethod
     def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
@@ -49,20 +56,15 @@ class NavigationSmoke(Node):
 
 
 def wait_for(node: NavigationSmoke, predicate, timeout_s: float, error: str) -> None:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if predicate():
-            return
-    raise RuntimeError(error)
+    node.runtime.wait(error, predicate, timeout_s)
 
 
 def call(node: NavigationSmoke, client, request, error: str):
-    if not client.wait_for_service(timeout_sec=8.0):
-        raise RuntimeError(error)
-    future = client.call_async(request)
-    wait_for(node, future.done, 5.0, error)
-    return future.result()
+    return node.runtime.call(error, client, request, timeout_s=8.0)
+
+
+def wait_for_action_server(node: NavigationSmoke, client: ActionClient, name: str) -> None:
+    node.runtime.wait_action(name, client)
 
 
 def yaw_from_odometry(message: Odometry) -> float:
@@ -117,8 +119,21 @@ def get_state(node: NavigationSmoke):
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
+    runtime = SmokeRuntime(
+        node, "navigation-free-world",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "navigation_probe.json",
+    )
+    node.runtime = runtime
+    success = False
+    failure = None
     try:
         wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
+        # Lifecycle state and action discovery are not sufficient evidence on
+        # a contended runner.  Wait until every action server in the first BT
+        # tick accepts clients before submitting the first high-level goal.
+        wait_for_action_server(node, node.navigate_action, "/navigate_to_pose")
+        wait_for_action_server(node, node.plan_action, "/compute_path_to_pose")
+        wait_for_action_server(node, node.follow_action, "/follow_path")
         # The integrated smoke has already exercised manual control and braking.
         # Restore the navigation precondition explicitly before sending its goal.
         response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
@@ -182,8 +197,17 @@ def main() -> int:
         if not response.ok:
             raise RuntimeError(response.error)
         print("Navigation core simulation smoke test passed")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence={
+            "odometry": len(node.odom), "plans": len(node.plans),
+            "final_commands": len(node.final), "telemetry": len(node.telemetry),
+            "path_health": len(node.path_health),
+        })
         node.destroy_node()
         rclpy.shutdown()
 
