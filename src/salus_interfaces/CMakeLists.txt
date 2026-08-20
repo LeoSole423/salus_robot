@@ -21,6 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetNavState.srv"
   "srv/SetManualMode.srv"
   "srv/SetNavGoalLL.srv"
+  "srv/SetNavigationProfile.srv"
   "srv/SetRouteMissionLL.srv"
   "srv/CancelRouteMission.srv"
   "srv/GetRouteMissionState.srv"

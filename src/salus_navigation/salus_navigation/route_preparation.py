@@ -2,6 +2,7 @@
 from __future__ import annotations
 from math import atan2, degrees, hypot, isfinite
 from .route_model import PreparedRoute, RouteWaypoint
+from .route_actions import parse_actions
 
 
 def validate_inputs(lats, lons, yaws, actions, roles) -> str:
@@ -10,7 +11,8 @@ def validate_inputs(lats, lons, yaws, actions, roles) -> str:
     if roles and len(roles) != len(lats): return "waypoint_roles length must match lats/lons when provided"
     if any(not isfinite(float(v)) for values in (lats, lons) for v in values): return "coordinates must be finite"
     if any(value not in ("", "normal") for value in roles): return "waypoint roles other than normal belong to a future missions cut"
-    if any(value.strip() for value in actions): return "waypoint actions belong to a future actions cut"
+    for index, value in enumerate(actions):
+        if parse_actions(value, index)[2]: return parse_actions(value, index)[2]
     return ""
 
 

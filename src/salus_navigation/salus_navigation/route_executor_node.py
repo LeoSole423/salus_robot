@@ -14,11 +14,13 @@ from geometry_msgs.msg import PoseStamped
 from nav2_msgs.srv import ClearEntireCostmap
 from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
     BrakeNav, CancelNavGoal, CancelRouteMission, GetRouteMissionState,
-    SetNavGoalLL, SetRouteMissionLL,
+    SetNavigationProfile, SetNavGoalLL, SetRouteMissionLL,
 )
 
 from .route_anchor import select_anchor
@@ -32,6 +34,7 @@ from .route_recovery import (
 )
 from .route_state_machine import transition
 from .nav_command_server import diagnostic_level
+from .route_actions import ActionExecution, ActionState, parse_actions
 
 
 class RouteExecutorNode(Node):
@@ -56,6 +59,9 @@ class RouteExecutorNode(Node):
         self._checkpoint_cursor = 0
         self._goal_epoch = 0
         self._last_result_event_id = -1
+        self._action: ActionExecution | None = None
+        self._action_future = None
+        self._active_profile = "urban"
         self._path_health = None
         self._collision_stop = False
         self._nav_failure_code = ""
@@ -69,6 +75,10 @@ class RouteExecutorNode(Node):
         self._set_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self._cancel_goal = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
         self._brake = self.create_client(BrakeNav, "/nav_command_server/brake")
+        self._profile_group = ReentrantCallbackGroup()
+        self._apply_profile = self.create_client(
+            SetNavigationProfile, "/navigation_profile_coordinator/apply",
+            callback_group=self._profile_group)
         self._clear_costmaps = (
             self.create_client(ClearEntireCostmap, "/local_costmap/clear_entirely_local_costmap"),
             self.create_client(
@@ -89,8 +99,11 @@ class RouteExecutorNode(Node):
         self.create_service(SetRouteMissionLL, "/route_executor/set_route_mission_ll", self._set)
         self.create_service(CancelRouteMission, "/route_executor/cancel_route_mission", self._cancel)
         self.create_service(GetRouteMissionState, "/route_executor/get_route_mission_state", self._state)
+        self.create_service(SetNavigationProfile, "/route_executor/set_navigation_profile",
+                            self._set_profile, callback_group=self._profile_group)
         self.create_timer(0.1, self._tick_preparation)
         self.create_timer(0.2, self._tick_recovery)
+        self.create_timer(0.05, self._tick_action)
 
     def _on_pose(self, message: Odometry) -> None:
         self._pose = message.pose.pose.position
@@ -103,9 +116,11 @@ class RouteExecutorNode(Node):
         if error:
             response.ok, response.error = False, error
             return response
+        canonical_actions = [parse_actions(value, index)[1]
+                             for index, value in enumerate(actions or [""] * len(lats))]
         raw = tuple(
             RouteWaypoint(float(lat), float(lon), float(yaw), index, True,
-                          (actions or [""] * len(lats))[index],
+                          canonical_actions[index],
                           (roles or ["normal"] * len(lats))[index])
             for index, (lat, lon, yaw) in enumerate(zip(lats, lons, yaws))
         )
@@ -201,6 +216,9 @@ class RouteExecutorNode(Node):
                 self._pause("manual takeover")
                 return
             self._collision_stop = bool(message.collision_stop_active)
+            if self._collision_stop and self._action is not None:
+                self._pause("collision stop during waypoint action")
+                return
             if message.goal_active:
                 self._nav_failure_code = ""
             if self._chunk is not None and self._pose is not None:
@@ -213,7 +231,12 @@ class RouteExecutorNode(Node):
             self._last_result_event_id = message.nav_result_event_id
             if message.nav_result_text == "succeeded":
                 self._recovery.reset()
-                self._advance()
+                point = self._chunk.waypoints[self._target_offset]
+                actions = parse_actions(point.action_json, point.input_index)[0]
+                if point.key and actions:
+                    self._start_actions(point.input_index, actions)
+                else:
+                    self._advance()
             elif message.nav_result_text == "goal rejected":
                 self._pause("NAV_GOAL_REJECTED: NavigateToPose goal rejected")
             else:
@@ -346,6 +369,61 @@ class RouteExecutorNode(Node):
         self._publish_paths()
         self._send_target()
 
+    def _start_actions(self, waypoint_index: int, actions) -> None:
+        self._action = ActionExecution(waypoint_index, actions)
+        action = self._action.start(self._steady_now())
+        self._event(DiagnosticStatus.OK, "ROUTE_WAYPOINT_ACTION_STARTED",
+                    "route waypoint action started", waypoint_index=waypoint_index,
+                    action_type=action.kind)
+        self._start_current_action(action)
+
+    def _start_current_action(self, action) -> None:
+        if action.kind == "brake_hold":
+            self._action_future = self._brake.call_async(
+                BrakeNav.Request(duration_s=action.duration_s, brake_pct=action.brake_pct))
+        else:
+            self._action_future = self._apply_profile.call_async(
+                SetNavigationProfile.Request(profile=action.profile))
+
+    def _tick_action(self) -> None:
+        with self._lock:
+            execution = self._action
+            if execution is None or execution.state != ActionState.RUNNING:
+                return
+            future = self._action_future
+            if future is not None and future.done():
+                try:
+                    result = future.result()
+                    if result is None or not result.ok:
+                        raise RuntimeError("empty response" if result is None else result.error)
+                    if execution.current.kind == "set_navigation_profile":
+                        self._active_profile = str(result.active_profile)
+                    self._action_future = None
+                except Exception as exc:
+                    execution.fail(str(exc)); self._fail_action(str(exc)); return
+            if future is not None:
+                return
+            action = execution.current
+            if action.kind == "brake_hold" and execution.remaining_s(self._steady_now()) > 0.0:
+                return
+            completed_kind = action.kind
+            following = execution.complete_current(self._steady_now())
+            self._event(DiagnosticStatus.OK, "ROUTE_WAYPOINT_ACTION_FINISHED",
+                        "route waypoint action finished",
+                        waypoint_index=execution.waypoint_index, action_type=completed_kind)
+            if following is not None:
+                self._start_current_action(following)
+            else:
+                self._action = None
+                self._advance()
+
+    def _fail_action(self, error: str) -> None:
+        execution = self._action
+        self._pause(f"ROUTE_ACTION_FAILED: {error}")
+        self._event(DiagnosticStatus.ERROR, "ROUTE_WAYPOINT_ACTION_FAILED",
+                    "route waypoint action failed", error=error,
+                    waypoint_index=0 if execution is None else execution.waypoint_index)
+
     def _send_target(self) -> None:
         offsets = self._chunk.checkpoint_offsets
         if not offsets:
@@ -397,6 +475,9 @@ class RouteExecutorNode(Node):
         if self._mission.phase == RoutePhase.ACTIVE:
             transition(self._mission, RoutePhase.PAUSED, reason)
         self._goal_epoch += 1
+        if self._action is not None:
+            self._action.cancel(reason)
+            self._action = self._action_future = None
         future = self._cancel_goal.call_async(CancelNavGoal.Request())
         future.add_done_callback(self._log_failed_cancel)
 
@@ -406,12 +487,45 @@ class RouteExecutorNode(Node):
             self._preparation = None
             self._recovery.reset()
             self._recovery_clears = None
+            if self._action is not None:
+                self._action.cancel("mission cancelled")
+            self._action = self._action_future = None
             if self._mission.phase == RoutePhase.ACTIVE:
                 transition(self._mission, RoutePhase.CANCELLED, "cancelled")
             self._goal_epoch += 1
             self._cancel_goal.call_async(CancelNavGoal.Request()).add_done_callback(self._log_failed_cancel)
             self._brake.call_async(BrakeNav.Request(duration_s=0.25, brake_pct=100)).add_done_callback(self._log_failed_brake)
         response.ok, response.error = True, ""
+        return response
+
+    def _set_profile(self, request, response):
+        target = str(request.profile).strip().lower()
+        response.active_profile = self._active_profile
+        if target not in ("urban", "rural"):
+            response.ok, response.error = False, "profile must be 'urban' or 'rural'"
+            return response
+        with self._lock:
+            if self._mission.phase in (RoutePhase.ACTIVE, RoutePhase.PAUSED):
+                response.ok = False
+                response.error = "navigation profile cannot be changed while a mission is active"
+                return response
+        timeout = 4.0
+        if not self._apply_profile.wait_for_service(timeout_sec=timeout):
+            response.ok, response.error = False, "navigation profile coordinator unavailable"
+            return response
+        try:
+            future = self._apply_profile.call_async(SetNavigationProfile.Request(profile=target))
+            ready = threading.Event()
+            future.add_done_callback(lambda _done: ready.set())
+            if not ready.wait(timeout):
+                raise TimeoutError("coordinator response timed out")
+            result = future.result()
+            response.ok, response.error = result.ok, result.error
+            response.active_profile = result.active_profile
+            if result.ok:
+                self._active_profile = result.active_profile
+        except Exception as exc:
+            response.ok, response.error = False, f"navigation profile transaction failed: {exc}"
         return response
 
     def _log_failed_cancel(self, future) -> None:
@@ -481,6 +595,11 @@ class RouteExecutorNode(Node):
             response.blocked_retry_attempt = recovery.attempt
             response.blocked_retry_max_attempts = self._recovery.max_attempts
             response.blocked_wait_remaining_s = recovery.wait_remaining_s
+            action = self._action
+            response.action_active = bool(action and action.state == ActionState.RUNNING)
+            response.action_waypoint_index = 0 if action is None else action.waypoint_index
+            response.action_type = "" if action is None or action.current is None else action.current.kind
+            response.action_remaining_s = 0.0 if action is None else action.remaining_s(self._steady_now())
             response.current_checkpoint_index = mission.progress.checkpoint_index
             response.current_progress_expanded_index = mission.progress.expanded_index
             response.current_progress_ratio = mission.progress.ratio
@@ -509,8 +628,11 @@ class RouteExecutorNode(Node):
 def main(args=None) -> None:
     rclpy.init(args=args)
     node = RouteExecutorNode()
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()

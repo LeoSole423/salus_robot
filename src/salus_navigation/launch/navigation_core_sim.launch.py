@@ -51,6 +51,11 @@ def generate_launch_description() -> LaunchDescription:
         }],
     ))
     actions.append(Node(
+        package="salus_navigation", executable="navigation_profile_coordinator",
+        name="navigation_profile_coordinator", output="screen",
+        parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+    ))
+    actions.append(Node(
         package="nav2_lifecycle_manager", executable="lifecycle_manager", name="lifecycle_manager_navigation",
         output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "autostart": False,
                                         "node_names": [name for _, _, name in nodes]}],

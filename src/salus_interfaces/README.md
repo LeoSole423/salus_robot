@@ -5,7 +5,7 @@
 - Interfaces actuales: control/batería, arbitraje y navegación punto a punto:
   `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
   `SetNavGoalLL`, `CancelNavGoal`, `SetRouteMissionLL`, `CancelRouteMission`,
-  `GetRouteMissionState`, `SetZonesGeoJson`, `GetZonesState` y
+  `GetRouteMissionState`, `SetNavigationProfile`, `SetZonesGeoJson`, `GetZonesState` y
   `PathHealth`.
 - `PathHealth` es un contrato interno de runtime: explica si Nav2 conserva,
   recalcula o detiene temporalmente un path; no es una API de Cockpit.

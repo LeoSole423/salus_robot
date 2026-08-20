@@ -49,6 +49,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "lifecycle_manager" in launch
     assert '"autostart": False' in launch
     assert "nav2_startup_coordinator" in launch
+    assert "navigation_profile_coordinator" in launch
     assert "nav_observer" in launch
     assert "path_health" in launch
     assert "/path_health/evaluate" in tree
