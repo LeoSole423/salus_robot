@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -44,20 +44,17 @@ def generate_launch_description() -> LaunchDescription:
                 ],
             }],
         ),
-        TimerAction(
-            period=3.0,
-            actions=[Node(
-                package="salus_navigation", executable="zones_manager", name="zones_manager", output="screen",
-                parameters=[{
-                    "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
-                    "runtime_dir": runtime_dir,
-                    "use_keepout": ParameterValue(use_keepout, value_type=bool),
-                    # The map server needs several seconds to decode the full
-                    # legacy grid before it can answer LoadMap.
-                    "service_timeout_s": 15.0,
-                    "initial_reload_retry_s": 1.0,
-                    "initial_reload_max_attempts": 20,
-                }],
-            )],
+        Node(
+            package="salus_navigation", executable="zones_manager", name="zones_manager", output="screen",
+            parameters=[{
+                "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                "runtime_dir": runtime_dir,
+                "use_keepout": ParameterValue(use_keepout, value_type=bool),
+                # Startup is service-driven: the manager retries only after
+                # the lifecycle map server can accept its atomic LoadMap.
+                "service_timeout_s": 15.0,
+                "initial_reload_retry_s": 1.0,
+                "initial_reload_max_attempts": 20,
+            }],
         ),
     ])

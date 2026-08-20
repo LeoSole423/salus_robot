@@ -4,6 +4,8 @@ from salus_navigation.route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
     resolve_forward_reanchor,
 )
+from salus_navigation.nav_command_server import diagnostic_level
+from diagnostic_msgs.msg import DiagnosticStatus
 
 
 def observation(now, **changes):
@@ -92,3 +94,6 @@ def test_reanchor_moves_forward_and_loop_does_not_wrap_early():
     loop = resolve_forward_reanchor(
         route(loop=True), current_index=3, robot_x=0.1, robot_y=0.0, tolerance_m=8.0)
     assert loop.resolved_index == 3 and loop.reason == "no_forward_match"
+def test_recovery_event_severity_is_normalized_for_humble() -> None:
+    assert diagnostic_level(DiagnosticStatus.WARN) == 1
+    assert isinstance(diagnostic_level(DiagnosticStatus.ERROR), int)

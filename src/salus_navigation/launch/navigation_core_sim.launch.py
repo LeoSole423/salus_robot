@@ -12,6 +12,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
+    use_keepout = LaunchConfiguration("use_keepout")
     config_dir = Path(get_package_share_directory("salus_navigation")) / "config"
     config = config_dir / "nav2_core_sim.yaml"
     params = [config, {
@@ -27,7 +28,10 @@ def generate_launch_description() -> LaunchDescription:
         ("nav2_bt_navigator", "bt_navigator", "bt_navigator"),
         ("nav2_behaviors", "behavior_server", "behavior_server"),
     ]
-    actions = [DeclareLaunchArgument("use_sim_time", default_value="true")]
+    actions = [
+        DeclareLaunchArgument("use_sim_time", default_value="true"),
+        DeclareLaunchArgument("use_keepout", default_value="true"),
+    ]
     actions.extend(
         Node(package=package, executable=executable, name=name, output="screen", parameters=params, remappings=remappings)
         for package, executable, name in nodes
@@ -48,7 +52,14 @@ def generate_launch_description() -> LaunchDescription:
     ))
     actions.append(Node(
         package="nav2_lifecycle_manager", executable="lifecycle_manager", name="lifecycle_manager_navigation",
-        output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "autostart": True,
+        output="screen", parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool), "autostart": False,
                                         "node_names": [name for _, _, name in nodes]}],
+    ))
+    actions.append(Node(
+        package="salus_navigation", executable="nav2_startup_coordinator",
+        name="nav2_startup_coordinator", output="screen", parameters=[{
+            "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+            "use_keepout": ParameterValue(use_keepout, value_type=bool),
+        }],
     ))
     return LaunchDescription(actions)

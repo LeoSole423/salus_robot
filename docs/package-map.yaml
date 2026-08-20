@@ -42,7 +42,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
-    status: ported_nav2_single_goal_keepout_stable_path_and_observability_sim
+    status: ported_nav2_routes_recovery_and_causal_startup_sim
   salus_navigation_bt:
     owner: autonomy_bt
     build_type: ament_cmake

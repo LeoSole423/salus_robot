@@ -25,6 +25,10 @@ simulación.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
   modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).
+- `nav2_startup_coordinator` mantiene Nav2 sin activar hasta observar reloj y
+  odometría progresivos, TF global reciente, scan válido y la máscara keepout
+  cuando está habilitada. Publica la causa y el estado en
+  `/navigation_startup/diagnostics`; no altera parámetros de navegación.
 
 Pruebas: `colcon test --packages-select salus_navigation` y
 `./tools/smoke_navigation_zones_sim.sh`, `./tools/smoke_navigation_core_sim.sh`
