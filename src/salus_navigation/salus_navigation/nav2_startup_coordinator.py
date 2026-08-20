@@ -9,12 +9,13 @@ import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.srv import ManageLifecycleNodes
-from nav_msgs.msg import OccupancyGrid, Odometry
+from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import LaserScan
+from salus_interfaces.srv import EvaluatePathHealth
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from .startup_readiness import ReadinessSnapshot, StartupPolicy, StartupState
@@ -80,12 +81,18 @@ class Nav2StartupCoordinator(Node):
         self._state_futures = {name: None for name in NAV2_NODES}
         self._state_requested_at = {name: 0.0 for name in NAV2_NODES}
         self._node_states = {name: "unknown" for name in NAV2_NODES}
+        self._path_health_future = None
+        self._path_health_requested_at = 0.0
+        self._path_health_ready = False
         self._tf_available = False
         self._tf_fresh = False
         self._tf = Buffer()
         self._tf_listener = TransformListener(self._tf, self)
         self._manage = self.create_client(
             ManageLifecycleNodes, "/lifecycle_manager_navigation/manage_nodes"
+        )
+        self._path_health = self.create_client(
+            EvaluatePathHealth, "/path_health/evaluate"
         )
         self._state_clients = {
             name: self.create_client(GetState, f"/{name}/get_state") for name in NAV2_NODES
@@ -174,6 +181,30 @@ class Nav2StartupCoordinator(Node):
         self._manage_future = self._manage.call_async(request)
         self._manage_requested_at = time.monotonic()
 
+    def _poll_path_health(self, now: float) -> bool:
+        """Require one real service round-trip before advertising Nav2 ready."""
+        if self._path_health_ready:
+            return True
+        if self._path_health_future is not None:
+            if self._path_health_future.done():
+                try:
+                    self._path_health_ready = self._path_health_future.result() is not None
+                except Exception:
+                    self._path_health_ready = False
+                self._path_health_future = None
+                return self._path_health_ready
+            if now - self._path_health_requested_at > 2.0:
+                self._path_health_future.cancel()
+                self._path_health_future = None
+            return False
+        if self._path_health.service_is_ready():
+            request = EvaluatePathHealth.Request()
+            request.path = Path()
+            request.context = EvaluatePathHealth.Request.ACTIVE
+            self._path_health_future = self._path_health.call_async(request)
+            self._path_health_requested_at = now
+        return False
+
     def _poll_startup(self) -> None:
         now = time.monotonic()
         if self._manage_future is not None:
@@ -202,7 +233,8 @@ class Nav2StartupCoordinator(Node):
             if self._state_futures[name] is None and client.service_is_ready():
                 self._state_futures[name] = client.call_async(GetState.Request())
                 self._state_requested_at[name] = now
-        if all(state == "active" for state in self._node_states.values()):
+        if (all(state == "active" for state in self._node_states.values())
+                and self._poll_path_health(now)):
             self._policy.activation_succeeded()
         elif now - self._manage_requested_at > self._activation_timeout_s:
             self._policy.activation_failed("NAV2_NODES_NOT_ACTIVE")
@@ -229,7 +261,9 @@ class Nav2StartupCoordinator(Node):
         )
         status.message = f"{self._policy.state.value}: {self._policy.reason}"
         values = {**snapshot.__dict__, "state": self._policy.state.value,
-                  "reason": self._policy.reason, **self._node_states}
+                  "reason": self._policy.reason,
+                  "path_health_preflight": self._path_health_ready,
+                  **self._node_states}
         status.values = [KeyValue(key=str(key), value=str(value)) for key, value in values.items()]
         message = DiagnosticArray()
         message.header.stamp = self.get_clock().now().to_msg()
