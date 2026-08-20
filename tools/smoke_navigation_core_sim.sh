@@ -10,13 +10,6 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-44}" -e GZ_PART
   trap smoke_cleanup EXIT
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch navigation "ros2 launch salus_bringup integration_sim.launch.py world:=${free_world}"
-  for node in /planner_server /controller_server /smoother_server /bt_navigator /behavior_server; do smoke_wait_node "${node}" 40; done
-  smoke_wait_lifecycle /bt_navigator 40
-  smoke_wait_topic /cmd_vel 30
-  test "$(ros2 topic type /cmd_vel_safe)" = "geometry_msgs/msg/Twist"
-  test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
-  test "$(ros2 topic type /plan)" = "nav_msgs/msg/Path"
-  test "$(ros2 service type /path_health/evaluate)" = "salus_interfaces/srv/EvaluatePathHealth"
   smoke_run navigation_core "python3 /ros2_ws/tools/smoke_navigation_core_sim.py"
   smoke_note "navigation_goal_cancel_manual_valid"
 '

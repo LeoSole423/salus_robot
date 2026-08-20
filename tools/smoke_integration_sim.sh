@@ -12,9 +12,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-42}" -e GZ_PART
   smoke_init integration-structure
   trap smoke_cleanup EXIT
   smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py"
-  smoke_wait_lifecycle /bt_navigator 40
-  smoke_wait_lifecycle /collision_monitor 40
-  smoke_run integration_probe "python3 /ros2_ws/tools/integration_probe.py --timeout 30 --report-path ${SMOKE_ARTIFACT_DIR}/integration_probe.json"
+  smoke_run integration_probe "python3 /ros2_ws/tools/integration_probe.py --timeout 60 --report-path ${SMOKE_ARTIFACT_DIR}/integration_probe.json"
   smoke_note "structural_contracts_valid"
   echo "Integrated structural simulation smoke test passed"
 '

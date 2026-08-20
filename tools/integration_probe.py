@@ -23,6 +23,7 @@ from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 from salus_interfaces.srv import EvaluatePathHealth, GetNavState, SetSimBatteryPreset
 from salus_interfaces.msg import CmdVelFinal
+from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 from tf2_ros import Buffer, TransformException, TransformListener
 
 
@@ -158,6 +159,7 @@ class IntegrationProbe(Node):
         self.odom = TopicEvidence()
         self.scan = TopicEvidence()
         self.final_commands = 0
+        self.startup = subscribe_navigation_startup(self)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self, spin_thread=False)
         self.tf_result: dict[str, Any] = {"map_to_odom": False, "odom_to_base_footprint": False}
@@ -229,6 +231,7 @@ class IntegrationProbe(Node):
                 "scan_3d_raw_publishers": self.count_publishers("/scan_3d_raw"),
                 "final_commands": self.final_commands,
             },
+            "navigation_startup": self.startup.snapshot(),
         }
 
     def services_ready(self) -> bool:
@@ -262,40 +265,34 @@ def main() -> int:
     _PROBE_STARTED_AT = time.monotonic()
     rclpy.init()
     node = IntegrationProbe()
-    failure = ""
+    runtime = SmokeRuntime(node, "integration-structure", args.report_path, global_timeout_s=args.timeout)
+    success = False
+    failure = None
     try:
-        deadline = time.monotonic() + args.timeout
-        while time.monotonic() < deadline:
-            rclpy.spin_once(node, timeout_sec=0.1)
-            odom_failure = _failure_reason(node.odom, "odometry")
-            scan_failure = _failure_reason(node.scan, "scan")
-            if (
-                not odom_failure and not scan_failure
+        runtime.wait(
+            "navigation startup active", lambda: node.startup.active, args.timeout,
+            observe=node.startup.snapshot,
+        )
+        runtime.wait_lifecycle("/bt_navigator", 10.0)
+        runtime.wait_lifecycle("/collision_monitor", 10.0)
+        runtime.wait(
+            "integrated contracts valid",
+            lambda: (
+                not _failure_reason(node.odom, "odometry")
+                and not _failure_reason(node.scan, "scan")
                 and node.check_tf() and node.services_ready() and node.graph_ready()
-            ):
-                break
-        odom_failure = _failure_reason(node.odom, "odometry")
-        scan_failure = _failure_reason(node.scan, "scan")
-        if odom_failure or scan_failure:
-            failure = "; ".join(filter(None, (odom_failure, scan_failure)))
-        elif not node.check_tf():
-            failure = f"TF unavailable: {node.tf_result.get('error', node.tf_result)}"
-        elif not node.services_ready():
-            unavailable = [
-                name for name, client in node.required_services.items()
-                if not client.service_is_ready()
-            ]
-            failure = f"required services unavailable: {unavailable}"
-        elif not node.graph_ready():
-            failure = f"runtime graph invalid: {node.report()['graph']}"
-        report = node.report() | {"success": not failure, "failure": failure, "timeout_s": args.timeout}
-        args.report_path.parent.mkdir(parents=True, exist_ok=True)
-        args.report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        if failure:
-            raise RuntimeError(failure)
+            ),
+            20.0,
+            observe=node.report,
+        )
         print(f"Integrated structural probe passed; report: {args.report_path}")
+        success = True
         return 0
+    except Exception as exc:
+        failure = exc
+        raise
     finally:
+        runtime.finish(success, error=failure, evidence=node.report())
         node.destroy_node()
         rclpy.shutdown()
 

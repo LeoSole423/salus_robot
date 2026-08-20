@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import time
 
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from nav_msgs.msg import Odometry
 
 
@@ -42,6 +43,27 @@ def test_phase_states_are_explicit() -> None:
     assert {state.value for state in runtime.PhaseState} == {
         "WAITING", "RUNNING", "PASSED", "FAILED", "TIMED_OUT"
     }
+
+
+def test_navigation_startup_evidence_preserves_causal_reason() -> None:
+    evidence = runtime.NavigationStartupEvidence()
+    message = DiagnosticArray()
+    status = DiagnosticStatus()
+    status.name = "navigation_startup"
+    status.message = "WAITING_INPUTS: SCAN_STALE"
+    status.values = [
+        KeyValue(key="state", value="WAITING_INPUTS"),
+        KeyValue(key="reason", value="SCAN_STALE"),
+        KeyValue(key="scan_fresh", value="False"),
+    ]
+    message.status = [status]
+    evidence.record(message)
+    assert not evidence.active
+    assert evidence.snapshot()["reason"] == "SCAN_STALE"
+    status.values[0].value = "ACTIVE"
+    status.values[1].value = "READY"
+    evidence.record(message)
+    assert evidence.active
 
 
 def test_timeout_is_bounded_and_report_is_written(tmp_path, monkeypatch) -> None:
