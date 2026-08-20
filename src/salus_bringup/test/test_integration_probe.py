@@ -8,6 +8,7 @@ from sensor_msgs.msg import LaserScan
 
 
 PROBE = Path(__file__).parents[3] / "tools" / "integration_probe.py"
+sys.path.insert(0, str(PROBE.parent))
 SPEC = importlib.util.spec_from_file_location("integration_probe", PROBE)
 assert SPEC and SPEC.loader
 probe = importlib.util.module_from_spec(SPEC)

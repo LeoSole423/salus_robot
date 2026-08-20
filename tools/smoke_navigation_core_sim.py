@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import rclpy
+from geometry_msgs.msg import Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
@@ -17,7 +18,7 @@ from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
-from smoke_runtime import SmokeRuntime
+from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 
 
 DATUM_LAT = -31.4858037
@@ -32,11 +33,16 @@ class NavigationSmoke(Node):
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
         self.path_health: list[PathHealth] = []
+        self.raw_commands: list[Twist] = []
+        self.safe_commands: list[Twist] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
+        self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
+        self.create_subscription(Twist, "/cmd_vel_safe", self.safe_commands.append, 10)
+        self.startup = subscribe_navigation_startup(self)
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.cancel = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
         self.state = self.create_client(GetNavState, "/nav_command_server/get_state")
@@ -127,6 +133,10 @@ def main() -> int:
     success = False
     failure = None
     try:
+        wait_for(
+            node, lambda: node.startup.active, 45.0,
+            "navigation startup did not become active",
+        )
         wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
         # Lifecycle state and action discovery are not sufficient evidence on
         # a contended runner.  Wait until every action server in the first BT
@@ -148,9 +158,13 @@ def main() -> int:
         try:
             wait_for(
                 node,
-                lambda: any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final),
+                lambda: (
+                    any(message.linear.x > 0.1 for message in node.raw_commands)
+                    and any(message.linear.x > 0.1 for message in node.safe_commands)
+                    and any(message.source == CmdVelFinal.SOURCE_AUTO and message.twist.linear.x > 0.1 for message in node.final)
+                ),
                 10.0,
-                "Nav2 did not produce an automatic command",
+                "Nav2 command did not traverse raw, safe and final stages",
             )
         except RuntimeError as exc:
             reason = node.path_health[-1].reason if node.path_health else "no PathHealth message"
@@ -207,6 +221,8 @@ def main() -> int:
             "odometry": len(node.odom), "plans": len(node.plans),
             "final_commands": len(node.final), "telemetry": len(node.telemetry),
             "path_health": len(node.path_health),
+            "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
+            "navigation_startup": node.startup.snapshot(),
         })
         node.destroy_node()
         rclpy.shutdown()

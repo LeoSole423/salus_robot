@@ -8,15 +8,15 @@
               <ReactiveSequence name="KeepHealthyPath">
                 <Inverter><GlobalUpdatedGoal/></Inverter>
                 <IsPathValid path="{path}"/>
-                <IsPathHealthValid path="{path}" context="0" expected_state="0" service_name="/path_health/evaluate"/>
+                <IsPathHealthValid path="{path}" context="0" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
               </ReactiveSequence>
               <ReactiveSequence name="StopAndWaitForPathData">
-                <IsPathHealthValid path="{path}" context="0" expected_state="2" service_name="/path_health/evaluate"/>
+                <IsPathHealthValid path="{path}" context="0" expected_state="2" service_name="/path_health/evaluate" server_timeout="500"/>
                 <Wait wait_duration="1"/>
               </ReactiveSequence>
               <Sequence name="ComputeHealthyPath">
                 <ComputePathToPose goal="{goal}" path="{candidate_path}" planner_id="GridBased"/>
-                <IsPathHealthValid path="{candidate_path}" context="1" expected_state="0" service_name="/path_health/evaluate"/>
+                <IsPathHealthValid path="{candidate_path}" context="1" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
                 <CopyPath input_path="{candidate_path}" output_path="{path}"/>
               </Sequence>
             </Fallback>

@@ -55,6 +55,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "/path_health/evaluate" in tree
     assert 'context="1"' in tree
     assert "IsPathHealthValid" in tree
+    assert tree.count('server_timeout="500"') == 3
     assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree
@@ -70,3 +71,5 @@ def test_startup_coordinator_keeps_lifecycle_activation_causal() -> None:
     assert '"/keepout_filter_mask"' in source
     assert 'lookup_transform("map", "base_footprint"' in source
     assert "ManageLifecycleNodes.Request.STARTUP" in source
+    assert 'EvaluatePathHealth, "/path_health/evaluate"' in source
+    assert "path_health_preflight" in source
