@@ -4,6 +4,7 @@ import math
 import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -24,6 +25,16 @@ class ScanGroundFilter(Node):
         self.target=str(self.get_parameter("target_frame").value); profile=str(self.get_parameter("profile").value)
         self.tolerance=0.25 if profile == "rural" else float(self.get_parameter("ground_tolerance_m").value); self.range_max=float(self.get_parameter("range_max").value)
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self);self.pub=self.create_publisher(PointCloud2,str(self.get_parameter("output_topic").value),qos_profile_sensor_data);self.create_subscription(PointCloud2,str(self.get_parameter("input_topic").value),self.on_cloud,qos_profile_sensor_data)
+        self.add_on_set_parameters_callback(self.on_parameters)
+    def on_parameters(self,parameters):
+        tolerance=self.tolerance
+        for parameter in parameters:
+            if parameter.name == "ground_tolerance_m":
+                tolerance=float(parameter.value)
+                if not 0.0 < tolerance <= 0.5:
+                    return SetParametersResult(successful=False,reason="ground_tolerance_m must be in (0, 0.5]")
+        self.tolerance=tolerance
+        return SetParametersResult(successful=True)
     def on_cloud(self,msg:PointCloud2)->None:
         try: transform=self.buffer.lookup_transform(self.target,msg.header.frame_id,rclpy.time.Time(),timeout=Duration(seconds=0.05))
         except TransformException as error:

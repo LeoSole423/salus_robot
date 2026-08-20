@@ -15,8 +15,13 @@ simulación.
   datos, cooldown, limpieza de costmaps, reanclaje hacia delante y límite de
   intentos observable en los campos `blocked_*`.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
-  ni invoca Nav2 directamente. Recuperación, acciones, perfiles, patrulla y
-  HOME siguen fuera de este corte.
+  ni invoca Nav2 directamente.
+- Las acciones `brake_hold` y `set_navigation_profile` se ejecutan sólo en
+  checkpoints originales. Tienen estado explícito y se cancelan ante takeover,
+  collision stop o cancelación de misión.
+- `navigation_profile_coordinator` aplica `urban`/`rural` como transacción sobre
+  filtro de suelo, inflation local/global y controlador. Ante rechazo restaura
+  todos los componentes ya modificados. Patrulla y HOME siguen pendientes.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa

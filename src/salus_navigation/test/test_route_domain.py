@@ -1,6 +1,7 @@
 from math import nan
 from salus_navigation.route_model import RouteWaypoint
 from salus_navigation.route_preparation import expand, prepare, resolve_yaws
+from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
 from salus_navigation.route_chunker import build_chunk, next_start
 
@@ -68,3 +69,9 @@ def test_expanded_loop_chunk_ends_at_checkpoint_without_full_circuit():
     assert chunk.waypoints[-1].key is True
     assert len(chunk.waypoints) < len(route.waypoints)
     assert all(chunk.waypoints[offset].key for offset in chunk.checkpoint_offsets)
+
+
+def test_supported_actions_are_accepted_but_unknown_actions_are_rejected():
+    base = ([1.0], [2.0], [0.0])
+    assert validate_inputs(*base, ['[{"type":"brake_hold","duration_s":1}]'], ["normal"]) == ""
+    assert "unsupported" in validate_inputs(*base, ['[{"type":"camera"}]'], ["normal"])

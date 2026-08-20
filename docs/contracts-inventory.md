@@ -19,8 +19,8 @@ corte público en `salus_interfaces`.
 | Batería | `BatteryMissionGuard`, `BatteryState` | migrado; se mantiene separación guardia/SOC |
 | Navegación | `NavTelemetry`, `NavEvent`, freno, modo manual, estado, goals LL, cancelación y zonas GeoJSON | arbitraje, goal único Nav2, keepout dinámico, path estable y rutas multi-waypoint migrados; recuperación queda pendiente |
 | Salud de path (interna) | `PathHealth` | contrato de diagnóstico entre evaluador y BT; conserva, recalcula o detiene la navegación automática sin exponer una API web |
-| Ruta/patrulla | `SetRouteMissionLL`, cancelación y estado de ruta | rutas migradas; HOME, retorno y acciones siguen pendientes |
-| Perfiles | `SetNavigationProfile` | conservar `urban`/`rural` o generalizar |
+| Ruta/patrulla | `SetRouteMissionLL`, cancelación y estado de ruta | rutas y acciones vigentes migradas; HOME y retorno pendientes |
+| Perfiles | `SetNavigationProfile` | `urban`/`rural` migrados mediante aplicación transaccional |
 | Zonas | GeoJSON y zonas tipadas | elegir una representación canónica |
 | Observabilidad | telemetría, eventos, snapshots | telemetría/eventos básicos y observador Nav2 migrados; snapshots pendientes |
 | Cámara | PTZ, presets y estado | separar control de transporte WebRTC |

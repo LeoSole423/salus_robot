@@ -11,5 +11,6 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-47}" -e GZ_PART
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch routes "ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true world:=${free_world}"
   smoke_run route_executor "python3 /ros2_ws/tools/smoke_route_executor_sim.py"
+  smoke_run navigation_profiles "python3 /ros2_ws/tools/smoke_navigation_profiles.py"
   smoke_note "route_mission_progress_valid"
 '

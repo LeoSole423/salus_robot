@@ -86,7 +86,7 @@ components:
       - src/salus_navigation/salus_navigation/nav_command_server.py
       - src/salus_navigation/launch/safety_arbitration_sim.launch.py
       - tools/smoke_safety_sim.py
-    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled route recovery and causal lifecycle startup are ported in simulation. Actions, patrol and HOME remain pending; legacy A/B visual parity is pending.
+    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Patrol and HOME remain pending; legacy A/B visual parity is pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt
