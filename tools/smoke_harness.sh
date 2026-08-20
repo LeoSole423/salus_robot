@@ -6,6 +6,7 @@ smoke_init() {
   SMOKE_SCENARIO="$1"
   SMOKE_TIMEOUT_S="${SMOKE_TIMEOUT_S:-240}"
   SMOKE_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  SMOKE_STARTED_MONOTONIC="${SECONDS}"
   SMOKE_RUN_ID="${SMOKE_SCENARIO}-$(date -u +%Y%m%dT%H%M%S)-$$"
   SMOKE_ARTIFACT_DIR="${SMOKE_ARTIFACT_ROOT:-/ros2_ws/artifacts/smokes}/${SMOKE_RUN_ID}"
   SMOKE_LAUNCH_PIDS=()
@@ -53,6 +54,7 @@ smoke_run() {
   local name="$1" command="$2" log_file
   smoke_reserve_artifact_name "${name}"
   log_file="${SMOKE_ARTIFACT_DIR}/${name}.log"
+  SMOKE_STARTUP_FINISHED_MONOTONIC="${SECONDS}"
   if ! bash -lc "${command}" >"${log_file}" 2>&1; then
     printf 'Smoke assertion %s failed; output follows:\n' "${name}" >&2
     cat "${log_file}" >&2 || true
@@ -62,6 +64,7 @@ smoke_run() {
   # successful run: some ROS CLI tools emit terminal-control or NUL bytes
   # which make CI logs unreadable.
   printf 'Smoke assertion %s passed; log: %s\n' "${name}" "${log_file}"
+  SMOKE_FUNCTIONAL_FINISHED_MONOTONIC="${SECONDS}"
   smoke_note "passed:${name}"
 }
 
@@ -113,7 +116,6 @@ smoke_wait_lifecycle() {
 }
 
 smoke_collect_diagnostics() {
-  local status="$1"
   # Collect while the launch is still alive.  Each query is bounded so a
   # broken discovery service cannot prevent process cleanup.
   timeout --kill-after=1s 2s ros2 node list >"${SMOKE_ARTIFACT_DIR}/nodes.txt" 2>&1 || true
@@ -137,13 +139,20 @@ smoke_collect_diagnostics() {
     printf '\n## %s\n' "${topic}" >>"${SMOKE_ARTIFACT_DIR}/last_states.txt"
     timeout --kill-after=1s 2s ros2 topic echo "${topic}" --once >>"${SMOKE_ARTIFACT_DIR}/last_states.txt" 2>&1 || true
   done
+}
+
+smoke_write_report() {
+  local status="$1" cleanup_started="$2" cleanup_finished="$3"
+  local functional_finished="${SMOKE_FUNCTIONAL_FINISHED_MONOTONIC:-${cleanup_started}}"
+  local startup_finished="${SMOKE_STARTUP_FINISHED_MONOTONIC:-${functional_finished}}"
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
-    "${SMOKE_READY_EVENTS[*]}" <<'PY'
+    "${SMOKE_READY_EVENTS[*]}" "${SMOKE_STARTED_MONOTONIC}" \
+    "${startup_finished}" "${functional_finished}" "${cleanup_started}" "${cleanup_finished}" <<'PY'
 import json
 import sys
 
-path, scenario, run_id, started, status, timeout_s, events = sys.argv[1:]
+path, scenario, run_id, started, status, timeout_s, events, scenario_started, startup_finished, functional_finished, cleanup_started, cleanup_finished = sys.argv[1:]
 import os
 with open(path, "w", encoding="utf-8") as report:
     json.dump({
@@ -153,6 +162,13 @@ with open(path, "w", encoding="utf-8") as report:
         "status": status,
         "smoke_timeout_s": int(timeout_s),
         "readiness": events.split(),
+        "timing": {
+            "startup_s": max(0, int(startup_finished) - int(scenario_started)),
+            "functional_s": max(0, int(functional_finished) - int(startup_finished)),
+            "pre_cleanup_s": max(0, int(cleanup_started) - int(scenario_started)),
+            "cleanup_s": max(0, int(cleanup_finished) - int(cleanup_started)),
+            "total_s": max(0, int(cleanup_finished) - int(scenario_started)),
+        },
         "isolation": {
             "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
             "gz_partition": os.environ.get("GZ_PARTITION", ""),
@@ -166,8 +182,14 @@ PY
 
 smoke_cleanup() {
   local status=$?
+  local cleanup_started="${SECONDS}"
   trap - EXIT
-  smoke_collect_diagnostics "${status}"
+  # Full graph inspection is valuable on failure, but costs tens of seconds
+  # on a healthy Nav2 graph. Successful scenarios retain their probe reports
+  # and a lightweight harness report without risking a timeout in teardown.
+  if (( status != 0 )) || [[ "${SMOKE_FULL_DIAGNOSTICS:-0}" == "1" ]]; then
+    smoke_collect_diagnostics
+  fi
   for pid in "${SMOKE_LAUNCH_PIDS[@]:-}"; do
     kill -TERM -- "-${pid}" 2>/dev/null || kill -TERM "${pid}" 2>/dev/null || true
   done
@@ -186,6 +208,7 @@ smoke_cleanup() {
     fi
     wait "${pid}" 2>/dev/null || true
   done
+  smoke_write_report "${status}" "${cleanup_started}" "${SECONDS}"
   if (( status != 0 )); then
     printf 'Smoke %s failed; diagnostics: %s\n' "${SMOKE_SCENARIO}" "${SMOKE_ARTIFACT_DIR}" >&2
     for log in "${SMOKE_ARTIFACT_DIR}"/*.log; do

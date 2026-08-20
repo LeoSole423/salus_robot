@@ -93,6 +93,8 @@ jobs:
         id: smoke_integration
         if: always() && steps.workspace.outcome == 'success'
         continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "180"
         run: ./tools/run_smoke.sh ./tools/smoke_integration_sim.sh
       - name: Upload smoke diagnostics
         if: always()
@@ -144,16 +146,22 @@ jobs:
         id: smoke_navigation
         if: always() && steps.workspace.outcome == 'success'
         continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_core_sim.sh
       - name: Smoke — navigation zones
         id: smoke_zones
         if: always() && steps.workspace.outcome == 'success'
         continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_zones_sim.sh
       - name: Smoke — route executor
         id: smoke_routes
         if: always() && steps.workspace.outcome == 'success'
         continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_route_executor_sim.sh
       - name: Upload smoke diagnostics
         if: always()
