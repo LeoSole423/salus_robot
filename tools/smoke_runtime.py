@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import rclpy
+from diagnostic_msgs.msg import DiagnosticArray
 
 
 class PhaseState(str, Enum):
@@ -46,6 +47,45 @@ class ScenarioReport:
 
 class SmokeTimeout(RuntimeError):
     pass
+
+
+@dataclass
+class NavigationStartupEvidence:
+    """Last causal startup diagnostic published by the Nav2 coordinator."""
+
+    messages: int = 0
+    state: str = "UNSEEN"
+    reason: str = "no navigation startup diagnostic received"
+    values: dict[str, str] = field(default_factory=dict)
+
+    def record(self, message: DiagnosticArray) -> None:
+        for status in message.status:
+            if status.name != "navigation_startup":
+                continue
+            self.messages += 1
+            self.values = {item.key: item.value for item in status.values}
+            self.state = self.values.get("state", "UNKNOWN")
+            self.reason = self.values.get("reason", status.message)
+
+    @property
+    def active(self) -> bool:
+        return self.state == "ACTIVE"
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "messages": self.messages,
+            "state": self.state,
+            "reason": self.reason,
+            "values": self.values,
+        }
+
+
+def subscribe_navigation_startup(node) -> NavigationStartupEvidence:
+    evidence = NavigationStartupEvidence()
+    node.create_subscription(
+        DiagnosticArray, "/navigation_startup/diagnostics", evidence.record, 10
+    )
+    return evidence
 
 
 class AsyncServicePoller:

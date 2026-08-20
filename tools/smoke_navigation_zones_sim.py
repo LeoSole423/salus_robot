@@ -16,7 +16,7 @@ from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.srv import GetZonesState, SetNavGoalLL, SetZonesGeoJson
 from std_srvs.srv import Trigger
-from smoke_runtime import SmokeRuntime
+from smoke_runtime import AsyncServicePoller, SmokeRuntime, subscribe_navigation_startup
 
 
 DATUM_LAT, DATUM_LON = -31.4858037, -64.2410570
@@ -42,6 +42,7 @@ class ZonesSmoke(Node):
         self.get_zones = self.create_client(GetZonesState, "/zones_manager/get_state")
         self.reload = self.create_client(Trigger, "/zones_manager/reload_from_disk")
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
+        self.startup = subscribe_navigation_startup(self)
 
 
 def wait_for(node, predicate, timeout, message):
@@ -97,7 +98,28 @@ def main():
     success = False
     failure = None
     try:
-        wait_for(node, lambda: node.odom and node.mask, 45.0, "global odometry or keepout mask unavailable")
+        wait_for(
+            node, lambda: node.startup.active, 45.0,
+            "navigation startup did not become active",
+        )
+        initial_state = AsyncServicePoller(
+            node.get_zones, GetZonesState.Request,
+            interval_s=0.25, response_timeout_s=40.0,
+        )
+        runtime.wait(
+            "zones manager initial mask ready",
+            lambda: initial_state.latest is not None and initial_state.latest.mask_ready,
+            45.0,
+            stimulate=initial_state.poll,
+            observe=lambda: {
+                **initial_state.evidence(),
+                "mask_ready": (
+                    initial_state.latest.mask_ready
+                    if initial_state.latest is not None else False
+                ),
+            },
+        )
+        wait_for(node, lambda: node.odom and node.mask, 20.0, "global odometry or keepout mask unavailable")
         current = node.odom[-1]
         response = call(node, node.set_zones, SetZonesGeoJson.Request(geojson=json.dumps(polygon_at(current))), "set zones unavailable")
         if not response.ok or response.polygon_count != 1 or not response.map_reloaded: raise RuntimeError(response.error or "zone was not applied")
@@ -131,7 +153,8 @@ def main():
         raise
     finally:
         runtime.finish(success, error=failure, evidence={
-            "odometry": len(node.odom), "masks": len(node.mask), "plans": len(node.plans)
+            "odometry": len(node.odom), "masks": len(node.mask), "plans": len(node.plans),
+            "navigation_startup": node.startup.snapshot(),
         })
         node.destroy_node(); rclpy.shutdown()
 
