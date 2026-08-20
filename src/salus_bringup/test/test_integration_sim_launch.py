@@ -23,10 +23,15 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "safety_arbitration_sim.launch.py",
         "navigation_core_sim.launch.py",
         "navigation_zones_sim.launch.py",
+        "route_executor_sim.launch.py",
+        "patrol_mission_sim.launch.py",
     ):
         assert launch_file in contents
     assert "launch_navigation" in contents
     assert "use_keepout" in contents
+    assert "launch_routes" in contents
+    assert "launch_patrol" in contents
+    assert contents.count('DeclareLaunchArgument(\n                "world"') == 1
 
 
 def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:

@@ -21,10 +21,17 @@ simulación.
   collision stop o cancelación de misión.
 - `navigation_profile_coordinator` aplica `urban`/`rural` como transacción sobre
   filtro de suelo, inflation local/global y controlador. Ante rechazo restaura
-  todos los componentes ya modificados. Patrulla y HOME siguen pendientes.
-- `patrol_domain` ya caracteriza la misión estructurada HOME/salida/loop/retorno,
-  su selección de salida y el retorno por batería enclavado. La adaptación ROS
-  y la ejecución simulada se incorporarán en el siguiente corte.
+  todos los componentes ya modificados.
+- API de patrulla: `/route_executor/set_patrol_mission_ll`,
+  `/route_executor/cancel_patrol_mission`,
+  `/route_executor/get_patrol_mission_state` y
+  `/route_executor/request_return_home`. `patrol_mission_coordinator` conserva
+  HOME/salida/loop/retorno, convierte toda la misión antes de reemplazar la
+  activa, persiste `runtime/patrol/patrol_mission.json` atómicamente y delega
+  los tramos a `route_executor`. El retorno por batería aún no está conectado.
+- `patrol_mission_sim.launch.py` requiere que `route_executor` ya esté activo.
+  En el checkpoint integrado se habilitan ambos con
+  `launch_routes:=true launch_patrol:=true`.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa

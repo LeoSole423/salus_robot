@@ -232,6 +232,19 @@ class RouteExecutorNode(Node):
             if message.nav_result_text == "succeeded":
                 self._recovery.reset()
                 point = self._chunk.waypoints[self._target_offset]
+                # Coordinators (patrol/HOME) consume this typed-by-convention
+                # event instead of inferring a checkpoint from a later state
+                # poll.  Publish it before actions or dispatching the next
+                # goal so the reached original index is never ambiguous.
+                self._event(
+                    DiagnosticStatus.OK,
+                    "ROUTE_CHECKPOINT_REACHED",
+                    "route checkpoint reached",
+                    mission_id=self._mission.mission_id,
+                    input_index=point.input_index,
+                    chunk_id=self._mission.chunk_id,
+                    loop_iteration=self._mission.loop_iteration,
+                )
                 actions = parse_actions(point.action_json, point.input_index)[0]
                 if point.key and actions:
                     self._start_actions(point.input_index, actions)
