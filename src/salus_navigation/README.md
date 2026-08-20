@@ -22,6 +22,9 @@ simulación.
 - `navigation_profile_coordinator` aplica `urban`/`rural` como transacción sobre
   filtro de suelo, inflation local/global y controlador. Ante rechazo restaura
   todos los componentes ya modificados. Patrulla y HOME siguen pendientes.
+- `patrol_domain` ya caracteriza la misión estructurada HOME/salida/loop/retorno,
+  su selección de salida y el retorno por batería enclavado. La adaptación ROS
+  y la ejecución simulada se incorporarán en el siguiente corte.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa
