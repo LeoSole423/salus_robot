@@ -107,7 +107,7 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_navigation",
                 "navigation_core_sim.launch.py",
-                common,
+                {"use_sim_time": use_sim_time, "use_keepout": use_keepout},
                 condition=IfCondition(launch_navigation),
             ),
             _include(

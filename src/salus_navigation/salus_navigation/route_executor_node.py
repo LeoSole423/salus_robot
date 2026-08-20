@@ -31,6 +31,7 @@ from .route_recovery import (
     resolve_forward_reanchor,
 )
 from .route_state_machine import transition
+from .nav_command_server import diagnostic_level
 
 
 class RouteExecutorNode(Node):
@@ -433,7 +434,7 @@ class RouteExecutorNode(Node):
         self._event_id += 1
         event = NavEvent()
         event.stamp = self.get_clock().now().to_msg()
-        event.severity, event.component = severity, "route_executor"
+        event.severity, event.component = diagnostic_level(severity), "route_executor"
         event.code, event.message, event.event_id = code, message, self._event_id
         event.details = [KeyValue(key=str(key), value=str(value))
                          for key, value in details.items()]

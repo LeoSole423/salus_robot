@@ -95,3 +95,28 @@ def test_evidence_requires_increasing_timestamps() -> None:
     assert not evidence.has_progress
     evidence.record(_odom(4), probe.validate_odometry)
     assert evidence.has_progress
+
+
+def test_required_service_readiness_is_conjunctive() -> None:
+    class Client:
+        def __init__(self, ready):
+            self.ready = ready
+
+        def service_is_ready(self):
+            return self.ready
+
+    node = object.__new__(probe.IntegrationProbe)
+    node.required_services = {"one": Client(True), "two": Client(True)}
+    assert node.services_ready()
+    node.required_services["two"].ready = False
+    assert not node.services_ready()
+
+
+def test_graph_readiness_requires_unique_authorities() -> None:
+    node = object.__new__(probe.IntegrationProbe)
+    node.get_node_names_and_namespaces = lambda: [("robot_state_publisher", "/")]
+    counts = {"/cmd_vel_final": 1, "/scan_3d_raw": 1}
+    node.count_publishers = lambda topic: counts.get(topic, 0)
+    assert node.graph_ready()
+    counts["/cmd_vel_final"] = 2
+    assert not node.graph_ready()

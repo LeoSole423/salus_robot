@@ -15,11 +15,14 @@ from typing import Any
 
 import rclpy
 from nav_msgs.msg import Odometry
+from rcl_interfaces.srv import GetParameters
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
+from salus_interfaces.srv import EvaluatePathHealth, GetNavState, SetSimBatteryPreset
+from salus_interfaces.msg import CmdVelFinal
 from tf2_ros import Buffer, TransformException, TransformListener
 
 
@@ -154,17 +157,45 @@ class IntegrationProbe(Node):
         super().__init__("integration_structure_probe", parameter_overrides=[])
         self.odom = TopicEvidence()
         self.scan = TopicEvidence()
+        self.final_commands = 0
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self, spin_thread=False)
         self.tf_result: dict[str, Any] = {"map_to_odom": False, "odom_to_base_footprint": False}
+        self.required_services = {
+            "robot_state_publisher": self.create_client(
+                GetParameters, "/robot_state_publisher/get_parameters"
+            ),
+            "controller": self.create_client(
+                SetSimBatteryPreset, "/sim_battery/set_preset"
+            ),
+            "navigation": self.create_client(
+                GetNavState, "/nav_command_server/get_state"
+            ),
+            "path_health": self.create_client(
+                EvaluatePathHealth, "/path_health/evaluate"
+            ),
+        }
         self.create_subscription(Odometry, "/odometry/global", self._on_odom, QoSProfile(depth=10))
         self.create_subscription(LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data)
+        self.create_subscription(CmdVelFinal, "/cmd_vel_final", self._on_final_command, 10)
 
     def _on_odom(self, message: Odometry) -> None:
         self.odom.record(message, validate_odometry)
 
     def _on_scan(self, message: LaserScan) -> None:
         self.scan.record(message, validate_scan)
+
+    def _on_final_command(self, _message: CmdVelFinal) -> None:
+        self.final_commands += 1
+
+    def graph_ready(self) -> bool:
+        names = [name for name, namespace in self.get_node_names_and_namespaces()
+                 if f"{namespace.rstrip('/')}/{name}" == "/robot_state_publisher"]
+        return (
+            len(names) == 1
+            and self.count_publishers("/cmd_vel_final") == 1
+            and self.count_publishers("/scan_3d_raw") >= 1
+        )
 
     def check_tf(self) -> bool:
         try:
@@ -188,7 +219,20 @@ class IntegrationProbe(Node):
             "odometry": self.odom.__dict__,
             "scan": self.scan.__dict__,
             "tf": self.tf_result,
+            "services": {
+                name: client.service_is_ready()
+                for name, client in self.required_services.items()
+            },
+            "graph": {
+                "ready": self.graph_ready(),
+                "cmd_vel_final_publishers": self.count_publishers("/cmd_vel_final"),
+                "scan_3d_raw_publishers": self.count_publishers("/scan_3d_raw"),
+                "final_commands": self.final_commands,
+            },
         }
+
+    def services_ready(self) -> bool:
+        return all(client.service_is_ready() for client in self.required_services.values())
 
 
 def _failure_reason(evidence: TopicEvidence, label: str) -> str:
@@ -225,7 +269,10 @@ def main() -> int:
             rclpy.spin_once(node, timeout_sec=0.1)
             odom_failure = _failure_reason(node.odom, "odometry")
             scan_failure = _failure_reason(node.scan, "scan")
-            if not odom_failure and not scan_failure and node.check_tf():
+            if (
+                not odom_failure and not scan_failure
+                and node.check_tf() and node.services_ready() and node.graph_ready()
+            ):
                 break
         odom_failure = _failure_reason(node.odom, "odometry")
         scan_failure = _failure_reason(node.scan, "scan")
@@ -233,6 +280,14 @@ def main() -> int:
             failure = "; ".join(filter(None, (odom_failure, scan_failure)))
         elif not node.check_tf():
             failure = f"TF unavailable: {node.tf_result.get('error', node.tf_result)}"
+        elif not node.services_ready():
+            unavailable = [
+                name for name, client in node.required_services.items()
+                if not client.service_is_ready()
+            ]
+            failure = f"required services unavailable: {unavailable}"
+        elif not node.graph_ready():
+            failure = f"runtime graph invalid: {node.report()['graph']}"
         report = node.report() | {"success": not failure, "failure": failure, "timeout_s": args.timeout}
         args.report_path.parent.mkdir(parents=True, exist_ok=True)
         args.report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

@@ -47,6 +47,8 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert '"/keepout_filter_mask"' in source
     assert "TRANSIENT_LOCAL" in source
     assert "lifecycle_manager" in launch
+    assert '"autostart": False' in launch
+    assert "nav2_startup_coordinator" in launch
     assert "nav_observer" in launch
     assert "path_health" in launch
     assert "/path_health/evaluate" in tree
@@ -56,3 +58,14 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "NavigateToPose" not in tree
     assert "FollowPath" in tree
     assert "Spin" not in tree and "BackUp" not in tree
+
+
+def test_startup_coordinator_keeps_lifecycle_activation_causal() -> None:
+    source = (ROOT / "salus_navigation" / "nav2_startup_coordinator.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"/odometry/global"' in source
+    assert '"/scan_clean"' in source
+    assert '"/keepout_filter_mask"' in source
+    assert 'lookup_transform("map", "base_footprint"' in source
+    assert "ManageLifecycleNodes.Request.STARTUP" in source
