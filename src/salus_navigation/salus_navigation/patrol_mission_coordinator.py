@@ -19,7 +19,8 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from robot_localization.srv import FromLL
-from salus_interfaces.msg import NavEvent
+from salus_interfaces.msg import BatteryMissionGuard, NavEvent
+from sensor_msgs.msg import BatteryState
 from salus_interfaces.srv import (
     CancelPatrolMission, CancelRouteMission, GetPatrolMissionState,
     GetRouteMissionState, RequestReturnHome, SetPatrolMissionLL,
@@ -28,6 +29,7 @@ from salus_interfaces.srv import (
 
 from .nav_command_server import diagnostic_level
 from .patrol_domain import PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute
+from .patrol_battery_input import PatrolBatteryInputPolicy
 from .patrol_store import write_atomic
 from .route_actions import parse_actions
 from .route_model import RouteWaypoint
@@ -162,6 +164,12 @@ class PatrolMissionCoordinator(Node):
         self.declare_parameter("default_chunk_span_m", 20.0)
         self.declare_parameter("default_chunk_max_waypoints", 5)
         self.declare_parameter("runtime_dir", "runtime/patrol")
+        # Inputs only in this cut.  A later mission-state cut consumes the
+        # latched decision; these callbacks must not change phases or motion.
+        self.declare_parameter("battery_guard_topic", "/battery_mission_guard")
+        self.declare_parameter("battery_state_topic", "/battery_state")
+        self.declare_parameter("battery_guard_timeout_s", 3.0)
+        self.declare_parameter("low_battery_threshold_pct", 25.0)
         self._lock = threading.RLock()
         self._machine = None
         self._spec = None
@@ -172,6 +180,10 @@ class PatrolMissionCoordinator(Node):
         self._last_status, self._last_error = "IDLE", ""
         self._pose = None
         self._event_id = 0
+        self._battery_input = PatrolBatteryInputPolicy(
+            guard_timeout_s=float(self.get_parameter("battery_guard_timeout_s").value),
+            low_battery_threshold_pct=float(
+                self.get_parameter("low_battery_threshold_pct").value))
         group = ReentrantCallbackGroup()
         self._fromll = [
             self.create_client(
@@ -201,6 +213,16 @@ class PatrolMissionCoordinator(Node):
             NavEvent,
             "/nav_command_server/events",
             self._on_event,
+            10)
+        self.create_subscription(
+            BatteryMissionGuard,
+            str(self.get_parameter("battery_guard_topic").value),
+            self._on_battery_guard,
+            10)
+        self.create_subscription(
+            BatteryState,
+            str(self.get_parameter("battery_state_topic").value),
+            self._on_battery_state,
             10)
         self._events = self.create_publisher(
             NavEvent, "/nav_command_server/events", 10)
@@ -233,6 +255,21 @@ class PatrolMissionCoordinator(Node):
 
     def _on_pose(self, message):
         self._pose = message.pose.pose.position
+
+    def _on_battery_guard(self, message):
+        """Record a classified guard input; transition ownership comes later."""
+        with self._lock:
+            self._battery_input.ingest_guard(
+                ready=message.ready, fresh=message.fresh, state=message.state,
+                return_home_recommended=message.return_home_recommended,
+                now_s=self._now())
+
+    def _on_battery_state(self, message):
+        """Record the legacy SOC fallback without overriding a valid guard."""
+        with self._lock:
+            self._battery_input.ingest_soc(
+                present=message.present, percentage=message.percentage,
+                now_s=self._now())
 
     def _set(self, request, response):
         spec, error = patrol_spec_from_request(request, self._defaults())
@@ -351,6 +388,9 @@ class PatrolMissionCoordinator(Node):
         except OSError as exc:
             self._reject(f"could not persist patrol mission: {exc}")
             return
+        # The input policy owns a latch per accepted mission, but this cut
+        # deliberately does not consume that latch to alter patrol phases.
+        self._battery_input.begin_mission()
         self._machine, self._spec, self._route_mission_id = mission, spec, ""
         self._last_status, self._last_error = phase.value, ""
         self._event(
