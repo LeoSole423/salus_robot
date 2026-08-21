@@ -29,6 +29,8 @@ def generate_launch_description() -> LaunchDescription:
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
     launch_routes = LaunchConfiguration("launch_routes")
     launch_patrol = LaunchConfiguration("launch_patrol")
+    patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
+    patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -76,6 +78,14 @@ def generate_launch_description() -> LaunchDescription:
                 "launch_patrol", default_value="false",
                 description="Start the optional structured patrol/HOME coordinator.",
             ),
+            DeclareLaunchArgument(
+                "patrol_battery_guard_topic", default_value="/battery_mission_guard",
+                description="Battery guard consumed by structured patrol.",
+            ),
+            DeclareLaunchArgument(
+                "patrol_battery_state_topic", default_value="/battery_state",
+                description="SOC fallback consumed by structured patrol.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -111,7 +121,11 @@ def generate_launch_description() -> LaunchDescription:
                 condition=IfCondition(launch_routes),
             ),
             _include(
-                "salus_navigation", "patrol_mission_sim.launch.py", common,
+                "salus_navigation", "patrol_mission_sim.launch.py", {
+                    **common,
+                    "battery_guard_topic": patrol_battery_guard_topic,
+                    "battery_state_topic": patrol_battery_state_topic,
+                },
                 condition=IfCondition(launch_patrol),
             ),
             _include(

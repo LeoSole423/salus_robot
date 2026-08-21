@@ -86,7 +86,9 @@ components:
       - src/salus_navigation/salus_navigation/nav_command_server.py
       - src/salus_navigation/launch/safety_arbitration_sim.launch.py
       - tools/smoke_safety_sim.py
-    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Structured patrol/HOME now has ROS contracts, atomic LL conversion/persistence and delegates route execution without commanding Nav2 or velocity. Battery-triggered return and legacy A/B visual parity remain pending.
+      - tools/smoke_patrol_battery_sim.py
+      - docs/decisions/0003-latched-battery-return-home.md
+    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Legacy A/B and hardware parity remain pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt

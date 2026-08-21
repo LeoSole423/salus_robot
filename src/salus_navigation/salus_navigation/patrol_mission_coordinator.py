@@ -22,13 +22,15 @@ from robot_localization.srv import FromLL
 from salus_interfaces.msg import BatteryMissionGuard, NavEvent
 from sensor_msgs.msg import BatteryState
 from salus_interfaces.srv import (
-    CancelPatrolMission, CancelRouteMission, GetPatrolMissionState,
+    BrakeNav, CancelPatrolMission, CancelRouteMission, GetPatrolMissionState,
     GetRouteMissionState, RequestReturnHome, SetPatrolMissionLL,
     SetRouteMissionLL,
 )
 
 from .nav_command_server import diagnostic_level
-from .patrol_domain import PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute
+from .patrol_domain import (
+    PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute,
+)
 from .patrol_battery_input import PatrolBatteryInputPolicy
 from .patrol_store import write_atomic
 from .route_actions import parse_actions
@@ -203,6 +205,10 @@ class PatrolMissionCoordinator(Node):
             CancelRouteMission,
             "/route_executor/cancel_route_mission",
             callback_group=group)
+        self._brake = self.create_client(
+            BrakeNav,
+            "/nav_command_server/brake",
+            callback_group=group)
         self._route_state = self.create_client(
             GetRouteMissionState,
             "/route_executor/get_route_mission_state",
@@ -257,19 +263,75 @@ class PatrolMissionCoordinator(Node):
         self._pose = message.pose.pose.position
 
     def _on_battery_guard(self, message):
-        """Record a classified guard input; transition ownership comes later."""
+        """Classify a guard sample and consume only a new mission latch."""
         with self._lock:
-            self._battery_input.ingest_guard(
+            decision = self._battery_input.ingest_guard(
                 ready=message.ready, fresh=message.fresh, state=message.state,
                 return_home_recommended=message.return_home_recommended,
                 now_s=self._now())
+            self._consume_battery_decision(decision)
 
     def _on_battery_state(self, message):
         """Record the legacy SOC fallback without overriding a valid guard."""
         with self._lock:
-            self._battery_input.ingest_soc(
+            decision = self._battery_input.ingest_soc(
                 present=message.present, percentage=message.percentage,
                 now_s=self._now())
+            self._consume_battery_decision(decision)
+
+    def _consume_battery_decision(self, decision):
+        machine = self._machine
+        if machine is None or not decision.newly_latched:
+            return
+        transition = machine.latch_battery_return(at_home=self._at_home())
+        self._last_status = machine.state.phase.value
+        self._event(
+            DiagnosticStatus.WARN,
+            "BATTERY_RETURN_LATCHED",
+            "battery return decision latched until HOME or explicit cancellation",
+            source=decision.source,
+            disposition=transition.disposition.value,
+            previous_phase=transition.previous_phase.value,
+            phase=transition.phase.value)
+        if transition.cancel_active_route:
+            if self._brake.service_is_ready():
+                self._brake.call_async(
+                    BrakeNav.Request(duration_s=0.5, brake_pct=100))
+            if not self._cancel_route.service_is_ready():
+                machine.abort("battery return could not cancel departure route")
+                self._last_status = machine.state.phase.value
+                self._last_error = machine.state.pause_reason
+                self._event(
+                    DiagnosticStatus.ERROR,
+                    "BATTERY_RETURN_CANCEL_UNAVAILABLE",
+                    self._last_error)
+                return
+            future = self._cancel_route.call_async(CancelRouteMission.Request())
+            future.add_done_callback(self._on_battery_departure_cancelled)
+
+    def _on_battery_departure_cancelled(self, future):
+        try:
+            result = future.result()
+            if result is None or not result.ok:
+                raise RuntimeError(
+                    "empty cancellation response" if result is None else result.error)
+        except Exception as exc:
+            with self._lock:
+                if self._machine is not None:
+                    self._machine.abort(f"battery departure cancellation failed: {exc}")
+                    self._last_status = self._machine.state.phase.value
+                    self._last_error = self._machine.state.pause_reason
+                    self._event(
+                        DiagnosticStatus.ERROR,
+                        "BATTERY_RETURN_CANCEL_FAILED",
+                        self._last_error)
+
+    def _at_home(self):
+        return bool(
+            self._pose is not None and self._spec is not None
+            and hypot(self._pose.x - self._spec.home.map_x,
+                      self._pose.y - self._spec.home.map_y)
+            <= float(self.get_parameter("at_home_tolerance_m").value))
 
     def _set(self, request, response):
         spec, error = patrol_spec_from_request(request, self._defaults())
@@ -381,16 +443,19 @@ class PatrolMissionCoordinator(Node):
             self._pose.y -
             spec.home.map_y) <= float(
             self.get_parameter("at_home_tolerance_m").value)
-        phase = mission.start(at_home=at_home)
         try:
             write_atomic(Path(str(self.get_parameter(
                 "runtime_dir").value)) / "patrol_mission.json", spec)
         except OSError as exc:
             self._reject(f"could not persist patrol mission: {exc}")
             return
-        # The input policy owns a latch per accepted mission, but this cut
-        # deliberately does not consume that latch to alter patrol phases.
+        # The input policy owns a latch per accepted mission and re-evaluates
+        # the current fresh input after clearing the old mission.
         self._battery_input.begin_mission()
+        battery_decision = self._battery_input.evaluate(now_s=self._now())
+        phase = mission.start(
+            at_home=at_home,
+            battery_return_latched=battery_decision.latched)
         self._machine, self._spec, self._route_mission_id = mission, spec, ""
         self._last_status, self._last_error = phase.value, ""
         self._event(
@@ -400,6 +465,14 @@ class PatrolMissionCoordinator(Node):
             mission_id=mission.state.mission_id,
             phase=phase.value,
             at_home=at_home)
+        if battery_decision.latched:
+            self._event(
+                DiagnosticStatus.WARN,
+                "PATROL_HELD_AT_HOME_LOW_BATTERY" if phase is PatrolPhase.AT_HOME
+                else "BATTERY_RETURN_DEFERRED",
+                "battery decision applied while starting patrol",
+                source=battery_decision.source,
+                phase=phase.value)
         self._dispatch_phase()
 
     def _dispatch_phase(self):
@@ -519,12 +592,18 @@ class PatrolMissionCoordinator(Node):
                 self._delegated_input_indices[delegated_index] if 0 <= delegated_index < len(
                     self._delegated_input_indices) else -1)
             if machine.state.phase is PatrolPhase.JOIN_LOOP:
-                machine.goal_succeeded(index)
+                phase = machine.goal_succeeded(index)
                 self._event(
                     DiagnosticStatus.OK,
                     "PATROL_LOOP_JOINED",
                     "patrol entered loop",
                     loop_index=index)
+                if phase is PatrolPhase.EXIT_LOOP:
+                    self._event(
+                        DiagnosticStatus.WARN,
+                        "BATTERY_RETURN_HOME_REQUESTED",
+                        "battery return activated after joining patrol loop",
+                        exit_index=machine.state.return_exit.loop_index)
             elif (machine.state.return_exit is not None
                   and index == machine.state.return_exit.loop_index):
                 machine.goal_succeeded(index)
@@ -575,6 +654,7 @@ class PatrolMissionCoordinator(Node):
             self._preparation = None
             machine = self._machine
             self._machine, self._route_mission_id = None, ""
+            self._battery_input.end_mission()
             self._last_status, self._last_error = "IDLE", ""
             if machine is not None:
                 self._cancel_route.call_async(CancelRouteMission.Request())

@@ -26,6 +26,16 @@ class PatrolPhase(str, Enum):
     ABORTED = "ABORTED"
 
 
+class BatteryReturnDisposition(str, Enum):
+    """Observable result of applying a latched battery recommendation."""
+
+    AT_HOME = "AT_HOME"
+    RETURN_REQUESTED = "RETURN_REQUESTED"
+    DEFERRED_UNTIL_LOOP = "DEFERRED_UNTIL_LOOP"
+    ALREADY_RETURNING = "ALREADY_RETURNING"
+    HELD_INACTIVE = "HELD_INACTIVE"
+
+
 PUBLIC_PHASE = {
     PatrolPhase.IDLE: "idle", PatrolPhase.DEPART_HOME: "depart_home",
     PatrolPhase.JOIN_LOOP: "loop_main", PatrolPhase.PATROL: "loop_main",
@@ -59,6 +69,14 @@ class ReturnExit:
     loop_index: int
     waypoint: RouteWaypoint
     distance_m: float
+
+
+@dataclass(frozen=True)
+class BatteryReturnTransition:
+    disposition: BatteryReturnDisposition
+    previous_phase: PatrolPhase
+    phase: PatrolPhase
+    cancel_active_route: bool = False
 
 
 @dataclass
@@ -160,9 +178,15 @@ class PatrolMachine:
         self.spec = spec
         self.state = PatrolState(mission_id=mission_id)
 
-    def start(self, *, at_home: bool) -> PatrolPhase:
+    def start(self, *, at_home: bool,
+              battery_return_latched: bool = False) -> PatrolPhase:
         if self.state.phase is not PatrolPhase.IDLE:
             raise ValueError("patrol mission already started")
+        self.state.low_battery_active = bool(battery_return_latched)
+        if at_home and battery_return_latched:
+            self.state.phase = PatrolPhase.AT_HOME
+            self.state.return_reason = "battery_guard"
+            return self.state.phase
         self.state.phase = (PatrolPhase.DEPART_HOME
                             if at_home and self.spec.depart.waypoints
                             else PatrolPhase.JOIN_LOOP)
@@ -194,11 +218,29 @@ class PatrolMachine:
         self.state.phase = PatrolPhase.EXIT_LOOP
         return True
 
-    def battery_guard(self, *, valid: bool, recommended: bool) -> bool:
-        if not valid or not recommended:
-            return False
+    def latch_battery_return(self, *, at_home: bool) -> BatteryReturnTransition:
+        """Latch a return without allowing voltage recovery to resume patrol."""
+        previous = self.state.phase
         self.state.low_battery_active = True
-        return self.request_return_home("battery_guard")
+        self.state.return_reason = "battery_guard"
+        if previous is PatrolPhase.AT_HOME:
+            disposition = BatteryReturnDisposition.AT_HOME
+        elif previous is PatrolPhase.DEPART_HOME and at_home:
+            self.state.phase = PatrolPhase.AT_HOME
+            disposition = BatteryReturnDisposition.AT_HOME
+        elif previous is PatrolPhase.PATROL:
+            self.request_return_home("battery_guard")
+            disposition = BatteryReturnDisposition.RETURN_REQUESTED
+        elif previous in (PatrolPhase.DEPART_HOME, PatrolPhase.JOIN_LOOP):
+            disposition = BatteryReturnDisposition.DEFERRED_UNTIL_LOOP
+        elif previous in (PatrolPhase.EXIT_LOOP, PatrolPhase.RETURN_HOME):
+            disposition = BatteryReturnDisposition.ALREADY_RETURNING
+        else:
+            disposition = BatteryReturnDisposition.HELD_INACTIVE
+        return BatteryReturnTransition(
+            disposition, previous, self.state.phase,
+            cancel_active_route=(previous is PatrolPhase.DEPART_HOME
+                                 and self.state.phase is PatrolPhase.AT_HOME))
 
     def goal_succeeded(self, reached_loop_input_index: int | None = None) -> PatrolPhase:
         phase = self.state.phase
@@ -206,6 +248,8 @@ class PatrolMachine:
             self.state.phase = PatrolPhase.JOIN_LOOP
         elif phase is PatrolPhase.JOIN_LOOP:
             self.state.phase = PatrolPhase.PATROL
+            if self.state.low_battery_active:
+                self.request_return_home("battery_guard")
         elif phase is PatrolPhase.EXIT_LOOP:
             if reached_loop_input_index != self.state.return_exit.loop_index:
                 return phase

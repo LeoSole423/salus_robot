@@ -24,7 +24,7 @@ def test_route_executor_emits_an_unambiguous_checkpoint_event():
     assert "mission_id=self._mission.mission_id" in source
 
 
-def test_patrol_battery_inputs_are_configurable_and_do_not_own_transitions():
+def test_patrol_battery_inputs_are_configurable_and_do_not_command_motion():
     source = (ROOT / "salus_navigation" / "patrol_mission_coordinator.py").read_text()
     for parameter, topic in (
         ("battery_guard_topic", "/battery_mission_guard"),
@@ -35,5 +35,5 @@ def test_patrol_battery_inputs_are_configurable_and_do_not_own_transitions():
         assert parameter in source
         assert topic in source
     callbacks = source[source.index("    def _on_battery_guard"):source.index("    def _set")]
-    assert "_machine.battery_guard(" not in callbacks
-    assert "_dispatch_phase(" not in callbacks
+    assert "cmd_vel" not in callbacks
+    assert "NavigateToPose" not in callbacks

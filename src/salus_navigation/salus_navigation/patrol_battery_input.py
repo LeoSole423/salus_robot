@@ -69,6 +69,10 @@ class PatrolBatteryInputPolicy:
         """
         self._return_latched = False
 
+    def end_mission(self) -> None:
+        """Clear mission-local state while retaining guard precedence."""
+        self._return_latched = False
+
     def ingest_guard(self, *, ready: bool, fresh: bool, state: str,
                      return_home_recommended: bool, now_s: float) -> BatteryReturnDecision:
         self._guard = {
