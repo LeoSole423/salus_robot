@@ -1,0 +1,22 @@
+nav_snapshot_server:
+  ros__parameters:
+    get_snapshot_service: /nav_snapshot_server/get_nav_snapshot
+    local_costmap_topic: /local_costmap/costmap
+    local_costmap_updates_topic: /local_costmap/costmap_updates
+    global_costmap_topic: /global_costmap/costmap
+    global_costmap_updates_topic: /global_costmap/costmap_updates
+    keepout_mask_topic: /keepout_filter_mask
+    local_footprint_topic: /local_costmap/published_footprint
+    stop_zone_topic: /stop_zone_raw
+    collision_polygons_topic: /collision_monitor/polygons
+    scan_topic: /scan_clean
+    plan_topic: /plan
+    base_frame: base_footprint
+    snapshot_extent_m: 30.0
+    snapshot_size_px: 512
+    snapshot_global_inset_px: 160
+    snapshot_timeout_ms: 500
+    tf_timeout_s: 0.2
+    local_costmap_max_age_s: 2.0
+    dynamic_layer_max_age_s: 2.0
+    startup_grace_s: 5.0

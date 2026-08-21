@@ -67,6 +67,7 @@ Smoke test del primer corte migrado:
 ./tools/smoke_control_sim.sh
 ./tools/smoke_motion_sim.sh
 ./tools/smoke_localization_sim.sh
+./tools/smoke_navigation_snapshot.sh
 ./tools/smoke_integration_sim.sh
 ```
 

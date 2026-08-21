@@ -15,7 +15,7 @@ def generate_launch_description() -> LaunchDescription:
             Node(
                 package="salus_control",
                 executable="controller_server_node",
-                name="controller_server",
+                name="salus_controller",
                 output="screen",
                 parameters=[
                     {

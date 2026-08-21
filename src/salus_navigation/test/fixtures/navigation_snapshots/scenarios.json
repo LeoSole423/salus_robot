@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "render": {
+    "extent_m": 30.0,
+    "size_px": 512,
+    "global_inset_px": 160,
+    "frame_id": "odom",
+    "base_frame": "base_footprint",
+    "colors_bgr": {
+      "unknown": [120, 120, 120],
+      "free": [255, 255, 255],
+      "occupied_100": [25, 25, 25],
+      "footprint": [0, 255, 0],
+      "stop_zone": [0, 0, 255],
+      "scan": [0, 80, 255],
+      "plan": [64, 255, 64],
+      "global_plan": [96, 255, 96],
+      "robot_inset": [255, 0, 0]
+    }
+  },
+  "scenarios": [
+    {
+      "id": "local_required_only",
+      "inputs": {
+        "local_costmap": {
+          "frame_id": "odom",
+          "stamp_s": 10.0,
+          "resolution_m": 1.0,
+          "origin_xy": [-2.0, -2.0],
+          "cells_bottom_left": [
+            [-1, -1, -1, -1],
+            [0, 0, 0, 0],
+            [0, 25, 75, 100],
+            [0, 0, 0, 0]
+          ]
+        },
+        "robot_xy_in_local": [0.0, 0.0]
+      },
+      "expected": {
+        "ok": true,
+        "mime": "image/png",
+        "width": 512,
+        "height": 512,
+        "frame_id": "odom",
+        "layers_true": ["local_costmap"],
+        "layers_false": ["global_costmap", "keepout_mask", "footprint", "stop_zone", "scan", "plan", "collision_polygons", "global_inset"],
+        "forbidden_decorations": ["synthetic_vehicle", "legend", "direction_markers"]
+      }
+    },
+    {
+      "id": "all_layers_transform_and_clip",
+      "inputs": {
+        "local_costmap": {"frame_id": "odom", "stamp_s": 20.0, "resolution_m": 0.5, "width": 80, "height": 80, "origin_xy": [-20.0, -20.0], "fill": 0},
+        "global_costmap": {"frame_id": "map", "stamp_s": 20.0, "resolution_m": 1.0, "width": 60, "height": 60, "origin_xy": [-30.0, -30.0], "fill": 0},
+        "keepout": {"frame_id": "map", "occupied_square_xy": [[2.0, -1.0], [4.0, 1.0]]},
+        "footprint": {"frame_id": "base_footprint", "points": [[1.05, 0.38], [1.05, -0.38], [-0.12, -0.38], [-0.12, 0.38]]},
+        "stop_zone": {"frame_id": "base_footprint", "points": [[2.05, 0.68], [2.05, -0.68], [-0.30, -0.68], [-0.30, 0.68]]},
+        "collision_polygons": {"frame_id": "base_footprint", "line_strip": [[3.5, 0.98], [3.5, -0.98], [-0.3, -0.98], [-0.3, 0.98], [3.5, 0.98]]},
+        "scan": {"frame_id": "base_footprint", "range_min": 0.4, "range_max": 20.0, "points_polar": [[0.0, 3.0], [0.5, 4.0], [-0.5, 4.0]]},
+        "plan": {"frame_id": "map", "points": [[-20.0, 0.0], [0.0, 0.0], [20.0, 0.0]]},
+        "transforms": {"odom_from_base_footprint": [0.0, 0.0, 0.0], "odom_from_map": [0.0, 0.0, 0.0], "map_from_base_footprint": [0.0, 0.0, 0.0]}
+      },
+      "expected": {
+        "ok": true,
+        "layers_true": ["local_costmap", "global_costmap", "keepout_mask", "footprint", "stop_zone", "scan", "plan", "collision_polygons", "global_inset"],
+        "plan_crosses_left_and_right_edges": true,
+        "keepout_visible_in_local_and_inset": true,
+        "forbidden_decorations": ["synthetic_vehicle", "legend", "direction_markers"]
+      }
+    },
+    {
+      "id": "optional_layers_missing_or_stale",
+      "inputs": {"local_costmap_age_s": 0.5, "optional_dynamic_age_s": 3.0, "keepout_empty": true},
+      "expected": {"ok": true, "layers_true": ["local_costmap"], "layers_false": ["keepout_mask", "footprint", "stop_zone", "scan", "plan", "collision_polygons", "global_inset"]}
+    },
+    {
+      "id": "missing_local_costmap",
+      "inputs": {},
+      "expected": {"ok": false, "error_code": "MISSING_LOCAL_COSTMAP", "image_bytes": 0}
+    },
+    {
+      "id": "stale_local_costmap",
+      "inputs": {"local_costmap_age_s": 2.1},
+      "expected": {"ok": false, "error_code": "STALE_LOCAL_COSTMAP", "image_bytes": 0}
+    },
+    {
+      "id": "missing_local_tf",
+      "inputs": {"local_costmap_age_s": 0.5, "local_costmap_frame": "odom", "transforms": {}},
+      "expected": {"ok": false, "error_code": "MISSING_LOCAL_TF", "image_bytes": 0}
+    }
+  ]
+}

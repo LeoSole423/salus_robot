@@ -22,7 +22,7 @@ corte público en `salus_interfaces`.
 | Ruta/patrulla | `SetRouteMissionLL`, `SetPatrolMissionLL`, cancelación, estado y `RequestReturnHome` | rutas, acciones y patrulla/HOME migradas; el retorno manual o por batería delega tramos a `route_executor` y conserva un latch de misión |
 | Perfiles | `SetNavigationProfile` | `urban`/`rural` migrados mediante aplicación transaccional |
 | Zonas | GeoJSON y zonas tipadas | elegir una representación canónica |
-| Observabilidad | telemetría, eventos, snapshots | telemetría/eventos básicos y observador Nav2 migrados; snapshots pendientes |
+| Observabilidad | telemetría, eventos, `NavSnapshotLayers`, `GetNavSnapshot` | contratos de snapshot y semántica fijados por ADR 0004; servidor y renderer pendientes |
 | Cámara | PTZ, presets y estado | separar control de transporte WebRTC |
 | Simulación | inyección de batería | mantener fuera de la API operativa real |
 | Datum | set/get dinámico | clasificado legacy por defecto |

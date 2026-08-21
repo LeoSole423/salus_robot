@@ -170,6 +170,13 @@ jobs:
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_patrol_battery_sim.sh
+      - name: Smoke — navigation snapshot
+        id: smoke_snapshot
+        if: always() && steps.workspace.outcome == 'success'
+        continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
+        run: ./tools/run_smoke.sh ./tools/smoke_navigation_snapshot.sh
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -186,4 +193,5 @@ jobs:
           ZONES: ${{ steps.smoke_zones.outcome }}
           ROUTES: ${{ steps.smoke_routes.outcome }}
           PATROL_BATTERY: ${{ steps.smoke_patrol_battery.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION ZONES ROUTES PATROL_BATTERY
+          SNAPSHOT: ${{ steps.smoke_snapshot.outcome }}
+        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION ZONES ROUTES PATROL_BATTERY SNAPSHOT

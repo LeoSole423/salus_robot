@@ -13,7 +13,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-43}" -e GZ_PART
   smoke_start_launch control "ros2 launch salus_control control_sim.launch.py use_sim_time:=true"
   smoke_start_launch odom_tf "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_footprint"
   smoke_start_launch arbitration "ros2 launch salus_navigation safety_arbitration_sim.launch.py use_sim_time:=true"
-  smoke_wait_node /controller_server 40
+  smoke_wait_node /salus_controller 40
   smoke_wait_node /nav_command_server 40
   smoke_wait_node /collision_monitor 40
   smoke_wait_lifecycle /collision_monitor 40

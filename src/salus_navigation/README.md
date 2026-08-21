@@ -1,5 +1,10 @@
 # salus_navigation
 
+La observabilidad espacial tiene su contrato y límites definidos en el ADR
+0004. `nav_snapshot_server` genera bajo demanda PNGs deterministas de costmaps,
+keepout, footprint, zonas de colisión, `/scan_clean` y plan, sin ser dueño de
+WebSocket, rosbag ni telemetría compacta.
+
 Responsabilidad: navegación segura, Nav2 y zonas no-go. El corte actual ofrece
 un goal LL único, rutas abiertas/circulares y zonas dinámicas GeoJSON en
 simulación.
@@ -56,3 +61,4 @@ Pruebas: `colcon test --packages-select salus_navigation` y
 `./tools/smoke_navigation_zones_sim.sh`, `./tools/smoke_navigation_core_sim.sh`
 y `./tools/smoke_route_executor_sim.sh`. El retorno integrado se valida con
 `./tools/smoke_patrol_battery_sim.sh` usando una guardia sintética aislada.
+El snapshot se prueba por separado con `./tools/smoke_navigation_snapshot.sh`.

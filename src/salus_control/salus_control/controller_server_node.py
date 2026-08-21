@@ -33,7 +33,8 @@ def _clamp01(value: float) -> float:
 
 class ControllerServerNode(Node):
     def __init__(self) -> None:
-        super().__init__("controller_server")
+        # Do not collide with Nav2's /controller_server parameter services.
+        super().__init__("salus_controller")
 
         self.declare_parameter("serial_port", "auto")
         self.declare_parameter("serial_baud", 115200)
