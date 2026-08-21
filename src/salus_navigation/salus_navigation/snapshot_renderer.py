@@ -4,25 +4,15 @@ This module deliberately has no ROS imports.  The ROS adapter supplies a
 coherent scene and the renderer only converts it to PNG bytes.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import math
-from typing import Dict, Iterable, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 import cv2
 import numpy as np
 
 
 Point = Tuple[float, float]
-
-
-@dataclass(frozen=True)
-class Grid:
-    frame_id: str
-    resolution: float
-    origin: Point
-    width: int
-    height: int
-    data: Tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -56,12 +46,24 @@ class Transform2D:
 
 
 @dataclass(frozen=True)
+class Grid:
+    frame_id: str
+    resolution: float
+    origin: Point
+    width: int
+    height: int
+    data: Tuple[int, ...]
+    transform: Optional[Transform2D] = None
+
+
+@dataclass(frozen=True)
 class Polyline:
     frame_id: str
     points: Tuple[Point, ...]
     color_bgr: Tuple[int, int, int]
     thickness: int = 2
     closed: bool = False
+    transform: Optional[Transform2D] = None
 
 
 @dataclass(frozen=True)
@@ -72,13 +74,15 @@ class SnapshotScene:
     size_px: int
     global_inset_px: int
     keepout: Optional[Grid] = None
+    global_keepout: Optional[Grid] = None
     global_costmap: Optional[Grid] = None
     footprint: Optional[Polyline] = None
     stop_zone: Optional[Polyline] = None
     collision_polygons: Tuple[Polyline, ...] = ()
     scan: Optional[Polyline] = None
     plan: Optional[Polyline] = None
-    transforms: Tuple[Transform2D, ...] = ()
+    global_plan: Optional[Polyline] = None
+    robot_global: Optional[Point] = None
 
 
 @dataclass(frozen=True)
@@ -90,19 +94,16 @@ class RenderedSnapshot:
     layers: Dict[str, bool]
 
 
-def _lookup_transform(scene: SnapshotScene, source: str, target: str) -> Optional[Transform2D]:
+def _identity_or(transform: Optional[Transform2D], source: str, target: str) -> Optional[Transform2D]:
     if not source or source == target:
         return Transform2D(source, target, 0.0, 0.0, 0.0)
-    for transform in scene.transforms:
-        if transform.source == source and transform.target == target:
-            return transform
-        if transform.source == target and transform.target == source:
-            return transform.inverse()
+    if transform is not None and transform.source == source and transform.target == target:
+        return transform
     return None
 
 
-def _to_frame(scene: SnapshotScene, points: Iterable[Point], source: str, target: str) -> Optional[Tuple[Point, ...]]:
-    transform = _lookup_transform(scene, source, target)
+def _to_frame(points: Iterable[Point], source: str, target: str, transform: Optional[Transform2D]) -> Optional[Tuple[Point, ...]]:
+    transform = _identity_or(transform, source, target)
     if transform is None:
         return None
     return tuple(transform.apply(point) for point in points)
@@ -146,7 +147,7 @@ def _sample_grid(scene: SnapshotScene, grid: Grid, target_frame: str, window: Tu
     size = scene.size_px
     if source is None:
         return np.full((size, size), border, dtype=np.float32)
-    transform = _lookup_transform(scene, target_frame, grid.frame_id)
+    transform = _identity_or(grid.transform, target_frame, grid.frame_id)
     if transform is None:
         return np.full((size, size), border, dtype=np.float32)
     min_x, max_x, min_y, max_y = window
@@ -169,7 +170,7 @@ def _sample_grid_to_grid(scene: SnapshotScene, source_grid: Grid, target_grid: G
     source = _grid_array(source_grid)
     if source is None:
         return np.full((target_grid.height, target_grid.width), border, dtype=np.float32)
-    transform = _lookup_transform(scene, target_grid.frame_id, source_grid.frame_id)
+    transform = _identity_or(source_grid.transform, target_grid.frame_id, source_grid.frame_id)
     if transform is None:
         return np.full((target_grid.height, target_grid.width), border, dtype=np.float32)
     cols = np.arange(target_grid.width, dtype=np.float32)
@@ -214,7 +215,7 @@ def _overlay_keepout(canvas: np.ndarray, occupancy: np.ndarray) -> bool:
 
 
 def _draw_polyline(canvas: np.ndarray, scene: SnapshotScene, line: Polyline, window: Tuple[float, float, float, float]) -> bool:
-    points = _to_frame(scene, line.points, line.frame_id, scene.local_costmap.frame_id)
+    points = _to_frame(line.points, line.frame_id, scene.local_costmap.frame_id, line.transform)
     if points is None or len(points) < 2:
         return False
     pixels = [_world_to_px_unbounded(point, window, scene.size_px) for point in points]
@@ -234,7 +235,7 @@ def _draw_polyline(canvas: np.ndarray, scene: SnapshotScene, line: Polyline, win
 
 
 def _draw_points(canvas: np.ndarray, scene: SnapshotScene, line: Polyline, window: Tuple[float, float, float, float]) -> bool:
-    points = _to_frame(scene, line.points, line.frame_id, scene.local_costmap.frame_id)
+    points = _to_frame(line.points, line.frame_id, scene.local_costmap.frame_id, line.transform)
     if points is None:
         return False
     drawn = False
@@ -262,10 +263,15 @@ def _global_inset(canvas: np.ndarray, scene: SnapshotScene) -> bool:
         tuple([0] * (inset_size * inset_size)),
     )
     image = _occupancy_to_color(_sample_grid_to_grid(scene, grid, inset_grid, -1.0))
-    if scene.keepout is not None:
-        _overlay_keepout(image, _sample_grid_to_grid(scene, scene.keepout, inset_grid, 0.0))
-    if scene.plan is not None:
-        plan = _to_frame(scene, scene.plan.points, scene.plan.frame_id, grid.frame_id)
+    if scene.global_keepout is not None:
+        _overlay_keepout(image, _sample_grid_to_grid(scene, scene.global_keepout, inset_grid, 0.0))
+    if scene.global_plan is not None:
+        plan = _to_frame(
+            scene.global_plan.points,
+            scene.global_plan.frame_id,
+            grid.frame_id,
+            scene.global_plan.transform,
+        )
         if plan is not None and len(plan) >= 2:
             window = (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
                       grid.origin[1], grid.origin[1] + grid.height * grid.resolution)
@@ -274,9 +280,8 @@ def _global_inset(canvas: np.ndarray, scene: SnapshotScene) -> bool:
                 visible, a, b = cv2.clipLine((0, 0, inset_size, inset_size), first, second)
                 if visible:
                     cv2.line(image, a, b, (96, 255, 96), 2, cv2.LINE_AA)
-    robot = _to_frame(scene, [scene.center_xy], scene.local_costmap.frame_id, grid.frame_id)
-    if robot:
-        px = _world_to_px(robot[0], (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
+    if scene.robot_global is not None:
+        px = _world_to_px(scene.robot_global, (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
                                      grid.origin[1], grid.origin[1] + grid.height * grid.resolution), inset_size)
         if px is not None:
             cv2.circle(image, px, 4, (255, 0, 0), -1, cv2.LINE_AA)

@@ -29,7 +29,14 @@ def main() -> int:
         poller = AsyncServicePoller(node.client, GetNavSnapshot.Request, interval_s=0.5, response_timeout_s=5.0)
         runtime.wait(
             "snapshot readiness",
-            lambda: bool(poller.latest and poller.latest.ok),
+            lambda: bool(
+                poller.latest
+                and poller.latest.ok
+                and poller.latest.layers.local_costmap
+                and poller.latest.layers.global_costmap
+                and poller.latest.layers.global_inset
+                and poller.latest.layers.scan
+            ),
             45.0,
             stimulate=poller.poll,
             observe=lambda: {**poller.evidence(), "last_error": poller.latest.error if poller.latest else ""},
@@ -43,6 +50,12 @@ def main() -> int:
             raise RuntimeError("snapshot response is not a PNG")
         if not response.layers.local_costmap:
             raise RuntimeError("snapshot omitted required local costmap")
+        if not response.layers.global_costmap or not response.layers.global_inset:
+            raise RuntimeError("snapshot omitted global costmap inset")
+        if not response.layers.scan:
+            raise RuntimeError("snapshot omitted fresh /scan_clean detections")
+        png_path = Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "navigation_snapshot.png"
+        png_path.write_bytes(bytes(response.image_png))
         print("Navigation snapshot simulation smoke test passed")
         success = True
         return 0

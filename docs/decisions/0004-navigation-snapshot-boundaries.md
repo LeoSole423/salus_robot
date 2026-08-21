@@ -46,6 +46,11 @@ snapshot.
 - La escena será una copia inmutable de la última muestra de cada entrada al
   comenzar la solicitud; mensajes posteriores pertenecerán al siguiente
   snapshot.
+- La caché de costmaps aplicará `/local_costmap/costmap_updates` y
+  `/global_costmap/costmap_updates` sobre el último mapa completo. Esto conserva
+  la publicación global compacta del stack operativo sin presentar como actual
+  una grilla inicial antigua. El costmap local mantiene
+  `always_send_full_costmap=true`, igual que la variante legacy optimizada.
 - El costmap local deberá tener stamp válido y una edad ROS no mayor que
   `local_costmap_max_age_s` (default 2.0 s, mínimo 0.1 s).
 - Las capas dinámicas opcionales usarán `dynamic_layer_max_age_s` (default
@@ -61,7 +66,9 @@ snapshot.
 
 - Ventana: 30.0 m centrada en el robot, configurable, mínimo 5.0 m.
 - Imagen: 512x512 px, configurable entre 128 y 1024 px.
-- Inset global: 160 px, configurable entre 80 px y la mitad del tamaño final.
+- Inset global: 160 px, configurable entre 32 px y la mitad del tamaño final.
+  Esto mantiene el default legacy y permite una configuración coherente cuando
+  la imagen principal usa su mínimo de 128 px.
 - Objetivo de generación: 500 ms. Superarlo genera diagnóstico; no cambia una
   imagen correcta por un error una vez generada.
 - Formato único: `image/png`; dimensiones y bytes deben ser coherentes.
@@ -81,9 +88,10 @@ snapshot.
 
 Los parámetros del adaptador conservarán los nombres legacy para servicio,
 tópicos, frame, extensión, tamaño, inset, objetivo de tiempo y timeout TF. Se
-agregan únicamente `local_costmap_max_age_s`, `dynamic_layer_max_age_s` y
-`startup_grace_s`, con los defaults definidos arriba. Todos se declararán en
-un único YAML instalado, no como constantes dispersas.
+agregan los tópicos incrementales de ambos costmaps y las políticas
+`local_costmap_max_age_s`, `dynamic_layer_max_age_s` y `startup_grace_s`, con
+los defaults definidos arriba. Todos se declararán en un único YAML instalado,
+no como constantes dispersas.
 
 ## Consecuencias
 
