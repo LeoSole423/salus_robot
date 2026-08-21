@@ -15,6 +15,7 @@ def test_lock_rejects_controlled_operation_but_allows_brake() -> None:
     guard = OperatorControlGuard(
         enabled=True, heartbeat_timeout_s=5.0, initially_locked=True, clock=clock
     )
+    assert guard.state().reason == "STARTUP_LOCKED"
     move = validate_request(parse_request({"op": "set_goal_ll", "client_req_id": "req-3"}))
     brake = validate_request(parse_request({"op": "brake", "client_req_id": "req-4"}))
     assert guard.authorize(move).allowed is False

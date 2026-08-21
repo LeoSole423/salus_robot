@@ -100,7 +100,9 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
         )
 
     fields = dict(request.fields)
-    if request.op in {"set_control_lock", "set_manual_mode"}:
+    if request.op == "set_control_lock":
+        _require_bool(fields, "locked", request)
+    elif request.op == "set_manual_mode":
         _require_bool(fields, "enabled", request)
     elif request.op == "set_manual_cmd":
         fields["linear_x"] = _finite_number(fields, "linear_x", request)

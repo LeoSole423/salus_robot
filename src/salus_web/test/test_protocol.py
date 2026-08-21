@@ -87,3 +87,15 @@ def test_manual_command_keeps_top_level_contract_and_clamps_brake() -> None:
 def test_conflicting_request_id_aliases_are_rejected() -> None:
     with pytest.raises(ProtocolError, match="aliases disagree"):
         parse_request({"op": "get_state", "requestId": "one", "client_req_id": "two"})
+
+
+def test_control_lock_preserves_cockpit_locked_field() -> None:
+    request = validate_request(parse_request({
+        "op": "set_control_lock",
+        "client_req_id": "lock-1",
+        "locked": True,
+    }))
+    assert request.fields["locked"] is True
+
+    with pytest.raises(ProtocolError, match="locked must be boolean"):
+        validate_request(parse_request({"op": "set_control_lock", "locked": "true"}))
