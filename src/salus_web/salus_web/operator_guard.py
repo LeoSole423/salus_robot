@@ -43,7 +43,7 @@ class OperatorControlGuard:
         self._timeout_s = heartbeat_timeout_s
         self._clock = clock
         self._locked = initially_locked if enabled else False
-        self._reason = "UI_LOCK_REQUEST" if self._locked else ""
+        self._reason = "STARTUP_LOCKED" if self._locked else ""
         self._last_heartbeat = None if self._locked else clock()
 
     def set_locked(self, locked: bool) -> OperatorLockState:
