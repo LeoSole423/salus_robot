@@ -20,7 +20,7 @@ if ! docker compose ps --status running --services | grep -qx ros2; then
 fi
 
 if ! docker compose exec -T ros2 bash -lc \
-  'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && nodes="$(ros2 node list)" && grep -qx /controller_server <<<"${nodes}" && grep -qx /nav_command_server <<<"${nodes}"'; then
+  'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && nodes="$(ros2 node list)" && grep -qx /salus_controller <<<"${nodes}" && grep -qx /nav_command_server <<<"${nodes}"'; then
   echo "El bringup no esta activo. Ejecuta ./tools/sim.sh y espera a que Gazebo cargue." >&2
   exit 1
 fi
