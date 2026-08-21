@@ -28,7 +28,7 @@ def generate_launch_description() -> LaunchDescription:
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
     launch_routes = LaunchConfiguration("launch_routes")
-    world = LaunchConfiguration("world")
+    launch_patrol = LaunchConfiguration("launch_patrol")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -73,12 +73,8 @@ def generate_launch_description() -> LaunchDescription:
                 description="Start the optional route executor.",
             ),
             DeclareLaunchArgument(
-                "world",
-                default_value=str(
-                    Path(get_package_share_directory("salus_simulation"))
-                    / "worlds" / "empty.world"
-                ),
-                description="Gazebo world used by the composed simulation.",
+                "launch_patrol", default_value="false",
+                description="Start the optional structured patrol/HOME coordinator.",
             ),
             _include(
                 "salus_simulation",
@@ -113,6 +109,10 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_navigation", "route_executor_sim.launch.py", common,
                 condition=IfCondition(launch_routes),
+            ),
+            _include(
+                "salus_navigation", "patrol_mission_sim.launch.py", common,
+                condition=IfCondition(launch_patrol),
             ),
             _include(
                 "salus_perception",

@@ -15,6 +15,7 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
           "nav2_startup_coordinator = salus_navigation.nav2_startup_coordinator:main",
           "navigation_profile_coordinator = salus_navigation.navigation_profile_coordinator:main",
           "path_health = salus_navigation.path_health:main",
+          "patrol_mission_coordinator = salus_navigation.patrol_mission_coordinator:main",
           "route_executor = salus_navigation.route_executor_node:main",
           "zones_manager = salus_navigation.zones_manager:main",
       ]})

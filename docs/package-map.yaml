@@ -42,7 +42,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
-    status: ported_nav2_routes_recovery_actions_profiles_and_patrol_domain_sim
+    status: ported_nav2_routes_recovery_actions_profiles_and_patrol_home_ros_sim
   salus_navigation_bt:
     owner: autonomy_bt
     build_type: ament_cmake

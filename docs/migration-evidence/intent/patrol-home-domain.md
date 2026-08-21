@@ -13,5 +13,10 @@ del loop. Ante una recomendación de batería válida el retorno queda enclavado
 la recuperación de tensión no lo cancela. Sólo una acción explícita del
 operador, takeover manual o E-stop puede interrumpirlo.
 
-Este corte implementa el dominio puro y la persistencia atómica. La conversión
-LL, ROS, Nav2 y la ejecución simulada pertenecen al siguiente corte.
+El dominio puro y la persistencia atómica se conectan mediante
+`patrol_mission_coordinator`: convierte una misión completa una única vez,
+persiste sólo una definición válida y delega los tramos al `route_executor`.
+No duplica Nav2 ni publica velocidad. Los eventos de checkpoint del ejecutor
+son la frontera explícita que permite salir del loop sin inferir índices desde
+un poll tardío. La activación por `BatteryMissionGuard` pertenece al siguiente
+corte; el retorno manual ya conserva la misma política de salida estructurada.
