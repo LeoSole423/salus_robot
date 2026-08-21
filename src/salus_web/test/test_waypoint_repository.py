@@ -56,3 +56,23 @@ def test_parser_rejects_invalid_coordinate_and_multiple_home() -> None:
                 {"lat": 1, "lon": 1, "role": "home"},
             ]
         })
+
+
+def test_patrol_indices_accept_yaml_integral_floats_for_legacy_compatibility() -> None:
+    document = normalize_document({
+        "waypoints": [{"lat": 0, "lon": 0}],
+        "patrol_profile": {
+            "home_waypoint_index": 0.0,
+            "depart_entry_waypoint_index": -1.0,
+            "loop_waypoint_indices": [0.0],
+            "return_waypoint_indices": [],
+            "depart_waypoint_indices": [],
+        },
+    })
+    assert document.patrol_profile == {
+        "home_waypoint_index": 0,
+        "depart_entry_waypoint_index": -1,
+        "loop_waypoint_indices": [0],
+        "return_waypoint_indices": [],
+        "depart_waypoint_indices": [],
+    }

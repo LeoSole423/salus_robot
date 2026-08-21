@@ -127,7 +127,7 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
 
 
 def ack(
-    request: OperatorRequest | str,
+    request: OperatorRequest | ProtocolError | str,
     *,
     ok: bool,
     error: str | None = None,
@@ -136,8 +136,15 @@ def ack(
 ) -> dict[str, Any]:
     """Build the legacy-compatible common acknowledgement shape."""
 
-    request_op = request.op if isinstance(request, OperatorRequest) else request
-    request_id = request.request_id if isinstance(request, OperatorRequest) else None
+    if isinstance(request, OperatorRequest):
+        request_op = request.op
+        request_id = request.request_id
+    elif isinstance(request, ProtocolError):
+        request_op = request.request
+        request_id = request.request_id
+    else:
+        request_op = request
+        request_id = None
     result: dict[str, Any] = {"op": "ack", "request": request_op, "ok": ok, "error": error}
     if request_id is not None:
         result["client_req_id"] = request_id
