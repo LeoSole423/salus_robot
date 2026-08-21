@@ -110,9 +110,11 @@ components:
       - src/salus_web/test/fixtures/cockpit_protocol/scenarios.json
       - src/salus_web/salus_web/protocol.py
       - src/salus_web/salus_web/operator_guard.py
+      - src/salus_web/salus_web/operator_lease.py
       - src/salus_web/salus_web/state_projection.py
       - src/salus_web/salus_web/waypoint_repository.py
-    note: El protocolo, lock con heartbeat, proyección de estado y persistencia de waypoints fueron portados como lógica pura y testeable contra Cockpit. Runtime WebSocket/ROS, ownership multi-cliente, sesiones, rosbag, RTK y cámara siguen pendientes.
+      - docs/decisions/0005-web-operator-control-lease.md
+    note: El protocolo, lease exclusivo por conexión, lock con heartbeat, proyección de estado y persistencia de waypoints fueron portados como lógica pura y testeable contra Cockpit. Runtime WebSocket/ROS, sesiones, rosbag, RTK y cámara siguen pendientes.
   hardware_adapters:
     source: sensores
     target: salus_hardware

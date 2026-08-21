@@ -46,6 +46,20 @@ class OperatorControlGuard:
         self._reason = "STARTUP_LOCKED" if self._locked else ""
         self._last_heartbeat = None if self._locked else clock()
 
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def force_locked(self, reason: str) -> OperatorLockState:
+        """Enter a safe lock for a transport-level failure."""
+
+        if not self._enabled:
+            return self.state()
+        self._locked = True
+        self._reason = reason
+        self._last_heartbeat = None
+        return self.state()
+
     def set_locked(self, locked: bool) -> OperatorLockState:
         if not self._enabled:
             return self.state()
