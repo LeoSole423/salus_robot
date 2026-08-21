@@ -178,6 +178,10 @@ def _finite(value: Any, name: str) -> float:
 def _index(value: Any, name: str) -> int:
     if isinstance(value, bool):
         raise WaypointValidationError(f"{name} must contain integers")
+    if isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer():
+            raise WaypointValidationError(f"{name} must contain integers")
+        return int(value)
     try:
         number = int(value)
     except (TypeError, ValueError) as exc:

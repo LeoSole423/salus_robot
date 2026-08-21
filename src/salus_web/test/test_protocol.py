@@ -64,12 +64,13 @@ def test_fixed_datum_mutation_is_explicitly_rejected() -> None:
         )
     assert rejected.value.code == "UNSUPPORTED_FIXED_DATUM"
     response = ack(
-        rejected.value.request,
+        rejected.value,
         ok=False,
         error=rejected.value.message,
         error_code=rejected.value.code,
     )
     assert response["error_code"] == "UNSUPPORTED_FIXED_DATUM"
+    assert response["client_req_id"] == "req-7"
 
 
 def test_manual_command_keeps_top_level_contract_and_clamps_brake() -> None:
