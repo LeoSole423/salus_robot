@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "transport": {
+    "default_host": "0.0.0.0",
+    "default_port": 8766,
+    "encoding": "json_text",
+    "request_id_aliases": ["client_req_id", "requestId", "clientReqId", "request_id"]
+  },
+  "controlled_ops": [
+    "set_goal_ll",
+    "set_route_ll",
+    "set_patrol_ll",
+    "set_navigation_profile",
+    "request_return_home",
+    "set_manual_cmd",
+    "set_manual_mode:true"
+  ],
+  "safe_while_locked": [
+    "get_state",
+    "cancel_goal",
+    "cancel_route",
+    "cancel_patrol",
+    "brake",
+    "set_manual_mode:false",
+    "set_zones_geojson",
+    "get_nav_snapshot"
+  ],
+  "required_request_ops": [
+    "get_state",
+    "set_control_lock",
+    "control_heartbeat",
+    "set_zones_geojson",
+    "load_zones_file",
+    "save_waypoints_file",
+    "load_waypoints_file",
+    "set_goal_ll",
+    "cancel_goal",
+    "brake",
+    "set_route_ll",
+    "cancel_route",
+    "set_patrol_ll",
+    "cancel_patrol",
+    "request_return_home",
+    "set_navigation_profile",
+    "set_manual_mode",
+    "set_manual_cmd",
+    "get_nav_snapshot",
+    "set_sensor_info_view"
+  ],
+  "required_broadcast_ops": [
+    "state",
+    "nav_telemetry",
+    "nav_event",
+    "nav_alerts",
+    "robot_pose",
+    "gps_status",
+    "drive_telemetry",
+    "sensor_info"
+  ],
+  "cases": [
+    {
+      "id": "correlate_alias",
+      "request": {"op": "get_state", "requestId": "req-1", "client_req_id": "req-1"},
+      "expect": {"op": "state", "client_req_id": "req-1", "ok": true}
+    },
+    {
+      "id": "invalid_json",
+      "raw": "{",
+      "expect": {"op": "ack", "request": "invalid_json", "ok": false}
+    },
+    {
+      "id": "unknown_op",
+      "request": {"op": "not_supported", "client_req_id": "req-2"},
+      "expect": {"op": "ack", "request": "not_supported", "client_req_id": "req-2", "ok": false}
+    },
+    {
+      "id": "lock_rejects_motion",
+      "precondition": {"control_locked": true, "control_lock_reason": "UI_LOCK_REQUEST"},
+      "request": {"op": "set_goal_ll", "client_req_id": "req-3", "waypoints": [{"lat": -31.0, "lon": -64.0}]},
+      "expect": {"op": "ack", "request": "set_goal_ll", "client_req_id": "req-3", "ok": false, "control_locked": true}
+    },
+    {
+      "id": "lock_allows_brake",
+      "precondition": {"control_locked": true},
+      "request": {"op": "brake", "client_req_id": "req-4"},
+      "expect": {"op": "ack", "request": "brake", "client_req_id": "req-4"}
+    },
+    {
+      "id": "manual_top_level",
+      "precondition": {"control_locked": false, "manual_enabled": true},
+      "request": {"op": "set_manual_cmd", "client_req_id": "req-5", "linear_x": 1.0, "angular_z": 0.2, "brake_pct": 0},
+      "expect": {"op": "ack", "request": "set_manual_cmd", "client_req_id": "req-5"}
+    },
+    {
+      "id": "snapshot_shape",
+      "request": {"op": "get_nav_snapshot", "client_req_id": "req-6"},
+      "expect_fields": ["op", "ok", "mime", "width", "height", "frame_id", "stamp", "layers", "image_b64", "image_size_bytes", "client_req_id"]
+    },
+    {
+      "id": "fixed_datum_mutation_rejected",
+      "request": {"op": "select_datum", "client_req_id": "req-7", "id": "old-profile"},
+      "expect": {"op": "ack", "request": "select_datum", "client_req_id": "req-7", "ok": false, "error_code": "UNSUPPORTED_FIXED_DATUM"}
+    },
+    {
+      "id": "unsupported_sensor_view_is_explicit",
+      "request": {"op": "set_sensor_info_view", "client_req_id": "req-8", "enabled": true, "tab": "lidar", "interval_s": 0.5},
+      "expect_sequence": [
+        {"op": "ack", "request": "set_sensor_info_view", "client_req_id": "req-8", "ok": true, "implemented": false},
+        {"op": "sensor_info", "tab": "lidar", "implemented": false}
+      ]
+    }
+  ]
+}
+
