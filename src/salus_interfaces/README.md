@@ -8,11 +8,14 @@
   `GetRouteMissionState`, `SetPatrolMissionLL`, `CancelPatrolMission`,
   `GetPatrolMissionState`, `RequestReturnHome`, `SetNavigationProfile`,
   `SetZonesGeoJson`, `GetZonesState` y
-  `PathHealth`.
+  `PathHealth`, `NavSnapshotLayers` y `GetNavSnapshot`.
 - `PathHealth` es un contrato interno de runtime: explica si Nav2 conserva,
   recalcula o detiene temporalmente un path; no es una API de Cockpit.
 - `EvaluatePathHealth` usa explícitamente el contexto `ACTIVE` o `CANDIDATE`;
   evita inferir la intención a partir del orden de llamadas del BT.
+- `GetNavSnapshot` conserva la petición vacía y la respuesta PNG del contrato
+  legacy. `NavSnapshotLayers` indica qué información se dibujó realmente; no
+  solicita capas ni representa su mera recepción.
 - Estado: los contratos listados conservan nombres, campos y constantes del
   sistema anterior bajo el namespace nuevo `salus_interfaces`.
 - Prueba: `colcon test --packages-select salus_interfaces`.

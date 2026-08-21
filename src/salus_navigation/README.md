@@ -1,5 +1,9 @@
 # salus_navigation
 
+La observabilidad espacial tiene su contrato y límites definidos en el ADR
+0004. El servidor de snapshots aún no está implementado: esta rama contiene
+solamente la especificación, los contratos y fixtures que deberá respetar.
+
 Responsabilidad: navegación segura, Nav2 y zonas no-go. El corte actual ofrece
 un goal LL único, rutas abiertas/circulares y zonas dinámicas GeoJSON en
 simulación.

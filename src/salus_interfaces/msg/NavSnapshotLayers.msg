@@ -1,0 +1,9 @@
+bool local_costmap
+bool global_costmap
+bool keepout_mask
+bool footprint
+bool stop_zone
+bool scan
+bool plan
+bool collision_polygons
+bool global_inset

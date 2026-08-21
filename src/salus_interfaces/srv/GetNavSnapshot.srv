@@ -1,0 +1,10 @@
+---
+bool ok
+string error
+string mime
+uint32 width
+uint32 height
+string frame_id
+builtin_interfaces/Time stamp
+salus_interfaces/NavSnapshotLayers layers
+uint8[] image_png
