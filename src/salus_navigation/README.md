@@ -28,7 +28,14 @@ simulación.
   `/route_executor/request_return_home`. `patrol_mission_coordinator` conserva
   HOME/salida/loop/retorno, convierte toda la misión antes de reemplazar la
   activa, persiste `runtime/patrol/patrol_mission.json` atómicamente y delega
-  los tramos a `route_executor`. El retorno por batería aún no está conectado.
+  los tramos a `route_executor`. La guardia válida en
+  `/battery_mission_guard` tiene precedencia sobre el fallback de
+  `/battery_state`; un retorno iniciado queda enclavado hasta HOME o
+  cancelación explícita según ADR 0003.
+- Parámetros de batería de patrulla: `battery_guard_topic` (default
+  `/battery_mission_guard`), `battery_state_topic` (default `/battery_state`),
+  `battery_guard_timeout_s` (3,0 s, finito y positivo) y
+  `low_battery_threshold_pct` (25 %, rango 0–100, sólo fallback).
 - `patrol_mission_sim.launch.py` requiere que `route_executor` ya esté activo.
   En el checkpoint integrado se habilitan ambos con
   `launch_routes:=true launch_patrol:=true`.
@@ -47,4 +54,5 @@ simulación.
 
 Pruebas: `colcon test --packages-select salus_navigation` y
 `./tools/smoke_navigation_zones_sim.sh`, `./tools/smoke_navigation_core_sim.sh`
-y `./tools/smoke_route_executor_sim.sh`.
+y `./tools/smoke_route_executor_sim.sh`. El retorno integrado se valida con
+`./tools/smoke_patrol_battery_sim.sh` usando una guardia sintética aislada.

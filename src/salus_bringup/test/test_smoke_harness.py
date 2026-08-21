@@ -58,4 +58,5 @@ def test_ci_assigns_scenario_specific_hard_timeouts() -> None:
     workflow = (HARNESS.parents[1] / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     assert 'SMOKE_HARD_TIMEOUT_S: "120"' in workflow
     assert 'SMOKE_HARD_TIMEOUT_S: "180"' in workflow
-    assert workflow.count('SMOKE_HARD_TIMEOUT_S: "240"') == 3
+    assert workflow.count('SMOKE_HARD_TIMEOUT_S: "240"') == 4
+    assert "smoke_patrol_battery_sim.sh" in workflow

@@ -22,3 +22,18 @@ def test_route_executor_emits_an_unambiguous_checkpoint_event():
     assert '"ROUTE_CHECKPOINT_REACHED"' in source
     assert "input_index=point.input_index" in source
     assert "mission_id=self._mission.mission_id" in source
+
+
+def test_patrol_battery_inputs_are_configurable_and_do_not_command_motion():
+    source = (ROOT / "salus_navigation" / "patrol_mission_coordinator.py").read_text()
+    for parameter, topic in (
+        ("battery_guard_topic", "/battery_mission_guard"),
+        ("battery_state_topic", "/battery_state"),
+        ("battery_guard_timeout_s", "3.0"),
+        ("low_battery_threshold_pct", "25.0"),
+    ):
+        assert parameter in source
+        assert topic in source
+    callbacks = source[source.index("    def _on_battery_guard"):source.index("    def _set")]
+    assert "cmd_vel" not in callbacks
+    assert "NavigateToPose" not in callbacks

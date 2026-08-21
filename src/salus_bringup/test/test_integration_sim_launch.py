@@ -31,6 +31,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "use_keepout" in contents
     assert "launch_routes" in contents
     assert "launch_patrol" in contents
+    assert "patrol_battery_guard_topic" in contents
     assert contents.count('DeclareLaunchArgument(\n                "world"') == 1
 
 
