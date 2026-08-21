@@ -29,6 +29,9 @@ def generate_launch_description() -> LaunchDescription:
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
     launch_routes = LaunchConfiguration("launch_routes")
     launch_patrol = LaunchConfiguration("launch_patrol")
+    launch_web = LaunchConfiguration("launch_web")
+    web_ws_port = LaunchConfiguration("web_ws_port")
+    web_waypoints_file = LaunchConfiguration("web_waypoints_file")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
 
@@ -79,6 +82,14 @@ def generate_launch_description() -> LaunchDescription:
                 description="Start the optional structured patrol/HOME coordinator.",
             ),
             DeclareLaunchArgument(
+                "launch_web", default_value="false",
+                description="Start Cockpit WebSocket bridge and snapshot service.",
+            ),
+            DeclareLaunchArgument("web_ws_port", default_value="8766"),
+            DeclareLaunchArgument(
+                "web_waypoints_file", default_value="runtime/web/waypoints.yaml"
+            ),
+            DeclareLaunchArgument(
                 "patrol_battery_guard_topic", default_value="/battery_mission_guard",
                 description="Battery guard consumed by structured patrol.",
             ),
@@ -127,6 +138,21 @@ def generate_launch_description() -> LaunchDescription:
                     "battery_state_topic": patrol_battery_state_topic,
                 },
                 condition=IfCondition(launch_patrol),
+            ),
+            _include(
+                "salus_navigation",
+                "navigation_snapshot_sim.launch.py",
+                common,
+                condition=IfCondition(launch_web),
+            ),
+            _include(
+                "salus_web",
+                "web_bridge.launch.py",
+                {
+                    "ws_port": web_ws_port,
+                    "waypoints_file": web_waypoints_file,
+                },
+                condition=IfCondition(launch_web),
             ),
             _include(
                 "salus_perception",

@@ -12,6 +12,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "salus_localization",
         "salus_perception",
         "salus_navigation",
+        "salus_web",
     ):
         assert package in contents
     for launch_file in (
@@ -25,12 +26,16 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "navigation_zones_sim.launch.py",
         "route_executor_sim.launch.py",
         "patrol_mission_sim.launch.py",
+        "navigation_snapshot_sim.launch.py",
+        "web_bridge.launch.py",
     ):
         assert launch_file in contents
     assert "launch_navigation" in contents
     assert "use_keepout" in contents
     assert "launch_routes" in contents
     assert "launch_patrol" in contents
+    assert "launch_web" in contents
+    assert "web_waypoints_file" in contents
     assert "patrol_battery_guard_topic" in contents
     assert contents.count('DeclareLaunchArgument(\n                "world"') == 1
 

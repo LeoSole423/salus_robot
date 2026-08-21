@@ -89,10 +89,10 @@ salida posterior y separada; la nube 3D no atraviesa este bridge.
   bloquear con causa `UI_HEARTBEAT_TIMEOUT` y se difunden estado y telemetría.
 - El lock web no sustituye manual, freno, E-stop, watchdog ni
   `collision_monitor`; estos mantienen precedencia aguas abajo.
-- La implementación inicial conserva el supuesto legacy de un operador
-  activo. La propiedad del lock entre múltiples clientes requiere una decisión
-  de Sol/ADR antes de implementarse; Terra no debe inventar transferencia de
-  lease ni autenticación.
+- La propiedad multi-cliente quedó resuelta en ADR 0005: la conexión que
+  desbloquea adquiere un lease exclusivo; otros clientes conservan operaciones
+  seguras de consulta, cancelación, freno y bloqueo, pero no pueden comandar.
+  Desconexión o heartbeat vencido liberan el lease y vuelven a bloquear.
 
 ## Separación obligatoria en `salus_web`
 
@@ -144,19 +144,14 @@ migración conserva compatibilidad en una red confiable y debe documentarlo.
 TLS, token y autorización remota son una decisión de despliegue posterior, no
 deben presentarse como seguridad existente.
 
-## Handoff de implementación
+## Evidencia de implementación
 
-Terra puede implementar codec/validadores, `operator_guard`, proyección de
-estado, repositorio de waypoints y tests contra
-`test/fixtures/cockpit_protocol/scenarios.json`. Debe detenerse antes de:
+El runtime mantiene separados `ros_gateway`, `websocket_server`, políticas
+puras y persistencia. `tools/smoke_web_cockpit.sh` ejecuta un cliente WebSocket
+real contra el stack simulado y verifica conexión, lease/heartbeat, estado,
+zonas, waypoints, manual seguro, snapshots y operaciones de cancelación. El
+smoke también detectó y corrigió una colisión con almacenamiento interno de
+`rclpy.Node` y una carrera en la inicialización de la máscara keepout.
 
-- decidir ownership multi-cliente del control lock;
-- cambiar campos o semántica visible por Cockpit;
-- integrar rosbag, sesiones, RTK o cámara;
-- seleccionar tasas y límites operativos no respaldados por fixtures.
-
-Esas decisiones vuelven a Sol. El smoke posterior deberá ejecutar un cliente
-WebSocket real contra simulación y comprobar conexión, correlación concurrente,
-lock/heartbeat, zonas, goal/cancelación, ruta, patrulla/HOME, manual, batería y
-snapshot sin modificar el repositorio Cockpit.
-
+Sesiones, rosbag, selección RTK y cámara continúan como subcortes separados;
+no se incorporan al gateway monolíticamente.

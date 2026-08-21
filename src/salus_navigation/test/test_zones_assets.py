@@ -27,3 +27,4 @@ def test_costmaps_and_runtime_data_are_separated():
     assert config.count("keepout_filter") >= 4
     assert "runtime/zones" in manager
     assert "map_server_load_map+global_costmap_clear" in manager
+    assert "callback_group=self._service_group" in manager

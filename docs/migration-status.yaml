@@ -113,8 +113,12 @@ components:
       - src/salus_web/salus_web/operator_lease.py
       - src/salus_web/salus_web/state_projection.py
       - src/salus_web/salus_web/waypoint_repository.py
+      - src/salus_web/salus_web/ros_gateway.py
+      - src/salus_web/salus_web/websocket_server.py
+      - src/salus_web/launch/web_bridge.launch.py
       - docs/decisions/0005-web-operator-control-lease.md
-    note: El protocolo, lease exclusivo por conexión, lock con heartbeat, proyección de estado y persistencia de waypoints fueron portados como lógica pura y testeable contra Cockpit. Runtime WebSocket/ROS, sesiones, rosbag, RTK y cámara siguen pendientes.
+      - tools/smoke_web_cockpit.sh
+    note: El protocolo y el runtime ROS/WebSocket compatible con Cockpit están portados y validados en simulación con lease exclusivo, lock/heartbeat, estado, zonas, navegación/misiones, manual, persistencia y snapshot. Sesiones, rosbag, selección RTK, cámara y validación contra el Cockpit externo siguen pendientes.
   hardware_adapters:
     source: sensores
     target: salus_hardware

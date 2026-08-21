@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-pytest \
     python3-yaml \
+    python3-websockets \
     python3-numpy \
     python3-opencv \
     python3-serial \
@@ -41,6 +42,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-ros-gz-bridge \
     liburdfdom-tools \
     && rm -rf /var/lib/apt/lists/*
+
+# Ubuntu 22.04 ships websockets 9.1, whose client still passes the removed
+# ``loop=`` argument on Python 3.10.  Pin a compatible release for both the
+# bridge runtime and its real transport tests.
+RUN python3 -m pip install --no-cache-dir websockets==10.4
 
 ARG USERNAME=ros
 ARG USER_UID=1000
