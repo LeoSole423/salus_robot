@@ -149,7 +149,10 @@ async def scenario() -> dict:
         snapshot = None
         deadline = time.monotonic() + 45.0
         while time.monotonic() < deadline:
-            snapshot = await first.request("get_nav_snapshot", timeout_s=10.0)
+            # The gateway deliberately gives rendering/service discovery a
+            # 20-second budget.  The transport probe must not cancel its recv
+            # before that bounded operation can answer.
+            snapshot = await first.request("get_nav_snapshot", timeout_s=25.0)
             if snapshot.get("ok") is True:
                 break
             await asyncio.sleep(0.5)
