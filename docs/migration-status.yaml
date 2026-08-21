@@ -104,11 +104,15 @@ components:
   operator_web:
     source: map_tools
     target: salus_web
-    state: characterized
+    state: ported
     evidence:
       - docs/migration-evidence/intent/web-cockpit-bridge.md
       - src/salus_web/test/fixtures/cockpit_protocol/scenarios.json
-    note: El protocolo operativo y sus límites fueron caracterizados contra Cockpit; runtime WebSocket/ROS aún no fue portado.
+      - src/salus_web/salus_web/protocol.py
+      - src/salus_web/salus_web/operator_guard.py
+      - src/salus_web/salus_web/state_projection.py
+      - src/salus_web/salus_web/waypoint_repository.py
+    note: El protocolo, lock con heartbeat, proyección de estado y persistencia de waypoints fueron portados como lógica pura y testeable contra Cockpit. Runtime WebSocket/ROS, ownership multi-cliente, sesiones, rosbag, RTK y cámara siguen pendientes.
   hardware_adapters:
     source: sensores
     target: salus_hardware
