@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
     python3-pip \
     python3-pytest \
+    python3-yaml \
     python3-numpy \
     python3-opencv \
     python3-serial \

@@ -30,4 +30,3 @@ def test_locked_policy_keeps_stop_operations_available() -> None:
     assert {"brake", "cancel_goal", "cancel_route", "cancel_patrol"} <= safe
     assert "set_manual_mode:true" in controlled
     assert "set_manual_mode:false" in safe
-
