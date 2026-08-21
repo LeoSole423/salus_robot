@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: characterized_protocol_runtime_pending
+    status: ported_pure_core_runtime_pending
   salus_simulation:
     owner: simulation
     build_type: ament_cmake
