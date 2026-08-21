@@ -84,9 +84,19 @@ class ZonesManager(Node):
         self.create_service(Trigger, "/zones_manager/reload_from_disk", self._reload, callback_group=self._service_group)
         # Defer and retry the initial reload: the map server is lifecycle
         # managed independently and may not be active on its first attempt.
-        self._initialization_timer = self.create_timer(0.5, self._load_initial_state)
+        # Initialization and operator updates both replace the same persisted
+        # mask and synchronously wait on map-server clients.  Serialize them so
+        # they cannot occupy every executor thread while their service
+        # responses are waiting to run in the reentrant client group.
+        self._initialization_timer = self.create_timer(
+            0.5, self._load_initial_state, callback_group=self._service_group
+        )
 
     def _load_initial_state(self) -> None:
+        # Treat this repeating ROS timer as a one-shot.  Mask generation may
+        # take longer than its period; cancelling up front prevents another
+        # initialization callback from already being queued behind this one.
+        self._initialization_timer.cancel()
         self._initial_reload_attempt += 1
         try:
             text = self.geojson_path.read_text(encoding="utf-8")
@@ -98,19 +108,18 @@ class ZonesManager(Node):
             document = EMPTY_GEOJSON
         ok, error, _, _ = self._apply(document, persist=not self.geojson_path.exists())
         if ok:
-            self._initialization_timer.cancel()
             return
         if self._initial_reload_attempt >= self._initial_reload_max_attempts:
-            self._initialization_timer.cancel()
             self.get_logger().error(f"initial zone mask unavailable: {error}")
             return
         self.get_logger().info(
             "initial zone mask not ready; retrying "
             f"({self._initial_reload_attempt}/{self._initial_reload_max_attempts}): {error}"
         )
-        self._initialization_timer.cancel()
         self._initialization_timer = self.create_timer(
-            self._initial_reload_retry_s, self._load_initial_state
+            self._initial_reload_retry_s,
+            self._load_initial_state,
+            callback_group=self._service_group,
         )
 
     def _await(self, client, request: Any):

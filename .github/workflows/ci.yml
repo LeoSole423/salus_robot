@@ -177,6 +177,13 @@ jobs:
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_snapshot.sh
+      - name: Smoke — Cockpit WebSocket bridge
+        id: smoke_web_cockpit
+        if: always() && steps.workspace.outcome == 'success'
+        continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
+        run: ./tools/run_smoke.sh ./tools/smoke_web_cockpit.sh
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -194,4 +201,5 @@ jobs:
           ROUTES: ${{ steps.smoke_routes.outcome }}
           PATROL_BATTERY: ${{ steps.smoke_patrol_battery.outcome }}
           SNAPSHOT: ${{ steps.smoke_snapshot.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION ZONES ROUTES PATROL_BATTERY SNAPSHOT
+          WEB_COCKPIT: ${{ steps.smoke_web_cockpit.outcome }}
+        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION ZONES ROUTES PATROL_BATTERY SNAPSHOT WEB_COCKPIT

@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_pure_core_runtime_pending
+    status: ported_cockpit_runtime_sim_sessions_camera_hardware_pending
   salus_simulation:
     owner: simulation
     build_type: ament_cmake
