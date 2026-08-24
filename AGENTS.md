@@ -4,9 +4,10 @@
 
 - Project: `salus_robot`, clean-room successor to `ROS2_SALUS`.
 - ROS distribution: Humble on Ubuntu 22.04.
-- Current milestone: control/battery parity plus isolated Ackermann motion in
-  simulation; full robot remains non-operational.
-- Never claim that a skeleton launch can operate or move the robot.
+- Current milestone: the integrated simulation includes control, localization,
+  3D LiDAR, safety, Nav2, routes, patrol/HOME, Cockpit and simulated PTZ.
+- Hardware adapters and final `sim.launch.py` / `real.launch.py` remain pending.
+- Never claim hardware parity without bank, bag or robot evidence.
 
 ## Sources of truth
 
@@ -20,6 +21,23 @@ The old `ROS2_SALUS`, `cockpit`, and firmware repositories are external
 references. Do not edit them from work scoped to this repository. Do not copy
 legacy code unless the migration map classifies it and an ADR records any
 architectural compromise.
+
+## Required workflow
+
+Read [`docs/agent-development-workflow.md`](docs/agent-development-workflow.md)
+before generating code. It is the source of truth for historical
+characterization, pure-domain design, branch/PR handling, SOL/Terra handoffs,
+tests, CI diagnosis and merge criteria.
+
+For migration work:
+
+1. Investigate the relevant legacy commits, tests and current runtime first.
+2. Write or update an intent sheet under `docs/migration-evidence/intent/`.
+3. Preserve public contracts unless an ADR approves a compatibility plan.
+4. Implement pure policies/state machines before thin ROS adapters.
+5. Add characterization tests before changing behavior.
+6. Work on one `agent/*` branch and one bounded PR at a time.
+7. Do not merge until local evidence and all required CI jobs are green.
 
 ## Repository rules
 
@@ -46,6 +64,10 @@ architectural compromise.
 ./tools/smoke_safety_sim.sh
 ./tools/smoke_navigation_core_sim.sh
 ./tools/smoke_navigation_zones_sim.sh
+./tools/smoke_route_executor_sim.sh
+./tools/smoke_patrol_battery_sim.sh
+./tools/smoke_navigation_snapshot.sh
+./tools/smoke_web_cockpit.sh
 ./tools/smoke_integration_sim.sh
 ./tools/sim.sh
 ./tools/cmd_vel_sim.sh straight
@@ -63,3 +85,6 @@ and an accessible E-stop.
 - public contracts and runtime wiring are documented;
 - real/sim behavior and failure modes have tests;
 - migration status and relevant ADRs are updated.
+- the PR records intent, scope, evidence, limitations and hardware status;
+- `build-unit`, `simulation-core` and `navigation-missions` are green when
+  required by the changed boundaries.

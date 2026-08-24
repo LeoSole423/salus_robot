@@ -182,6 +182,9 @@ fijo de simulación; no incluye brújula, datum dinámico, LiDAR ni GNSS real.
 5. Ejecutar `./tools/test.sh` antes de integrar.
 
 Para orientación rápida de agentes y colaboradores, leer [AGENTS.md](AGENTS.md).
+El flujo obligatorio de investigación histórica, diseño, implementación,
+handoff SOL/Terra, branches, PR, CI y merge está documentado en la
+[guía de desarrollo para agentes](docs/agent-development-workflow.md).
 
 ## Licencia
 
