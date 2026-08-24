@@ -135,11 +135,19 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
             if key in fields:
                 fields[key] = _finite_number(fields, key, request)
         if not any(key in fields for key in ("pan_deg", "tilt_deg", "zoom_level")):
-            raise ProtocolError("invalid_request", "camera PTZ move needs one axis", request.op, request.request_id)
+            raise ProtocolError(
+                "invalid_request",
+                "camera PTZ move needs one axis",
+                request.op,
+                request.request_id,
+            )
     elif request.op in {"camera_ptz_preset", "camera_ptz_set_preset"}:
         preset = fields.get("preset")
         if not isinstance(preset, str) or not preset.strip():
-            raise ProtocolError("invalid_request", "preset is required", request.op, request.request_id)
+            raise ProtocolError(
+                "invalid_request", "preset is required",
+                request.op, request.request_id,
+            )
         fields["preset"] = preset.strip()
         if request.op == "camera_ptz_set_preset":
             _require_bool(fields, "save_zoom", request)

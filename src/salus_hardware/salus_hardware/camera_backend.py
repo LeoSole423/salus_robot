@@ -7,7 +7,12 @@ import threading
 import time
 from typing import Protocol
 from urllib.error import HTTPError, URLError
-from urllib.request import HTTPDigestAuthHandler, HTTPPasswordMgrWithDefaultRealm, Request, build_opener
+from urllib.request import (
+    HTTPDigestAuthHandler,
+    HTTPPasswordMgrWithDefaultRealm,
+    Request,
+    build_opener,
+)
 from xml.etree import ElementTree
 
 from .camera_domain import CameraLimits, PtzPose, normalize_pose

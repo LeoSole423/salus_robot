@@ -165,12 +165,27 @@ def saved_preset(
         raise ValueError(f"preset '{canonical}' must preserve its configured zoom")
     normalized = normalize_pose(current, limits)
     zoom = normalized.zoom_level if effective_save_zoom else preset.pose.zoom_level
-    return PresetDefinition(canonical, PtzPose(normalized.pan_deg, normalized.tilt_deg, zoom), True, effective_save_zoom)
+    return PresetDefinition(
+        canonical,
+        PtzPose(normalized.pan_deg, normalized.tilt_deg, zoom),
+        True,
+        effective_save_zoom,
+    )
 
 
-def default_presets(limits: CameraLimits, *, home_zoom: float = 1.0) -> dict[str, PresetDefinition]:
-    def make(name: str, pan: float, editable: bool, saves_zoom: bool) -> PresetDefinition:
-        return PresetDefinition(name, normalize_pose(PtzPose(pan, 0.0, home_zoom), limits), editable, saves_zoom)
+def default_presets(
+    limits: CameraLimits,
+    *,
+    home_zoom: float = 1.0,
+) -> dict[str, PresetDefinition]:
+    def make(
+        name: str,
+        pan: float,
+        editable: bool,
+        saves_zoom: bool,
+    ) -> PresetDefinition:
+        pose = normalize_pose(PtzPose(pan, 0.0, home_zoom), limits)
+        return PresetDefinition(name, pose, editable, saves_zoom)
     return {
         "home": make("home", 0.0, True, True),
         "front": make("front", 0.0, False, False),

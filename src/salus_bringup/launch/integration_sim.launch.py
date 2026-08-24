@@ -91,6 +91,11 @@ def generate_launch_description() -> LaunchDescription:
                 "launch_camera", default_value="false",
                 description="Start the simulated PTZ control service without a video stream.",
             ),
+            DeclareLaunchArgument(
+                "camera_presets_file",
+                default_value="runtime/camera/presets.json",
+                description="Writable PTZ preset store for the simulated camera.",
+            ),
             DeclareLaunchArgument("web_ws_port", default_value="8766"),
             DeclareLaunchArgument(
                 "web_waypoints_file", default_value="runtime/web/waypoints.yaml"
@@ -166,7 +171,9 @@ def generate_launch_description() -> LaunchDescription:
                 condition=IfCondition(launch_web),
             ),
             _include(
-                "salus_hardware", "camera_sim.launch.py",
+                "salus_hardware",
+                "camera_sim.launch.py",
+                {"camera_presets_file": LaunchConfiguration("camera_presets_file")},
                 condition=IfCondition(launch_camera),
             ),
             _include(

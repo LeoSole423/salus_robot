@@ -216,8 +216,12 @@ class CockpitRosGateway(Node):
             "get_camera_status": self.create_client(CameraStatus, "/camara/camera_status"),
             "camera_ptz_move": self.create_client(CameraPtz, "/camara/camera_ptz"),
             "camera_ptz_preset": self.create_client(CameraPreset, "/camara/camera_preset"),
-            "camera_ptz_set_preset": self.create_client(CameraSavePreset, "/camara/camera_save_preset"),
-            "get_camera_ptz_state": self.create_client(CameraPtzState, "/camara/camera_ptz_state"),
+            "camera_ptz_set_preset": self.create_client(
+                CameraSavePreset, "/camara/camera_save_preset"
+            ),
+            "get_camera_ptz_state": self.create_client(
+                CameraPtzState, "/camara/camera_ptz_state"
+            ),
         }
 
     def set_broadcast_callback(
@@ -296,7 +300,10 @@ class CockpitRosGateway(Node):
                 return [response, self._sensor_info(tab, implemented)]
             if request.op == "get_nav_snapshot":
                 return [await self._snapshot(request)]
-            if request.op.startswith("camera_") or request.op == "get_camera_status":
+            if (
+                request.op.startswith("camera_")
+                or request.op in {"get_camera_status", "get_camera_ptz_state"}
+            ):
                 return [await self._camera(request)]
             return [await self._dispatch_service(request)]
         except RosGatewayError as error:
@@ -328,13 +335,26 @@ class CockpitRosGateway(Node):
         success = bool(values.get("ok", values.get("success", False)))
         error = str(values.get("error", values.get("message", "")) or "")
         if not success:
-            return ack(request, ok=False, error=error or "camera operation failed", payload=_camera_payload(values))
+            return ack(
+                request,
+                ok=False,
+                error=error or "camera operation failed",
+                payload=_camera_payload(values),
+            )
         if request.op == "get_camera_status":
             return ack(request, ok=True, payload=_camera_payload(values))
         if request.op == "get_camera_ptz_state":
             return ack(request, ok=True, payload=_camera_payload(values))
         refreshed = await self._call("get_camera_ptz_state", CameraPtzState.Request())
-        return ack(request, ok=True, payload=_camera_payload(_message_dict(refreshed)))
+        refreshed_values = _message_dict(refreshed)
+        refreshed_ok = bool(refreshed_values.get("ok", False))
+        refreshed_error = str(refreshed_values.get("error", "") or "")
+        return ack(
+            request,
+            ok=refreshed_ok,
+            error=None if refreshed_ok else refreshed_error or "camera unavailable",
+            payload=_camera_payload(refreshed_values),
+        )
 
     async def _snapshot(self, request: OperatorRequest) -> dict[str, Any]:
         response = await self._call("get_nav_snapshot", GetNavSnapshot.Request())
@@ -547,7 +567,9 @@ def build_ros_request(request: OperatorRequest) -> Any:
     if request.op == "camera_zoom_toggle":
         return Trigger.Request()
     if request.op in {"get_camera_status", "get_camera_ptz_state"}:
-        return CameraStatus.Request() if request.op == "get_camera_status" else CameraPtzState.Request()
+        if request.op == "get_camera_status":
+            return CameraStatus.Request()
+        return CameraPtzState.Request()
     if request.op == "camera_ptz_move":
         result = CameraPtz.Request()
         result.relative = bool(fields["relative"])

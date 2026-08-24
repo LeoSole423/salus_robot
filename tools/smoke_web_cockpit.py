@@ -105,6 +105,18 @@ async def scenario() -> dict:
         if initial.get("op") != "state" or initial.get("control_locked") is not True:
             raise RuntimeError(f"invalid initial state: {initial}")
 
+        camera_state = await first.request("get_camera_ptz_state")
+        require_ok(camera_state, "get_camera_ptz_state")
+        if camera_state.get("payload", {}).get("ok") is not True:
+            raise RuntimeError(f"sim camera is unavailable: {camera_state}")
+        locked_camera = await first.request(
+            "camera_ptz_move", {"relative": True, "pan_deg": 5.0}
+        )
+        if locked_camera.get("error_code") != "CONTROL_LOCKED":
+            raise RuntimeError(
+                f"locked camera mutation was not rejected: {locked_camera}"
+            )
+
         preview = await first.receive_until(
             lambda item: item.get("op") == "scan_preview", 15.0
         )
@@ -143,7 +155,46 @@ async def scenario() -> dict:
         )
         if rejected.get("error_code") != "CONTROL_OWNED":
             raise RuntimeError(f"second client was not rejected: {rejected}")
+        rejected_camera = await second.request(
+            "camera_ptz_preset", {"preset": "left"}
+        )
+        if rejected_camera.get("error_code") != "CONTROL_OWNED":
+            raise RuntimeError(
+                f"second camera client was not rejected: {rejected_camera}"
+            )
         evidence["operations"].append("exclusive_lease")
+
+        moved = await first.request(
+            "camera_ptz_move",
+            {
+                "relative": False,
+                "pan_deg": 25.0,
+                "tilt_deg": 10.0,
+                "zoom_level": 2.0,
+            },
+        )
+        require_ok(moved, "camera_ptz_move")
+        moved_state = moved.get("payload", {})
+        if abs(float(moved_state.get("pan_deg", -1.0)) - 25.0) > 0.01:
+            raise RuntimeError(f"camera absolute move was not applied: {moved}")
+        saved = await first.request(
+            "camera_ptz_set_preset",
+            {"preset": "home", "save_zoom": True},
+        )
+        require_ok(saved, "camera_ptz_set_preset")
+        preset = await first.request(
+            "camera_ptz_preset", {"preset": "left"}
+        )
+        require_ok(preset, "camera_ptz_preset")
+        if preset.get("payload", {}).get("active_preset") != "left":
+            raise RuntimeError(f"camera preset was not reflected: {preset}")
+        evidence["camera"] = {
+            "initial": camera_state.get("payload"),
+            "moved": moved_state,
+            "preset": preset.get("payload"),
+            "saved": saved.get("payload"),
+        }
+        evidence["operations"].append("camera_ptz")
 
         require_ok(await first.request("control_heartbeat"), "control_heartbeat")
         state = await first.request("get_state", timeout_s=15.0)

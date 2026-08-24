@@ -14,7 +14,10 @@ def test_corrupt_preset_file_keeps_defaults(tmp_path: Path) -> None:
 def test_saved_presets_survive_repository_reload(tmp_path: Path) -> None:
     limits = CameraLimits()
     presets = default_presets(limits)
-    presets["home"] = saved_preset("home", PtzPose(34.0, 12.0, 3.0), presets, limits, save_zoom=True)
+    presets["home"] = saved_preset(
+        "home", PtzPose(34.0, 12.0, 3.0), presets, limits,
+        save_zoom=True,
+    )
     repository = PresetRepository(tmp_path / "presets.json", limits)
     repository.save(presets)
     assert repository.load(default_presets(limits))["home"].pose == PtzPose(34.0, 12.0, 3.0)

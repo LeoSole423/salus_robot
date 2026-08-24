@@ -2,6 +2,7 @@ import json
 import math
 from pathlib import Path
 
+from salus_interfaces.srv import CameraPtzState
 from salus_web.protocol import parse_request, validate_request
 from salus_web.ros_gateway import build_ros_request
 
@@ -89,3 +90,6 @@ def test_camera_mapping_preserves_optional_axis_contract() -> None:
     }))
     assert save.preset == "home"
     assert save.save_zoom is True
+
+    state = build_ros_request(_request({"op": "get_camera_ptz_state"}))
+    assert isinstance(state, CameraPtzState.Request)

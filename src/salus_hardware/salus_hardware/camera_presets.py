@@ -40,7 +40,11 @@ class PresetRepository:
 
     def save(self, presets: Mapping[str, PresetDefinition]) -> None:
         document = {
-            name: {"pan_deg": item.pose.pan_deg, "tilt_deg": item.pose.tilt_deg, "zoom_level": item.pose.zoom_level}
+            name: {
+                "pan_deg": item.pose.pan_deg,
+                "tilt_deg": item.pose.tilt_deg,
+                "zoom_level": item.pose.zoom_level,
+            }
             for name, item in sorted(presets.items()) if item.editable
         }
         self._path.parent.mkdir(parents=True, exist_ok=True)

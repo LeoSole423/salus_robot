@@ -18,7 +18,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: characterized_camera_ptz_runtime_pending
+    status: ported_camera_ptz_sim_hardware_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_cockpit_runtime_compact_telemetry_sim_sessions_camera_hardware_pending
+    status: ported_cockpit_runtime_compact_telemetry_camera_ptz_sim
   salus_simulation:
     owner: simulation
     build_type: ament_cmake
