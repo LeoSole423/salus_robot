@@ -134,7 +134,11 @@ components:
   hardware_adapters:
     source: sensores
     target: salus_hardware
-    state: pending
+    state: characterized
+    evidence:
+      - docs/migration-evidence/intent/camera-ptz-presets.md
+      - docs/decisions/0006-camera-ptz-control-boundaries.md
+    note: Camera PTZ, presets, ISAPI boundary, simulated backend, persistence and Cockpit lease policy are specified. No camera interface or runtime has been ported yet; GNSS/MAVROS, RS16, UART and physical validation remain pending.
   system_bringup:
     source: navegacion_gps/launch
     target: salus_bringup

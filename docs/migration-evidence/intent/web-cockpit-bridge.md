@@ -120,7 +120,7 @@ rangos numéricos antes de llamar ROS.
 | `get_datums` | exponer sólo el datum fijo como lectura compatible |
 | `set_datum`, `save_datum`, `delete_datum`, `select_datum`, `capture_current_gps_datum` | rechazo explícito `UNSUPPORTED_FIXED_DATUM`; no reintroducir setters legacy |
 | `select_rtk_source`, `upsert_rtk_source` | diferir al adaptador GNSS/RTK |
-| `camera_*`, `get_camera_*` | forma de protocolo reservada; implementación en el corte PTZ/cámara |
+| `camera_*`, `get_camera_*` | forma reservada; intención y límites fijados en `camera-ptz-presets.md`, runtime pendiente |
 | `start_rosbag`, `stop_rosbag`, `get_rosbag_status`, `mission.*` | segundo subcorte desacoplado; nunca ejecutar subprocess desde el gateway ROS |
 | `start_recording`, `stop_recording`, `clear_recording`, `start_patrol`, `stop_patrol`, `mission.start` | no implementadas por el backend operativo actual; responder `unknown op` por compatibilidad real |
 | vistas `topics`, `lidar`, `camera` de `sensor_info` | `implemented=false` hasta tener productor específico |
