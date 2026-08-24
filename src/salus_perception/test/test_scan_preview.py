@@ -46,3 +46,5 @@ def test_preview_rejects_empty_or_invalid_scans_without_inventing_output() -> No
     assert reduce_scan_preview(message, beam_stride=1, crop_angle_min_rad=-1.0, crop_angle_max_rad=1.0, output_range_max_m=12.0) is None
     message = _scan()
     assert reduce_scan_preview(message, beam_stride=1, crop_angle_min_rad=2.0, crop_angle_max_rad=3.0, output_range_max_m=12.0) is None
+    message = _scan()
+    assert reduce_scan_preview(message, beam_stride=1, crop_angle_min_rad=math.nan, crop_angle_max_rad=1.0, output_range_max_m=12.0) is None

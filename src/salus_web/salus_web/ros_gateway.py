@@ -50,8 +50,12 @@ from salus_interfaces.srv import (
     SetZonesGeoJson,
 )
 
+from .compact_telemetry import (
+    CompactTelemetryPolicy,
+    normalize_telemetry_profile,
+    positive_rate,
+)
 from .protocol import OperatorRequest, ack
-from .compact_telemetry import CompactTelemetryPolicy, normalize_telemetry_profile
 from .waypoint_repository import AtomicWaypointRepository, normalize_document
 
 
@@ -95,7 +99,10 @@ class CockpitRosGateway(Node):
             self.get_parameter("telemetry_profile").value
         )
         self._compact_policy = CompactTelemetryPolicy(
-            max_hz=max(0.1, float(self.get_parameter("compact_telemetry_hz").value)),
+            max_hz=positive_rate(
+                self.get_parameter("compact_telemetry_hz").value,
+                "compact_telemetry_hz",
+            ),
             clock=time.monotonic,
         )
         self._lock = Lock()

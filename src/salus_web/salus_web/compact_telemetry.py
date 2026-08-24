@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+import math
 from typing import Any, Callable, Mapping
 
 
@@ -27,6 +28,16 @@ def normalize_telemetry_profile(value: object) -> str:
     if profile not in VALID_TELEMETRY_PROFILES:
         raise ValueError("telemetry_profile must be 'compact' or 'full'")
     return profile
+
+
+def positive_rate(value: object, parameter_name: str) -> float:
+    try:
+        rate = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{parameter_name} must be a positive finite number") from error
+    if not math.isfinite(rate) or rate <= 0.0:
+        raise ValueError(f"{parameter_name} must be a positive finite number")
+    return rate
 
 
 def transition_signature(cache: Mapping[str, Any]) -> tuple[Any, ...]:

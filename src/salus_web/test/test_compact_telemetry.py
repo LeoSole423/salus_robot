@@ -3,7 +3,11 @@ import math
 import pytest
 from sensor_msgs.msg import LaserScan
 
-from salus_web.compact_telemetry import CompactTelemetryPolicy, normalize_telemetry_profile
+from salus_web.compact_telemetry import (
+    CompactTelemetryPolicy,
+    normalize_telemetry_profile,
+    positive_rate,
+)
 from salus_web.ros_gateway import scan_preview_payload
 from salus_web.websocket_server import REPLACEABLE_OPS
 
@@ -37,6 +41,29 @@ def test_telemetry_profile_rejects_ambiguous_values(value) -> None:
         normalize_telemetry_profile(value)
     assert normalize_telemetry_profile("COMPACT") == "compact"
     assert normalize_telemetry_profile("full") == "full"
+
+
+@pytest.mark.parametrize("value", [0.0, -1.0, float("nan"), float("inf"), "bad"])
+def test_compact_rate_rejects_invalid_values(value) -> None:
+    with pytest.raises(ValueError, match="positive finite"):
+        positive_rate(value, "compact_telemetry_hz")
+
+
+def test_compact_policy_reduces_measurement_emissions_without_losing_transition() -> None:
+    clock = Clock()
+    policy = CompactTelemetryPolicy(2.0, clock)
+    cache = {"goal_active": False, "robot_pose": {"lat": -31.0}}
+    emissions = int(policy.observe(cache))
+    for index in range(20):
+        clock.now += 0.05
+        cache["robot_pose"] = {"lat": -31.0 + index * 0.000001}
+        policy.observe(cache)
+        if policy.due():
+            emissions += 1
+            policy.mark_emitted()
+    assert emissions < 20
+    cache["goal_active"] = True
+    assert policy.observe(cache) is True
 
 
 def test_scan_preview_projection_is_bounded_and_leaves_nonfinite_json_safe() -> None:

@@ -7,7 +7,13 @@ from typing import Optional
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from sensor_msgs.msg import LaserScan
 
 
@@ -26,11 +32,21 @@ def reduce_scan_preview(
     use the untouched ``/scan_clean`` stream.
     """
 
-    if not message.ranges or not math.isfinite(message.angle_increment) or message.angle_increment <= 1.0e-9:
+    if (
+        not message.ranges
+        or not math.isfinite(message.angle_increment)
+        or message.angle_increment <= 1.0e-9
+    ):
         return None
     if not math.isfinite(message.angle_min) or not math.isfinite(message.angle_max):
         return None
-    if not math.isfinite(output_range_max_m) or output_range_max_m <= 0.0:
+    if (
+        not math.isfinite(crop_angle_min_rad)
+        or not math.isfinite(crop_angle_max_rad)
+        or crop_angle_max_rad < crop_angle_min_rad
+        or not math.isfinite(output_range_max_m)
+        or output_range_max_m <= 0.0
+    ):
         return None
 
     stride = max(1, int(beam_stride))
@@ -39,7 +55,10 @@ def reduce_scan_preview(
     if end_angle < start_angle:
         return None
 
-    start_index = max(0, int(math.ceil((start_angle - message.angle_min) / message.angle_increment)))
+    start_index = max(
+        0,
+        int(math.ceil((start_angle - message.angle_min) / message.angle_increment)),
+    )
     end_index = min(
         len(message.ranges) - 1,
         int(math.floor((end_angle - message.angle_min) / message.angle_increment)),
@@ -52,8 +71,12 @@ def reduce_scan_preview(
 
     preview = LaserScan()
     preview.header = message.header
-    preview.angle_min = float(message.angle_min + indices[0] * message.angle_increment)
-    preview.angle_max = float(message.angle_min + indices[-1] * message.angle_increment)
+    preview.angle_min = float(
+        message.angle_min + indices[0] * message.angle_increment
+    )
+    preview.angle_max = float(
+        message.angle_min + indices[-1] * message.angle_increment
+    )
     preview.angle_increment = float(message.angle_increment * stride)
     preview.time_increment = float(message.time_increment * stride)
     preview.scan_time = message.scan_time
@@ -64,7 +87,11 @@ def reduce_scan_preview(
 
     for index in indices:
         reading = float(message.ranges[index])
-        preview.ranges.append(float("inf") if math.isfinite(reading) and reading > preview.range_max else reading)
+        preview.ranges.append(
+            float("inf")
+            if math.isfinite(reading) and reading > preview.range_max
+            else reading
+        )
     # Intensities are intentionally omitted: the WebSocket preview must remain
     # bounded and Cockpit does not consume them.
     return preview
@@ -87,11 +114,24 @@ class ScanPreviewNode(Node):
         for name, value in defaults.items():
             self.declare_parameter(name, value)
         value = lambda name: self.get_parameter(name).value
-        self._publish_period_s = 1.0 / max(0.2, float(value("publish_hz")))
-        self._beam_stride = max(1, int(value("beam_stride")))
+        publish_hz = float(value("publish_hz"))
+        self._beam_stride = int(value("beam_stride"))
         self._crop_min = float(value("crop_angle_min_rad"))
         self._crop_max = float(value("crop_angle_max_rad"))
-        self._range_max = max(0.5, float(value("output_range_max_m")))
+        self._range_max = float(value("output_range_max_m"))
+        if not math.isfinite(publish_hz) or publish_hz <= 0.0:
+            raise ValueError("publish_hz must be a positive finite number")
+        if self._beam_stride < 1:
+            raise ValueError("beam_stride must be at least one")
+        if (
+            not math.isfinite(self._crop_min)
+            or not math.isfinite(self._crop_max)
+            or self._crop_max < self._crop_min
+        ):
+            raise ValueError("crop angles must be finite and ordered")
+        if not math.isfinite(self._range_max) or self._range_max <= 0.0:
+            raise ValueError("output_range_max_m must be a positive finite number")
+        self._publish_period_s = 1.0 / publish_hz
         self._last_publish_s = float("-inf")
         self._publisher = self.create_publisher(
             LaserScan,
@@ -103,7 +143,12 @@ class ScanPreviewNode(Node):
                 durability=DurabilityPolicy.VOLATILE,
             ),
         )
-        self.create_subscription(LaserScan, str(value("source_topic")), self._on_scan, qos_profile_sensor_data)
+        self.create_subscription(
+            LaserScan,
+            str(value("source_topic")),
+            self._on_scan,
+            qos_profile_sensor_data,
+        )
 
     def _on_scan(self, message: LaserScan) -> None:
         now_s = self.get_clock().now().nanoseconds / 1.0e9
