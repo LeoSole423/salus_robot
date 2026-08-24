@@ -10,10 +10,9 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-52}" -e GZ_PART
   smoke_init web-cockpit
   trap smoke_cleanup EXIT
   web_port=$((18700 + ${ROS_DOMAIN_ID}))
-  waypoint_file="${SMOKE_RUNTIME_DIR}/web/waypoints.yaml"
-  camera_presets_file="${SMOKE_RUNTIME_DIR}/camera/presets.json"
   world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/empty.world"
-  smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py world:=${world} launch_routes:=true launch_patrol:=true launch_web:=true launch_camera:=true web_ws_port:=${web_port} web_waypoints_file:=${waypoint_file} camera_presets_file:=${camera_presets_file}"
+  smoke_start_launch operational "ros2 launch salus_bringup sim_operational.launch.py headless:=true world:=${world} web_ws_port:=${web_port} runtime_dir:=${SMOKE_RUNTIME_DIR}/profile"
+  smoke_run operational_probe "python3 /ros2_ws/tools/integration_probe.py --operational --timeout 90 --report-path ${SMOKE_ARTIFACT_DIR}/operational_probe.json"
   export SALUS_WEB_SMOKE_PORT="${web_port}"
   smoke_run web_probe "python3 /ros2_ws/tools/smoke_web_cockpit.py"
   smoke_note "cockpit_contract_valid"

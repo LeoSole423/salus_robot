@@ -21,6 +21,12 @@ for option in "$@"; do
   esac
 done
 
+if [[ "${cockpit}" == "true" ]]; then
+  operational_args=()
+  [[ "${visual}" == "false" ]] && operational_args+=(--headless)
+  exec "${repo_dir}/tools/sim_operational.sh" "${operational_args[@]}"
+fi
+
 docker compose up -d --build
 
 if [[ "${visual}" == "true" ]]; then
@@ -29,12 +35,6 @@ if [[ "${visual}" == "true" ]]; then
   launch_args="gz_args:=-r rviz:=true"
 else
   launch_args="gz_args:=-r\ -s rviz:=false"
-fi
-
-if [[ "${cockpit}" == "true" ]]; then
-  launch_args+=" launch_routes:=true launch_patrol:=true launch_web:=true launch_camera:=true web_ws_port:=8766"
-  echo "Cockpit backend available at ws://localhost:8766"
-  echo "In the Cockpit repository, run: git switch migration/salus-robot-cockpit && npm run dev"
 fi
 
 docker compose exec ros2 bash -lc "

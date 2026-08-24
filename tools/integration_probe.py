@@ -154,10 +154,27 @@ _PROBE_STARTED_AT = 0.0
 
 
 class IntegrationProbe(Node):
-    def __init__(self) -> None:
+    OPERATIONAL_NODES = {
+        "route_executor",
+        "patrol_mission_coordinator",
+        "nav_snapshot_server",
+        "salus_web_gateway",
+        "salus_camera",
+    }
+    OPERATIONAL_SERVICES = {
+        "/zones_manager/get_state",
+        "/route_executor/get_route_mission_state",
+        "/route_executor/get_patrol_mission_state",
+        "/nav_snapshot_server/get_nav_snapshot",
+        "/camara/camera_ptz_state",
+    }
+
+    def __init__(self, *, operational: bool = False) -> None:
         super().__init__("integration_structure_probe", parameter_overrides=[])
+        self.operational = operational
         self.odom = TopicEvidence()
         self.scan = TopicEvidence()
+        self.scan_preview = TopicEvidence()
         self.final_commands = 0
         self.startup = subscribe_navigation_startup(self)
         self.tf_buffer = Buffer()
@@ -179,6 +196,10 @@ class IntegrationProbe(Node):
         }
         self.create_subscription(Odometry, "/odometry/global", self._on_odom, QoSProfile(depth=10))
         self.create_subscription(LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data)
+        if self.operational:
+            self.create_subscription(
+                LaserScan, "/scan_preview", self._on_scan_preview, qos_profile_sensor_data
+            )
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self._on_final_command, 10)
 
     def _on_odom(self, message: Odometry) -> None:
@@ -187,16 +208,35 @@ class IntegrationProbe(Node):
     def _on_scan(self, message: LaserScan) -> None:
         self.scan.record(message, validate_scan)
 
+    def _on_scan_preview(self, message: LaserScan) -> None:
+        self.scan_preview.record(message, validate_scan)
+
     def _on_final_command(self, _message: CmdVelFinal) -> None:
         self.final_commands += 1
 
-    def graph_ready(self) -> bool:
-        names = [name for name, namespace in self.get_node_names_and_namespaces()
-                 if f"{namespace.rstrip('/')}/{name}" == "/robot_state_publisher"]
+    def node_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for name, _namespace in self.get_node_names_and_namespaces():
+            counts[name] = counts.get(name, 0) + 1
+        return counts
+
+    def operational_graph_ready(self) -> bool:
+        if not self.operational:
+            return True
+        counts = self.node_counts()
+        available_services = {name for name, _types in self.get_service_names_and_types()}
         return (
-            len(names) == 1
+            all(counts.get(name, 0) == 1 for name in self.OPERATIONAL_NODES)
+            and self.OPERATIONAL_SERVICES.issubset(available_services)
+        )
+
+    def graph_ready(self) -> bool:
+        counts = self.node_counts()
+        return (
+            counts.get("robot_state_publisher", 0) == 1
             and self.count_publishers("/cmd_vel_final") == 1
             and self.count_publishers("/scan_3d_raw") >= 1
+            and self.operational_graph_ready()
         )
 
     def check_tf(self) -> bool:
@@ -220,6 +260,7 @@ class IntegrationProbe(Node):
         return {
             "odometry": self.odom.__dict__,
             "scan": self.scan.__dict__,
+            "scan_preview": self.scan_preview.__dict__,
             "tf": self.tf_result,
             "services": {
                 name: client.service_is_ready()
@@ -230,6 +271,8 @@ class IntegrationProbe(Node):
                 "cmd_vel_final_publishers": self.count_publishers("/cmd_vel_final"),
                 "scan_3d_raw_publishers": self.count_publishers("/scan_3d_raw"),
                 "final_commands": self.final_commands,
+                "node_counts": self.node_counts(),
+                "operational_ready": self.operational_graph_ready(),
             },
             "navigation_startup": self.startup.snapshot(),
         }
@@ -252,6 +295,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument(
+        "--operational", action="store_true",
+        help="Require the full sim_operational graph and compact scan.",
+    )
+    parser.add_argument(
         "--report-path",
         type=Path,
         default=Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "integration_probe.json",
@@ -264,7 +311,7 @@ def main() -> int:
     args = parse_args()
     _PROBE_STARTED_AT = time.monotonic()
     rclpy.init()
-    node = IntegrationProbe()
+    node = IntegrationProbe(operational=args.operational)
     runtime = SmokeRuntime(node, "integration-structure", args.report_path, global_timeout_s=args.timeout)
     success = False
     failure = None
@@ -280,6 +327,10 @@ def main() -> int:
             lambda: (
                 not _failure_reason(node.odom, "odometry")
                 and not _failure_reason(node.scan, "scan")
+                and (
+                    not node.operational
+                    or not _failure_reason(node.scan_preview, "scan_preview")
+                )
                 and node.check_tf() and node.services_ready() and node.graph_ready()
             ),
             20.0,

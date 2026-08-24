@@ -40,3 +40,33 @@ No inicia una cámara ni permite validar hardware real.
 
 Los launches `*_skeleton.launch.py` se conservan como marcadores de los futuros
 bringups finales `sim.launch.py` y `real.launch.py`.
+
+## Perfil operacional de simulación remota
+
+`sim_operational.launch.py` es la composición completa destinada a Cockpit y a
+la validación end-to-end sin hardware:
+
+```bash
+ros2 launch salus_bringup sim_operational.launch.py
+```
+
+El helper operativo construye el workspace y expone Cockpit:
+
+```bash
+./tools/sim_operational.sh
+./tools/sim_operational.sh --headless
+```
+
+Activa por defecto navegación, keepout, rutas, patrulla/HOME, snapshots,
+WebSocket compacto en el puerto `8766` y cámara PTZ simulada. La persistencia se
+agrupa bajo `runtime/sim_operational`; puede cambiarse con `runtime_dir:=...`.
+Usar `headless:=true` en automatización y `rviz:=true` sólo para diagnóstico
+local. El sufijo `wifi` describe el perfil remoto compacto: no selecciona una
+interfaz de red ni configura DDS.
+
+El perfil está listo para validación operacional, pero no sustituye al futuro
+bringup real ni demuestra capacidad de mover el robot físico.
+
+Para trazabilidad de la migración, este launch reemplaza en simulación a
+`navegacion_gps/sim_global_v2_wifi.launch.py`: conserva la composición
+operativa remota, pero no sus configuraciones DDS/WiFi ni `/scan_wifi_debug`.
