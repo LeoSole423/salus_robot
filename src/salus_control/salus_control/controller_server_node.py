@@ -85,7 +85,7 @@ class ControllerServerNode(Node):
         self.declare_parameter("sim_track_width_m", 0.75)
         self.declare_parameter("sim_max_steering_angle_rad", 0.5235987756)
         self.declare_parameter("sim_telemetry_timeout_s", 0.5)
-        self.declare_parameter("sim_invert_actuation_steer_sign", True)
+        self.declare_parameter("sim_invert_actuation_steer_sign", False)
         self.declare_parameter("sim_invert_measured_steer_sign", True)
         self.declare_parameter("sim_max_joint_odom_steer_delta_deg", 5.0)
 

@@ -59,6 +59,8 @@ despacho map que la API LL. Los rechazos quedan observables como eventos
 - Integración: build y suite completa del repositorio.
 - Smoke: `smoke_navigation_core_sim.sh` publica `/goal_pose` y verifica que la
   meta sea aceptada, atraviese la cadena segura y produzca movimiento simulado.
+  Incluye una meta lateral derecha y exige signo negativo coherente en
+  `/cmd_vel`, `/odom_raw`, `/odometry/local` y `/odometry/global`.
 - Hardware: no solicitado ni validado.
 
 ## Estado de evidencia

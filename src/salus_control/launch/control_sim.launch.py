@@ -25,6 +25,7 @@ def generate_launch_description() -> LaunchDescription:
                         "sim_cmd_vel_topic": "/cmd_vel_gazebo",
                         "sim_odom_topic": "/odom_raw",
                         "sim_joint_states_topic": "/joint_states",
+                        "sim_invert_actuation_steer_sign": False,
                     }
                 ],
             )
