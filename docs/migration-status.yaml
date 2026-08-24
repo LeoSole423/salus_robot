@@ -122,12 +122,15 @@ components:
   compact_remote_telemetry:
     source: navegacion_gps/scan_wifi_debug and wifi launch variants
     target: salus_perception and salus_web
-    state: characterized
+    state: ported
     evidence:
       - docs/migration-evidence/intent/compact-telemetry-scan-preview.md
       - src/salus_web/test/fixtures/cockpit_protocol/compact_telemetry.json
       - src/salus_web/test/test_compact_telemetry_specification.py
-    note: Compact/full behavior, immediate transitions and the diagnostic /scan_preview contract are fixed. Runtime and the Cockpit mini-radar remain pending.
+      - src/salus_perception/salus_perception/scan_preview.py
+      - src/salus_web/salus_web/compact_telemetry.py
+      - tools/smoke_lidar_sim.py
+    note: Compact/full runtime and diagnostic /scan_preview are ported and smoke-tested in simulation. The Cockpit mini-radar and RS16 replay parity remain pending.
   hardware_adapters:
     source: sensores
     target: salus_hardware

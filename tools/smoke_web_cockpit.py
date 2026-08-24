@@ -105,6 +105,21 @@ async def scenario() -> dict:
         if initial.get("op") != "state" or initial.get("control_locked") is not True:
             raise RuntimeError(f"invalid initial state: {initial}")
 
+        preview = await first.receive_until(
+            lambda item: item.get("op") == "scan_preview", 15.0
+        )
+        if preview.get("frame_id") != "base_footprint":
+            raise RuntimeError(f"scan preview frame is invalid: {preview}")
+        if not isinstance(preview.get("ranges"), list) or not preview["ranges"]:
+            raise RuntimeError("scan preview omitted reduced ranges")
+        if not isinstance(preview.get("valid_count"), int):
+            raise RuntimeError("scan preview omitted valid_count")
+        evidence["scan_preview"] = {
+            "frame_id": preview["frame_id"],
+            "range_count": len(preview["ranges"]),
+            "valid_count": preview["valid_count"],
+        }
+
         await first.socket.send("{")
         invalid = await first.receive_until(
             lambda item: item.get("error_code") == "invalid_json", 3.0

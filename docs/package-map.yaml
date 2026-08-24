@@ -30,7 +30,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_3d_simulation_pending_rs16_replay
+    status: ported_3d_simulation_and_scan_preview_pending_rs16_replay
   salus_control:
     owner: vehicle_control
     build_type: ament_python
@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_cockpit_runtime_sim_sessions_camera_hardware_pending
+    status: ported_cockpit_runtime_compact_telemetry_sim_sessions_camera_hardware_pending
   salus_simulation:
     owner: simulation
     build_type: ament_cmake

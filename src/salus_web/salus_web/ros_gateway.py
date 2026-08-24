@@ -13,12 +13,14 @@ import json
 import math
 from pathlib import Path
 from threading import Lock
+import time
 from typing import Any, Callable, Iterable, Mapping
 
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rosidl_runtime_py.convert import message_to_ordereddict
-from sensor_msgs.msg import BatteryState, NavSatFix
+from sensor_msgs.msg import BatteryState, LaserScan, NavSatFix
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
@@ -49,6 +51,7 @@ from salus_interfaces.srv import (
 )
 
 from .protocol import OperatorRequest, ack
+from .compact_telemetry import CompactTelemetryPolicy, normalize_telemetry_profile
 from .waypoint_repository import AtomicWaypointRepository, normalize_document
 
 
@@ -71,6 +74,10 @@ class CockpitRosGateway(Node):
         self.declare_parameter("control_lock_start_locked", True)
         self.declare_parameter("control_lock_heartbeat_timeout_s", 2.5)
         self.declare_parameter("client_queue_capacity", 64)
+        self.declare_parameter("telemetry_profile", "compact")
+        self.declare_parameter("compact_telemetry_hz", 2.0)
+        self.declare_parameter("scan_preview_topic", "/scan_preview")
+        self.declare_parameter("scan_preview_enabled", True)
         self._service_timeout_s = max(
             0.1, float(self.get_parameter("service_timeout_s").value)
         )
@@ -83,6 +90,13 @@ class CockpitRosGateway(Node):
         )
         self._waypoints = AtomicWaypointRepository(
             Path(str(self.get_parameter("waypoints_file").value))
+        )
+        self._telemetry_profile = normalize_telemetry_profile(
+            self.get_parameter("telemetry_profile").value
+        )
+        self._compact_policy = CompactTelemetryPolicy(
+            max_hz=max(0.1, float(self.get_parameter("compact_telemetry_hz").value)),
+            clock=time.monotonic,
         )
         self._lock = Lock()
         self._cache: dict[str, Any] = {"connected": True, "mode": "connected"}
@@ -117,6 +131,20 @@ class CockpitRosGateway(Node):
             NavSatFix, "/gps/fix", self._on_gps, qos_profile_sensor_data
         )
         self.create_subscription(String, "/gps/rtk_status", self._on_rtk, 10)
+        if bool(self.get_parameter("scan_preview_enabled").value):
+            self.create_subscription(
+                LaserScan,
+                str(self.get_parameter("scan_preview_topic").value),
+                self._on_scan_preview,
+                qos_profile_sensor_data,
+            )
+        # Use steady time: telemetry must continue to flush when Gazebo's
+        # `/clock` is paused or temporarily unavailable.
+        self.create_timer(
+            1.0 / self._compact_policy.max_hz,
+            self._on_compact_telemetry_timer,
+            clock=Clock(clock_type=ClockType.STEADY_TIME),
+        )
 
         # Do not use ``_clients``: rclpy.Node owns that attribute and its
         # executor expects it to remain a list of ROS client entities.
@@ -367,7 +395,7 @@ class CockpitRosGateway(Node):
             elif message.goal_active:
                 mode = "navigating"
             self._cache["mode"] = mode
-        self._emit(self._cached_payload("nav_telemetry"))
+        self._on_cached_telemetry_change()
 
     def _on_nav_event(self, message: NavEvent) -> None:
         payload = _message_dict(message)
@@ -378,7 +406,10 @@ class CockpitRosGateway(Node):
         values = _message_dict(message)
         with self._lock:
             self._cache["drive_telemetry"] = values
-        self._emit({"op": "drive_telemetry", **values})
+        if self._telemetry_profile == "full":
+            self._emit({"op": "drive_telemetry", **values})
+        else:
+            self._on_cached_telemetry_change()
 
     def _on_battery_guard(self, message: BatteryMissionGuard) -> None:
         with self._lock:
@@ -389,7 +420,7 @@ class CockpitRosGateway(Node):
                 "battery_loaded_voltage_v": _finite_or_none(message.loaded_voltage_slow_v),
                 "battery_state": message.state,
             })
-        self._emit(self._cached_payload("nav_telemetry"))
+        self._on_cached_telemetry_change()
 
     def _on_battery_state(self, message: BatteryState) -> None:
         percentage = _finite_or_none(message.percentage)
@@ -399,6 +430,8 @@ class CockpitRosGateway(Node):
                 "battery_voltage_v": _finite_or_none(message.voltage),
                 "battery_present": bool(message.present),
             })
+        if self._telemetry_profile == "compact":
+            self._on_cached_telemetry_change()
 
     def _on_gps(self, message: NavSatFix) -> None:
         lat = _finite_or_none(message.latitude)
@@ -408,13 +441,45 @@ class CockpitRosGateway(Node):
         pose = {"lat": lat, "lon": lon}
         with self._lock:
             self._cache["robot_pose"] = pose
-        self._emit({"op": "robot_pose", "pose": pose})
+        if self._telemetry_profile == "full":
+            self._emit({"op": "robot_pose", "pose": pose})
+        else:
+            self._on_cached_telemetry_change()
 
     def _on_rtk(self, message: String) -> None:
         status = {"raw": message.data, "available": True, "source": "rtk_status"}
         with self._lock:
             self._cache["gps_status"] = status
-        self._emit({"op": "gps_status", "gps_status": status})
+        if self._telemetry_profile == "full":
+            self._emit({"op": "gps_status", "gps_status": status})
+        else:
+            self._on_cached_telemetry_change()
+
+    def _on_scan_preview(self, message: LaserScan) -> None:
+        payload = scan_preview_payload(message)
+        if payload is not None:
+            self._emit(payload)
+
+    def _on_cached_telemetry_change(self) -> None:
+        """Emit full telemetry immediately or compact transitions immediately."""
+        if self._telemetry_profile == "full":
+            self._emit(self._cached_payload("nav_telemetry"))
+            return
+        with self._lock:
+            snapshot = self._compact_policy.snapshot(self._cache)
+            immediate = self._compact_policy.observe(snapshot)
+        if immediate:
+            self._emit({"op": "nav_telemetry", **snapshot})
+
+    def _on_compact_telemetry_timer(self) -> None:
+        if self._telemetry_profile != "compact":
+            return
+        with self._lock:
+            if not self._compact_policy.due():
+                return
+            self._compact_policy.mark_emitted()
+            snapshot = self._compact_policy.snapshot(self._cache)
+        self._emit({"op": "nav_telemetry", **snapshot})
 
     def _cached_payload(self, operation: str) -> dict[str, Any]:
         with self._lock:
@@ -572,6 +637,42 @@ def _finite_or_none(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def scan_preview_payload(message: LaserScan) -> dict[str, Any] | None:
+    """Project a reduced scan without promoting it to a safety interface."""
+    numeric = (
+        message.angle_min,
+        message.angle_increment,
+        message.range_min,
+        message.range_max,
+    )
+    if (
+        not message.header.frame_id
+        or not message.ranges
+        or not all(math.isfinite(float(value)) for value in numeric)
+        or message.angle_increment <= 0.0
+        or message.range_min < 0.0
+        or message.range_max <= message.range_min
+    ):
+        return None
+    ranges = [float(value) for value in message.ranges]
+    valid_count = sum(
+        math.isfinite(value) and message.range_min <= value <= message.range_max
+        for value in ranges
+    )
+    stamp = message.header.stamp
+    return {
+        "op": "scan_preview",
+        "frame_id": message.header.frame_id,
+        "stamp": {"sec": stamp.sec, "nanosec": stamp.nanosec},
+        "angle_min": float(message.angle_min),
+        "angle_increment": float(message.angle_increment),
+        "range_min": float(message.range_min),
+        "range_max": float(message.range_max),
+        "ranges": ranges,
+        "valid_count": valid_count,
+    }
 
 
 def _message_dict(message: Any) -> dict[str, Any]:

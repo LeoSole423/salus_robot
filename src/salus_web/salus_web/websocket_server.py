@@ -18,7 +18,7 @@ from .protocol import ProtocolError, ack, parse_request, validate_request
 
 
 REPLACEABLE_OPS = frozenset(
-    {"state", "nav_telemetry", "robot_pose", "gps_status", "drive_telemetry", "sensor_info"}
+    {"state", "nav_telemetry", "robot_pose", "gps_status", "drive_telemetry", "sensor_info", "scan_preview"}
 )
 
 
@@ -191,7 +191,7 @@ class CockpitWebSocketServer:
             writer.cancel()
             await asyncio.gather(writer, return_exceptions=True)
             if lease_changed:
-                await self.broadcast(await self._gateway.initial_state())
+                await self._broadcast_operator_transition()
 
     async def _handle_safe(
         self, client_id: str, websocket: Any, outbox: ClientOutbox, raw: Any
@@ -217,7 +217,7 @@ class CockpitWebSocketServer:
             decision = self._lease.set_locked(client_id, request.fields["locked"])
             await outbox.put(self._lease_ack(request, decision))
             if decision.allowed:
-                await self.broadcast(await self._gateway.initial_state())
+                await self._broadcast_operator_transition()
             return
         if request.op == "control_heartbeat":
             decision = self._lease.heartbeat(client_id)
@@ -259,8 +259,21 @@ class CockpitWebSocketServer:
             await asyncio.sleep(0.25)
             current = self._lock_signature()
             if current != previous and current[0] and current[1] == "UI_HEARTBEAT_TIMEOUT":
-                await self.broadcast(await self._gateway.initial_state())
+                await self._broadcast_operator_transition()
             previous = current
+
+    async def _broadcast_operator_transition(self) -> None:
+        """Lock changes bypass compact ROS telemetry cadence.
+
+        The lease is owned here, outside the ROS gateway.  Project the same
+        coherent state both as `state` and as immediate `nav_telemetry` so
+        Cockpit never waits for its next compact timer tick to disable controls.
+        """
+        state = await self._gateway.initial_state()
+        await self.broadcast(state)
+        telemetry = dict(state)
+        telemetry["op"] = "nav_telemetry"
+        await self.broadcast(telemetry)
 
     def _lock_signature(self) -> tuple[bool, str, bool]:
         state = self._lease.state_for("__watchdog__")

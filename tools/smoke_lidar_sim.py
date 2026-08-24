@@ -23,10 +23,12 @@ class LidarSmokeNode(Node):
         self.normalized: list[PointCloud2] = []
         self.obstacles: list[PointCloud2] = []
         self.clean: list[LaserScan] = []
+        self.preview: list[LaserScan] = []
         self.create_subscription(PointCloud2, "/scan_3d_raw", self.raw.append, qos_profile_sensor_data)
         self.create_subscription(PointCloud2, "/scan_3d", self.normalized.append, qos_profile_sensor_data)
         self.create_subscription(PointCloud2, "/obstacles_cloud", self.obstacles.append, qos_profile_sensor_data)
         self.create_subscription(LaserScan, "/scan_clean", self.clean.append, qos_profile_sensor_data)
+        self.create_subscription(LaserScan, "/scan_preview", self.preview.append, qos_profile_sensor_data)
 
 
 def _has_point_in_front(message: PointCloud2) -> bool:
@@ -51,17 +53,19 @@ def main() -> int:
     success = False
     failure = None
     try:
-        for topic in ("/scan_3d_raw", "/scan_3d", "/obstacles_cloud", "/scan_clean"):
+        for topic in ("/scan_3d_raw", "/scan_3d", "/obstacles_cloud", "/scan_clean", "/scan_preview"):
             runtime.wait_topic_publishers(f"publisher {topic}", topic, timeout_s=30.0)
         runtime.wait(
             "continuous lidar chain",
             lambda: has_increasing_stamps(node.raw, 4)
             and has_increasing_stamps(node.normalized)
             and has_increasing_stamps(node.obstacles)
-            and has_increasing_stamps(node.clean),
+            and has_increasing_stamps(node.clean)
+            and has_increasing_stamps(node.preview),
             35.0,
             observe=lambda: {"raw": len(node.raw), "normalized": len(node.normalized),
-                             "obstacles": len(node.obstacles), "clean": len(node.clean)},
+                             "obstacles": len(node.obstacles), "clean": len(node.clean),
+                             "preview": len(node.preview)},
         )
         raw = node.raw[-1]
         if not raw.header.frame_id or raw.width * raw.height == 0:
@@ -78,6 +82,12 @@ def main() -> int:
             raise RuntimeError("ground filter removed the collision obstacle")
         if not _has_obstacle_range(node.clean[-1]):
             raise RuntimeError("clean scan does not retain the collision obstacle")
+        if node.preview[-1].header.frame_id != "base_footprint":
+            raise RuntimeError("preview scan does not preserve base_footprint")
+        if len(node.preview[-1].ranges) >= len(node.clean[-1].ranges):
+            raise RuntimeError("preview scan was not reduced relative to scan_clean")
+        if not _has_obstacle_range(node.preview[-1]):
+            raise RuntimeError("preview scan does not retain the collision obstacle")
         print("LiDAR simulation smoke test passed")
         success = True
         return 0
@@ -88,6 +98,7 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "raw": len(node.raw), "normalized": len(node.normalized),
             "obstacles": len(node.obstacles), "clean": len(node.clean),
+            "preview": len(node.preview),
         })
         node.destroy_node()
         rclpy.shutdown()
