@@ -58,6 +58,17 @@ class CockpitProbe:
             self.broadcasts.append(incoming)
         raise RuntimeError(f"{operation} response timed out")
 
+    async def receive_until(self, predicate, timeout_s: float = 8.0):
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            incoming = json.loads(await asyncio.wait_for(
+                self.socket.recv(), deadline - time.monotonic()
+            ))
+            if predicate(incoming):
+                return incoming
+            self.broadcasts.append(incoming)
+        raise RuntimeError("expected WebSocket message timed out")
+
     async def close(self):
         if self.socket is not None:
             await self.socket.close()
@@ -95,7 +106,9 @@ async def scenario() -> dict:
             raise RuntimeError(f"invalid initial state: {initial}")
 
         await first.socket.send("{")
-        invalid = json.loads(await asyncio.wait_for(first.socket.recv(), 3.0))
+        invalid = await first.receive_until(
+            lambda item: item.get("error_code") == "invalid_json", 3.0
+        )
         if invalid.get("error_code") != "invalid_json":
             raise RuntimeError(f"invalid JSON was not rejected: {invalid}")
 

@@ -17,7 +17,10 @@ from salus_web.websocket_server import (
 
 class FakeGateway:
     async def initial_state(self):
-        return {"op": "state", "ok": True, "connected": True}
+        return {
+            "op": "state", "ok": True, "connected": True,
+            "control_locked": True, "control_lock_reason": "STARTUP_LOCKED",
+        }
 
     async def dispatch(self, request):
         if request.op == "get_state":
@@ -26,6 +29,8 @@ class FakeGateway:
                 "ok": True,
                 "connected": True,
                 "client_req_id": request.request_id,
+                "control_locked": True,
+                "control_lock_reason": "STARTUP_LOCKED",
             }]
         return [ack(request, ok=True)]
 
@@ -91,6 +96,17 @@ async def _server_scenario() -> None:
             )
             assert unlocked["ok"] is True
             assert unlocked["control_owner"] is True
+
+            await first.send(json.dumps({
+                "op": "get_state",
+                "client_req_id": "state-after-unlock",
+            }))
+            unlocked_state = await _receive_until(
+                first, lambda item: item.get("client_req_id") == "state-after-unlock"
+            )
+            assert unlocked_state["control_locked"] is False
+            assert unlocked_state["control_lock_reason"] == ""
+            assert unlocked_state["control_owner"] is True
 
             async with websockets.connect(f"ws://127.0.0.1:{port}") as second:
                 second_initial = json.loads(await asyncio.wait_for(second.recv(), 2.0))
