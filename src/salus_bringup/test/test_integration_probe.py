@@ -115,9 +115,29 @@ def test_required_service_readiness_is_conjunctive() -> None:
 
 def test_graph_readiness_requires_unique_authorities() -> None:
     node = object.__new__(probe.IntegrationProbe)
+    node.operational = False
     node.get_node_names_and_namespaces = lambda: [("robot_state_publisher", "/")]
     counts = {"/cmd_vel_final": 1, "/scan_3d_raw": 1}
     node.count_publishers = lambda topic: counts.get(topic, 0)
     assert node.graph_ready()
     counts["/cmd_vel_final"] = 2
+    assert not node.graph_ready()
+
+
+def test_operational_graph_requires_unique_coordinators_and_services() -> None:
+    node = object.__new__(probe.IntegrationProbe)
+    node.operational = True
+    names = [(name, "/") for name in probe.IntegrationProbe.OPERATIONAL_NODES]
+    names.append(("robot_state_publisher", "/"))
+    node.get_node_names_and_namespaces = lambda: names
+    node.get_service_names_and_types = lambda: [
+        (name, ["test/Service"])
+        for name in probe.IntegrationProbe.OPERATIONAL_SERVICES
+    ]
+    node.count_publishers = lambda topic: {
+        "/cmd_vel_final": 1, "/scan_3d_raw": 1
+    }.get(topic, 0)
+    assert node.graph_ready()
+
+    names.append(("route_executor", "/duplicate"))
     assert not node.graph_ready()

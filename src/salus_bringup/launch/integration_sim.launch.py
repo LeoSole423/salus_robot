@@ -27,6 +27,7 @@ def generate_launch_description() -> LaunchDescription:
     launch_navigation = LaunchConfiguration("launch_navigation")
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
+    patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
     launch_routes = LaunchConfiguration("launch_routes")
     launch_patrol = LaunchConfiguration("launch_patrol")
     launch_web = LaunchConfiguration("launch_web")
@@ -74,6 +75,11 @@ def generate_launch_description() -> LaunchDescription:
                 "zones_runtime_dir",
                 default_value="runtime/zones",
                 description="Runtime directory for the dynamic keepout mask.",
+            ),
+            DeclareLaunchArgument(
+                "patrol_runtime_dir",
+                default_value="runtime/patrol",
+                description="Runtime directory for structured patrol persistence.",
             ),
             DeclareLaunchArgument(
                 "launch_routes", default_value="false",
@@ -149,6 +155,7 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_navigation", "patrol_mission_sim.launch.py", {
                     **common,
+                    "runtime_dir": patrol_runtime_dir,
                     "battery_guard_topic": patrol_battery_guard_topic,
                     "battery_state_topic": patrol_battery_state_topic,
                 },
