@@ -18,7 +18,10 @@ afirmaciones funcionales.
 | seguridad | `free.world` | arbitraje y parada segura |
 | Nav2 | `free.world` | goal único y cadena automática |
 | zonas | `free.world`, runtime único | máscara keepout y recarga |
-| rutas | `free.world` | misión y progreso; se añade al harness al fusionar #12 |
+| rutas | `free.world` | misión, checkpoints, progreso y cancelación |
+| patrulla/HOME | `free.world` | fases de misión y retorno por batería |
+| snapshots | composición Nav2 | render y servicio PNG determinista |
+| Cockpit/cámara | composición completa | WebSocket, lease, PTZ y contratos web |
 | integración | mundo de composición | procesos, lifecycle y contratos, sin repetir escenarios funcionales |
 
 La tolerancia de arranque solamente controla cuánto se espera por una
@@ -26,5 +29,5 @@ condición observable. No modifica la frescura funcional de `PathHealth`: TF o
 costmap vencidos continúan produciendo `STOP_AND_WAIT`.
 
 En un PR se ejecutan `build-unit`, `simulation-core` y
-`navigation-missions`. La tarea diaria ejecuta tres pasadas limpias para
-detectar flakiness y conserva los artefactos durante 30 días.
+`navigation-missions`. El workflow nocturno admite repeticiones configurables
+(normalmente diez) para detectar flakiness y conserva artefactos de diagnóstico.

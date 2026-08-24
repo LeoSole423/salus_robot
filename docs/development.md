@@ -1,5 +1,9 @@
 # Desarrollo Y Depuración
 
+El procedimiento completo y obligatorio para agentes, incluyendo
+caracterización histórica, diseño, división SOL/Terra, Git, PR y CI, está en
+[`agent-development-workflow.md`](agent-development-workflow.md).
+
 ## Ciclo corto
 
 ```bash
@@ -26,6 +30,8 @@ colcon test-result --verbose
 4. Agregar primero un test que reproduzca el fallo.
 5. Verificar el backend simulado antes de probar hardware cuando sea posible.
 6. No ajustar múltiples capas a la vez sin guardar una línea base.
+7. Para migraciones, investigar commits y escribir la ficha de intención antes
+   de generar código.
 
 ## Convenciones
 
@@ -47,4 +53,3 @@ colcon test-result --verbose
 Los launches skeleton no controlan hardware. Cuando aparezcan launches reales,
 su ejecución requerirá autorización explícita, zona despejada y E-stop
 accesible. Ningún test automático debe mover actuadores físicos.
-
