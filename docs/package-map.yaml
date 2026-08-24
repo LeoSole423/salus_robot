@@ -76,4 +76,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: integration_sim_checkpoint
+    status: operational_sim_profile_pending_reliability

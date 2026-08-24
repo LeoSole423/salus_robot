@@ -148,5 +148,9 @@ components:
     state: ported
     evidence:
       - src/salus_bringup/launch/integration_sim.launch.py
+      - src/salus_bringup/launch/sim_operational.launch.py
+      - docs/migration-evidence/intent/sim-operational-bringup.md
       - tools/smoke_integration_sim.sh
-    note: Checkpoint integrado de simulación disponible; los bringups operativos finales siguen pendientes.
+      - tools/smoke_sim_operational.sh
+      - tools/smoke_operational_persistence.sh
+    note: El checkpoint integrado se conserva y sim_operational pasó una sesión end-to-end y una restauración de runtime en simulación. Repeticiones de confiabilidad, paridad legacy A/B y bringups reales siguen pendientes; no declarar paridad de hardware.
