@@ -96,6 +96,12 @@ async def _server_scenario() -> None:
             )
             assert unlocked["ok"] is True
             assert unlocked["control_owner"] is True
+            unlocked_telemetry = await _receive_until(
+                first,
+                lambda item: item.get("op") == "nav_telemetry"
+                and item.get("control_locked") is False,
+            )
+            assert unlocked_telemetry["control_owner"] is True
 
             await first.send(json.dumps({
                 "op": "get_state",

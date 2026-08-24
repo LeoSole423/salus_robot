@@ -16,6 +16,10 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("service_timeout_s", default_value="5.0"),
         DeclareLaunchArgument("service_discovery_timeout_s", default_value="5.0"),
         DeclareLaunchArgument("long_service_timeout_s", default_value="20.0"),
+        DeclareLaunchArgument("telemetry_profile", default_value="compact"),
+        DeclareLaunchArgument("compact_telemetry_hz", default_value="2.0"),
+        DeclareLaunchArgument("scan_preview_topic", default_value="/scan_preview"),
+        DeclareLaunchArgument("scan_preview_enabled", default_value="true"),
         DeclareLaunchArgument("waypoints_file", default_value="runtime/web/waypoints.yaml"),
         Node(
             package="salus_web",
@@ -39,6 +43,10 @@ def generate_launch_description() -> LaunchDescription:
                 "long_service_timeout_s": LaunchConfiguration(
                     "long_service_timeout_s"
                 ),
+                "telemetry_profile": LaunchConfiguration("telemetry_profile"),
+                "compact_telemetry_hz": LaunchConfiguration("compact_telemetry_hz"),
+                "scan_preview_topic": LaunchConfiguration("scan_preview_topic"),
+                "scan_preview_enabled": LaunchConfiguration("scan_preview_enabled"),
                 "waypoints_file": LaunchConfiguration("waypoints_file"),
             }],
         ),

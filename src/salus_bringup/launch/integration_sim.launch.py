@@ -32,6 +32,7 @@ def generate_launch_description() -> LaunchDescription:
     launch_web = LaunchConfiguration("launch_web")
     web_ws_port = LaunchConfiguration("web_ws_port")
     web_waypoints_file = LaunchConfiguration("web_waypoints_file")
+    web_telemetry_profile = LaunchConfiguration("web_telemetry_profile")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
 
@@ -88,6 +89,10 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("web_ws_port", default_value="8766"),
             DeclareLaunchArgument(
                 "web_waypoints_file", default_value="runtime/web/waypoints.yaml"
+            ),
+            DeclareLaunchArgument(
+                "web_telemetry_profile", default_value="compact",
+                description="Cockpit telemetry profile: compact or full.",
             ),
             DeclareLaunchArgument(
                 "patrol_battery_guard_topic", default_value="/battery_mission_guard",
@@ -151,6 +156,7 @@ def generate_launch_description() -> LaunchDescription:
                 {
                     "ws_port": web_ws_port,
                     "waypoints_file": web_waypoints_file,
+                    "telemetry_profile": web_telemetry_profile,
                 },
                 condition=IfCondition(launch_web),
             ),

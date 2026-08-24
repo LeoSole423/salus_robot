@@ -36,6 +36,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "launch_patrol" in contents
     assert "launch_web" in contents
     assert "web_waypoints_file" in contents
+    assert "web_telemetry_profile" in contents
     assert "patrol_battery_guard_topic" in contents
     assert contents.count('DeclareLaunchArgument(\n                "world"') == 1
 
