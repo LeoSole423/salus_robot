@@ -48,6 +48,12 @@ from salus_interfaces.srv import (
     SetPatrolMissionLL,
     SetRouteMissionLL,
     SetZonesGeoJson,
+    CameraPan,
+    CameraStatus,
+    CameraPtz,
+    CameraPreset,
+    CameraSavePreset,
+    CameraPtzState,
 )
 
 from .compact_telemetry import (
@@ -205,6 +211,17 @@ class CockpitRosGateway(Node):
             "get_nav_snapshot": self.create_client(
                 GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
             ),
+            "camera_pan": self.create_client(CameraPan, "/camara/camera_pan"),
+            "camera_zoom_toggle": self.create_client(Trigger, "/camara/camera_zoom_toggle"),
+            "get_camera_status": self.create_client(CameraStatus, "/camara/camera_status"),
+            "camera_ptz_move": self.create_client(CameraPtz, "/camara/camera_ptz"),
+            "camera_ptz_preset": self.create_client(CameraPreset, "/camara/camera_preset"),
+            "camera_ptz_set_preset": self.create_client(
+                CameraSavePreset, "/camara/camera_save_preset"
+            ),
+            "get_camera_ptz_state": self.create_client(
+                CameraPtzState, "/camara/camera_ptz_state"
+            ),
         }
 
     def set_broadcast_callback(
@@ -283,6 +300,11 @@ class CockpitRosGateway(Node):
                 return [response, self._sensor_info(tab, implemented)]
             if request.op == "get_nav_snapshot":
                 return [await self._snapshot(request)]
+            if (
+                request.op.startswith("camera_")
+                or request.op in {"get_camera_status", "get_camera_ptz_state"}
+            ):
+                return [await self._camera(request)]
             return [await self._dispatch_service(request)]
         except RosGatewayError as error:
             return [ack(
@@ -306,6 +328,33 @@ class CockpitRosGateway(Node):
         ok = bool(values.pop("ok", True))
         error = str(values.pop("error", "") or "")
         return ack(request, ok=ok, error=None if ok else error, **values)
+
+    async def _camera(self, request: OperatorRequest) -> dict[str, Any]:
+        response = await self._call(request.op, build_ros_request(request))
+        values = _message_dict(response)
+        success = bool(values.get("ok", values.get("success", False)))
+        error = str(values.get("error", values.get("message", "")) or "")
+        if not success:
+            return ack(
+                request,
+                ok=False,
+                error=error or "camera operation failed",
+                payload=_camera_payload(values),
+            )
+        if request.op == "get_camera_status":
+            return ack(request, ok=True, payload=_camera_payload(values))
+        if request.op == "get_camera_ptz_state":
+            return ack(request, ok=True, payload=_camera_payload(values))
+        refreshed = await self._call("get_camera_ptz_state", CameraPtzState.Request())
+        refreshed_values = _message_dict(refreshed)
+        refreshed_ok = bool(refreshed_values.get("ok", False))
+        refreshed_error = str(refreshed_values.get("error", "") or "")
+        return ack(
+            request,
+            ok=refreshed_ok,
+            error=None if refreshed_ok else refreshed_error or "camera unavailable",
+            payload=_camera_payload(refreshed_values),
+        )
 
     async def _snapshot(self, request: OperatorRequest) -> dict[str, Any]:
         response = await self._call("get_nav_snapshot", GetNavSnapshot.Request())
@@ -511,6 +560,35 @@ class CockpitRosGateway(Node):
 
 def build_ros_request(request: OperatorRequest) -> Any:
     fields = request.fields
+    if request.op == "camera_pan":
+        result = CameraPan.Request()
+        result.angle_deg = float(fields["angle"])
+        return result
+    if request.op == "camera_zoom_toggle":
+        return Trigger.Request()
+    if request.op in {"get_camera_status", "get_camera_ptz_state"}:
+        if request.op == "get_camera_status":
+            return CameraStatus.Request()
+        return CameraPtzState.Request()
+    if request.op == "camera_ptz_move":
+        result = CameraPtz.Request()
+        result.relative = bool(fields["relative"])
+        result.apply_pan = "pan_deg" in fields
+        result.pan_deg = float(fields.get("pan_deg", 0.0))
+        result.apply_tilt = "tilt_deg" in fields
+        result.tilt_deg = float(fields.get("tilt_deg", 0.0))
+        result.apply_zoom = "zoom_level" in fields
+        result.zoom_level = float(fields.get("zoom_level", 0.0))
+        return result
+    if request.op == "camera_ptz_preset":
+        result = CameraPreset.Request()
+        result.preset = fields["preset"]
+        return result
+    if request.op == "camera_ptz_set_preset":
+        result = CameraSavePreset.Request()
+        result.preset = fields["preset"]
+        result.save_zoom = bool(fields["save_zoom"])
+        return result
     if request.op == "set_goal_ll":
         waypoints = _waypoints(fields)
         result = SetNavGoalLL.Request()
@@ -644,6 +722,23 @@ def _finite_or_none(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def _camera_payload(values: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize camera service output to the Cockpit's stable state shape."""
+    return {
+        "op": "camera_ptz_state",
+        "ok": bool(values.get("ok", values.get("success", False))),
+        "error": str(values.get("error", values.get("message", "")) or ""),
+        "pan_deg": _finite_or_none(values.get("pan_deg")) or 0.0,
+        "tilt_deg": _finite_or_none(values.get("tilt_deg")) or 0.0,
+        "zoom_level": _finite_or_none(values.get("zoom_level")) or 0.0,
+        "zoom_in": bool(values.get("zoom_in", False)),
+        "last_command": str(values.get("last_command", "none")),
+        "active_preset": str(values.get("active_preset", "")),
+        "applied_preset": str(values.get("applied_preset", "")),
+        "saved_preset": str(values.get("saved_preset", "")),
+    }
 
 
 def scan_preview_payload(message: LaserScan) -> dict[str, Any] | None:

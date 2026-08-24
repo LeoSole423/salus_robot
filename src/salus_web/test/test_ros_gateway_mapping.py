@@ -2,6 +2,7 @@ import json
 import math
 from pathlib import Path
 
+from salus_interfaces.srv import CameraPtzState
 from salus_web.protocol import parse_request, validate_request
 from salus_web.ros_gateway import build_ros_request
 
@@ -73,3 +74,22 @@ def test_patrol_mapping_matches_cockpit_nested_shape() -> None:
     assert request.home_yaw_deg == 90.0
     assert request.depart_entry_loop_index == 1
     assert list(request.depart_lons) == [-64.15]
+
+
+def test_camera_mapping_preserves_optional_axis_contract() -> None:
+    request = build_ros_request(_request({
+        "op": "camera_ptz_move", "relative": True, "pan_deg": 15.0,
+    }))
+    assert request.relative is True
+    assert request.apply_pan is True
+    assert request.apply_tilt is False
+    assert request.apply_zoom is False
+
+    save = build_ros_request(_request({
+        "op": "camera_ptz_set_preset", "preset": "home", "save_zoom": True,
+    }))
+    assert save.preset == "home"
+    assert save.save_zoom is True
+
+    state = build_ros_request(_request({"op": "get_camera_ptz_state"}))
+    assert isinstance(state, CameraPtzState.Request)

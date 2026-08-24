@@ -23,7 +23,7 @@ corte público en `salus_interfaces`.
 | Perfiles | `SetNavigationProfile` | `urban`/`rural` migrados mediante aplicación transaccional |
 | Zonas | GeoJSON y zonas tipadas | elegir una representación canónica |
 | Observabilidad | telemetría, eventos, `NavSnapshotLayers`, `GetNavSnapshot` | contratos de snapshot y semántica fijados por ADR 0004; servidor y renderer pendientes |
-| Cámara | PTZ, presets y estado | separar control de transporte WebRTC |
+| Cámara | `CameraPan`, `CameraStatus`, `CameraPtz`, `CameraPreset`, `CameraSavePreset`, `CameraPtzState` y zoom `Trigger` | contrato caracterizado; control PTZ separado de MediaMTX/WebRTC, implementación pendiente |
 | Simulación | inyección de batería | mantener fuera de la API operativa real |
 | Datum | set/get dinámico | clasificado legacy por defecto |
 

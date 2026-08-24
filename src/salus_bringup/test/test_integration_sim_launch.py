@@ -13,6 +13,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "salus_perception",
         "salus_navigation",
         "salus_web",
+        "salus_hardware",
     ):
         assert package in contents
     for launch_file in (
@@ -28,6 +29,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
         "patrol_mission_sim.launch.py",
         "navigation_snapshot_sim.launch.py",
         "web_bridge.launch.py",
+        "camera_sim.launch.py",
     ):
         assert launch_file in contents
     assert "launch_navigation" in contents
@@ -35,6 +37,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "launch_routes" in contents
     assert "launch_patrol" in contents
     assert "launch_web" in contents
+    assert "launch_camera" in contents
     assert "web_waypoints_file" in contents
     assert "web_telemetry_profile" in contents
     assert "patrol_battery_guard_topic" in contents

@@ -1,0 +1,9 @@
+---
+bool ok
+string error
+float32 pan_deg
+float32 tilt_deg
+float32 zoom_level
+bool zoom_in
+string last_command
+string active_preset

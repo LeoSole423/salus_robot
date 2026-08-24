@@ -1,0 +1,8 @@
+string preset
+---
+bool ok
+string error
+string applied_preset
+float32 pan_deg
+float32 tilt_deg
+float32 zoom_level

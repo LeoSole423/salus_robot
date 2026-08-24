@@ -134,7 +134,14 @@ components:
   hardware_adapters:
     source: sensores
     target: salus_hardware
-    state: pending
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/camera-ptz-presets.md
+      - docs/decisions/0006-camera-ptz-control-boundaries.md
+      - src/salus_hardware/salus_hardware/camera_node.py
+      - src/salus_hardware/test/test_camera_domain.py
+      - tools/smoke_web_cockpit.py
+    note: Camera PTZ, presets, ISAPI boundary, simulated backend, atomic persistence and Cockpit lease policy pass unit, WebSocket and visual simulation validation. GNSS/MAVROS, RS16, UART and physical camera validation remain pending.
   system_bringup:
     source: navegacion_gps/launch
     target: salus_bringup

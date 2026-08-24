@@ -99,3 +99,16 @@ def test_control_lock_preserves_cockpit_locked_field() -> None:
 
     with pytest.raises(ProtocolError, match="locked must be boolean"):
         validate_request(parse_request({"op": "set_control_lock", "locked": "true"}))
+
+
+def test_camera_mutations_validate_inputs_and_are_controlled() -> None:
+    move = validate_request(parse_request({
+        "op": "camera_ptz_move", "relative": True, "pan_deg": 10.0,
+    }))
+    assert move.fields["pan_deg"] == 10.0
+    from salus_web.protocol import is_controlled_operation
+    assert is_controlled_operation(move) is True
+    status = validate_request(parse_request({"op": "get_camera_ptz_state"}))
+    assert is_controlled_operation(status) is False
+    with pytest.raises(ProtocolError, match="needs one axis"):
+        validate_request(parse_request({"op": "camera_ptz_move", "relative": False}))

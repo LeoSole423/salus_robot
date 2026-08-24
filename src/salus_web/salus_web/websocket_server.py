@@ -18,7 +18,10 @@ from .protocol import ProtocolError, ack, parse_request, validate_request
 
 
 REPLACEABLE_OPS = frozenset(
-    {"state", "nav_telemetry", "robot_pose", "gps_status", "drive_telemetry", "sensor_info", "scan_preview"}
+    {
+        "state", "nav_telemetry", "robot_pose", "gps_status",
+        "drive_telemetry", "sensor_info", "scan_preview",
+    }
 )
 
 
