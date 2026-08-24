@@ -90,7 +90,8 @@ components:
       - docs/decisions/0003-latched-battery-return-home.md
       - src/salus_navigation/salus_navigation/nav_snapshot_server.py
       - tools/smoke_navigation_snapshot.sh
-    note: Safety arbitration, a single Nav2 LL goal, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Snapshots are ported as a separate ROS capture, pure renderer and PNG service; Cockpit integration remains pending. Legacy A/B and hardware parity remain pending.
+      - docs/migration-evidence/intent/rviz-goal-control.md
+    note: Safety arbitration, a single Nav2 LL goal, guarded RViz map goals, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Snapshots are ported as a separate ROS capture, pure renderer and PNG service; Cockpit integration remains pending. Legacy A/B and hardware parity remain pending.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt

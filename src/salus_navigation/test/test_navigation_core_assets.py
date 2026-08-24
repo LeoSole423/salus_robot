@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from geometry_msgs.msg import PoseStamped
 from salus_interfaces.srv import SetNavGoalLL
 from salus_navigation.nav_command_server import NavCommandServer
 
@@ -33,6 +34,29 @@ def test_single_goal_contract_rejects_missions_and_invalid_values() -> None:
     assert "multiple" in NavCommandServer._single_waypoint(request)[1]
     request.lats, request.lons, request.yaws_deg = [1.0], [], [0.0]
     assert "equal" in NavCommandServer._single_waypoint(request)[1]
+
+
+def test_rviz_goal_contract_accepts_a_finite_map_pose() -> None:
+    message = PoseStamped()
+    message.header.frame_id = "map"
+    message.pose.position.x = 4.0
+    message.pose.position.y = -2.0
+    message.pose.orientation.z = 2**-0.5
+    message.pose.orientation.w = 2**-0.5
+    goal, error = NavCommandServer._rviz_map_goal(message)
+    assert error == ""
+    assert goal[:2] == (4.0, -2.0)
+    assert abs(goal[2] - 90.0) < 1e-9
+
+
+def test_rviz_goal_contract_rejects_wrong_frame_and_invalid_orientation() -> None:
+    message = PoseStamped()
+    message.header.frame_id = "odom"
+    message.pose.orientation.w = 1.0
+    assert "map frame" in NavCommandServer._rviz_map_goal(message)[1]
+    message.header.frame_id = "map"
+    message.pose.orientation.w = 0.0
+    assert "orientation" in NavCommandServer._rviz_map_goal(message)[1]
 
 
 def test_navigation_config_and_launch_keep_the_safe_contract() -> None:

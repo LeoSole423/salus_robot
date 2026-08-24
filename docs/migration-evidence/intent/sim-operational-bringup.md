@@ -36,6 +36,8 @@ DDS, interfaz WiFi o `/scan_wifi_debug`.
   `runtime/sim_operational`, pero usan subdirectorios separados.
 - `integration_sim.launch.py` permanece como checkpoint liviano compatible; no
   se convierte implícitamente en el perfil operacional.
+- Con `--rviz`, la herramienta `2D Goal Pose` publica `/goal_pose`; la meta pasa
+  por `nav_command_server` y conserva las políticas de manual, keepout y freno.
 
 ## Ownership y readiness
 

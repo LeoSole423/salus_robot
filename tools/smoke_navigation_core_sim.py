@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import rclpy
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
@@ -42,6 +42,7 @@ class NavigationSmoke(Node):
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
         self.create_subscription(Twist, "/cmd_vel_safe", self.safe_commands.append, 10)
+        self.rviz_goal = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.startup = subscribe_navigation_startup(self)
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.cancel = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
@@ -108,6 +109,18 @@ def send_goal(node: NavigationSmoke, distance_m: float) -> tuple[float, float]:
     return map_point.x, map_point.y
 
 
+def rviz_goal_from_current_pose(node: NavigationSmoke, distance_m: float) -> PoseStamped:
+    x_m, y_m, yaw_rad = destination_from_current_pose(node.odom[-1], distance_m)
+    message = PoseStamped()
+    message.header.frame_id = "map"
+    message.header.stamp = node.get_clock().now().to_msg()
+    message.pose.position.x = x_m
+    message.pose.position.y = y_m
+    message.pose.orientation.z = math.sin(yaw_rad * 0.5)
+    message.pose.orientation.w = math.cos(yaw_rad * 0.5)
+    return message
+
+
 def distance_from(start: Odometry, current: Odometry) -> float:
     start_position, current_position = start.pose.pose.position, current.pose.pose.position
     return math.hypot(current_position.x - start_position.x, current_position.y - start_position.y)
@@ -153,8 +166,15 @@ def main() -> int:
         if not response.ok or response.enabled_after:
             raise RuntimeError("automatic mode was not restored before navigation")
         start = node.odom[-1]
-        target_x, target_y = send_goal(node, 7.0)
-        wait_for(node, lambda: get_state(node).goal_active, 8.0, "goal was not accepted by Nav2")
+        rviz_goal = rviz_goal_from_current_pose(node, 7.0)
+        target_x = rviz_goal.pose.position.x
+        target_y = rviz_goal.pose.position.y
+        node.runtime.wait(
+            "RViz /goal_pose was not accepted by Nav2",
+            lambda: get_state(node).goal_active,
+            8.0,
+            stimulate=lambda: node.rviz_goal.publish(rviz_goal),
+        )
         try:
             wait_for(
                 node,
@@ -169,7 +189,7 @@ def main() -> int:
         except RuntimeError as exc:
             reason = node.path_health[-1].reason if node.path_health else "no PathHealth message"
             raise RuntimeError(f"{exc}; last path health: {reason}") from exc
-        wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the LL goal")
+        wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the RViz goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
         # Let the final odometry sample arrive after the action result.  The
         # action result is the authoritative goal-tolerance decision because

@@ -29,7 +29,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument(
             "rviz", default_value="false",
-            description="Start local RViz LiDAR diagnostics.",
+            description="Start local RViz diagnostics with guarded 2D goal control.",
         ),
         DeclareLaunchArgument(
             "world",
