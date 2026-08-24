@@ -34,7 +34,7 @@ fi
 if [[ "${cockpit}" == "true" ]]; then
   launch_args+=" launch_routes:=true launch_patrol:=true launch_web:=true web_ws_port:=8766"
   echo "Cockpit backend available at ws://localhost:8766"
-  echo "In the Cockpit repository, run: npm run dev"
+  echo "In the Cockpit repository, run: git switch migration/salus-robot-cockpit && npm run dev"
 fi
 
 docker compose exec ros2 bash -lc "

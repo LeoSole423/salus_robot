@@ -116,10 +116,12 @@ Para probar el bridge completo de Cockpit en simulación:
 ```bash
 ./tools/sim.sh --cockpit
 cd ../cockpit
+git switch migration/salus-robot-cockpit
 npm run dev
 ```
 
-Elegir **Simulation** y conectar a `localhost:8766`. Este modo activa rutas,
+La rama dedicada evita modificar el Cockpit usado por `ROS2_SALUS`. Elegir
+**Simulation** y conectar a `localhost:8766`. Este modo activa rutas,
 patrulla, snapshots y el bridge WebSocket; no representa un bringup final ni
 habilita hardware real.
 
