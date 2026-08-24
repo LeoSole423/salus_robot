@@ -59,7 +59,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument(
                 "rviz",
                 default_value="false",
-                description="Start the on-demand LiDAR RViz diagnostics window.",
+                description="Start RViz diagnostics with guarded 2D goal control.",
             ),
             DeclareLaunchArgument(
                 "launch_navigation",

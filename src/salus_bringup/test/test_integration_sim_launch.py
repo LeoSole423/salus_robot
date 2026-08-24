@@ -58,6 +58,7 @@ def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
     for topic in (
         "/scan_3d_raw", "/obstacles_cloud", "/scan_clean",
         "/keepout_filter_mask", "/global_costmap/costmap",
-        "/local_costmap/costmap",
+        "/local_costmap/costmap", "/goal_pose",
     ):
         assert topic in diagnostics
+    assert "rviz_default_plugins/SetGoal" in diagnostics
