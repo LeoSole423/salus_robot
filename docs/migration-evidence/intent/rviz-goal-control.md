@@ -4,7 +4,8 @@
 
 - Fuente legacy: `ROS2_SALUS/navegacion_gps/config/rviz_global_v2_wifi.rviz`.
 - Destino nuevo: `salus_navigation/nav_command_server.py` y el RViz diagnóstico.
-- Incluido: herramienta `2D Goal Pose`, tópico `/goal_pose`, validación y envío a Nav2.
+- Incluido: herramienta `2D Goal Pose`, tópico `/goal_pose`, validación, envío a
+  Nav2 y visualización del plan global calculado en `/plan`.
 - Fuera de alcance: pose inicial, teleoperación, hardware y cambios de localización.
 
 ## Evidencia histórica
@@ -13,6 +14,7 @@
 | --- | --- | --- |
 | commit legacy `4b84df9` | El perfil WiFi liviano exponía control RViz | alta |
 | `rviz_global_v2_wifi.rviz` | `SetGoal` publicaba `PoseStamped` en `/goal_pose` con frame `map` | alta |
+| `rviz_global_v2_wifi.rviz` | El display `Path` mostraba `/plan` como línea verde | alta |
 | `nav_command_server.py` | Es la autoridad nueva para reemplazo, keepout, manual y freno | alta |
 
 ## Problema original e intención
@@ -26,14 +28,16 @@ debe saltarse la autoridad de navegación migrada ni publicar velocidad.
 - Entrada: `geometry_msgs/PoseStamped` en `/goal_pose`, QoS reliable/volatile.
 - Coordenadas: metros y orientación quaternion finita, exclusivamente en `map`.
 - Salida: una meta `NavigateToPose` mediante `nav_command_server`.
+- Feedback: `nav_msgs/Path` de Nav2 en `/plan`, reliable/volatile, frame `map`.
 - Se conservan rechazo en modo manual/keepout, reemplazo de meta y freno al éxito.
 - No se añade `/initialpose`: no existe evidencia de un consumidor válido en el perfil global nuevo.
 
 ## Diseño nuevo
 
-El perfil RViz incorpora `rviz_default_plugins/SetGoal`. `nav_command_server`
-valida el mensaje y reutiliza el mismo despacho de metas map que la API LL. Los
-rechazos quedan observables como eventos `GOAL_REJECTED` con `source=rviz`.
+El perfil RViz incorpora `rviz_default_plugins/SetGoal` y un display `Path`
+verde para `/plan`. `nav_command_server` valida la meta y reutiliza el mismo
+despacho map que la API LL. Los rechazos quedan observables como eventos
+`GOAL_REJECTED` con `source=rviz`.
 
 ## Fallos y degradación
 
