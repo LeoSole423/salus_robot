@@ -9,7 +9,7 @@ import time
 import rclpy
 from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Point, PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.msg import CollisionMonitorState
 from nav_msgs.msg import OccupancyGrid
@@ -133,7 +133,7 @@ class NavCommandServer(Node):
             "brake_service": "/nav_command_server/brake", "set_manual_mode_service": "/nav_command_server/set_manual_mode",
             "get_state_service": "/nav_command_server/get_state", "fromll_service": "/fromLL",
             "fromll_service_fallback": "/navsat_transform/fromLL", "fromll_timeout_s": 2.0,
-            "navigate_action": "/navigate_to_pose",
+            "navigate_action": "/navigate_to_pose", "rviz_goal_topic": "/goal_pose",
         }.items():
             self.declare_parameter(name, value)
         p = lambda name: self.get_parameter(name).value
@@ -164,6 +164,7 @@ class NavCommandServer(Node):
         self.create_subscription(LaserScan, str(p("safety_scan_topic")), self._on_scan, qos_profile_sensor_data)
         self.create_subscription(NavSatFix, str(p("gps_topic")), self._on_gps, qos_profile_sensor_data)
         self.create_subscription(PathHealth, str(p("path_health_topic")), self._on_path_health, 10)
+        self.create_subscription(PoseStamped, str(p("rviz_goal_topic")), self._on_rviz_goal, 10)
         self._service_group = MutuallyExclusiveCallbackGroup()
         self._client_group = ReentrantCallbackGroup()
         keepout_qos = QoSProfile(
@@ -341,30 +342,73 @@ class NavCommandServer(Node):
             response.ok, response.error = False, "fromLL service unavailable"
             self._event(DiagnosticStatus.ERROR, "FROMLL_FAILED", response.error)
             return response
-        if not self._navigate_client.server_is_ready():
-            response.ok, response.error = False, "NavigateToPose action server unavailable"
-            self._event(DiagnosticStatus.ERROR, "ACTION_SERVER_UNAVAILABLE", response.error)
-            return response
         point, error = self._convert_goal_to_map(client, waypoint[0], waypoint[1])
         if point is None:
             response.ok, response.error = False, error
             self._event(DiagnosticStatus.ERROR, "FROMLL_FAILED", error)
             return response
-        if self._goal_in_keepout(point.x, point.y):
-            response.ok, response.error = False, "goal lies in keepout zone"
-            self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", response.error)
+        response.error = self._request_map_goal(
+            point.x, point.y, waypoint[2],
+            suppress_success_brake=bool(request.suppress_success_brake),
+        )
+        response.ok = not response.error
+        if response.error:
+            self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", response.error, source="geographic")
             return response
+        self._event(DiagnosticStatus.OK, "GOAL_REQUESTED", "geographic goal requested", lat=waypoint[0], lon=waypoint[1])
+        return response
+
+    @staticmethod
+    def _rviz_map_goal(message: PoseStamped) -> tuple[tuple[float, float, float] | None, str]:
+        if message.header.frame_id.lstrip("/") != "map":
+            return None, "RViz goal must use the map frame"
+        pose = message.pose
+        values = (
+            pose.position.x, pose.position.y,
+            pose.orientation.x, pose.orientation.y,
+            pose.orientation.z, pose.orientation.w,
+        )
+        if not all(math.isfinite(value) for value in values):
+            return None, "RViz goal contains non-finite values"
+        norm = math.sqrt(sum(value * value for value in values[2:]))
+        if norm < 1e-6:
+            return None, "RViz goal orientation is invalid"
+        x, y, z, w = (value / norm for value in values[2:])
+        yaw_deg = math.degrees(math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)))
+        return (float(values[0]), float(values[1]), yaw_deg), ""
+
+    def _on_rviz_goal(self, message: PoseStamped) -> None:
+        goal, error = self._rviz_map_goal(message)
+        if goal is not None:
+            error = self._request_map_goal(*goal, suppress_success_brake=False)
+        if error:
+            self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", error, source="rviz")
+            return
+        self._event(
+            DiagnosticStatus.OK, "GOAL_REQUESTED", "RViz map goal requested",
+            source="rviz", x=goal[0], y=goal[1],
+        )
+
+    def _request_map_goal(
+        self, x_m: float, y_m: float, yaw_deg: float, *, suppress_success_brake: bool,
+    ) -> str:
+        with self._lock:
+            if self._arbiter.manual_enabled:
+                return "manual control enabled; disable manual mode to send goals"
+        if self._goal_in_keepout(x_m, y_m):
+            return "goal lies in keepout zone"
+        if not self._navigate_client.server_is_ready():
+            return "NavigateToPose action server unavailable"
         self._cancel_goal("replaced by new goal", apply_brake=False)
         with self._lock:
             self._goal_epoch += 1
             epoch = self._goal_epoch
             self._goal_pending = True
-            self._suppress_success_brake = bool(request.suppress_success_brake)
+            self._suppress_success_brake = suppress_success_brake
             self._goal_result_status, self._goal_result_text = GoalStatus.STATUS_UNKNOWN, "sending navigation goal"
-        self._send_map_goal(point, waypoint[2], epoch)
-        response.ok, response.error = True, ""
-        self._event(DiagnosticStatus.OK, "GOAL_REQUESTED", "geographic goal requested", lat=waypoint[0], lon=waypoint[1])
-        return response
+        point = Point(x=x_m, y=y_m)
+        self._send_map_goal(point, yaw_deg, epoch)
+        return ""
 
     def _convert_goal_to_map(self, primary_client, latitude: float, longitude: float):
         """Convert before acknowledging the service, including the legacy fallback."""
