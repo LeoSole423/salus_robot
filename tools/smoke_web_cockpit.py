@@ -24,9 +24,20 @@ class CockpitProbe:
         while time.monotonic() < deadline:
             try:
                 self.socket = await websockets.connect(self.uri)
-                return json.loads(await asyncio.wait_for(self.socket.recv(), 8.0))
+                state_deadline = min(deadline, time.monotonic() + 8.0)
+                while time.monotonic() < state_deadline:
+                    incoming = json.loads(await asyncio.wait_for(
+                        self.socket.recv(), state_deadline - time.monotonic()
+                    ))
+                    if incoming.get("op") == "state":
+                        return incoming
+                    self.broadcasts.append(incoming)
+                raise RuntimeError("initial state frame did not arrive")
             except Exception as exc:
                 error = exc
+                if self.socket is not None:
+                    await self.socket.close()
+                    self.socket = None
                 await asyncio.sleep(0.25)
         raise RuntimeError(f"WebSocket did not become ready: {error}")
 
@@ -46,6 +57,17 @@ class CockpitProbe:
                 return incoming
             self.broadcasts.append(incoming)
         raise RuntimeError(f"{operation} response timed out")
+
+    async def receive_until(self, predicate, timeout_s: float = 8.0):
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            incoming = json.loads(await asyncio.wait_for(
+                self.socket.recv(), deadline - time.monotonic()
+            ))
+            if predicate(incoming):
+                return incoming
+            self.broadcasts.append(incoming)
+        raise RuntimeError("expected WebSocket message timed out")
 
     async def close(self):
         if self.socket is not None:
@@ -84,7 +106,9 @@ async def scenario() -> dict:
             raise RuntimeError(f"invalid initial state: {initial}")
 
         await first.socket.send("{")
-        invalid = json.loads(await asyncio.wait_for(first.socket.recv(), 3.0))
+        invalid = await first.receive_until(
+            lambda item: item.get("error_code") == "invalid_json", 3.0
+        )
         if invalid.get("error_code") != "invalid_json":
             raise RuntimeError(f"invalid JSON was not rejected: {invalid}")
 

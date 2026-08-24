@@ -230,7 +230,11 @@ class CockpitWebSocketServer:
             return
         try:
             for response in await self._gateway.dispatch(request):
-                await outbox.put(response)
+                # The WebSocket lease is the sole operator-lock authority at
+                # this boundary.  ROS state may still carry the independent
+                # nav-command lock, so project every state response just like
+                # unsolicited broadcasts before exposing it to Cockpit.
+                await outbox.put(self._decorate(response, client_id))
         except Exception as exc:
             self._logger.exception("Cockpit operation %s failed", request.op)
             await outbox.put(ack(
