@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "default_profile": "compact",
+  "profiles": {
+    "compact": {
+      "max_state_hz": 2.0,
+      "aggregate_op": "nav_telemetry",
+      "coalescing": "latest_wins",
+      "suppressed_delta_ops": ["robot_pose", "gps_status", "drive_telemetry"]
+    },
+    "full": {
+      "max_state_hz": null,
+      "aggregate_op": "nav_telemetry",
+      "suppressed_delta_ops": []
+    }
+  },
+  "never_rate_limited_ops": ["ack", "nav_event", "nav_snapshot"],
+  "immediate_transition_fields": [
+    "control_locked",
+    "control_lock_reason",
+    "manual_enabled",
+    "goal_active",
+    "mode",
+    "collision_stop_active",
+    "nav_result_event_id",
+    "nav_result_status",
+    "nav_result_text",
+    "failure_code",
+    "failure_component",
+    "route_mission.state",
+    "route_mission.mission_id",
+    "route_mission.result",
+    "patrol_mission.phase",
+    "patrol_mission.mission_id",
+    "patrol_mission.result",
+    "active_action.state",
+    "navigation_profile",
+    "home_phase",
+    "return_home_cause",
+    "battery_return_home_recommended",
+    "drive_telemetry.estop",
+    "drive_telemetry.drive_enabled"
+  ],
+  "scan_preview": {
+    "source_topic": "/scan_clean",
+    "output_topic": "/scan_preview",
+    "ros_type": "sensor_msgs/msg/LaserScan",
+    "publish_hz": 2.0,
+    "beam_stride": 4,
+    "crop_angle_min_rad": -1.57079632679,
+    "crop_angle_max_rad": 1.57079632679,
+    "output_range_max_m": 12.0,
+    "qos": {"reliability": "best_effort", "durability": "volatile", "depth": 1},
+    "websocket_op": "scan_preview",
+    "replaceable": true,
+    "nonfinite_json_value": null,
+    "include_intensities": false,
+    "allowed_consumers": ["salus_web"],
+    "forbidden_consumers": ["nav2", "collision_monitor", "nav_snapshot_server"]
+  }
+}

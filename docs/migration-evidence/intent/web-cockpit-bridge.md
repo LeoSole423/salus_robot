@@ -76,8 +76,9 @@ arbitraje, no al WebSocket.
 
 El perfil inicial será `telemetry_profile: compact`: coalescerá estados que se
 pueden reemplazar y limitará su tasa, pero nunca descartará acknowledgements,
-eventos, cambios de lock ni transiciones de misión. `/scan_preview` será una
-salida posterior y separada; la nube 3D no atraviesa este bridge.
+eventos, cambios de lock ni transiciones de misión. La política exacta y el
+contrato de `/scan_preview` están caracterizados en
+`compact-telemetry-scan-preview.md`; la nube 3D no atraviesa este bridge.
 
 ## Lock de operador y precedencia segura
 
