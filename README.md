@@ -111,6 +111,18 @@ Para abrir Gazebo y RViz:
 El helper construye incrementalmente, levanta Docker, carga ROS y ejecuta el
 bringup. Para ejecutarlo sin ventanas: `./tools/sim.sh --headless`.
 
+Para probar el bridge completo de Cockpit en simulación:
+
+```bash
+./tools/sim.sh --cockpit
+cd ../cockpit
+npm run dev
+```
+
+Elegir **Simulation** y conectar a `localhost:8766`. Este modo activa rutas,
+patrulla, snapshots y el bridge WebSocket; no representa un bringup final ni
+habilita hardware real.
+
 En otra terminal, los comandos manuales usan el mismo contenedor:
 
 ```bash
