@@ -138,7 +138,9 @@ components:
     evidence:
       - docs/migration-evidence/intent/camera-ptz-presets.md
       - docs/decisions/0006-camera-ptz-control-boundaries.md
-    note: Camera PTZ, presets, ISAPI boundary, simulated backend, persistence and Cockpit lease policy are specified. No camera interface or runtime has been ported yet; GNSS/MAVROS, RS16, UART and physical validation remain pending.
+      - src/salus_hardware/salus_hardware/camera_node.py
+      - src/salus_hardware/test/test_camera_domain.py
+    note: Camera PTZ, presets, ISAPI boundary, simulated backend, persistence and Cockpit lease policy are implemented in draft pending SOL review and an integrated WebSocket smoke. GNSS/MAVROS, RS16, UART and physical validation remain pending.
   system_bringup:
     source: navegacion_gps/launch
     target: salus_bringup

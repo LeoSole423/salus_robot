@@ -8,7 +8,9 @@
   `GetRouteMissionState`, `SetPatrolMissionLL`, `CancelPatrolMission`,
   `GetPatrolMissionState`, `RequestReturnHome`, `SetNavigationProfile`,
   `SetZonesGeoJson`, `GetZonesState` y
-  `PathHealth`, `NavSnapshotLayers` y `GetNavSnapshot`.
+  `PathHealth`, `NavSnapshotLayers`, `GetNavSnapshot`, `CameraPan`,
+  `CameraStatus`, `CameraPtz`, `CameraPreset`, `CameraSavePreset` y
+  `CameraPtzState` (más el `Trigger` estándar de zoom).
 - `PathHealth` es un contrato interno de runtime: explica si Nav2 conserva,
   recalcula o detiene temporalmente un path; no es una API de Cockpit.
 - `EvaluatePathHealth` usa explícitamente el contexto `ACTIVE` o `CANDIDATE`;

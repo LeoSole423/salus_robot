@@ -1,0 +1,5 @@
+float32 angle_deg
+---
+bool ok
+string error
+float32 applied_angle_deg

@@ -4,8 +4,9 @@
 - No contiene: fusión, percepción, control de misión ni SDKs vendorizados.
 - Interfaces previstas: sensores y telemetría normalizados; control PTZ,
   presets y estado de cámara bajo `/camara/*`.
-- Estado: cámara PTZ caracterizada en
-  `docs/migration-evidence/intent/camera-ptz-presets.md`; todavía sin
-  interfaces ni ejecutables.
+- Estado: el draft de cámara PTZ aporta contratos, políticas puras, backends
+  simulado/ISAPI, persistencia atómica y el ejecutable `camera_node`; requiere
+  revisión final, smoke WebSocket y validación física antes de declararse
+  operativo.
 - Prueba: `colcon test --packages-select salus_hardware`.
 - Migración: comenzar por contratos de entrada/salida, no por drivers legacy.

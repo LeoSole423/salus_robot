@@ -22,6 +22,8 @@ KNOWN_OPERATIONS = frozenset(
         "cancel_goal", "brake", "set_route_ll", "cancel_route", "set_patrol_ll",
         "cancel_patrol", "request_return_home", "set_navigation_profile",
         "set_manual_mode", "set_manual_cmd", "get_nav_snapshot", "set_sensor_info_view",
+        "camera_pan", "camera_zoom_toggle", "get_camera_status", "camera_ptz_move",
+        "camera_ptz_preset", "camera_ptz_set_preset", "get_camera_ptz_state",
     }
 )
 FIXED_DATUM_MUTATIONS = frozenset(
@@ -125,6 +127,22 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
             raise ProtocolError(
                 "invalid_request", "tab must be a string", request.op, request.request_id
             )
+    elif request.op == "camera_pan":
+        fields["angle"] = _finite_number(fields, "angle", request)
+    elif request.op == "camera_ptz_move":
+        _require_bool(fields, "relative", request)
+        for key in ("pan_deg", "tilt_deg", "zoom_level"):
+            if key in fields:
+                fields[key] = _finite_number(fields, key, request)
+        if not any(key in fields for key in ("pan_deg", "tilt_deg", "zoom_level")):
+            raise ProtocolError("invalid_request", "camera PTZ move needs one axis", request.op, request.request_id)
+    elif request.op in {"camera_ptz_preset", "camera_ptz_set_preset"}:
+        preset = fields.get("preset")
+        if not isinstance(preset, str) or not preset.strip():
+            raise ProtocolError("invalid_request", "preset is required", request.op, request.request_id)
+        fields["preset"] = preset.strip()
+        if request.op == "camera_ptz_set_preset":
+            _require_bool(fields, "save_zoom", request)
     return OperatorRequest(request.op, request.request_id, fields)
 
 
@@ -161,7 +179,8 @@ def is_controlled_operation(request: OperatorRequest) -> bool:
 
     if request.op in {
         "set_goal_ll", "set_route_ll", "set_patrol_ll", "set_navigation_profile",
-        "request_return_home", "set_manual_cmd",
+        "request_return_home", "set_manual_cmd", "camera_pan", "camera_zoom_toggle",
+        "camera_ptz_move", "camera_ptz_preset", "camera_ptz_set_preset",
     }:
         return True
     return request.op == "set_manual_mode" and request.fields.get("enabled") is True
