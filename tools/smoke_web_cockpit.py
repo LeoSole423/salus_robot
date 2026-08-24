@@ -24,9 +24,20 @@ class CockpitProbe:
         while time.monotonic() < deadline:
             try:
                 self.socket = await websockets.connect(self.uri)
-                return json.loads(await asyncio.wait_for(self.socket.recv(), 8.0))
+                state_deadline = min(deadline, time.monotonic() + 8.0)
+                while time.monotonic() < state_deadline:
+                    incoming = json.loads(await asyncio.wait_for(
+                        self.socket.recv(), state_deadline - time.monotonic()
+                    ))
+                    if incoming.get("op") == "state":
+                        return incoming
+                    self.broadcasts.append(incoming)
+                raise RuntimeError("initial state frame did not arrive")
             except Exception as exc:
                 error = exc
+                if self.socket is not None:
+                    await self.socket.close()
+                    self.socket = None
                 await asyncio.sleep(0.25)
         raise RuntimeError(f"WebSocket did not become ready: {error}")
 
