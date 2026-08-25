@@ -6,6 +6,18 @@ Rama `agent/navigation-evaluation-foundation`. SOL fijó en ADR 0007 el dominio,
 la semántica de escenarios, métricas y gates. No cambiar esos contratos ante un
 problema mecánico de integración: devolver a SOL cualquier ambigüedad.
 
+## Integración completada por TERRA
+
+- `navigation_evaluation` observa los tópicos estándar definidos, adopta una
+  meta RViz o publica una meta de escenario mediante `/goal_pose`, y nunca
+  publica comandos ni TF.
+- `evaluation_observer.launch.py` permite adjuntarlo a una simulación existente.
+- `tools/nav_eval.sh run|observe` crea los bundles JSON/CSV/HTML en
+  `artifacts/evaluations/`; los marcadores se publican en
+  `/navigation_evaluation/markers`.
+- `integration_sim.launch.py` acepta `nav2_params_file:=...` para que perfiles
+  de evaluación sean explícitos y reproducibles.
+
 ## Trabajo delimitado para TERRA
 
 1. Implementar un colector ROS delgado que traduzca `/plan`, `/cmd_vel`,
@@ -28,3 +40,12 @@ problema mecánico de integración: devolver a SOL cualquier ambigüedad.
 Detenerse si falta una fuente independiente de verdad, hay duda sobre autoridad
 de comando/TF, se necesita cambiar schema v1 o un gate de seguridad, o se piensa
 compensar ausencia de datos con defaults. Eso requiere revisión SOL.
+
+## Bloqueo de decisión SOL
+
+`functional_gates` exige actualmente al menos una muestra angular elegible para
+que `turn_sign` pase. Eso es correcto para giros izquierdo/derecho, pero hace
+fallar semánticamente `straight_5m`, donde no debería existir tal comando. SOL
+debe decidir entre un gate de rectitud explícito o una excepción tipada por
+`ExpectedTurn.STRAIGHT`; TERRA no debe degradar ni omitir el gate de forma
+implícita.

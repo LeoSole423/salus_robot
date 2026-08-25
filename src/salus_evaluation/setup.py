@@ -11,6 +11,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/config/scenarios", glob("config/scenarios/*.yaml")),
+        ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
     ],
     install_requires=["setuptools", "PyYAML"],
     zip_safe=True,
@@ -19,4 +20,7 @@ setup(
     description="Reproducible navigation evaluation domain for SALUS.",
     license="MIT",
     extras_require={"test": ["pytest"]},
+    entry_points={"console_scripts": [
+        "navigation_evaluation = salus_evaluation.evaluation_runner:main",
+    ]},
 )

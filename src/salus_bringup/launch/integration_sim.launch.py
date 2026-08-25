@@ -37,6 +37,7 @@ def generate_launch_description() -> LaunchDescription:
     web_telemetry_profile = LaunchConfiguration("web_telemetry_profile")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
+    nav2_params_file = LaunchConfiguration("nav2_params_file")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -118,6 +119,11 @@ def generate_launch_description() -> LaunchDescription:
                 "patrol_battery_state_topic", default_value="/battery_state",
                 description="SOC fallback consumed by structured patrol.",
             ),
+            DeclareLaunchArgument(
+                "nav2_params_file",
+                default_value=str(Path(get_package_share_directory("salus_navigation")) / "config" / "nav2_core_sim.yaml"),
+                description="Nav2 parameter file passed unchanged to navigation_core_sim.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -145,7 +151,8 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_navigation",
                 "navigation_core_sim.launch.py",
-                {"use_sim_time": use_sim_time, "use_keepout": use_keepout},
+                {"use_sim_time": use_sim_time, "use_keepout": use_keepout,
+                 "nav2_params_file": nav2_params_file},
                 condition=IfCondition(launch_navigation),
             ),
             _include(
