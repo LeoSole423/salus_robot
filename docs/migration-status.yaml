@@ -108,6 +108,7 @@ components:
     state: ported
     evidence:
       - docs/migration-evidence/intent/web-cockpit-bridge.md
+      - docs/migration-evidence/intent/web-robot-pose-heading.md
       - src/salus_web/test/fixtures/cockpit_protocol/scenarios.json
       - src/salus_web/salus_web/protocol.py
       - src/salus_web/salus_web/operator_guard.py
@@ -116,6 +117,7 @@ components:
       - src/salus_web/salus_web/waypoint_repository.py
       - src/salus_web/salus_web/ros_gateway.py
       - src/salus_web/salus_web/websocket_server.py
+      - src/salus_web/test/test_compact_telemetry.py
       - src/salus_web/launch/web_bridge.launch.py
       - docs/decisions/0005-web-operator-control-lease.md
       - tools/smoke_web_cockpit.sh
