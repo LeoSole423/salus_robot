@@ -8,7 +8,7 @@ from salus_web.compact_telemetry import (
     normalize_telemetry_profile,
     positive_rate,
 )
-from salus_web.ros_gateway import scan_preview_payload
+from salus_web.ros_gateway import quaternion_yaw_deg, scan_preview_payload
 from salus_web.websocket_server import REPLACEABLE_OPS
 
 
@@ -92,3 +92,20 @@ def test_scan_preview_projection_rejects_invalid_structural_input() -> None:
     message.range_min = 0.4
     message.range_max = 12.0
     assert scan_preview_payload(message) is None
+
+
+@pytest.mark.parametrize(
+    ("yaw_deg", "expected"),
+    [(0.0, 0.0), (45.0, 45.0), (135.0, 135.0), (-90.0, -90.0)],
+)
+def test_quaternion_yaw_projection(yaw_deg: float, expected: float) -> None:
+    half_yaw = math.radians(yaw_deg) / 2.0
+    assert quaternion_yaw_deg(0.0, 0.0, math.sin(half_yaw), math.cos(half_yaw)) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "quaternion",
+    [(0.0, 0.0, 0.0, 0.0), (math.nan, 0.0, 0.0, 1.0), (0.0, 0.0, math.inf, 1.0)],
+)
+def test_quaternion_yaw_projection_rejects_invalid_input(quaternion: tuple[float, ...]) -> None:
+    assert quaternion_yaw_deg(*quaternion) is None

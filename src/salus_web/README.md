@@ -9,6 +9,11 @@
 - Prueba: `colcon test --packages-select salus_web`.
 - Launch parcial:
   `ros2 launch salus_web web_bridge.launch.py ws_port:=8766`.
+
+El bridge publica `robot_pose` dentro de la telemetría web usando posición de
+`/gps/fix` y orientación ROS (yaw, grados) de `/odometry/local`. El tópico de
+orientación se puede cambiar con `heading_odometry_topic`; si todavía no hay
+fix GPS o el cuaternión es inválido, no se fabrica una pose u orientación.
 - Smoke integrado: `./tools/run_smoke.sh ./tools/smoke_web_cockpit.sh`.
 - `telemetry_profile:=compact` es el default operativo: agrega estado
   reemplazable a 2 Hz, pero mantiene eventos, acks y transiciones inmediatos.

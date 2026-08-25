@@ -19,6 +19,7 @@ from typing import Any, Callable, Iterable, Mapping
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from nav_msgs.msg import Odometry
 from rosidl_runtime_py.convert import message_to_ordereddict
 from sensor_msgs.msg import BatteryState, LaserScan, NavSatFix
 from std_msgs.msg import String
@@ -86,6 +87,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("client_queue_capacity", 64)
         self.declare_parameter("telemetry_profile", "compact")
         self.declare_parameter("compact_telemetry_hz", 2.0)
+        self.declare_parameter("heading_odometry_topic", "/odometry/local")
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
         self._service_timeout_s = max(
@@ -142,6 +144,12 @@ class CockpitRosGateway(Node):
         )
         self.create_subscription(
             NavSatFix, "/gps/fix", self._on_gps, qos_profile_sensor_data
+        )
+        self.create_subscription(
+            Odometry,
+            str(self.get_parameter("heading_odometry_topic").value),
+            self._on_heading_odometry,
+            qos_profile_sensor_data,
         )
         self.create_subscription(String, "/gps/rtk_status", self._on_rtk, 10)
         if bool(self.get_parameter("scan_preview_enabled").value):
@@ -494,13 +502,37 @@ class CockpitRosGateway(Node):
         lon = _finite_or_none(message.longitude)
         if lat is None or lon is None:
             return
-        pose = {"lat": lat, "lon": lon}
         with self._lock:
+            previous_pose = self._cache.get("robot_pose")
+            pose = {"lat": lat, "lon": lon}
+            if isinstance(previous_pose, Mapping):
+                heading_deg = _finite_or_none(previous_pose.get("heading_deg"))
+                if heading_deg is not None:
+                    pose["heading_deg"] = heading_deg
             self._cache["robot_pose"] = pose
         if self._telemetry_profile == "full":
             self._emit({"op": "robot_pose", "pose": pose})
         else:
             self._on_cached_telemetry_change()
+
+    def _on_heading_odometry(self, message: Odometry) -> None:
+        orientation = message.pose.pose.orientation
+        heading_deg = quaternion_yaw_deg(
+            orientation.x,
+            orientation.y,
+            orientation.z,
+            orientation.w,
+        )
+        if heading_deg is None:
+            return
+        with self._lock:
+            previous_pose = self._cache.get("robot_pose")
+            if not isinstance(previous_pose, Mapping):
+                return
+            pose = dict(previous_pose)
+            pose["heading_deg"] = heading_deg
+            self._cache["robot_pose"] = pose
+        self._on_cached_telemetry_change()
 
     def _on_rtk(self, message: String) -> None:
         status = {"raw": message.data, "available": True, "source": "rtk_status"}
@@ -722,6 +754,21 @@ def _finite_or_none(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def quaternion_yaw_deg(x: Any, y: Any, z: Any, w: Any) -> float | None:
+    """Return ROS yaw in degrees, rejecting non-finite/degenerate quaternions."""
+    values = tuple(_finite_or_none(value) for value in (x, y, z, w))
+    if any(value is None for value in values):
+        return None
+    qx, qy, qz, qw = (float(value) for value in values)
+    norm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    if norm <= 1e-12:
+        return None
+    qx, qy, qz, qw = (value / norm for value in (qx, qy, qz, qw))
+    sin_yaw = 2.0 * (qw * qz + qx * qy)
+    cos_yaw = 1.0 - 2.0 * (qy * qy + qz * qz)
+    return math.degrees(math.atan2(sin_yaw, cos_yaw))
 
 
 def _camera_payload(values: Mapping[str, Any]) -> dict[str, Any]:
