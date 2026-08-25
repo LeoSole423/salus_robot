@@ -8,13 +8,11 @@ from .models import (ArrivalMetrics, LocalizationMetrics, Pose2D, SignMetrics,
 
 def angle_delta(a, b):
     """Return signed shortest angular difference a-b."""
-
     return math.atan2(math.sin(a - b), math.cos(a - b))
 
 
 def absolute_goal(spawn, goal):
     """Transform a relative goal from vehicle coordinates into world coordinates."""
-
     cosine, sine = math.cos(spawn.yaw_rad), math.sin(spawn.yaw_rad)
     return Pose2D(spawn.x_m + cosine * goal.forward_m - sine * goal.lateral_m,
                   spawn.y_m + sine * goal.forward_m + cosine * goal.lateral_m,
@@ -35,8 +33,12 @@ def _nearest(point, path):
     for start, end in zip(path, path[1:]):
         dx, dy = end.x_m - start.x_m, end.y_m - start.y_m
         denominator = dx * dx + dy * dy
-        t = 0.0 if denominator == 0 else max(0.0, min(1.0,
-            ((point.x_m - start.x_m) * dx + (point.y_m - start.y_m) * dy) / denominator))
+        projection = (
+            (point.x_m - start.x_m) * dx + (point.y_m - start.y_m) * dy
+        )
+        t = 0.0 if denominator == 0 else max(
+            0.0, min(1.0, projection / denominator)
+        )
         x, y = start.x_m + t * dx, start.y_m + t * dy
         candidate = (math.hypot(point.x_m - x, point.y_m - y), math.atan2(dy, dx))
         if best is None or candidate[0] < best[0]:
@@ -48,7 +50,6 @@ def _nearest(point, path):
 
 def tracking_metrics(poses, path):
     """Measure tracking against a polyline without ROS dependencies."""
-
     if not poses:
         raise ValueError("tracking requires poses")
     distances, headings = zip(*(_nearest(item.pose, path) for item in poses))
@@ -64,23 +65,25 @@ def tracking_metrics(poses, path):
                            direct / traveled if traveled else 1.0)
 
 
-def command_response_sign(commands, poses, linear_min=0.1, angular_min=0.02):
+def command_response_sign(commands, poses, linear_min=0.1, angular_min=0.02,
+                          response_delay_s=0.2):
     """Compare each eligible command with the nearest observed yaw-rate sample."""
-
     eligible = [cmd for cmd in commands if cmd.linear_x_mps > linear_min and
                 abs(cmd.angular_z_rps) > angular_min]
     mismatches = 0
     for command in eligible:
-        response = min(poses, key=lambda pose: abs(pose.stamp_s - command.stamp_s))
+        response_stamp = command.stamp_s + response_delay_s
+        response = min(poses, key=lambda pose: abs(pose.stamp_s - response_stamp))
         if command.angular_z_rps * response.angular_z_rps < 0:
             mismatches += 1
+    first_sign = (1 if eligible[0].angular_z_rps > 0 else -1) if eligible else 0
     return SignMetrics(len(eligible), mismatches,
-                       mismatches / len(eligible) if eligible else None)
+                       mismatches / len(eligible) if eligible else None,
+                       first_sign)
 
 
 def arrival_metrics(poses, goal, tolerance_m, success_s=None):
     """Measure first entry, subsequent exits, overshoot and post-success motion."""
-
     distances = [math.hypot(p.pose.x_m-goal.x_m, p.pose.y_m-goal.y_m) for p in poses]
     epsilon = max(1e-12, tolerance_m * 1e-9)
     entries = [i for i, distance in enumerate(distances)
@@ -106,7 +109,6 @@ def arrival_metrics(poses, goal, tolerance_m, success_s=None):
 
 def localization_metrics(ground_truth, estimates):
     """Compare estimates with nearest ground-truth samples."""
-
     if not estimates or not ground_truth:
         raise ValueError("localization requires both streams")
     errors, yaw_errors = [], []

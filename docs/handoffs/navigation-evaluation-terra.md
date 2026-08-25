@@ -41,11 +41,19 @@ Detenerse si falta una fuente independiente de verdad, hay duda sobre autoridad
 de comando/TF, se necesita cambiar schema v1 o un gate de seguridad, o se piensa
 compensar ausencia de datos con defaults. Eso requiere revisión SOL.
 
-## Bloqueo de decisión SOL
+## Decisión SOL resuelta
 
 `functional_gates` exige actualmente al menos una muestra angular elegible para
 que `turn_sign` pase. Eso es correcto para giros izquierdo/derecho, pero hace
 fallar semánticamente `straight_5m`, donde no debería existir tal comando. SOL
-debe decidir entre un gate de rectitud explícito o una excepción tipada por
-`ExpectedTurn.STRAIGHT`; TERRA no debe degradar ni omitir el gate de forma
-implícita.
+resolvió que una recta sin comandos angulares pasa, mientras cualquier comando
+angular elegible sigue obligado a producir una respuesta física coherente. En
+giros, además, el primer comando relevante debe coincidir con `expected_turn`.
+
+## Decisión operativa pendiente
+
+Nav2 usa actualmente `xy_goal_tolerance: 1.2`, mientras el runner nació con
+`goal_tolerance_m: 0.25`. Una ejecución real confirmó que Nav2 puede declarar
+éxito cerca de 1 m y el evaluador marcarlo fallido. Se propuso separar el gate
+funcional de 1.2 m del objetivo de rendimiento de 0.25 m; falta confirmación del
+operador antes de fijar esa semántica.

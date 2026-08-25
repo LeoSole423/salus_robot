@@ -62,10 +62,32 @@ def test_functional_sign_gate_fails_and_performance_starts_calibrating():
     gates = functional_gates(finite_data=True, plan_present=True,
                              terminal_success=True, final_distance_m=.1,
                              tolerance_m=.2, sign_metrics=signs,
-                             reverse_observed=False, reverse_allowed=False)
+                             reverse_observed=False, reverse_allowed=False,
+                             expected_turn=ExpectedTurn.RIGHT)
     assert next(g for g in gates if g.name == "turn_sign").state == GateState.FAIL
     assert performance_gate("cte", .2).state == GateState.CALIBRATING
     assert performance_gate("cte", 1.21, baseline_p95=1.0).state == GateState.FAIL
+
+
+def test_straight_gate_does_not_require_an_artificial_turn():
+    signs = command_response_sign((), ())
+    gates = functional_gates(finite_data=True, plan_present=True,
+                             terminal_success=True, final_distance_m=.1,
+                             tolerance_m=.2, sign_metrics=signs,
+                             reverse_observed=False, reverse_allowed=False,
+                             expected_turn=ExpectedTurn.STRAIGHT)
+    assert next(g for g in gates if g.name == "turn_sign").state == GateState.PASS
+
+
+def test_turn_gate_rejects_coherent_motion_in_the_wrong_requested_direction():
+    signs = command_response_sign((TimedCommand(0, .5, .2),),
+                                  (timed(.2, 0, 0, yaw_rate=.2),))
+    gates = functional_gates(finite_data=True, plan_present=True,
+                             terminal_success=True, final_distance_m=.1,
+                             tolerance_m=.2, sign_metrics=signs,
+                             reverse_observed=False, reverse_allowed=False,
+                             expected_turn=ExpectedTurn.RIGHT)
+    assert next(g for g in gates if g.name == "turn_sign").state == GateState.FAIL
 
 
 def test_all_shipped_scenarios_are_strictly_valid():
@@ -77,6 +99,10 @@ def test_all_shipped_scenarios_are_strictly_valid():
 
 def test_schema_rejects_unknown_fields(tmp_path):
     path = tmp_path / "invalid.yaml"
-    path.write_text("schema_version: 1\nid: x\nworld: free\nspawn: {x_m: 0, y_m: 0, yaw_rad: 0}\ngoals: []\nsurprise: true\n")
+    path.write_text(
+        "schema_version: 1\nid: x\nworld: free\n"
+        "spawn: {x_m: 0, y_m: 0, yaw_rad: 0}\n"
+        "goals: []\nsurprise: true\n"
+    )
     with pytest.raises(ValueError, match="unknown"):
         load_scenario(path)

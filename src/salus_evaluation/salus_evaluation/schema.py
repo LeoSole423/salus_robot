@@ -24,7 +24,6 @@ def _finite(value, name):
 
 def load_scenario(path):
     """Load a strict scenario; unknown fields fail instead of being ignored."""
-
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("scenario root must be a mapping")
@@ -39,8 +38,12 @@ def load_scenario(path):
     if not isinstance(data["goals"], list) or not data["goals"]:
         raise ValueError("goals must be a non-empty list")
     for raw in data["goals"]:
-        _keys(raw, ("id", "forward_m", "lateral_m", "yaw_offset_rad",
-                         "timeout_s", "expected_turn"), ("reverse_allowed",))
+        _keys(
+            raw,
+            ("id", "forward_m", "lateral_m", "yaw_offset_rad",
+             "timeout_s", "expected_turn"),
+            ("reverse_allowed",),
+        )
         timeout = _finite(raw["timeout_s"], "timeout_s")
         if timeout <= 0:
             raise ValueError("timeout_s must be positive")

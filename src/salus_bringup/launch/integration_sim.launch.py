@@ -121,7 +121,10 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "nav2_params_file",
-                default_value=str(Path(get_package_share_directory("salus_navigation")) / "config" / "nav2_core_sim.yaml"),
+                default_value=str(
+                    Path(get_package_share_directory("salus_navigation"))
+                    / "config" / "nav2_core_sim.yaml"
+                ),
                 description="Nav2 parameter file passed unchanged to navigation_core_sim.",
             ),
             _include(

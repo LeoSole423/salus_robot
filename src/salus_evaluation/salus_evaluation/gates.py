@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from .models import ExpectedTurn
+
 
 class GateState(str, Enum):
     """Machine-readable evaluation state."""
@@ -23,16 +25,24 @@ class GateResult:
 
 def functional_gates(*, finite_data, plan_present, terminal_success,
                      final_distance_m, tolerance_m, sign_metrics,
-                     reverse_observed, reverse_allowed):
+                     reverse_observed, reverse_allowed,
+                     expected_turn=ExpectedTurn.ANY):
     """Evaluate causal invariants suitable for CI from the first run."""
-
+    expected_sign = {ExpectedTurn.LEFT: 1, ExpectedTurn.RIGHT: -1}.get(expected_turn)
+    sign_observed = sign_metrics.eligible_count > 0
+    response_coherent = sign_metrics.mismatch_count == 0
+    direction_expected = expected_sign is None or sign_metrics.first_command_sign == expected_sign
+    turn_sign_ok = ((expected_turn in (ExpectedTurn.STRAIGHT, ExpectedTurn.ANY) and
+                     (not sign_observed or response_coherent)) or
+                    (expected_sign is not None and sign_observed and response_coherent and
+                     direction_expected))
     checks = [
         ("finite_data", finite_data, "all required samples must be finite"),
         ("plan_present", plan_present, "a non-empty plan must be observed"),
         ("terminal_success", terminal_success, "Nav2 must report success"),
         ("arrival", final_distance_m <= tolerance_m, "final pose must be within tolerance"),
-        ("turn_sign", sign_metrics.eligible_count > 0 and sign_metrics.mismatch_count == 0,
-         "eligible steering commands must produce the same yaw-rate sign"),
+        ("turn_sign", turn_sign_ok,
+         "turn command must match the scenario and physical yaw-rate response"),
         ("no_reverse", reverse_allowed or not reverse_observed,
          "reverse motion is forbidden by the scenario"),
     ]
@@ -42,7 +52,6 @@ def functional_gates(*, finite_data, plan_present, terminal_success,
 
 def performance_gate(name, candidate_p95, baseline_p95=None, floor=0.0):
     """Gate a lower-is-better P95 only after a baseline has been calibrated."""
-
     if baseline_p95 is None:
         return GateResult(name, GateState.CALIBRATING,
                           "no calibrated baseline; metric is report-only")

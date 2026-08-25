@@ -87,6 +87,7 @@ class SignMetrics:
     eligible_count: int
     mismatch_count: int
     mismatch_fraction: Optional[float]
+    first_command_sign: int
 
 
 @dataclass(frozen=True)

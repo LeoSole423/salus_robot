@@ -8,7 +8,9 @@ def test_artifacts_are_versioned_json_csv_and_html(tmp_path):
     root = write_artifacts(
         tmp_path / "trial",
         {"schema_version": 1, "mode": "run"},
-        {"schema_version": 1, "gate": GateResult("x", GateState.PASS, "ok"), "missing": float("inf")},
+        {"schema_version": 1,
+         "gate": GateResult("x", GateState.PASS, "ok"),
+         "missing": float("inf")},
         {"commands": [{"stamp_s": 1.0, "linear_x_mps": .2}]},
     )
     assert json.loads((root / "manifest.json").read_text())["schema_version"] == 1
