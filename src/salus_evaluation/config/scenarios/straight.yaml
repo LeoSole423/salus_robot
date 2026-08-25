@@ -1,0 +1,6 @@
+schema_version: 1
+id: straight_5m
+world: free
+spawn: {x_m: 0.0, y_m: 0.0, yaw_rad: 0.0}
+goals:
+  - {id: forward, forward_m: 5.0, lateral_m: 0.0, yaw_offset_rad: 0.0, timeout_s: 45.0, expected_turn: straight}
