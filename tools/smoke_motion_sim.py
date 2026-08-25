@@ -54,6 +54,13 @@ def _yaw(message: Odometry) -> float:
     )
 
 
+def _yaw_delta(start_rad: float, current_rad: float) -> float:
+    return math.atan2(
+        math.sin(current_rad - start_rad),
+        math.cos(current_rad - start_rad),
+    )
+
+
 def main() -> int:
     rclpy.init()
     node = MotionSmokeNode()
@@ -85,10 +92,14 @@ def main() -> int:
 
         start_yaw = _yaw(node.odom_samples[-1])
         runtime.wait(
-            "turn yaw change",
-            lambda: abs(_yaw(node.odom_samples[-1]) - start_yaw) > 0.03,
+            "positive steer produces positive yaw",
+            lambda: _yaw_delta(start_yaw, _yaw(node.odom_samples[-1])) > 0.03,
             20.0,
             stimulate=lambda: node.command(linear_x=1.0, angular_z=0.20, brake_pct=0),
+            observe=lambda: {
+                "command_angular_z": 0.20,
+                "yaw_delta": _yaw_delta(start_yaw, _yaw(node.odom_samples[-1])),
+            },
         )
 
         runtime.wait(

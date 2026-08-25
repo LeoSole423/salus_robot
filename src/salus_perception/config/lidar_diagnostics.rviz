@@ -136,6 +136,25 @@ Visualization Manager:
         History Policy: Keep Last
         Depth: 1
         Value: /local_costmap/costmap
+    - Class: rviz_default_plugins/Path
+      Name: Global plan
+      Enabled: true
+      Color: 0; 255; 120
+      Alpha: 1
+      Buffer Length: 1
+      Line Style: Lines
+      Line Width: 0.08
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0.03
+      Pose Style: None
+      Topic:
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 5
+        Value: /plan
   Tools:
     - Class: rviz_default_plugins/Interact
     - Class: rviz_default_plugins/MoveCamera

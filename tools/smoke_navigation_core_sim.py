@@ -29,6 +29,8 @@ class NavigationSmoke(Node):
     def __init__(self) -> None:
         super().__init__("navigation_core_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom: list[Odometry] = []
+        self.raw_odom: list[Odometry] = []
+        self.local_odom: list[Odometry] = []
         self.plans: list[NavPath] = []
         self.final: list[CmdVelFinal] = []
         self.telemetry: list[NavTelemetry] = []
@@ -36,6 +38,8 @@ class NavigationSmoke(Node):
         self.raw_commands: list[Twist] = []
         self.safe_commands: list[Twist] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
+        self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
+        self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
@@ -109,16 +113,33 @@ def send_goal(node: NavigationSmoke, distance_m: float) -> tuple[float, float]:
     return map_point.x, map_point.y
 
 
-def rviz_goal_from_current_pose(node: NavigationSmoke, distance_m: float) -> PoseStamped:
-    x_m, y_m, yaw_rad = destination_from_current_pose(node.odom[-1], distance_m)
+def rviz_goal_from_current_pose(
+    node: NavigationSmoke,
+    forward_m: float,
+    lateral_m: float = 0.0,
+    yaw_offset_rad: float = 0.0,
+) -> PoseStamped:
+    current = node.odom[-1]
+    yaw_rad = yaw_from_odometry(current)
+    position = current.pose.pose.position
+    x_m = position.x + forward_m * math.cos(yaw_rad) - lateral_m * math.sin(yaw_rad)
+    y_m = position.y + forward_m * math.sin(yaw_rad) + lateral_m * math.cos(yaw_rad)
+    goal_yaw_rad = yaw_rad + yaw_offset_rad
     message = PoseStamped()
     message.header.frame_id = "map"
     message.header.stamp = node.get_clock().now().to_msg()
     message.pose.position.x = x_m
     message.pose.position.y = y_m
-    message.pose.orientation.z = math.sin(yaw_rad * 0.5)
-    message.pose.orientation.w = math.cos(yaw_rad * 0.5)
+    message.pose.orientation.z = math.sin(goal_yaw_rad * 0.5)
+    message.pose.orientation.w = math.cos(goal_yaw_rad * 0.5)
     return message
+
+
+def yaw_delta(start_rad: float, current_rad: float) -> float:
+    return math.atan2(
+        math.sin(current_rad - start_rad),
+        math.cos(current_rad - start_rad),
+    )
 
 
 def distance_from(start: Odometry, current: Odometry) -> float:
@@ -150,7 +171,12 @@ def main() -> int:
             node, lambda: node.startup.active, 45.0,
             "navigation startup did not become active",
         )
-        wait_for(node, lambda: node.odom and node.telemetry, 20.0, "global odometry or telemetry unavailable")
+        wait_for(
+            node,
+            lambda: node.odom and node.raw_odom and node.local_odom and node.telemetry,
+            20.0,
+            "raw/local/global odometry or telemetry unavailable",
+        )
         # Lifecycle state and action discovery are not sufficient evidence on
         # a contended runner.  Wait until every action server in the first BT
         # tick accepts clients before submitting the first high-level goal.
@@ -165,8 +191,57 @@ def main() -> int:
         response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
         if not response.ok or response.enabled_after:
             raise RuntimeError("automatic mode was not restored before navigation")
+        right_turn_start_yaw = yaw_from_odometry(node.odom[-1])
+        right_turn_raw_start_yaw = yaw_from_odometry(node.raw_odom[-1])
+        right_turn_local_start_yaw = yaw_from_odometry(node.local_odom[-1])
+        right_turn_goal = rviz_goal_from_current_pose(
+            node, forward_m=8.0, lateral_m=-8.0, yaw_offset_rad=-math.pi / 2.0,
+        )
+        node.plans.clear()
+        node.raw_commands.clear()
+        node.runtime.wait(
+            "right-turn RViz goal did not produce a plan",
+            lambda: get_state(node).goal_active and bool(node.plans),
+            8.0,
+            stimulate=lambda: node.rviz_goal.publish(right_turn_goal),
+        )
+        wait_for(
+            node,
+            lambda: any(message.angular.z < -0.02 for message in node.raw_commands),
+            8.0,
+            "right-turn plan did not produce a negative yaw command",
+        )
+        wait_for(
+            node,
+            lambda: yaw_delta(
+                right_turn_raw_start_yaw, yaw_from_odometry(node.raw_odom[-1])
+            ) < -0.03,
+            8.0,
+            "right-turn command did not produce a negative physical yaw response",
+        )
+        wait_for(
+            node,
+            lambda: yaw_delta(
+                right_turn_local_start_yaw, yaw_from_odometry(node.local_odom[-1])
+            ) < -0.03,
+            8.0,
+            "right-turn physical motion produced the wrong local-odometry yaw sign",
+        )
+        wait_for(
+            node,
+            lambda: yaw_delta(
+                right_turn_start_yaw, yaw_from_odometry(node.odom[-1])
+            ) < -0.03,
+            8.0,
+            "right-turn physical motion produced the wrong global-odometry yaw sign",
+        )
+        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        if not response.ok:
+            raise RuntimeError(response.error)
+        wait_for(node, lambda: not get_state(node).goal_active, 5.0, "right-turn diagnostic goal remained active")
+
         start = node.odom[-1]
-        rviz_goal = rviz_goal_from_current_pose(node, 7.0)
+        rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
         target_x = rviz_goal.pose.position.x
         target_y = rviz_goal.pose.position.y
         node.runtime.wait(
@@ -239,6 +314,7 @@ def main() -> int:
     finally:
         runtime.finish(success, error=failure, evidence={
             "odometry": len(node.odom), "plans": len(node.plans),
+            "raw_odometry": len(node.raw_odom), "local_odometry": len(node.local_odom),
             "final_commands": len(node.final), "telemetry": len(node.telemetry),
             "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
