@@ -66,7 +66,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: []
-    status: characterized_pure_domain_ros_adapter_pending
+    status: ported_sim_evaluation_foundation
   salus_bringup:
     owner: system_composition
     build_type: ament_cmake

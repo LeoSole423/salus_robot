@@ -1,8 +1,7 @@
 # salus_evaluation
 
-Dominio puro para escenarios, métricas y gates reproducibles de navegación.
-No posee autoridad de comando ni TF. La integración ROS, RViz y el runner se
-incorporarán sobre estos contratos según ADR 0007.
+Escenarios, métricas y gates reproducibles de navegación, con un runner ROS
+observador que no posee autoridad de comando ni publica TF, según ADR 0007.
 
 Los escenarios instalados usan metros, radianes y segundos. En simulación se
 compara la estimación contra `/odom_raw`; esto no valida comportamiento real.
@@ -14,8 +13,14 @@ Con una simulación `sim_operational.launch.py` ya levantada:
 ./tools/nav_eval.sh observe
 ```
 
-`observe` espera el próximo `2D Goal Pose` de RViz. Ambos modos generan el
-mismo bundle versionado en `artifacts/evaluations/`.
+`observe` espera el próximo `2D Goal Pose` de RViz e infiere del plan publicado
+si la maniobra inicial pide izquierda, derecha o recto. Si no puede inferirlo,
+el gate `turn_sign` falla en lugar de omitir esa comprobación. Ambos modos
+generan el mismo bundle versionado en `artifacts/evaluations/`.
+
+La comparación de localización sólo acepta muestras de verdad terreno a menos
+de 0.2 s de cada estimación. Los datos no finitos en meta, poses, velocidades,
+comandos o plan invalidan la ejecución.
 
 La llegada tiene dos referencias deliberadamente separadas:
 

@@ -16,7 +16,8 @@ from visualization_msgs.msg import Marker, MarkerArray
 from .artifacts import write_artifacts
 from .gates import GateState, functional_gates, performance_gate
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
-                      localization_metrics, tracking_metrics)
+                      expected_turn_from_path, localization_metrics,
+                      tracking_metrics, trial_data_finite)
 from .models import ExpectedTurn, Pose2D, TimedCommand, TimedPose
 from .schema import load_scenario
 
@@ -66,6 +67,7 @@ class EvaluationRunner(Node):
         self.global_poses, self.raw_poses, self.local_poses = [], [], []
         self.commands, self.plans, self.events = [], [], []
         self.goal = None
+        self.start_pose = None
         self.goal_sent_s = None
         self.success_s = None
         self.expected_turn = ExpectedTurn.ANY
@@ -110,6 +112,15 @@ class EvaluationRunner(Node):
                        for item in message.poses)
         if points:
             self.plans.append(points)
+            if (self.mode == "observe" and self.goal is not None and
+                    self.expected_turn == ExpectedTurn.ANY and
+                    self.start_pose is not None):
+                try:
+                    self.expected_turn = expected_turn_from_path(
+                        self.start_pose, points
+                    )
+                except ValueError:
+                    pass
 
     def _event(self, message):
         self.events.append((message.code, _stamp(message)))
@@ -145,6 +156,7 @@ class EvaluationRunner(Node):
             return
         self.goal = Pose2D(message.pose.position.x, message.pose.position.y,
                            _yaw(message.pose.orientation))
+        self.start_pose = self.global_poses[-1].pose if self.global_poses else None
         self.terminal_status = None
         self.terminal_received_s = None
         self.goal_event_baseline = (
@@ -215,15 +227,10 @@ class EvaluationRunner(Node):
         raw_poses = tuple(item for item in self.raw_poses if item.stamp_s >= self.goal_sent_s)
         local_poses = tuple(item for item in self.local_poses if item.stamp_s >= self.goal_sent_s)
         commands = tuple(item for item in self.commands if item.stamp_s >= self.goal_sent_s)
-        finite = all(
-            math.isfinite(value)
-            for collection in (global_poses, raw_poses, local_poses)
-            for item in collection
-            for value in (
-                item.stamp_s, item.pose.x_m, item.pose.y_m, item.pose.yaw_rad
-            )
-        )
         plan = self.plans[-1] if self.plans else ()
+        finite = trial_data_finite(
+            self.goal, (global_poses, raw_poses, local_poses), commands, plan
+        )
         metrics, arrival, localization = None, None, None
         signs = command_response_sign(commands, raw_poses) if raw_poses else None
         errors = []
@@ -243,6 +250,7 @@ class EvaluationRunner(Node):
             tolerance_m=self.tolerance, sign_metrics=signs or command_response_sign((), ()),
             reverse_observed=any(command.linear_x_mps < -.01 for command in commands),
             reverse_allowed=self.reverse_allowed, expected_turn=self.expected_turn,
+            require_turn_expectation=self.mode == "observe",
         )
         precision = {
             "target_m": self.precision_target,

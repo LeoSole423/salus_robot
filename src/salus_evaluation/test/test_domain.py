@@ -6,7 +6,9 @@ import pytest
 from salus_evaluation.gates import GateState, functional_gates, performance_gate
 from salus_evaluation.metrics import (absolute_goal, arrival_metrics,
                                       command_response_sign,
-                                      localization_metrics, tracking_metrics)
+                                      expected_turn_from_path,
+                                      localization_metrics, tracking_metrics,
+                                      trial_data_finite)
 from salus_evaluation.models import (GoalSpec, ExpectedTurn, Pose2D,
                                      TimedCommand, TimedPose)
 from salus_evaluation.schema import load_scenario
@@ -21,6 +23,24 @@ def test_relative_goal_respects_spawn_heading():
     result = absolute_goal(Pose2D(10.0, 20.0, math.pi / 2), goal)
     assert result.x_m == pytest.approx(9.0)
     assert result.y_m == pytest.approx(22.0)
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ((Pose2D(0, 0, 0), Pose2D(1, 1, 0)), ExpectedTurn.LEFT),
+        ((Pose2D(0, 0, 0), Pose2D(1, -1, 0)), ExpectedTurn.RIGHT),
+        ((Pose2D(0, 0, 0), Pose2D(2, 0, 0)), ExpectedTurn.STRAIGHT),
+    ],
+)
+def test_expected_turn_is_inferred_from_visible_plan(path, expected):
+    assert expected_turn_from_path(Pose2D(0, 0, 0), path) == expected
+
+
+def test_expected_turn_respects_the_robot_start_heading():
+    start = Pose2D(0, 0, math.pi / 2)
+    path = (start, Pose2D(-1, 1, 0))
+    assert expected_turn_from_path(start, path) == ExpectedTurn.LEFT
 
 
 def test_tracking_metrics_have_known_cross_track_error():
@@ -58,6 +78,23 @@ def test_localization_uses_ground_truth_not_self_consistency():
     assert result.final_position_error_m == pytest.approx(.2)
 
 
+def test_localization_rejects_stale_ground_truth():
+    with pytest.raises(ValueError, match="alignment gap"):
+        localization_metrics((timed(0, 0, 0),), (timed(1, 1, 0),))
+
+
+def test_finite_validation_covers_goal_plan_commands_and_pose_streams():
+    good_pose = timed(0, 0, 0)
+    good_command = TimedCommand(0, .5, 0)
+    assert trial_data_finite(Pose2D(1, 0, 0), ((good_pose,),),
+                             (good_command,), (Pose2D(0, 0, 0),))
+    assert not trial_data_finite(Pose2D(1, 0, 0), ((good_pose,),),
+                                 (TimedCommand(0, math.nan, 0),),
+                                 (Pose2D(0, 0, 0),))
+    assert not trial_data_finite(Pose2D(1, 0, 0), ((good_pose,),),
+                                 (good_command,), (Pose2D(math.inf, 0, 0),))
+
+
 def test_functional_sign_gate_fails_and_performance_starts_calibrating():
     signs = command_response_sign((TimedCommand(0, .5, .2),),
                                   (timed(0, 0, 0, yaw_rate=-.2),))
@@ -79,6 +116,17 @@ def test_straight_gate_does_not_require_an_artificial_turn():
                              reverse_observed=False, reverse_allowed=False,
                              expected_turn=ExpectedTurn.STRAIGHT)
     assert next(g for g in gates if g.name == "turn_sign").state == GateState.PASS
+
+
+def test_observe_gate_fails_when_plan_direction_cannot_be_inferred():
+    gates = functional_gates(finite_data=True, plan_present=True,
+                             terminal_success=True, final_distance_m=.1,
+                             tolerance_m=.2,
+                             sign_metrics=command_response_sign((), ()),
+                             reverse_observed=False, reverse_allowed=False,
+                             expected_turn=ExpectedTurn.ANY,
+                             require_turn_expectation=True)
+    assert next(g for g in gates if g.name == "turn_sign").state == GateState.FAIL
 
 
 def test_turn_gate_rejects_coherent_motion_in_the_wrong_requested_direction():

@@ -2,8 +2,8 @@
 
 import math
 
-from .models import (ArrivalMetrics, LocalizationMetrics, Pose2D, SignMetrics,
-                     TrackingMetrics)
+from .models import (ArrivalMetrics, ExpectedTurn, LocalizationMetrics, Pose2D,
+                     SignMetrics, TrackingMetrics)
 
 
 def angle_delta(a, b):
@@ -17,6 +17,53 @@ def absolute_goal(spawn, goal):
     return Pose2D(spawn.x_m + cosine * goal.forward_m - sine * goal.lateral_m,
                   spawn.y_m + sine * goal.forward_m + cosine * goal.lateral_m,
                   spawn.yaw_rad + goal.yaw_offset_rad)
+
+
+def expected_turn_from_path(start, path, lookahead_m=1.0,
+                            lateral_deadband_m=0.05):
+    """Infer the initial requested turn from a plan and starting pose."""
+    if len(path) < 2:
+        raise ValueError("turn inference requires at least two plan points")
+    nearest = min(
+        range(len(path)),
+        key=lambda index: math.hypot(
+            path[index].x_m - start.x_m, path[index].y_m - start.y_m
+        ),
+    )
+    target = path[-1]
+    traveled = 0.0
+    previous = path[nearest]
+    for candidate in path[nearest + 1:]:
+        traveled += math.hypot(
+            candidate.x_m - previous.x_m, candidate.y_m - previous.y_m
+        )
+        target, previous = candidate, candidate
+        if traveled >= lookahead_m:
+            break
+    dx, dy = target.x_m - start.x_m, target.y_m - start.y_m
+    lateral = -math.sin(start.yaw_rad) * dx + math.cos(start.yaw_rad) * dy
+    if lateral > lateral_deadband_m:
+        return ExpectedTurn.LEFT
+    if lateral < -lateral_deadband_m:
+        return ExpectedTurn.RIGHT
+    return ExpectedTurn.STRAIGHT
+
+
+def trial_data_finite(goal, pose_streams, commands, plan):
+    """Validate every numeric input required by functional evaluation."""
+    if goal is None:
+        return False
+    values = [goal.x_m, goal.y_m, goal.yaw_rad]
+    for stream in pose_streams:
+        for item in stream:
+            values.extend((item.stamp_s, item.pose.x_m, item.pose.y_m,
+                           item.pose.yaw_rad, item.linear_x_mps,
+                           item.angular_z_rps))
+    for item in commands:
+        values.extend((item.stamp_s, item.linear_x_mps, item.angular_z_rps))
+    for item in plan:
+        values.extend((item.x_m, item.y_m, item.yaw_rad))
+    return all(math.isfinite(value) for value in values)
 
 
 def _percentile(values, fraction):
@@ -110,13 +157,19 @@ def arrival_metrics(poses, goal, tolerance_m, success_s=None):
                           min(distances), distances[-1], post, max(0.0, max(along)))
 
 
-def localization_metrics(ground_truth, estimates):
+def localization_metrics(ground_truth, estimates, max_alignment_gap_s=0.2):
     """Compare estimates with nearest ground-truth samples."""
     if not estimates or not ground_truth:
         raise ValueError("localization requires both streams")
     errors, yaw_errors = [], []
     for estimate in estimates:
         truth = min(ground_truth, key=lambda item: abs(item.stamp_s-estimate.stamp_s))
+        gap_s = abs(truth.stamp_s - estimate.stamp_s)
+        if gap_s > max_alignment_gap_s:
+            raise ValueError(
+                f"localization alignment gap {gap_s:.3f}s exceeds "
+                f"{max_alignment_gap_s:.3f}s"
+            )
         errors.append(math.hypot(estimate.pose.x_m-truth.pose.x_m,
                                  estimate.pose.y_m-truth.pose.y_m))
         yaw_errors.append(abs(angle_delta(estimate.pose.yaw_rad, truth.pose.yaw_rad)))

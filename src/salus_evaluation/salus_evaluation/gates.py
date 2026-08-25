@@ -26,7 +26,8 @@ class GateResult:
 def functional_gates(*, finite_data, plan_present, terminal_success,
                      final_distance_m, tolerance_m, sign_metrics,
                      reverse_observed, reverse_allowed,
-                     expected_turn=ExpectedTurn.ANY):
+                     expected_turn=ExpectedTurn.ANY,
+                     require_turn_expectation=False):
     """Evaluate causal invariants suitable for CI from the first run."""
     expected_sign = {ExpectedTurn.LEFT: 1, ExpectedTurn.RIGHT: -1}.get(expected_turn)
     sign_observed = sign_metrics.eligible_count > 0
@@ -37,7 +38,8 @@ def functional_gates(*, finite_data, plan_present, terminal_success,
         expected_sign is None or sign_metrics.first_response_sign == expected_sign
     )
     turn_sign_ok = (
-        expected_turn in (ExpectedTurn.STRAIGHT, ExpectedTurn.ANY) or
+        (expected_turn == ExpectedTurn.ANY and not require_turn_expectation) or
+        expected_turn == ExpectedTurn.STRAIGHT or
         (sign_observed and command_expected and response_expected)
     )
     checks = [
