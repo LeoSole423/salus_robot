@@ -88,6 +88,7 @@ class SignMetrics:
     mismatch_count: int
     mismatch_fraction: Optional[float]
     first_command_sign: int
+    first_response_sign: int
 
 
 @dataclass(frozen=True)

@@ -71,15 +71,18 @@ def command_response_sign(commands, poses, linear_min=0.1, angular_min=0.02,
     eligible = [cmd for cmd in commands if cmd.linear_x_mps > linear_min and
                 abs(cmd.angular_z_rps) > angular_min]
     mismatches = 0
+    first_response_sign = 0
     for command in eligible:
         response_stamp = command.stamp_s + response_delay_s
         response = min(poses, key=lambda pose: abs(pose.stamp_s - response_stamp))
+        if first_response_sign == 0 and abs(response.angular_z_rps) > angular_min:
+            first_response_sign = 1 if response.angular_z_rps > 0 else -1
         if command.angular_z_rps * response.angular_z_rps < 0:
             mismatches += 1
     first_sign = (1 if eligible[0].angular_z_rps > 0 else -1) if eligible else 0
     return SignMetrics(len(eligible), mismatches,
                        mismatches / len(eligible) if eligible else None,
-                       first_sign)
+                       first_sign, first_response_sign)
 
 
 def arrival_metrics(poses, goal, tolerance_m, success_s=None):

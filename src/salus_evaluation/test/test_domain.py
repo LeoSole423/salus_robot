@@ -37,6 +37,8 @@ def test_command_response_detects_historical_opposite_turn_bug():
                                     timed(2, 0, 0, yaw_rate=.1)))
     assert result.eligible_count == 2
     assert result.mismatch_fraction == 1.0
+    assert result.first_command_sign == -1
+    assert result.first_response_sign == 1
 
 
 def test_arrival_records_exit_and_post_success_travel():
@@ -88,6 +90,20 @@ def test_turn_gate_rejects_coherent_motion_in_the_wrong_requested_direction():
                              reverse_observed=False, reverse_allowed=False,
                              expected_turn=ExpectedTurn.RIGHT)
     assert next(g for g in gates if g.name == "turn_sign").state == GateState.FAIL
+
+
+def test_turn_gate_uses_initial_physical_response_not_later_corrections():
+    commands = (TimedCommand(0, .5, -.2), TimedCommand(1, .5, .2))
+    poses = (timed(.2, 0, 0, yaw_rate=-.2),
+             timed(1.2, 0, 0, yaw_rate=-.2))
+    signs = command_response_sign(commands, poses)
+    gates = functional_gates(finite_data=True, plan_present=True,
+                             terminal_success=True, final_distance_m=.1,
+                             tolerance_m=.2, sign_metrics=signs,
+                             reverse_observed=False, reverse_allowed=False,
+                             expected_turn=ExpectedTurn.RIGHT)
+    assert signs.mismatch_count == 1
+    assert next(g for g in gates if g.name == "turn_sign").state == GateState.PASS
 
 
 def test_all_shipped_scenarios_are_strictly_valid():

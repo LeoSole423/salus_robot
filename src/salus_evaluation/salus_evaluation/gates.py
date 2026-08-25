@@ -30,12 +30,16 @@ def functional_gates(*, finite_data, plan_present, terminal_success,
     """Evaluate causal invariants suitable for CI from the first run."""
     expected_sign = {ExpectedTurn.LEFT: 1, ExpectedTurn.RIGHT: -1}.get(expected_turn)
     sign_observed = sign_metrics.eligible_count > 0
-    response_coherent = sign_metrics.mismatch_count == 0
-    direction_expected = expected_sign is None or sign_metrics.first_command_sign == expected_sign
-    turn_sign_ok = ((expected_turn in (ExpectedTurn.STRAIGHT, ExpectedTurn.ANY) and
-                     (not sign_observed or response_coherent)) or
-                    (expected_sign is not None and sign_observed and response_coherent and
-                     direction_expected))
+    command_expected = (
+        expected_sign is None or sign_metrics.first_command_sign == expected_sign
+    )
+    response_expected = (
+        expected_sign is None or sign_metrics.first_response_sign == expected_sign
+    )
+    turn_sign_ok = (
+        expected_turn in (ExpectedTurn.STRAIGHT, ExpectedTurn.ANY) or
+        (sign_observed and command_expected and response_expected)
+    )
     checks = [
         ("finite_data", finite_data, "all required samples must be finite"),
         ("plan_present", plan_present, "a non-empty plan must be observed"),

@@ -22,6 +22,12 @@ hasta reunir al menos 30 repeticiones válidas por escenario/perfil. Después se
 compararán individualmente mediante P95/P99 y límites explícitos; no habrá una
 puntuación única que oculte regresiones.
 
+La llegada distingue el contrato operacional vigente del objetivo de mejora.
+Mientras Nav2 use `xy_goal_tolerance: 1.2`, ése será el gate funcional. El
+objetivo de precisión de 0.25 m se registra separadamente como `calibrating` y
+no rompe CI. Ambos valores son explícitos en cada artefacto y podrán reducirse
+con evidencia acumulada.
+
 No se crean mensajes ROS propios: el adaptador consumirá tipos estándar y
 persistirá artefactos versionados JSON/CSV y un informe visual. Una ausencia de
 datos invalida la prueba; nunca se rellena con éxito supuesto.

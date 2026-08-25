@@ -50,10 +50,10 @@ resolvió que una recta sin comandos angulares pasa, mientras cualquier comando
 angular elegible sigue obligado a producir una respuesta física coherente. En
 giros, además, el primer comando relevante debe coincidir con `expected_turn`.
 
-## Decisión operativa pendiente
+## Decisión operativa resuelta
 
 Nav2 usa actualmente `xy_goal_tolerance: 1.2`, mientras el runner nació con
 `goal_tolerance_m: 0.25`. Una ejecución real confirmó que Nav2 puede declarar
-éxito cerca de 1 m y el evaluador marcarlo fallido. Se propuso separar el gate
-funcional de 1.2 m del objetivo de rendimiento de 0.25 m; falta confirmación del
-operador antes de fijar esa semántica.
+éxito cerca de 1 m. El operador aceptó separar el gate funcional de 1.2 m del
+objetivo de rendimiento de 0.25 m. El segundo permanece `calibrating` y no
+rompe CI hasta que las mejoras futuras estén respaldadas por evidencia.

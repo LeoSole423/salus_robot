@@ -10,11 +10,11 @@ from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point, PoseStamped, Twist
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
-from salus_interfaces.msg import NavEvent
+from salus_interfaces.msg import NavEvent, NavTelemetry
 from visualization_msgs.msg import Marker, MarkerArray
 
 from .artifacts import write_artifacts
-from .gates import functional_gates, performance_gate
+from .gates import GateState, functional_gates, performance_gate
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       localization_metrics, tracking_metrics)
 from .models import ExpectedTurn, Pose2D, TimedCommand, TimedPose
@@ -46,15 +46,23 @@ class EvaluationRunner(Node):
         self.declare_parameter("scenario", "")
         self.declare_parameter("output_dir", "")
         self.declare_parameter("mode", "run")
-        self.declare_parameter("goal_tolerance_m", 0.25)
+        self.declare_parameter("goal_tolerance_m", 1.2)
+        self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
         self.scenario_path = str(self.get_parameter("scenario").value)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.mode = str(self.get_parameter("mode").value)
         self.tolerance = float(self.get_parameter("goal_tolerance_m").value)
+        self.precision_target = float(self.get_parameter("precision_target_m").value)
         self.timeout_s = float(self.get_parameter("observe_timeout_s").value)
         if not self.output_dir:
             raise ValueError("output_dir is required")
+        if self.mode not in ("run", "observe"):
+            raise ValueError("mode must be run or observe")
+        if self.mode == "run" and not self.scenario_path:
+            raise ValueError("scenario is required in run mode")
+        if self.tolerance <= 0.0 or self.precision_target <= 0.0:
+            raise ValueError("arrival tolerances must be positive")
         self.global_poses, self.raw_poses, self.local_poses = [], [], []
         self.commands, self.plans, self.events = [], [], []
         self.goal = None
@@ -65,7 +73,10 @@ class EvaluationRunner(Node):
         self.terminal_status = None
         self.terminal_received_s = None
         self.last_marker_s = None
+        self.telemetry = None
+        self.goal_event_baseline = None
         self._finished = False
+        self.exit_code = 1
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
@@ -74,6 +85,9 @@ class EvaluationRunner(Node):
         self.create_subscription(Twist, "/cmd_vel", self._command, 50)
         self.create_subscription(NavPath, "/plan", self._plan, 10)
         self.create_subscription(NavEvent, "/nav_command_server/events", self._event, 20)
+        self.create_subscription(
+            NavTelemetry, "/nav_command_server/telemetry", self._telemetry, 20
+        )
         self.create_subscription(PoseStamped, "/goal_pose", self._observed_goal, 10)
         self.create_timer(0.1, self._tick)
 
@@ -107,6 +121,22 @@ class EvaluationRunner(Node):
         if self.terminal_status is not None:
             self.terminal_received_s = self.get_clock().now().nanoseconds / 1e9
 
+    def _telemetry(self, message):
+        self.telemetry = message
+        terminal = int(message.nav_result_status)
+        is_new_result = (
+            self.goal_event_baseline is not None and
+            int(message.nav_result_event_id) > self.goal_event_baseline
+        )
+        if is_new_result and terminal in (
+                GoalStatus.STATUS_SUCCEEDED, GoalStatus.STATUS_ABORTED,
+                GoalStatus.STATUS_CANCELED):
+            self.terminal_status = terminal
+            now = self.get_clock().now().nanoseconds / 1e9
+            self.terminal_received_s = now
+            if terminal == GoalStatus.STATUS_SUCCEEDED and self.success_s is None:
+                self.success_s = now
+
     def _observed_goal(self, message):
         if self.mode != "observe" or self.goal is not None:
             return
@@ -117,6 +147,9 @@ class EvaluationRunner(Node):
                            _yaw(message.pose.orientation))
         self.terminal_status = None
         self.terminal_received_s = None
+        self.goal_event_baseline = (
+            int(self.telemetry.nav_result_event_id) if self.telemetry else None
+        )
         self.goal_sent_s = self.get_clock().now().nanoseconds / 1e9
         self.get_logger().info("observing RViz goal")
 
@@ -131,6 +164,7 @@ class EvaluationRunner(Node):
         self.timeout_s = goal_spec.timeout_s
         self.terminal_status = None
         self.terminal_received_s = None
+        self.goal_event_baseline = int(self.telemetry.nav_result_event_id)
         message = PoseStamped()
         message.header.frame_id = "map"
         message.header.stamp = self.get_clock().now().to_msg()
@@ -143,7 +177,8 @@ class EvaluationRunner(Node):
     def _tick(self):
         if self._finished:
             return
-        if self.mode == "run" and self.goal is None and self.global_poses:
+        if (self.mode == "run" and self.goal is None and self.global_poses and
+                self.telemetry is not None):
             self._send_scenario_goal()
             return
         if self.goal is None or self.goal_sent_s is None:
@@ -209,8 +244,20 @@ class EvaluationRunner(Node):
             reverse_observed=any(command.linear_x_mps < -.01 for command in commands),
             reverse_allowed=self.reverse_allowed, expected_turn=self.expected_turn,
         )
-        summary = {"schema_version": 1, "reason": reason, "terminal_status": self.terminal_status,
+        precision = {
+            "target_m": self.precision_target,
+            "final_error_m": arrival.final_distance_m if arrival else None,
+            "target_met": (
+                arrival is not None and
+                arrival.final_distance_m <= self.precision_target
+            ),
+            "state": "calibrating",
+        }
+        summary = {"schema_version": 1, "reason": reason,
+                   "terminal_status": self.terminal_status,
                    "goal": self.goal, "metrics": metrics, "arrival": arrival,
+                   "operational_tolerance_m": self.tolerance,
+                   "precision": precision,
                    "localization": localization, "sign": signs, "gates": gates,
                    "performance": [performance_gate(
                        "cross_track_p95_m",
@@ -228,6 +275,7 @@ class EvaluationRunner(Node):
         streams = {"odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands}
         write_artifacts(self.output_dir, manifest, summary, streams)
+        self.exit_code = int(any(gate.state == GateState.FAIL for gate in gates))
         self._publish_markers()
         self.get_logger().info(f"evaluation complete: {Path(self.output_dir) / 'summary.json'}")
 
@@ -239,6 +287,8 @@ def main():
         while rclpy.ok() and not node._finished:
             rclpy.spin_once(node)
     finally:
+        exit_code = node.exit_code
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
+    return exit_code

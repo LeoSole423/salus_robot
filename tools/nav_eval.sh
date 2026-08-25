@@ -22,5 +22,7 @@ mkdir -p "${output}"
 exec docker compose run --rm -v "${output}:/evaluation-artifacts" ros2 bash -lc "
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
-  ros2 launch salus_evaluation evaluation_observer.launch.py mode:=${mode} scenario:=${scenario} output_dir:=/evaluation-artifacts
+  ros2 run salus_evaluation navigation_evaluation --ros-args \
+    -p use_sim_time:=true -p mode:=${mode} -p scenario:=${scenario} \
+    -p output_dir:=/evaluation-artifacts
 "

@@ -16,3 +16,12 @@ Con una simulación `sim_operational.launch.py` ya levantada:
 
 `observe` espera el próximo `2D Goal Pose` de RViz. Ambos modos generan el
 mismo bundle versionado en `artifacts/evaluations/`.
+
+La llegada tiene dos referencias deliberadamente separadas:
+
+- `goal_tolerance_m=1.2`: gate funcional alineado con Nav2 hoy;
+- `precision_target_m=0.25`: objetivo futuro, reportado como `calibrating` sin
+  fallar CI.
+
+El error final siempre queda registrado, por lo que estos valores pueden
+endurecerse después usando distribuciones reales y no una impresión visual.
