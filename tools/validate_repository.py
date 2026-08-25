@@ -13,6 +13,7 @@ EXPECTED = {
     "salus_localization", "salus_perception", "salus_control",
     "salus_navigation", "salus_navigation_bt", "salus_web",
     "salus_simulation", "salus_bringup",
+    "salus_evaluation",
 }
 
 

@@ -61,6 +61,12 @@ packages:
     language: mixed
     may_depend_on: [salus_interfaces, salus_description]
     status: ported_motion_simulation
+  salus_evaluation:
+    owner: simulation_evaluation
+    build_type: ament_python
+    language: python
+    may_depend_on: []
+    status: ported_sim_evaluation_foundation
   salus_bringup:
     owner: system_composition
     build_type: ament_cmake

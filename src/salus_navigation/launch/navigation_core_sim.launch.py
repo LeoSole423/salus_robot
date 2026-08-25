@@ -14,7 +14,7 @@ def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_keepout = LaunchConfiguration("use_keepout")
     config_dir = Path(get_package_share_directory("salus_navigation")) / "config"
-    config = config_dir / "nav2_core_sim.yaml"
+    config = LaunchConfiguration("nav2_params_file")
     params = [config, {
         "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
         "default_nav_to_pose_bt_xml": str(config_dir / "navigation_core.xml"),
@@ -31,6 +31,10 @@ def generate_launch_description() -> LaunchDescription:
     actions = [
         DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
+        DeclareLaunchArgument(
+            "nav2_params_file", default_value=str(config_dir / "nav2_core_sim.yaml"),
+            description="Explicit Nav2 parameter file for repeatable evaluation profiles.",
+        ),
     ]
     actions.extend(
         Node(package=package, executable=executable, name=name, output="screen", parameters=params, remappings=remappings)
