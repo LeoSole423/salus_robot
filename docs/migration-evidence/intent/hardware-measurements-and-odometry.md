@@ -93,6 +93,40 @@ Este corte no inicia el conversor desde un launch completo, no publica
 siguiente corte migrará `ackermann_odometry` para consumir exclusivamente estas
 entradas cinemáticas y rechazar pares desincronizados.
 
+## Odometría Ackermann canónica
+
+El tercer corte añade `kinematic_ackermann_odometry` en `salus_localization`.
+Consume `/vehicle/kinematic_inputs/traction` y
+`/vehicle/kinematic_inputs/steering`, produce `/wheel/odometry` como
+`nav_msgs/Odometry` y `/vehicle/twist` como
+`geometry_msgs/TwistWithCovarianceStamped`. Usa QoS reliable/volatile depth 10
+en las cuatro fronteras y nunca publica TF.
+
+Los parámetros `traction_source_id` y `steering_source_id` fijan exactamente el
+par permitido. `max_pair_skew_s` (default 0.05 s, rango operativo mayor que cero)
+limita la diferencia temporal entre muestras y `max_dt_s` (default 0.2 s,
+mayor que cero) limita cada integración. `wheelbase_m` es estrictamente
+positivo. Frames, tópicos y covarianzas siguen siendo configurables con las
+unidades actuales.
+
+Cada fuente aporta como máximo una muestra pendiente. Una pareja sólo se usa si
+ambas muestras son nuevas desde la última emisión, tienen status `OK`, tipo y
+campo correctos, valor finito, procedencia disjunta/exhaustiva y skew permitido.
+Una muestra seleccionada no consumible borra su pendiente; una fuente ajena se
+ignora. No se empareja una tracción nueva con una dirección ya consumida.
+
+La primera pareja válida establece el baseline temporal y publica pose cero.
+Un timestamp no positivo se rechaza. Uno repetido o regresivo no publica; una
+regresión invalida además el baseline. Un salto mayor a `max_dt_s` establece un
+baseline nuevo y publica pose conservada/twist actual sin integrar. La pose
+permanece finita y todo timestamp publicado es estrictamente monótono.
+
+El ejecutable histórico `ackermann_odometry`, que consume directamente
+`DriveTelemetry`, permanece sin cambios como compatibilidad explícita para los
+launches actuales. El nuevo nodo no entra aún en un launch; por lo tanto no hay
+dos autoridades simultáneas de `/wheel/odometry`. Un corte posterior elegirá
+una sola ruta por perfil y retirará gradualmente la compatibilidad legacy.
+
 ## Evidencia pendiente
 
 - medir pulsos/revolución, relación total y radio efectivo bajo carga;

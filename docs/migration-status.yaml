@@ -102,8 +102,10 @@ components:
     evidence:
       - src/salus_localization/launch/localization_sim.launch.py
       - src/salus_localization/test/test_ackermann_odometry.py
+      - src/salus_localization/test/test_kinematic_ackermann_odometry_domain.py
+      - src/salus_localization/test/test_kinematic_ackermann_odometry_node.py
       - tools/smoke_localization_sim.sh
-    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. Real-bag parity remains pending.
+    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. A separate kinematic wheel-odometry executable can consume validated, synchronized calibrated inputs; the DriveTelemetry node remains the selected compatibility path because no launch starts the new executable yet. Real-bag and hardware calibration parity remain pending.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception
