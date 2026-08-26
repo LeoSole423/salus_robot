@@ -3,6 +3,7 @@
 - Responsabilidad: contratos ROS compartidos.
 - No contiene: nodos, launches, lógica ni contratos legacy automáticos.
 - Interfaces actuales: control/batería, arbitraje y navegación punto a punto:
+  `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement`,
   `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
   `SetNavGoalLL`, `CancelNavGoal`, `SetRouteMissionLL`, `CancelRouteMission`,
   `GetRouteMissionState`, `SetPatrolMissionLL`, `CancelPatrolMission`,
@@ -20,6 +21,9 @@
   solicita capas ni representa su mera recepción.
 - Estado: los contratos listados conservan nombres, campos y constantes del
   sistema anterior bajo el namespace nuevo `salus_interfaces`.
+- Las tres interfaces de medición son el primer contrato deliberadamente
+  nuevo: separan hechos físicos, conversiones, odometría y localización según
+  ADR 0008. Incorporarlas no activa adaptadores ni actuadores.
 - Prueba: `colcon test --packages-select salus_interfaces`.
 - Migración: el resto de los contratos continúa pendiente y se incorporará por
   corte funcional.

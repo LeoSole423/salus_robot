@@ -7,15 +7,19 @@ find_package(diagnostic_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BatteryMissionGuard.msg"
   "msg/CmdVelFinal.msg"
   "msg/DriveTelemetry.msg"
+  "msg/MeasurementMetadata.msg"
   "msg/NavEvent.msg"
   "msg/NavSnapshotLayers.msg"
   "msg/NavTelemetry.msg"
   "msg/PathHealth.msg"
+  "msg/SteeringMeasurement.msg"
+  "msg/TractionMeasurement.msg"
   "srv/BrakeNav.srv"
   "srv/CameraPan.srv"
   "srv/CameraStatus.srv"
@@ -41,7 +45,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetZonesState.srv"
   "srv/SetSimBatteryPreset.srv"
   "srv/SetSimBatteryState.srv"
-  DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs nav_msgs
+  DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs nav_msgs std_msgs
 )
 
 if(BUILD_TESTING)
