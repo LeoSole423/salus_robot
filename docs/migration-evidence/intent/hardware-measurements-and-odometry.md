@@ -17,7 +17,9 @@ movimiento ni se alteró el bringup real durante la caracterización.
 ## Contrato del primer corte
 
 `MeasurementMetadata` identifica de manera estable la fuente, el instante de
-observación, su secuencia, procedencia y estado. Los nombres no contienen
+observación, su secuencia y estado. Cada mensaje de medición declara por campo
+si el valor fue medido, calculado o inferido mediante máscaras disjuntas y
+exhaustivas. Los nombres no contienen
 `/dev/tty*`, IDs USB ni detalles MAVLink: esos pertenecen a configuración del
 adaptador.
 
@@ -25,7 +27,8 @@ adaptador.
 dominios: eje de motor, rueda de tracción o velocidad del vehículo respecto del
 suelo. `SteeringMeasurement` representa eje del motor de dirección, mecanismo,
 rueda real o ángulo central virtual. Múltiples sensores publican instancias con
-`source_id` distintos; no se promedian dentro del driver.
+`source_id` distintos; no se promedian dentro del driver. Una misma muestra
+puede así contener posición medida y velocidad calculada sin falsear ninguna.
 
 Los tópicos canónicos se fijarán junto con los adaptadores en el siguiente
 corte. Hasta entonces, incorporar los mensajes no cambia el grafo desplegado.

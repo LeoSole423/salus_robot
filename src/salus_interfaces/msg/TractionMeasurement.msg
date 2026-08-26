@@ -11,6 +11,13 @@ uint16 FIELD_ANGULAR_VELOCITY=2
 uint16 FIELD_LINEAR_VELOCITY=4
 uint16 available_fields
 
+# These masks are disjoint and their union must equal available_fields. They
+# allow one sample to carry, for example, measured position and calculated
+# velocity without claiming both were measured.
+uint16 measured_fields
+uint16 calculated_fields
+uint16 inferred_fields
+
 # Signed physical quantities in REP-103 units. Positive velocity means forward
 # vehicle motion after applying the configured mechanical sign. A field is
 # meaningful only when its FIELD_* bit is present and metadata.status is OK.

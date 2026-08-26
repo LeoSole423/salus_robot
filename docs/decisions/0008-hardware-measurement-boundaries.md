@@ -25,8 +25,10 @@ Los adaptadores terminan protocolos de fabricante y publican primero hechos
 físicos normalizados. `TractionMeasurement` distingue eje de motor, rueda de
 tracción y velocidad respecto del suelo. `SteeringMeasurement` distingue eje
 de motor, mecanismo, rueda real y rueda central virtual del modelo bicicleta.
-Cada muestra declara origen lógico, instante, estado y procedencia: medida,
-calculada o inferida. Una conversión nunca conserva la procedencia `MEASURED`.
+Cada muestra declara origen lógico, instante y estado. Para cada campo presente,
+las máscaras disjuntas `measured_fields`, `calculated_fields` e
+`inferred_fields` declaran su procedencia; su unión debe ser exactamente
+`available_fields`. Una conversión nunca conserva la procedencia medida.
 
 Los campos ausentes se expresan con `available_fields`; no se rellenan con cero.
 Un valor sólo es consumible si su bit está presente, es finito y el estado es

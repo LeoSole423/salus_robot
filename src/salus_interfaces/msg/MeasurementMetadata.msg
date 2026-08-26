@@ -5,12 +5,6 @@ std_msgs/Header header
 # not a device path or transport endpoint.
 string source_id
 
-uint8 PROVENANCE_UNKNOWN=0
-uint8 PROVENANCE_MEASURED=1
-uint8 PROVENANCE_CALCULATED=2
-uint8 PROVENANCE_INFERRED=3
-uint8 provenance
-
 uint8 STATUS_UNKNOWN=0
 uint8 STATUS_OK=1
 uint8 STATUS_STALE=2
