@@ -58,9 +58,10 @@ sus setpoints nativos.
 
 ## Compatibilidad y migración prevista
 
-`CmdVelFinal` permanece vigente. El siguiente corte deberá crear una traducción
-pura y un adaptador ROS en modo sombra antes de cambiar autoridades. Sólo tras
-comparación reproducible se podrá seleccionar la nueva entrada del controlador.
+`CmdVelFinal` permanece vigente. El corte posterior incorporó una traducción
+pura y un adaptador ROS en modo sombra; no cambió autoridades. Sólo tras una
+comparación reproducible y un corte separado se podrá seleccionar la nueva
+entrada del controlador.
 
 La aceleración y el jerk son restricciones cinemáticas del mensaje estándar;
 no se interpretan como porcentaje de acelerador. Un backend que no pueda
@@ -75,8 +76,6 @@ las ejecutó.
 
 ## Evidencia pendiente
 
-- política pura `CmdVelFinal -> VehicleCommand` y validación de vigencia;
-- comparación shadow en simulación;
 - adaptador `VehicleCommand -> ESP32 UART` sin porcentajes aguas arriba;
 - backend Pixhawk opcional y futuros controladores;
 - watchdog, E-stop, freno y calibración validados en banco/robot.

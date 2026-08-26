@@ -28,6 +28,15 @@ def generate_launch_description() -> LaunchDescription:
                         "sim_invert_actuation_steer_sign": False,
                     }
                 ],
-            )
+            ),
+            Node(
+                package="salus_control",
+                executable="legacy_vehicle_command_node",
+                name="legacy_vehicle_command_adapter",
+                output="screen",
+                parameters=[
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}
+                ],
+            ),
         ]
     )

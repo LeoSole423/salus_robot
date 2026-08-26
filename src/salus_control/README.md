@@ -4,7 +4,13 @@
 - No contiene: decisiones de misión, UI ni drivers de sensores.
 - Interfaces migradas: `/cmd_vel_final`, `/controller/status`,
   `/controller/telemetry`, `/controller/drive_telemetry`, `/battery_state`,
-  `/battery_mission_guard` y servicios `/sim_battery/*`.
+  `/battery_mission_guard`, la observación `/vehicle/command_shadow` y servicios
+  `/sim_battery/*`.
+- Compatibilidad de salida: `legacy_vehicle_command_adapter` traduce cada
+  `/cmd_vel_final` a `VehicleCommand` en unidades Ackermann SI. La salida
+  `*_shadow` no tiene consumidores ni autoridad sobre Gazebo, UART o hardware.
+  Usa timestamp de recepción, vigencia de `0.7 s` y conserva explícitamente la
+  semántica histórica `brake_pct > 0 -> emergency_stop`.
 - Estado: primer corte funcional en simulación. El backend UART está preservado
   como código de compatibilidad, pero no fue conectado ni validado en hardware.
 - Prueba: `colcon test --packages-select salus_control`.
