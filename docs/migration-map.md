@@ -13,7 +13,7 @@ paridad y retiro del camino anterior.
 
 | Origen en ROS2_SALUS | Destino | Estado inicial | Nota |
 | --- | --- | --- | --- |
-| `interfaces` | `salus_interfaces` | parcial | cinco contratos de control/batería migrados |
+| `interfaces` y telemetría física de control | `salus_interfaces` | parcial | contratos legacy preservados y primer corte canónico de mediciones caracterizado en ADR 0008 |
 | URDF/RViz de `navegacion_gps` | `salus_description` | portado parcial | Xacro canónico de movimiento; medidas sin validar en hardware |
 | MAVROS, RTK, RS16, cámara | `salus_hardware` | pendiente | wrappers; no vendorizar SDK |
 | odometría, EKF, GPS heading | `salus_localization` | pendiente | preservar TF y datum fijo |
