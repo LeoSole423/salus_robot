@@ -8,7 +8,20 @@ han migrado.
 
 ## Interfaces vigentes
 
-`/controller/drive_telemetry` alimenta `/wheel/odometry` y `/vehicle/twist`.
+`ackermann_odometry` conserva la ruta de compatibilidad desde
+`/controller/drive_telemetry` hacia `/wheel/odometry` y `/vehicle/twist`.
+No se modifica ni se inicia desde launches nuevos.
+
+`kinematic_ackermann_odometry` es la ruta canónica aún no conectada a un
+launch: consume `TractionMeasurement` y `SteeringMeasurement` desde
+`/vehicle/kinematic_inputs/traction` y `/vehicle/kinematic_inputs/steering`.
+Selecciona por defecto `rear_drive_wheel_equivalent` y
+`virtual_center_wheel`, exige muestras `OK`, con procedencia válida y un skew
+máximo de 0.05 s. Publica las mismas salidas con QoS reliable/volatile depth
+10 y nunca TF; el EKF sigue siendo la única autoridad de
+`odom -> base_footprint`. La primera pareja y los saltos temporales hacia
+adelante publican twist válido sin integrar distancia; timestamps repetidos o
+regresivos nunca producen odometría no monótona.
 En simulación `/odom_raw` alimenta `/imu/data_raw`, que se normaliza como
 `/imu/data`. El EKF publica `/odometry/local` y es la única autoridad de
 `odom -> base_footprint`.

@@ -56,6 +56,29 @@ es una decisión explícita del perfil después de validar unidades, signo y
 calibración. Cada instancia filtra un `source_id` concreto; no selecciona ni
 conmuta fuentes silenciosamente en runtime.
 
+La odometría canónica consume un par explícito `SOURCE_DRIVE_WHEEL` y
+`SOURCE_VIRTUAL_CENTER_WHEEL`, ambos `OK`, con el campo requerido disponible y
+procedencia válida. Los `source_id` esperados son parámetros. El sincronizador
+mantiene como máximo una muestra por fuente y sólo emite cuando ambas son
+nuevas respecto del último par y sus timestamps difieren como máximo el umbral
+configurado. No interpola, no reutiliza indefinidamente una dirección anterior
+y no mezcla fuentes con IDs distintos.
+
+Un mensaje seleccionado stale, inválido, no disponible, mal formado o con
+timestamp no positivo invalida la muestra almacenada de esa fuente. Un timestamp
+repetido o regresivo no publica; una regresión invalida además la base temporal.
+Un salto de integración mayor al máximo establece un baseline nuevo y publica
+pose conservada/twist actual sin integrar distancia. Así un reinicio de sensor,
+reloj o rosbag no crea movimiento ficticio ni tiempo de odometría no monótono.
+La secuencia se conserva para diagnóstico, pero el timestamp es la autoridad
+temporal porque fuentes independientes no comparten contador.
+
+El timestamp del par es el más reciente de sus dos observaciones. La primera
+pareja válida establece baseline y publica pose cero con twist válido; las
+siguientes integran sólo con `0 < dt <= max_dt_s`. El nodo publica
+`/wheel/odometry` y `/vehicle/twist`, pero nunca TF: el EKF continúa como única
+autoridad de `odom -> base_footprint`.
+
 IMU, GNSS, nubes, escaneos, estados articulares y comandos cinemáticos usan
 mensajes ROS estándar cuando su semántica alcanza: `sensor_msgs/Imu`,
 `NavSatFix`, `PointCloud2`, `LaserScan`, `JointState`, `nav_msgs/Odometry` y

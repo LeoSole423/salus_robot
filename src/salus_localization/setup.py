@@ -23,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "ackermann_odometry = salus_localization.ackermann_odometry:main",
+            "kinematic_ackermann_odometry = salus_localization.kinematic_ackermann_odometry:main",
             "sim_imu_from_odom = salus_localization.sim_imu_from_odom:main",
             "imu_normalizer = salus_localization.imu_normalizer:main",
             "sim_gps_normalizer = salus_localization.sim_gps_normalizer:main",
