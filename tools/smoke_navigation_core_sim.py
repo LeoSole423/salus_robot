@@ -244,12 +244,18 @@ def main() -> int:
         rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
         target_x = rviz_goal.pose.position.x
         target_y = rviz_goal.pose.position.y
+        node.raw_commands.clear()
+        node.safe_commands.clear()
+        node.final.clear()
         node.runtime.wait(
-            "RViz /goal_pose was not accepted by Nav2",
-            lambda: get_state(node).goal_active,
+            "RViz /goal_pose has no subscriber",
+            lambda: node.rviz_goal.get_subscription_count() >= 1,
             8.0,
-            stimulate=lambda: node.rviz_goal.publish(rviz_goal),
         )
+        node.rviz_goal.publish(rviz_goal)
+        wait_for(
+            node, lambda: get_state(node).goal_active, 8.0,
+            "RViz /goal_pose was not accepted by Nav2")
         try:
             wait_for(
                 node,

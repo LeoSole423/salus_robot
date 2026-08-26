@@ -469,7 +469,9 @@ class NavCommandServer(Node):
         if stale:
             handle.cancel_goal_async()
             return
-        self._event(DiagnosticStatus.OK, "GOAL_ACCEPTED", "NavigateToPose goal accepted")
+        self._event(
+            DiagnosticStatus.OK, "GOAL_ACCEPTED",
+            "NavigateToPose goal accepted", goal_generation=epoch)
         handle.get_result_async().add_done_callback(lambda done: self._on_goal_result(done, epoch))
 
     def _on_goal_result(self, future, epoch: int) -> None:
@@ -485,13 +487,19 @@ class NavCommandServer(Node):
             self._goal_result_text = "succeeded" if status == GoalStatus.STATUS_SUCCEEDED else "cancelled" if status == GoalStatus.STATUS_CANCELED else "aborted"
             suppress_brake = self._suppress_success_brake
         if status == GoalStatus.STATUS_SUCCEEDED:
-            self._event(DiagnosticStatus.OK, "GOAL_RESULT_SUCCEEDED", "navigation goal succeeded")
+            self._event(
+                DiagnosticStatus.OK, "GOAL_RESULT_SUCCEEDED",
+                "navigation goal succeeded", goal_generation=epoch)
             if not suppress_brake:
                 self._start_brake_hold(0.25, 100)
         elif status == GoalStatus.STATUS_CANCELED:
-            self._event(DiagnosticStatus.WARN, "GOAL_CANCELLED", "navigation goal cancelled")
+            self._event(
+                DiagnosticStatus.WARN, "GOAL_CANCELLED",
+                "navigation goal cancelled", goal_generation=epoch)
         else:
-            self._event(DiagnosticStatus.ERROR, "GOAL_RESULT_ABORTED", "navigation goal aborted")
+            self._event(
+                DiagnosticStatus.ERROR, "GOAL_RESULT_ABORTED",
+                "navigation goal aborted", goal_generation=epoch)
 
     def _on_cancel_goal(self, _request: CancelNavGoal.Request, response: CancelNavGoal.Response) -> CancelNavGoal.Response:
         response.ok, response.error = True, ""

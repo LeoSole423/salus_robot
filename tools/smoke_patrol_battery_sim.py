@@ -10,9 +10,12 @@ import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from salus_interfaces.msg import BatteryMissionGuard, NavEvent
+from salus_interfaces.msg import (
+    BatteryMissionGuard, CmdVelFinal, NavEvent, NavTelemetry, PathHealth,
+)
 from salus_interfaces.srv import (
-    CancelPatrolMission, GetPatrolMissionState, SetPatrolMissionLL,
+    CancelPatrolMission, GetPatrolMissionState, GetRouteMissionState,
+    SetPatrolMissionLL,
 )
 from smoke_runtime import (
     AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps,
@@ -30,6 +33,9 @@ class Smoke(Node):
             parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom = []
         self.events = []
+        self.telemetry = []
+        self.path_health = []
+        self.final_commands = []
         self.guard_low = False
         self.guard_publications = 0
         self.last_guard_publish = 0.0
@@ -37,12 +43,21 @@ class Smoke(Node):
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(
             NavEvent, "/nav_command_server/events", self.events.append, 10)
+        self.create_subscription(
+            NavTelemetry, "/nav_command_server/telemetry",
+            self.telemetry.append, 10)
+        self.create_subscription(
+            PathHealth, "/path_health", self.path_health.append, 10)
+        self.create_subscription(
+            CmdVelFinal, "/cmd_vel_final", self.final_commands.append, 10)
         self.guard = self.create_publisher(
             BatteryMissionGuard, "/smoke/battery_mission_guard", 10)
         self.set_patrol = self.create_client(
             SetPatrolMissionLL, "/route_executor/set_patrol_mission_ll")
         self.state = self.create_client(
             GetPatrolMissionState, "/route_executor/get_patrol_mission_state")
+        self.route_state = self.create_client(
+            GetRouteMissionState, "/route_executor/get_route_mission_state")
         self.cancel = self.create_client(
             CancelPatrolMission, "/route_executor/cancel_patrol_mission")
         self.startup = subscribe_navigation_startup(self)
@@ -111,10 +126,98 @@ def main():
     poller = AsyncServicePoller(
         node.state, GetPatrolMissionState.Request,
         interval_s=0.25, response_timeout_s=5.0)
+    route_poller = AsyncServicePoller(
+        node.route_state, GetRouteMissionState.Request,
+        interval_s=0.25, response_timeout_s=5.0)
+    join_odom_start = 0
+
+    def stamp_s(stamp):
+        return stamp.sec + stamp.nanosec * 1.0e-9
+
+    def pose_summary(start=0):
+        if len(node.odom) <= start:
+            return {"messages": 0}
+        points = [message.pose.pose.position for message in node.odom[start:]]
+        travelled = sum(math.hypot(right.x - left.x, right.y - left.y)
+                        for left, right in zip(points, points[1:]))
+        return {
+            "messages": len(points),
+            "initial": {"x": points[0].x, "y": points[0].y},
+            "final": {"x": points[-1].x, "y": points[-1].y},
+            "distance_travelled_m": travelled,
+        }
+
+    def event_history():
+        return [{
+            "timestamp_s": stamp_s(event.stamp),
+            "event_id": event.event_id,
+            "component": event.component,
+            "code": event.code,
+            "message": event.message,
+            "details": {entry.key: entry.value for entry in event.details},
+        } for event in node.events]
+
+    def diagnostic_evidence():
+        route = route_poller.latest
+        telemetry = node.telemetry[-1] if node.telemetry else None
+        health = node.path_health[-1] if node.path_health else None
+        command = node.final_commands[-1] if node.final_commands else None
+        return {
+            "phase_history": node.phase_history,
+            "guard_publications": node.guard_publications,
+            "events": event_history(),
+            "odometry": pose_summary(),
+            "join_loop_odometry": pose_summary(join_odom_start),
+            "route_executor": None if route is None else {
+                "mission_id": route.mission_id,
+                "status": route.status,
+                "active": route.active,
+                "current_target_index": route.current_target_index,
+                "distance_to_target_m": route.distance_to_target_m,
+                "blocked_state": route.blocked_state,
+                "blocked_reason_code": route.blocked_reason_code,
+                "blocked_retry_attempt": route.blocked_retry_attempt,
+            },
+            "nav_telemetry": None if telemetry is None else {
+                "goal_active": telemetry.goal_active,
+                "nav_result_status": telemetry.nav_result_status,
+                "nav_result_text": telemetry.nav_result_text,
+                "nav_result_event_id": telemetry.nav_result_event_id,
+                "failure_code": telemetry.failure_code,
+                "cmd_vel_safe_fresh": telemetry.cmd_vel_safe_fresh,
+                "cmd_vel_linear_x": telemetry.cmd_vel_linear_x,
+                "cmd_vel_angular_z": telemetry.cmd_vel_angular_z,
+                "collision_stop_active": telemetry.collision_stop_active,
+            },
+            "last_cmd_vel_final": None if command is None else {
+                "linear_x": command.twist.linear.x,
+                "angular_z": command.twist.angular.z,
+                "brake_pct": command.brake_pct,
+                "source": command.source,
+            },
+            "path_health": None if health is None else {
+                "timestamp_s": stamp_s(health.stamp),
+                "state": health.state,
+                "reason": health.reason,
+                "costmap_age_s": health.costmap_age_s,
+                "cross_track_error_m": health.cross_track_error_m,
+                "max_cost": health.max_cost,
+            },
+            "path_health_history": [{
+                "timestamp_s": stamp_s(item.stamp),
+                "state": item.state,
+                "reason": item.reason,
+                "costmap_age_s": item.costmap_age_s,
+                "cross_track_error_m": item.cross_track_error_m,
+            } for item in node.path_health],
+            "state_poller": poller.evidence(),
+            "route_state_poller": route_poller.evidence(),
+        }
 
     def stimulate():
         node.publish_guard()
         poller.poll()
+        route_poller.poll()
         if poller.latest is not None:
             phase = poller.latest.status
             if not node.phase_history or node.phase_history[-1] != phase:
@@ -188,6 +291,7 @@ def main():
             timeout_s=8.0)
         if not accepted.ok:
             raise RuntimeError(f"active patrol rejected: {accepted.error}")
+        join_odom_start = len(node.odom)
         runtime.wait(
             "patrol entered loop", lambda: state_is("PATROL"),
             70.0, stimulate=stimulate,
@@ -217,21 +321,11 @@ def main():
             raise RuntimeError(
                 f"incomplete battery return phases: {node.phase_history}")
         success = True
-        runtime.report.evidence = {
-            "phase_history": node.phase_history,
-            "guard_publications": node.guard_publications,
-            "event_codes": [event.code for event in node.events],
-            "state_poller": poller.evidence(),
-        }
+        runtime.report.evidence = diagnostic_evidence()
     except Exception as exc:
         failure = exc
-        runtime.report.evidence = {
-            "phase_history": node.phase_history,
-            "guard_publications": node.guard_publications,
-            "event_codes": [event.code for event in node.events[-20:]],
-            "state_poller": poller.evidence(),
-            "startup": node.startup.snapshot(),
-        }
+        runtime.report.evidence = diagnostic_evidence()
+        runtime.report.evidence["startup"] = node.startup.snapshot()
     finally:
         runtime.finish(success, error=failure)
         node.destroy_node()

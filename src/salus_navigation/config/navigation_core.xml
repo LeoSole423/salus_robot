@@ -23,7 +23,7 @@
             <Wait wait_duration="1"/>
           </RecoveryNode>
         </RateController>
-        <FollowPath path="{path}" controller_id="FollowPath"/>
+        <FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>
       </PipelineSequence>
       <GoalUpdated/>
     </RecoveryNode>

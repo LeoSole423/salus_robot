@@ -116,6 +116,13 @@ def _mapped(point, map_x, map_y):
     return replace(point, map_x=map_x, map_y=map_y)
 
 
+def route_state_belongs_to_dispatch(current_id, superseded_id, candidate_id):
+    """Reject the cancelled route while a replacement is being prepared."""
+    if current_id:
+        return candidate_id == current_id
+    return bool(candidate_id and candidate_id != superseded_id)
+
+
 def _normalise(route, loop):
     points, actions = list(route.waypoints), list(route.actions)
     if loop and len(points) > 2 and points[0].distance_to(points[-1]) <= 0.05:
@@ -177,6 +184,7 @@ class PatrolMissionCoordinator(Node):
         self._spec = None
         self._preparation = None
         self._route_mission_id = ""
+        self._superseded_route_mission_id = ""
         self._delegated_input_indices = []
         self._route_state_future = None
         self._last_status, self._last_error = "IDLE", ""
@@ -501,6 +509,8 @@ class PatrolMissionCoordinator(Node):
             self._last_error = machine.state.pause_reason
             return
         phase = machine.state.phase
+        self._superseded_route_mission_id = self._route_mission_id
+        self._route_mission_id = ""
         future = self._set_route.call_async(request)
         future.add_done_callback(
             lambda done: self._on_route_dispatched(
@@ -554,10 +564,13 @@ class PatrolMissionCoordinator(Node):
                     return
             except Exception:
                 return
-            if not self._route_mission_id and state.mission_id:
-                self._route_mission_id = state.mission_id
-            if self._route_mission_id and state.mission_id != self._route_mission_id:
+            if not route_state_belongs_to_dispatch(
+                    self._route_mission_id,
+                    self._superseded_route_mission_id,
+                    state.mission_id):
                 return
+            if not self._route_mission_id:
+                self._route_mission_id = state.mission_id
             if state.status == "COMPLETED" and machine.state.phase is PatrolPhase.DEPART_HOME:
                 machine.goal_succeeded()
                 self._dispatch_phase()
@@ -626,7 +639,6 @@ class PatrolMissionCoordinator(Node):
             return
         with self._lock:
             if self._machine is not None and self._machine.state.phase is PatrolPhase.RETURN_HOME:
-                self._route_mission_id = ""
                 self._dispatch_phase()
 
     def _request_return(self, _request, response):
@@ -654,6 +666,7 @@ class PatrolMissionCoordinator(Node):
             self._preparation = None
             machine = self._machine
             self._machine, self._route_mission_id = None, ""
+            self._superseded_route_mission_id = ""
             self._battery_input.end_mission()
             self._last_status, self._last_error = "IDLE", ""
             if machine is not None:
