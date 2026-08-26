@@ -57,6 +57,42 @@ GNSS, IMU y LiDAR siguen el mismo principio, reutilizando mensajes estándar.
 El backend Pixhawk y los backends directos son opciones pares; un perfil de
 bringup elige productores concretos y capacidades requeridas.
 
+## Conversión cinemática calibrada
+
+El segundo corte incorpora un nodo de conversión, todavía sin conectar
+odometría. Consume por defecto `/vehicle/measurements/traction` y
+`/vehicle/measurements/steering`; publica
+`/vehicle/kinematic_inputs/traction` como `SOURCE_DRIVE_WHEEL` y
+`/vehicle/kinematic_inputs/steering` como `SOURCE_VIRTUAL_CENTER_WHEEL`.
+Todos los tópicos y los identificadores de fuente son parámetros. Una instancia
+acepta exactamente un `source_id` de tracción y uno de dirección; para dos
+esquemas físicos se ejecutan dos instancias o se elige una en bringup.
+
+La tracción aplica `output = input * traction_linear_scale`. La dirección
+aplica `output = c0 + c1*x + ... + cn*x^n`, donde `x` y el resultado están en
+radianes, y limita el resultado a `steering_limit_rad`. La lista de
+coeficientes debe tener entre 1 y 6 elementos finitos; el factor de tracción y
+el límite deben ser finitos y estrictamente positivos. Estos parámetros son
+calibración, no tuning de Nav2.
+
+`calibration_validated` es `false` por defecto. Mientras sea falso, las salidas
+son `UNAVAILABLE`, sin bits disponibles y con valores `NaN`. Un perfil de
+simulación o hardware sólo puede activarlo explícitamente junto con sus
+coeficientes. Las entradas con tipo físico incorrecto, `source_id` distinto,
+campo ausente o valor no finito no producen un campo válido. `STALE`, `INVALID`
+y `UNAVAILABLE` se conservan sin inventar datos.
+
+Para una conversión válida, timestamp y secuencia se copian. Si el campo de
+entrada era inferido, la salida también es inferida; si era medido o calculado,
+la salida queda calculada. La salida usa `base_footprint` como frame por defecto,
+configurable. QoS permanece reliable/volatile con profundidad 10 para ser
+compatible con el corte `DriveTelemetry` actual.
+
+Este corte no inicia el conversor desde un launch completo, no publica
+`nav_msgs/Odometry`, no fusiona fuentes y no tiene autoridad de control. El
+siguiente corte migrará `ackermann_odometry` para consumir exclusivamente estas
+entradas cinemáticas y rechazar pares desincronizados.
+
 ## Evidencia pendiente
 
 - medir pulsos/revolución, relación total y radio efectivo bajo carga;
