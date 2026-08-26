@@ -34,6 +34,18 @@ components:
       - src/salus_control/test/test_control_logic.py
       - src/salus_control/test/test_battery_estimator.py
       - src/salus_control/test/test_sim_gazebo_backend.py
+  vehicle_measurement_contracts:
+    source: controller_server/rpy_esp32_comms and sensores
+    target: salus_interfaces
+    state: characterized
+    contracts:
+      - MeasurementMetadata
+      - TractionMeasurement
+      - SteeringMeasurement
+    evidence:
+      - docs/decisions/0008-hardware-measurement-boundaries.md
+      - docs/migration-evidence/intent/hardware-measurements-and-odometry.md
+    note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. Adapters and hardware validation remain pending.
   controller_uart:
     source: controller_server/rpy_esp32_comms
     target: salus_control/rpy_esp32_comms
