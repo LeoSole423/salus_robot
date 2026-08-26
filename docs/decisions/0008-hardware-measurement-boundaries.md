@@ -43,6 +43,19 @@ publica como `nav_msgs/Odometry`; no es un sensor ni una entrada genérica. La
 localización fusionada permanece separada en `robot_localization` y conserva
 `map -> odom -> base_footprint`.
 
+La frontera cinemática acepta una fuente física configurada por instancia y
+produce otra medición con semántica distinta. Motor/transmisión a rueda usa un
+factor lineal explícito; mecanismo a rueda central virtual usa una curva
+polinómica calibrada y un límite físico. La salida no conserva procedencia
+`measured`: una entrada inferida sigue siendo inferida y cualquier otra salida
+es calculada. Conserva timestamp y secuencia para mantener el linaje.
+
+Una configuración nueva comienza como no validada. En ese estado el conversor
+puede exponer `UNAVAILABLE`, pero no publicar un campo consumible. Habilitarla
+es una decisión explícita del perfil después de validar unidades, signo y
+calibración. Cada instancia filtra un `source_id` concreto; no selecciona ni
+conmuta fuentes silenciosamente en runtime.
+
 IMU, GNSS, nubes, escaneos, estados articulares y comandos cinemáticos usan
 mensajes ROS estándar cuando su semántica alcanza: `sensor_msgs/Imu`,
 `NavSatFix`, `PointCloud2`, `LaserScan`, `JointState`, `nav_msgs/Odometry` y

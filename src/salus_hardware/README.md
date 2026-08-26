@@ -12,6 +12,12 @@
   `source_id` son configurables; conserva el timestamp legado y marca la
   velocidad firmada deducida de `reverse_requested` como inferida tanto en
   avance como en reversa.
+- `vehicle_kinematic_converter` transforma fuentes físicas seleccionadas en
+  entradas cinemáticas mediante una escala de tracción y una curva polinómica
+  de dirección explícitas. `calibration_validated` es `false` por defecto: sin
+  validación publica `UNAVAILABLE` y ningún campo consumible. Filtra por
+  `source_id`, conserva timestamp/secuencia y nunca selecciona fuentes,
+  publica odometría ni tiene autoridad sobre actuadores.
 - Estado: cámara PTZ dispone de contratos, políticas puras, backends
   simulado/ISAPI, persistencia atómica y el ejecutable `camera_node`; pasó
   pruebas unitarias y el smoke WebSocket en simulación. La validación física
