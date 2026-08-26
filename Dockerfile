@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-ament-cmake-pytest \
     ros-humble-ament-lint-auto \
     ros-humble-ament-lint-common \
+    ros-humble-ackermann-msgs \
     ros-humble-launch \
     ros-humble-launch-ros \
     ros-humble-geometry-msgs \

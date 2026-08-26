@@ -4,7 +4,7 @@
 - No contiene: nodos, launches, lógica ni contratos legacy automáticos.
 - Interfaces actuales: control/batería, arbitraje y navegación punto a punto:
   `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement`,
-  `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
+  `VehicleCommand`, `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
   `SetNavGoalLL`, `CancelNavGoal`, `SetRouteMissionLL`, `CancelRouteMission`,
   `GetRouteMissionState`, `SetPatrolMissionLL`, `CancelPatrolMission`,
   `GetPatrolMissionState`, `RequestReturnHome`, `SetNavigationProfile`,
@@ -24,6 +24,11 @@
 - Las tres interfaces de medición son el primer contrato deliberadamente
   nuevo: separan hechos físicos, conversiones, odometría y localización según
   ADR 0008. Incorporarlas no activa adaptadores ni actuadores.
+- `VehicleCommand` es la frontera canónica de salida a nivel vehículo. Envuelve
+  `ackermann_msgs/AckermannDrive` para velocidad, aceleración, jerk, ángulo
+  virtual Ackermann y velocidad de dirección, y añade habilitación, E-stop,
+  freno normalizado, fuente y vigencia atómica. No contiene porcentajes del
+  ESP32 ni activa todavía ningún backend.
 - Prueba: `colcon test --packages-select salus_interfaces`.
 - Migración: el resto de los contratos continúa pendiente y se incorporará por
   corte funcional.

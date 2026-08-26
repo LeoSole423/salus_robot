@@ -6,7 +6,7 @@ packages:
     build_type: ament_cmake
     language: interface_definition
     may_depend_on: []
-    status: partial_migration
+    status: physical_measurement_and_vehicle_command_contracts_ported
   salus_description:
     owner: robot_model
     build_type: ament_cmake

@@ -15,7 +15,7 @@ corte público en `salus_interfaces`.
 
 | Familia | Contratos anteriores | Decisión necesaria |
 | --- | --- | --- |
-| Control | `CmdVelFinal`, `DriveTelemetry` | migrados con campos originales; QoS actual preservado |
+| Control | `CmdVelFinal`, `DriveTelemetry`, `VehicleCommand` | contratos legacy preservados; salida Ackermann canónica definida pero aún no conectada |
 | Mediciones de vehículo | `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement` | contrato, adaptador legacy, conversión calibrada y ejecutable de odometría canónica incorporados; quedan selección por perfiles, fuentes directas y validación física según ADR 0008 |
 | Batería | `BatteryMissionGuard`, `BatteryState` | migrado; se mantiene separación guardia/SOC |
 | Navegación | `NavTelemetry`, `NavEvent`, freno, modo manual, estado, goals LL, cancelación y zonas GeoJSON | arbitraje, goal único Nav2, keepout dinámico, path estable, rutas multi-waypoint y recuperación controlada migrados |
