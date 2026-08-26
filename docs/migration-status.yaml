@@ -46,6 +46,17 @@ components:
       - docs/decisions/0008-hardware-measurement-boundaries.md
       - docs/migration-evidence/intent/hardware-measurements-and-odometry.md
     note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. A read-only DriveTelemetry compatibility adapter is ported in salus_hardware; calibrated/direct adapters and hardware validation remain pending.
+  vehicle_command_contract:
+    source: CmdVelFinal and controller_server actuation state
+    target: salus_interfaces/VehicleCommand
+    state: characterized
+    contracts:
+      - VehicleCommand
+    evidence:
+      - src/salus_interfaces/msg/VehicleCommand.msg
+      - docs/decisions/0008-hardware-measurement-boundaries.md
+      - docs/migration-evidence/intent/vehicle-command-contract.md
+    note: Backend-independent atomic Ackermann command with explicit validity, enable, E-stop and normalized service brake. It is compiled but intentionally disconnected; CmdVelFinal remains authoritative and no hardware path is enabled.
   legacy_drive_measurement_adapter:
     source: controller_server/DriveTelemetry
     target: salus_hardware/legacy_drive_measurement_node

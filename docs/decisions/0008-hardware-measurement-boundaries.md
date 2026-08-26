@@ -104,10 +104,15 @@ La ausencia de LiDAR es un perfil operativo válido sólo cuando la autonomía d
 evitación de obstáculos está deshabilitada explícitamente. La pérdida de un
 LiDAR requerido no transforma automáticamente el robot en ese perfil.
 
-La salida hacia actuadores tendrá una frontera equivalente: comando cinemático
-normalizado, arbitraje y límites de seguridad antes de un backend Pixhawk,
-UART/ESP32 u otro controlador. Este corte no habilita movimiento real y no
-reemplaza todavía `CmdVelFinal` ni el backend instalado.
+La salida hacia actuadores usa `VehicleCommand` como sobre atómico a nivel
+vehículo. Reutiliza `ackermann_msgs/AckermannDrive` para velocidad firmada,
+aceleración, jerk, ángulo de la rueda central virtual y velocidad de dirección,
+y añade vigencia, fuente, habilitación, E-stop explícito y freno de servicio
+normalizado. E-stop y freno no son equivalentes. Porcentajes de dirección, PWM,
+torque y bytes pertenecen al adaptador Pixhawk, UART/ESP32 u otro controlador.
+El consumidor conserva un watchdog monotónico local y limita la vigencia pedida
+por el productor. Este corte no habilita movimiento real ni reemplaza todavía
+`CmdVelFinal` o el backend instalado.
 
 ## Consecuencias
 

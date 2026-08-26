@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(salus_interfaces)
 
 find_package(ament_cmake REQUIRED)
+find_package(ackermann_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -20,6 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PathHealth.msg"
   "msg/SteeringMeasurement.msg"
   "msg/TractionMeasurement.msg"
+  "msg/VehicleCommand.msg"
   "srv/BrakeNav.srv"
   "srv/CameraPan.srv"
   "srv/CameraStatus.srv"
@@ -45,7 +47,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetZonesState.srv"
   "srv/SetSimBatteryPreset.srv"
   "srv/SetSimBatteryState.srv"
-  DEPENDENCIES builtin_interfaces diagnostic_msgs geometry_msgs nav_msgs std_msgs
+  DEPENDENCIES ackermann_msgs builtin_interfaces diagnostic_msgs geometry_msgs nav_msgs std_msgs
 )
 
 if(BUILD_TESTING)
