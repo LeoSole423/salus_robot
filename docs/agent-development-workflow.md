@@ -257,6 +257,10 @@ gh run view <RUN_ID> --log-failed
 gh run download <RUN_ID>
 ```
 
+Si GitHub no crea ninguna corrida ni check suite para un PR después de un
+evento `synchronize`, usar el disparador manual `workflow_dispatch` sobre la
+rama afectada. No fusionar basándose únicamente en pruebas locales.
+
 El nightly detecta confiabilidad acumulada. Puede ejecutarse en segundo plano
 mientras continúa otro corte; un fallo se clasifica por escenario y no detiene
 automáticamente toda la migración.
