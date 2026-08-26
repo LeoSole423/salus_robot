@@ -73,6 +73,15 @@ reloj o rosbag no crea movimiento ficticio ni tiempo de odometría no monótono.
 La secuencia se conserva para diagnóstico, pero el timestamp es la autoridad
 temporal porque fuentes independientes no comparten contador.
 
+Durante la transición, el bringup de simulación selecciona una única autoridad
+mediante `vehicle_io_profile=legacy|canonical`, con `legacy` como default. El
+perfil canónico compone adaptador, conversión y odometría; su calibración de
+simulación (velocidad identidad e inversión del signo de dirección medido) no
+es evidencia de calibración física. Una comparación opcional puede ejecutar la
+odometría histórica sólo sobre tópicos `/comparison/legacy/*`; nunca comparte
+los tópicos principales ni alimenta al EKF. Los valores de perfil inválidos
+fallan explícitamente.
+
 El timestamp del par es el más reciente de sus dos observaciones. La primera
 pareja válida establece baseline y publica pose cero con twist válido; las
 siguientes integran sólo con `0 < dt <= max_dt_s`. El nodo publica

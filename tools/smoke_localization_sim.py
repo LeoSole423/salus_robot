@@ -56,6 +56,17 @@ def main() -> int:
         for topic in ("/imu/data", "/wheel/odometry", "/odometry/local"):
             runtime.wait_topic_publishers(f"publisher {topic}", topic)
         runtime.wait(
+            "single wheel odometry authority",
+            lambda: len(node.get_publishers_info_by_topic("/wheel/odometry")) == 1,
+            10.0,
+            observe=lambda: {
+                "publishers": [
+                    info.node_name
+                    for info in node.get_publishers_info_by_topic("/wheel/odometry")
+                ]
+            },
+        )
+        runtime.wait(
             "progressive localization samples",
             lambda: node.imu_samples >= 2
             and has_increasing_stamps(node.wheel_samples)
