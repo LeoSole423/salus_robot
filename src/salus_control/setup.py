@@ -22,6 +22,7 @@ setup(
     entry_points={
         "console_scripts": [
             "controller_server_node = salus_control.controller_server_node:main",
+            "legacy_vehicle_command_node = salus_control.legacy_vehicle_command_node:main",
         ],
     },
 )

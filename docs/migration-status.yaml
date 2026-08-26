@@ -56,7 +56,20 @@ components:
       - src/salus_interfaces/msg/VehicleCommand.msg
       - docs/decisions/0008-hardware-measurement-boundaries.md
       - docs/migration-evidence/intent/vehicle-command-contract.md
-    note: Backend-independent atomic Ackermann command with explicit validity, enable, E-stop and normalized service brake. It is compiled but intentionally disconnected; CmdVelFinal remains authoritative and no hardware path is enabled.
+    note: Backend-independent atomic Ackermann command with explicit validity, enable, E-stop and normalized service brake. CmdVelFinal remains authoritative; a simulation-only shadow adapter now publishes the translated contract, with no consumer or hardware path enabled.
+  legacy_vehicle_command_shadow:
+    source: salus_control/CmdVelFinal
+    target: salus_control/legacy_vehicle_command_adapter
+    state: ported
+    contracts:
+      - CmdVelFinal
+      - VehicleCommand
+    evidence:
+      - src/salus_control/salus_control/legacy_vehicle_command.py
+      - src/salus_control/test/test_legacy_vehicle_command.py
+      - tools/smoke_control_sim.py
+      - docs/migration-evidence/intent/legacy-vehicle-command-shadow.md
+    note: Simulation-only observation path from the authoritative legacy command to /vehicle/command_shadow. It has no downstream consumer and cannot actuate Gazebo, UART or hardware.
   legacy_drive_measurement_adapter:
     source: controller_server/DriveTelemetry
     target: salus_hardware/legacy_drive_measurement_node

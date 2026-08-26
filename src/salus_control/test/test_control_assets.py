@@ -17,3 +17,14 @@ def test_simulation_preserves_ros_steering_sign() -> None:
     source = (ROOT / "salus_control/controller_server_node.py").read_text(encoding="utf-8")
     assert '"sim_invert_actuation_steer_sign": False' in launch
     assert 'declare_parameter("sim_invert_actuation_steer_sign", False)' in source
+
+
+def test_simulation_launches_non_authoritative_vehicle_command_shadow() -> None:
+    launch = (ROOT / "launch/control_sim.launch.py").read_text(encoding="utf-8")
+    setup = (ROOT / "setup.py").read_text(encoding="utf-8")
+    source = (ROOT / "salus_control/legacy_vehicle_command_node.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'executable="legacy_vehicle_command_node"' in launch
+    assert "legacy_vehicle_command_node =" in setup
+    assert '"/vehicle/command_shadow"' in source
