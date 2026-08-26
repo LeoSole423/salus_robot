@@ -16,7 +16,7 @@ corte público en `salus_interfaces`.
 | Familia | Contratos anteriores | Decisión necesaria |
 | --- | --- | --- |
 | Control | `CmdVelFinal`, `DriveTelemetry` | migrados con campos originales; QoS actual preservado |
-| Mediciones de vehículo | `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement` | primer contrato canónico incorporado; adaptadores, tópicos y validación física pendientes según ADR 0008 |
+| Mediciones de vehículo | `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement` | contrato canónico y adaptador de sólo lectura desde `DriveTelemetry` incorporados; quedan adaptadores calibrados/directos y validación física según ADR 0008 |
 | Batería | `BatteryMissionGuard`, `BatteryState` | migrado; se mantiene separación guardia/SOC |
 | Navegación | `NavTelemetry`, `NavEvent`, freno, modo manual, estado, goals LL, cancelación y zonas GeoJSON | arbitraje, goal único Nav2, keepout dinámico, path estable, rutas multi-waypoint y recuperación controlada migrados |
 | Salud de path (interna) | `PathHealth` | contrato de diagnóstico entre evaluador y BT; conserva, recalcula o detiene la navegación automática sin exponer una API web |
