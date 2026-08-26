@@ -45,7 +45,19 @@ components:
     evidence:
       - docs/decisions/0008-hardware-measurement-boundaries.md
       - docs/migration-evidence/intent/hardware-measurements-and-odometry.md
-    note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. Adapters and hardware validation remain pending.
+    note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. A read-only DriveTelemetry compatibility adapter is ported in salus_hardware; calibrated/direct adapters and hardware validation remain pending.
+  legacy_drive_measurement_adapter:
+    source: controller_server/DriveTelemetry
+    target: salus_hardware/legacy_drive_measurement_node
+    state: ported
+    contracts:
+      - DriveTelemetry
+      - TractionMeasurement
+      - SteeringMeasurement
+    evidence:
+      - src/salus_hardware/salus_hardware/legacy_drive_measurement_domain.py
+      - src/salus_hardware/test/test_legacy_drive_measurement_domain.py
+    note: Read-only compatibility adapter. Hall data is represented as motor-shaft traction; AS5600 data as steering linkage. No real launch or hardware validation is included.
   controller_uart:
     source: controller_server/rpy_esp32_comms
     target: salus_control/rpy_esp32_comms

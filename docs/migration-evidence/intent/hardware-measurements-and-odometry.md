@@ -30,12 +30,17 @@ rueda real o ángulo central virtual. Múltiples sensores publican instancias co
 `source_id` distintos; no se promedian dentro del driver. Una misma muestra
 puede así contener posición medida y velocidad calculada sin falsear ninguna.
 
-Los tópicos canónicos se fijarán junto con los adaptadores en el siguiente
-corte. Hasta entonces, incorporar los mensajes no cambia el grafo desplegado.
-La compatibilidad prevista usa un adaptador desde `DriveTelemetry`, marcando
-como `CALCULATED` las conversiones y como `INFERRED` cualquier signo obtenido
-de una orden. No se publicará una muestra canónica `OK` si falta una magnitud
-necesaria.
+El primer adaptador de compatibilidad es de sólo lectura:
+`legacy_drive_measurement_node` consume `/controller/drive_telemetry` y
+publica por defecto `/vehicle/measurements/traction` y
+`/vehicle/measurements/steering`. Sus tópicos y `source_id` son parámetros.
+Representa la velocidad del Hall como `SOURCE_MOTOR_SHAFT`, conserva el
+timestamp y marca la conversión de grados de enlace a radianes como calculada.
+Como reconstruye ambos signos desde el estado booleano `reverse_requested`, la
+velocidad lineal queda marcada como inferida tanto en avance como en reversa,
+nunca medida. No incorpora launches, comandos ni acceso a
+hardware. Las magnitudes inválidas no tienen bit disponible; una muestra no
+fresca queda explícitamente `STALE`.
 
 ## Separación obligatoria
 
