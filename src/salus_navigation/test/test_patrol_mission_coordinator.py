@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from salus_navigation.patrol_mission_coordinator import (
     patrol_spec_from_request,
     resolved_patrol_spec,
+    route_state_belongs_to_dispatch,
 )
 from salus_navigation.route_model import RouteWaypoint
 
@@ -65,3 +66,10 @@ def test_resolved_document_resolves_yaw_and_preserves_action_alignment():
     assert all(point.map_x is not None for point in result.loop.waypoints)
     assert all(point.yaw_deg == point.yaw_deg for point in result.loop.waypoints)
     assert result.loop.actions[1].startswith('[{"type":"brake_hold"')
+
+
+def test_replacement_does_not_adopt_cancelled_route_mission_id():
+    assert not route_state_belongs_to_dispatch("", "old-route", "old-route")
+    assert route_state_belongs_to_dispatch("", "old-route", "new-route")
+    assert route_state_belongs_to_dispatch("new-route", "old-route", "new-route")
+    assert not route_state_belongs_to_dispatch("new-route", "old-route", "third-route")

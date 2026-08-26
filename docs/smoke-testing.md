@@ -28,6 +28,12 @@ La tolerancia de arranque solamente controla cuánto se espera por una
 condición observable. No modifica la frescura funcional de `PathHealth`: TF o
 costmap vencidos continúan produciendo `STOP_AND_WAIT`.
 
+El artefacto de patrulla conserva además la identidad/estado del route
+executor, generación y resultado de goals Nav2, eventos con timestamp, pose y
+distancia recorrida durante `JOIN_LOOP`, distancia al target, último comando
+seguro/final y el historial de path-health. Estos campos son evidencia de
+fallo; no sustituyen ni suavizan las aserciones de fase y retorno HOME.
+
 En un PR se ejecutan `build-unit`, `simulation-core` y
 `navigation-missions`. El workflow nocturno admite repeticiones configurables
 (normalmente diez) para detectar flakiness y conserva artefactos de diagnóstico.
