@@ -7,7 +7,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 
 
 def _include(package: str, launch_file: str, arguments=None, condition=None):
@@ -38,11 +38,23 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     nav2_params_file = LaunchConfiguration("nav2_params_file")
+    vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
+    compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="true"),
+            DeclareLaunchArgument(
+                "vehicle_io_profile",
+                default_value="legacy",
+                description="Vehicle measurement/odometry profile: legacy or canonical.",
+            ),
+            DeclareLaunchArgument(
+                "compare_legacy_odometry",
+                default_value="false",
+                description="Run legacy odometry on shadow topics under canonical profile.",
+            ),
             DeclareLaunchArgument(
                 "gz_args",
                 default_value="-r -s",
@@ -133,7 +145,23 @@ def generate_launch_description() -> LaunchDescription:
                 {"use_sim_time": use_sim_time, "gz_args": gz_args, "world": world},
             ),
             _include("salus_control", "control_sim.launch.py", common),
-            _include("salus_localization", "localization_sim.launch.py", common),
+            _include(
+                "salus_bringup",
+                "vehicle_io_sim.launch.py",
+                common,
+                condition=IfCondition(
+                    PythonExpression(["'", vehicle_io_profile, "' == 'canonical'"])
+                ),
+            ),
+            _include(
+                "salus_localization",
+                "localization_sim.launch.py",
+                {
+                    **common,
+                    "odometry_backend": vehicle_io_profile,
+                    "compare_legacy_odometry": compare_legacy_odometry,
+                },
+            ),
             _include(
                 "salus_localization",
                 "global_localization_sim.launch.py",

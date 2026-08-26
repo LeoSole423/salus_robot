@@ -19,6 +19,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     for launch_file in (
         "motion_sim.launch.py",
         "control_sim.launch.py",
+        "vehicle_io_sim.launch.py",
         "localization_sim.launch.py",
         "global_localization_sim.launch.py",
         "lidar_sim.launch.py",
@@ -38,6 +39,9 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "launch_patrol" in contents
     assert "launch_web" in contents
     assert "launch_camera" in contents
+    assert "vehicle_io_profile" in contents
+    assert "compare_legacy_odometry" in contents
+    assert "odometry_backend" in contents
     assert "web_waypoints_file" in contents
     assert "web_telemetry_profile" in contents
     assert "patrol_battery_guard_topic" in contents

@@ -10,10 +10,10 @@ han migrado.
 
 `ackermann_odometry` conserva la ruta de compatibilidad desde
 `/controller/drive_telemetry` hacia `/wheel/odometry` y `/vehicle/twist`.
-No se modifica ni se inicia desde launches nuevos.
+Es la autoridad seleccionada por defecto en el perfil `legacy`.
 
-`kinematic_ackermann_odometry` es la ruta canónica aún no conectada a un
-launch: consume `TractionMeasurement` y `SteeringMeasurement` desde
+`kinematic_ackermann_odometry` es la ruta canónica seleccionable en simulación:
+consume `TractionMeasurement` y `SteeringMeasurement` desde
 `/vehicle/kinematic_inputs/traction` y `/vehicle/kinematic_inputs/steering`.
 Selecciona por defecto `rear_drive_wheel_equivalent` y
 `virtual_center_wheel`, exige muestras `OK`, con procedencia válida y un skew
@@ -22,6 +22,13 @@ máximo de 0.05 s. Publica las mismas salidas con QoS reliable/volatile depth
 `odom -> base_footprint`. La primera pareja y los saltos temporales hacia
 adelante publican twist válido sin integrar distancia; timestamps repetidos o
 regresivos nunca producen odometría no monótona.
+
+`integration_sim.launch.py vehicle_io_profile:=canonical` compone el adaptador
+legacy, la conversión con calibración exclusiva del simulador y esta
+odometría. El default `legacy` conserva la ruta histórica. Sólo una de ellas
+publica `/wheel/odometry`; la comparación opcional
+`compare_legacy_odometry:=true` envía la salida histórica a
+`/comparison/legacy/*` y no la conecta al EKF.
 En simulación `/odom_raw` alimenta `/imu/data_raw`, que se normaliza como
 `/imu/data`. El EKF publica `/odometry/local` y es la única autoridad de
 `odom -> base_footprint`.
@@ -31,6 +38,7 @@ En simulación `/odom_raw` alimenta `/imu/data_raw`, que se normaliza como
 ```bash
 ros2 launch salus_localization localization_sim.launch.py
 ./tools/smoke_localization_sim.sh
+VEHICLE_IO_PROFILE=canonical ./tools/smoke_localization_sim.sh
 ```
 
 `global_localization_sim.launch.py` añade GPS global simulado y el segundo

@@ -24,6 +24,14 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument(
+            "vehicle_io_profile", default_value="legacy",
+            description="Vehicle measurement/odometry profile: legacy or canonical.",
+        ),
+        DeclareLaunchArgument(
+            "compare_legacy_odometry", default_value="false",
+            description="Run legacy odometry on isolated shadow topics.",
+        ),
+        DeclareLaunchArgument(
             "headless", default_value="false",
             description="Run only the Gazebo server when true.",
         ),
@@ -51,6 +59,8 @@ def generate_launch_description() -> LaunchDescription:
             PythonLaunchDescriptionSource(str(integration)),
             launch_arguments={
                 "use_sim_time": LaunchConfiguration("use_sim_time"),
+                "vehicle_io_profile": LaunchConfiguration("vehicle_io_profile"),
+                "compare_legacy_odometry": LaunchConfiguration("compare_legacy_odometry"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "rviz": LaunchConfiguration("rviz"),

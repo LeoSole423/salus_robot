@@ -79,6 +79,13 @@ jobs:
         if: always() && steps.workspace.outcome == 'success'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_localization_sim.sh
+      - name: Smoke — canonical vehicle I/O localization
+        id: smoke_localization_canonical
+        if: always() && steps.workspace.outcome == 'success'
+        continue-on-error: true
+        env:
+          VEHICLE_IO_PROFILE: canonical
+        run: ./tools/run_smoke.sh ./tools/smoke_localization_sim.sh
       - name: Smoke — LiDAR perception
         id: smoke_lidar
         if: always() && steps.workspace.outcome == 'success'
@@ -111,10 +118,11 @@ jobs:
           CONTROL: ${{ steps.smoke_control.outcome }}
           MOTION: ${{ steps.smoke_motion.outcome }}
           LOCALIZATION: ${{ steps.smoke_localization.outcome }}
+          LOCALIZATION_CANONICAL: ${{ steps.smoke_localization_canonical.outcome }}
           LIDAR: ${{ steps.smoke_lidar.outcome }}
           SAFETY: ${{ steps.smoke_safety.outcome }}
           INTEGRATION: ${{ steps.smoke_integration.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE CONTROL MOTION LOCALIZATION LIDAR SAFETY INTEGRATION
+        run: ./tools/aggregate_smoke_results.sh WORKSPACE CONTROL MOTION LOCALIZATION LOCALIZATION_CANONICAL LIDAR SAFETY INTEGRATION
 
   navigation-missions:
     needs: build-unit
