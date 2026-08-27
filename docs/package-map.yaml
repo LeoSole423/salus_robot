@@ -82,4 +82,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profile_with_selectable_vehicle_io_and_command_input_pending_hardware_validation
+    status: operational_sim_profile_with_nav2_validated_canonical_command_input_pending_hardware_validation
