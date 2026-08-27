@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import rclpy
+from action_msgs.msg import GoalStatus, GoalStatusArray
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
@@ -37,6 +38,7 @@ class NavigationSmoke(Node):
         self.path_health: list[PathHealth] = []
         self.raw_commands: list[Twist] = []
         self.safe_commands: list[Twist] = []
+        self.navigation_action_status: list[GoalStatusArray] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
         self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
@@ -46,6 +48,12 @@ class NavigationSmoke(Node):
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
         self.create_subscription(Twist, "/cmd_vel_safe", self.safe_commands.append, 10)
+        self.create_subscription(
+            GoalStatusArray,
+            "/navigate_to_pose/_action/status",
+            self.navigation_action_status.append,
+            10,
+        )
         self.rviz_goal = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.startup = subscribe_navigation_startup(self)
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
@@ -156,6 +164,18 @@ def get_state(node: NavigationSmoke):
     return call(node, node.state, GetNavState.Request(), "state service unavailable")
 
 
+def navigate_action_is_idle(messages: list[GoalStatusArray]) -> bool:
+    """Require Nav2 itself to report that cancellation reached a terminal state."""
+    if not messages:
+        return False
+    active = {
+        GoalStatus.STATUS_ACCEPTED,
+        GoalStatus.STATUS_EXECUTING,
+        GoalStatus.STATUS_CANCELING,
+    }
+    return all(status.status not in active for status in messages[-1].status_list)
+
+
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
@@ -239,6 +259,12 @@ def main() -> int:
         if not response.ok:
             raise RuntimeError(response.error)
         wait_for(node, lambda: not get_state(node).goal_active, 5.0, "right-turn diagnostic goal remained active")
+        wait_for(
+            node,
+            lambda: navigate_action_is_idle(node.navigation_action_status),
+            8.0,
+            "right-turn cancellation did not reach a terminal Nav2 action state",
+        )
 
         start = node.odom[-1]
         rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
@@ -324,6 +350,7 @@ def main() -> int:
             "final_commands": len(node.final), "telemetry": len(node.telemetry),
             "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
+            "navigation_action_status": len(node.navigation_action_status),
             "navigation_startup": node.startup.snapshot(),
         })
         node.destroy_node()

@@ -55,6 +55,7 @@ esperar dentro de un presupuesto explícito y acotado.
 | acuse `FollowPath` tarda más que el default implícito | esperar hasta 500 ms, sin reintentar ni reducir asserts | `test_navigation_config_and_launch_keep_the_safe_contract` |
 | JOIN_LOOP vuelve a quedar inmóvil | fallar y conservar odometría, distancia, comandos, path-health, generación y resultado | `smoke_patrol_battery_sim.py` |
 | el poll de estado tarda detrás de `/goal_pose` | no republicar/preemptar el goal; esperar la aceptación del único mensaje | `test_navigation_smoke_probe.py` |
+| `GetNavState` deja de marcar activo antes de que Nav2 termine una cancelación | esperar un snapshot terminal de `/navigate_to_pose/_action/status` antes del siguiente goal | `test_navigation_smoke_probe.py` |
 
 ## Decisiones descartadas
 
@@ -76,5 +77,9 @@ esperar dentro de un presupuesto explícito y acotado.
 - Estado: corrección de confiabilidad de simulación; no cambia el estado de
   paridad/hardware del subsistema.
 - No validado en hardware.
+- El run `33027879125` confirmó una segunda carrera distinta: el wrapper ya
+  informaba `goal_active=false`, pero Nav2 seguía cancelando el goal de giro;
+  el siguiente goal quedó pendiente sin producir `/cmd_vel`. La readiness ahora
+  usa el estado terminal del action server como autoridad de esa transición.
 - Pendiente: clasificar con la nueva evidencia cualquier JOIN_LOOP inmóvil que
   no contenga el timeout de acuse `FollowPath`.
