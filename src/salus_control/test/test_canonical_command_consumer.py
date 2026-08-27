@@ -6,8 +6,15 @@ from salus_control.canonical_command_consumer import (
     CanonicalCommandConfig,
     CanonicalCommandConsumer,
     CanonicalCommandSample,
+    EffectiveCanonicalCommand,
+    desired_command_from_canonical,
+    safe_effective_command,
 )
-from salus_control.control_logic import COMMAND_SOURCE_AUTO, COMMAND_SOURCE_SAFETY
+from salus_control.control_logic import (
+    COMMAND_SOURCE_AUTO,
+    COMMAND_SOURCE_MANUAL,
+    COMMAND_SOURCE_SAFETY,
+)
 
 
 def sample(**overrides) -> CanonicalCommandSample:
@@ -117,3 +124,59 @@ def test_service_brake_suppresses_speed_without_becoming_estop() -> None:
     assert result.brake_ratio == 0.3
     assert result.speed_mps == 0.0
     assert result.reason == "service_brake"
+
+
+def test_effective_command_maps_physical_units_to_existing_backend_boundary() -> None:
+    effective = EffectiveCanonicalCommand(
+        source=COMMAND_SOURCE_MANUAL,
+        drive_enabled=True,
+        emergency_stop=False,
+        brake_ratio=0.0,
+        speed_mps=-0.8,
+        steering_angle_rad=0.2617993878,
+        valid=True,
+        reason="accepted",
+    )
+    desired = desired_command_from_canonical(
+        effective,
+        steering_limit_rad=0.5235987756,
+    )
+    assert desired.drive_enabled is True
+    assert desired.estop is False
+    assert desired.speed_mps == -0.8
+    assert desired.steer_pct == 50
+    assert desired.brake_pct == 0
+    assert desired.applied_steer_rad == effective.steering_angle_rad
+    assert desired.command_source == COMMAND_SOURCE_MANUAL
+
+
+def test_service_brake_maps_without_becoming_estop() -> None:
+    consumer = CanonicalCommandConsumer(CanonicalCommandConfig())
+    effective = ingest(consumer, sample(brake_ratio=0.25))
+    desired = desired_command_from_canonical(
+        effective,
+        steering_limit_rad=0.5235987756,
+    )
+    assert desired.estop is False
+    assert desired.speed_mps == 0.0
+    assert desired.brake_pct == 25
+
+
+def test_safe_effective_command_maps_to_full_brake_estop() -> None:
+    desired = desired_command_from_canonical(
+        safe_effective_command("watchdog_timeout"),
+        steering_limit_rad=0.5235987756,
+    )
+    assert desired.drive_enabled is False
+    assert desired.estop is True
+    assert desired.speed_mps == 0.0
+    assert desired.steer_pct == 0
+    assert desired.brake_pct == 100
+
+
+def test_effective_command_requires_valid_steering_limit() -> None:
+    with pytest.raises(ValueError):
+        desired_command_from_canonical(
+            safe_effective_command("test"),
+            steering_limit_rad=0.0,
+        )

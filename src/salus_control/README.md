@@ -8,7 +8,9 @@
   `/sim_battery/*`.
 - Compatibilidad de salida: `legacy_vehicle_command_adapter` traduce cada
   `/cmd_vel_final` a `VehicleCommand` en unidades Ackermann SI. La salida
-  `*_shadow` no tiene consumidores ni autoridad sobre Gazebo, UART o hardware.
+  `*_shadow` es observacional por defecto; sólo adquiere autoridad sobre Gazebo
+  cuando se selecciona explícitamente el modo canónico de simulación. Nunca
+  tiene conexión habilitada hacia UART o hardware.
   Usa timestamp de recepción, vigencia de `0.7 s` y conserva explícitamente la
   semántica histórica `brake_pct > 0 -> emergency_stop`.
 - Comparación shadow: `vehicle_command_shadow_comparison` correlaciona por FIFO
@@ -21,6 +23,12 @@
   recepción monotónico. E-stop, disable y freno inhiben movimiento efectivo.
   Publica sólo `/vehicle/command_dry_run/diagnostics`, con
   `authoritative=false`; no tiene conexión a ningún backend.
+- Entrada canónica simulada: `command_input_mode=canonical_vehicle_command`
+  conecta la misma política validada al único backend `sim_gazebo`. El default
+  continúa siendo `legacy_cmd_vel`; el modo canónico con UART se rechaza al
+  iniciar. El ángulo se cuantiza al porcentaje entero del backend existente;
+  aceleración, jerk y velocidad de giro de dirección aún no son aplicados por
+  el plugin simulado.
 - Estado: primer corte funcional en simulación. El backend UART está preservado
   como código de compatibilidad, pero no fue conectado ni validado en hardware.
 - Prueba: `colcon test --packages-select salus_control`.

@@ -10,6 +10,7 @@ from .control_logic import (
     COMMAND_SOURCE_MANUAL,
     COMMAND_SOURCE_SAFETY,
     COMMAND_SOURCE_UNKNOWN,
+    DesiredCommand,
 )
 
 
@@ -82,6 +83,33 @@ def safe_effective_command(reason: str) -> EffectiveCanonicalCommand:
         steering_angle_rad=0.0,
         valid=False,
         reason=reason,
+    )
+
+
+def desired_command_from_canonical(
+    effective: EffectiveCanonicalCommand,
+    *,
+    steering_limit_rad: float,
+) -> DesiredCommand:
+    """Translate the validated kinematic boundary to the existing backend API."""
+    limit = abs(float(steering_limit_rad))
+    if not math.isfinite(limit) or limit <= 0.0:
+        raise ValueError("steering_limit_rad must be finite and positive")
+    steer_pct = round(effective.steering_angle_rad / limit * 100.0)
+    steer_pct = max(-100, min(100, steer_pct))
+    brake_pct = round(effective.brake_ratio * 100.0)
+    brake_pct = max(0, min(100, brake_pct))
+    return DesiredCommand(
+        drive_enabled=effective.drive_enabled,
+        estop=effective.emergency_stop,
+        speed_mps=effective.speed_mps,
+        steer_pct=steer_pct,
+        brake_pct=brake_pct,
+        requested_linear_x_mps=effective.speed_mps,
+        requested_steer_rad=effective.steering_angle_rad,
+        applied_steer_rad=effective.steering_angle_rad,
+        steering_limit_used_rad=limit,
+        command_source=effective.source,
     )
 
 

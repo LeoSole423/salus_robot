@@ -30,6 +30,7 @@ class ControlProbe(Node):
         self.vehicle_commands = []
         self.command_diagnostics = []
         self.dry_run_diagnostics = []
+        self.gazebo_commands = []
         self.create_subscription(BatteryState, "/battery_state", self.battery.append, 10)
         self.create_subscription(BatteryMissionGuard, "/battery_mission_guard", self.guard.append, 10)
         self.create_subscription(
@@ -50,6 +51,9 @@ class ControlProbe(Node):
             "/vehicle/command_dry_run/diagnostics",
             self.dry_run_diagnostics.append,
             10,
+        )
+        self.create_subscription(
+            Twist, "/cmd_vel_gazebo", self.gazebo_commands.append, 10
         )
         self.preset = self.create_client(SetSimBatteryPreset, "/sim_battery/set_preset")
         self.state = self.create_client(SetSimBatteryState, "/sim_battery/set_state")
@@ -135,6 +139,16 @@ def main() -> int:
             observe=lambda: {"dry_run": len(node.dry_run_diagnostics)},
         )
         runtime.wait(
+            "canonical command applied by simulation backend",
+            lambda: any(
+                abs(item.linear.x - 2.0) < 1.0e-6
+                and abs(item.angular.z) > 1.0e-3
+                for item in node.gazebo_commands
+            ),
+            5.0,
+            observe=lambda: {"gazebo_commands": len(node.gazebo_commands)},
+        )
+        runtime.wait(
             "canonical command dry-run watchdog",
             lambda: any(
                 item.status
@@ -144,6 +158,14 @@ def main() -> int:
             ),
             3.0,
             observe=lambda: {"dry_run": len(node.dry_run_diagnostics)},
+        )
+        runtime.wait(
+            "canonical simulation backend watchdog stop",
+            lambda: bool(node.gazebo_commands)
+            and abs(node.gazebo_commands[-1].linear.x) < 1.0e-9
+            and abs(node.gazebo_commands[-1].angular.z) < 1.0e-9,
+            3.0,
+            observe=lambda: {"gazebo_commands": len(node.gazebo_commands)},
         )
         runtime.wait("battery state service", node.state.service_is_ready, 10.0)
         for preset in ("full", "under_load", "watching", "return_home_rest",
@@ -169,6 +191,7 @@ def main() -> int:
             "vehicle_command_messages": len(node.vehicle_commands),
             "vehicle_command_diagnostics": len(node.command_diagnostics),
             "dry_run_diagnostics": len(node.dry_run_diagnostics),
+            "gazebo_commands": len(node.gazebo_commands),
         })
         node.destroy_node()
         rclpy.shutdown()
