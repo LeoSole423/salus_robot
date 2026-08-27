@@ -45,6 +45,21 @@ declarado conserva la frontera `/cmd_vel_safe`, pero no afirma protección
 anticolisión. La selección sólo ocurre al arrancar y jamás como fallback ante
 una avería.
 
+## Perfiles explícitos de IMU y orientación
+
+Los ejes de sensores se seleccionan por separado y nunca hacen fallback:
+
+```bash
+ros2 launch salus_bringup sim_operational.launch.py \
+  imu_source:=imu_primary \
+  orientation_source:=course_over_ground
+```
+
+También se aceptan `imu_secondary` y `external_heading`. En la simulación
+actual no existe productor para la IMU secundaria, de modo que elegirla deja
+la entrada lógica ausente. El heading externo sí dispone de un fixture de
+ground truth para probar el cableado; no representa hardware dual-GNSS.
+
 Con Gazebo y RViz visibles:
 
 ```bash

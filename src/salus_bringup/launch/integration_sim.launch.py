@@ -42,6 +42,8 @@ def generate_launch_description() -> LaunchDescription:
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     command_input_mode = LaunchConfiguration("command_input_mode")
     capability_profile = LaunchConfiguration("capability_profile")
+    imu_source = LaunchConfiguration("imu_source")
+    orientation_source = LaunchConfiguration("orientation_source")
     obstacle_detection_enabled = PythonExpression([
         "'", capability_profile, "' == 'obstacle_detection'",
     ])
@@ -79,6 +81,18 @@ def generate_launch_description() -> LaunchDescription:
                     "Explicit capability profile. It never changes automatically "
                     "after a sensor failure."
                 ),
+            ),
+            DeclareLaunchArgument(
+                "imu_source",
+                default_value="imu_primary",
+                choices=["imu_primary", "imu_secondary"],
+                description="Exclusive local motion IMU source; no automatic fallback.",
+            ),
+            DeclareLaunchArgument(
+                "orientation_source",
+                default_value="course_over_ground",
+                choices=["course_over_ground", "external_heading"],
+                description="Exclusive global orientation source; no automatic fallback.",
             ),
             DeclareLaunchArgument(
                 "gz_args",
@@ -189,16 +203,21 @@ def generate_launch_description() -> LaunchDescription:
                     **common,
                     "odometry_backend": vehicle_io_profile,
                     "compare_legacy_odometry": compare_legacy_odometry,
+                    "imu_source": imu_source,
                 },
             ),
             _include(
                 "salus_localization",
                 "global_localization_sim.launch.py",
-                common,
+                {**common, "orientation_source": orientation_source},
             ),
             _include(
                 "salus_hardware", "capability_profile.launch.py",
-                {"profile": capability_profile},
+                {
+                    "profile": capability_profile,
+                    "imu_source": imu_source,
+                    "orientation_source": orientation_source,
+                },
             ),
             _include(
                 "salus_perception", "lidar_sim.launch.py",

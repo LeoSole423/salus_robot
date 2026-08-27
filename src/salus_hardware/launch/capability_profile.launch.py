@@ -13,11 +13,25 @@ def generate_launch_description() -> LaunchDescription:
             default_value="obstacle_detection",
             choices=["obstacle_detection", "no_obstacle_detection"],
         ),
+        DeclareLaunchArgument(
+            "imu_source",
+            default_value="imu_primary",
+            choices=["imu_primary", "imu_secondary"],
+        ),
+        DeclareLaunchArgument(
+            "orientation_source",
+            default_value="course_over_ground",
+            choices=["course_over_ground", "external_heading"],
+        ),
         Node(
             package="salus_hardware",
             executable="capability_profile",
             name="capability_profile",
             output="screen",
-            parameters=[{"profile": LaunchConfiguration("profile")}],
+            parameters=[{
+                "profile": LaunchConfiguration("profile"),
+                "imu_source": LaunchConfiguration("imu_source"),
+                "orientation_source": LaunchConfiguration("orientation_source"),
+            }],
         ),
     ])

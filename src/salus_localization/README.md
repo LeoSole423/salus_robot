@@ -2,9 +2,8 @@
 
 ## Responsabilidad
 
-Localización de SALUS. El corte actual contiene odometría Ackermann, IMU
-simulada normalizada y EKF local; GPS, datum y localización global aún no se
-han migrado.
+Localización de SALUS: odometría Ackermann, perfiles explícitos de IMU,
+orientación global, GPS/datum y EKF local/global en simulación.
 
 ## Interfaces vigentes
 
@@ -29,8 +28,11 @@ odometría. El default `legacy` conserva la ruta histórica. Sólo una de ellas
 publica `/wheel/odometry`; la comparación opcional
 `compare_legacy_odometry:=true` envía la salida histórica a
 `/comparison/legacy/*` y no la conecta al EKF.
-En simulación `/odom_raw` alimenta `/imu/data_raw`, que se normaliza como
-`/imu/data`. El EKF publica `/odometry/local` y es la única autoridad de
+En simulación `/odom_raw` alimenta `/hardware/imu_primary/data_raw`, que se
+normaliza como `/hardware/imu_primary/data`. `imu_selector` publica la fuente
+elegida (`imu_primary` o `imu_secondary`) como `/imu/data`; sólo la primaria
+existe en el fixture actual. Elegir la secundaria no fabrica datos ni conmuta
+de vuelta. El EKF publica `/odometry/local` y es la única autoridad de
 `odom -> base_footprint`.
 
 ## Prueba
@@ -46,8 +48,12 @@ EKF. El NavSat raw procede de Gazebo en `/gps/fix_raw`, se normaliza a
 `/gps/fix` con perfiles `ideal`, `f9p_rtk` o `m8n`, y conserva un datum fijo.
 La misma autoridad de datum expone `/fromLL` para convertir coordenadas
 geográficas al frame `map` de simulación.
-Los gates estacionarios, brújula, servicios de datum y GNSS real no están
-migrados todavía.
+La orientación global se selecciona exclusivamente entre
+`course_over_ground` y `external_heading`. Ambos terminan en
+`/localization/orientation`, consumido por el EKF global y `navsat_transform`.
+El pseudo-yaw estacionario no alimenta el filtro global y la pérdida de la
+fuente elegida no activa la otra. El perfil externo usa un fixture ground-truth
+de simulación; no modela todavía un receptor dual-GNSS.
 
 La IMU actual se deriva de la odometría de Gazebo para pruebas reproducibles;
 no representa un modelo físico de ruido ni se usa con hardware real.
@@ -55,6 +61,6 @@ no representa un modelo físico de ruido ni se usa con hardware real.
 - Responsabilidad: odometría Ackermann, EKF local/global, datum y heading.
 - No contiene: drivers, costmaps, planners ni modelo físico.
 - Interfaces previstas: `map -> odom -> base_footprint` y odometrías tipadas.
-- Estado: esqueleto sin ejecutables.
+- Estado: perfiles de simulación portados; drivers y hardware pendientes.
 - Prueba: `colcon test --packages-select salus_localization`.
 - Migración: caracterizar primero TF, datum fijo y gating de heading.

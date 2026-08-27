@@ -32,6 +32,7 @@ def test_canonical_description_has_expected_frames_and_geometry() -> None:
         "base_link",
         "lidar_link",
         "imu_link",
+        "imu_primary_link",
         "gps_link",
     }.issubset(links)
 

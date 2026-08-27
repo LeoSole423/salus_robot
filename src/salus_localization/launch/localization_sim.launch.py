@@ -17,6 +17,7 @@ def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     odometry_backend = LaunchConfiguration("odometry_backend")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
+    imu_source = LaunchConfiguration("imu_source")
     legacy_condition = IfCondition(
         PythonExpression(["'", odometry_backend, "' == 'legacy'"])
     )
@@ -44,20 +45,45 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="false",
                 description="Publish legacy odometry on isolated comparison topics.",
             ),
+            DeclareLaunchArgument(
+                "imu_source",
+                default_value="imu_primary",
+                choices=["imu_primary", "imu_secondary"],
+                description="Exclusive logical IMU source; no automatic fallback.",
+            ),
             OpaqueFunction(function=_validate_profile),
             Node(
                 package="salus_localization",
                 executable="sim_imu_from_odom",
                 name="sim_imu_from_odom",
                 output="screen",
-                parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+                parameters=[{
+                    "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                    "imu_topic": "/hardware/imu_primary/data_raw",
+                    "frame_id": "imu_primary_link",
+                }],
             ),
             Node(
                 package="salus_localization",
                 executable="imu_normalizer",
                 name="imu_normalizer",
                 output="screen",
-                parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+                parameters=[{
+                    "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                    "input_topic": "/hardware/imu_primary/data_raw",
+                    "output_topic": "/hardware/imu_primary/data",
+                    "frame_id": "imu_primary_link",
+                }],
+            ),
+            Node(
+                package="salus_localization",
+                executable="imu_selector",
+                name="imu_selector",
+                output="screen",
+                parameters=[{
+                    "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
+                    "selected_source": imu_source,
+                }],
             ),
             Node(
                 package="salus_localization",
