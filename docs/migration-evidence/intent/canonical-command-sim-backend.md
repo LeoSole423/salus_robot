@@ -53,6 +53,8 @@ soportadas y no se reportan como ejecutadas.
 - Unitarios: conversión SI, freno, E-stop, límites y selección de modo/backend.
 - Smoke: una autoridad, movimiento canónico observado y parada por watchdog.
 - Regresión: el perfil legacy continúa predeterminado para las composiciones.
+- Composición: el selector se propaga por `integration_sim` y
+  `sim_operational`; el movimiento Gazebo canónico se caracteriza sin lanzar
+  una segunda autoridad junto a Nav2.
 - Estado propuesto: `ported` sólo en simulación.
 - No validado: UART, banco, Jetson o robot real.
-

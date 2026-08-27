@@ -103,6 +103,22 @@ def main() -> int:
         )
 
         runtime.wait(
+            "canonical watchdog stops simulated actuation",
+            lambda: node.latest_actuation is not None
+            and abs(node.latest_actuation.linear.x) <= 1.0e-9
+            and abs(node.latest_actuation.angular.z) <= 1.0e-9,
+            5.0,
+        )
+
+        runtime.wait(
+            "canonical actuation resumes after a fresh command",
+            lambda: node.latest_actuation is not None
+            and node.latest_actuation.linear.x > 0.5,
+            5.0,
+            stimulate=lambda: node.command(linear_x=1.0, angular_z=0.0, brake_pct=0),
+        )
+
+        runtime.wait(
             "zero brake actuation",
             lambda: node.latest_actuation is not None
             and abs(node.latest_actuation.linear.x) <= 1.0e-9

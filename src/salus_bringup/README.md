@@ -14,6 +14,16 @@ siendo un checkpoint de migración, no un bringup operativo final.
 ros2 launch salus_bringup integration_sim.launch.py
 ```
 
+Para validar la entrada canónica de actuación en simulación:
+
+```bash
+ros2 launch salus_bringup integration_sim.launch.py \
+  command_input_mode:=canonical_vehicle_command
+```
+
+El valor predeterminado continúa siendo `legacy_cmd_vel`. Este selector es
+independiente de `vehicle_io_profile`, que elige mediciones y odometría.
+
 Con Gazebo y RViz visibles:
 
 ```bash
@@ -49,6 +59,9 @@ la validación end-to-end sin hardware:
 ```bash
 ros2 launch salus_bringup sim_operational.launch.py
 ```
+
+El perfil operacional acepta el mismo `command_input_mode`. La ruta canónica
+continúa limitada a Gazebo y no habilita UART ni hardware.
 
 El helper operativo construye el workspace y expone Cockpit:
 

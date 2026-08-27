@@ -40,6 +40,7 @@ def generate_launch_description() -> LaunchDescription:
     nav2_params_file = LaunchConfiguration("nav2_params_file")
     vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
+    command_input_mode = LaunchConfiguration("command_input_mode")
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -54,6 +55,14 @@ def generate_launch_description() -> LaunchDescription:
                 "compare_legacy_odometry",
                 default_value="false",
                 description="Run legacy odometry on shadow topics under canonical profile.",
+            ),
+            DeclareLaunchArgument(
+                "command_input_mode",
+                default_value="legacy_cmd_vel",
+                description=(
+                    "Exclusive control input: legacy_cmd_vel or "
+                    "canonical_vehicle_command."
+                ),
             ),
             DeclareLaunchArgument(
                 "gz_args",
@@ -144,7 +153,11 @@ def generate_launch_description() -> LaunchDescription:
                 "motion_sim.launch.py",
                 {"use_sim_time": use_sim_time, "gz_args": gz_args, "world": world},
             ),
-            _include("salus_control", "control_sim.launch.py", common),
+            _include(
+                "salus_control",
+                "control_sim.launch.py",
+                {**common, "command_input_mode": command_input_mode},
+            ),
             _include(
                 "salus_bringup",
                 "vehicle_io_sim.launch.py",
