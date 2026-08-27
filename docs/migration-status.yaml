@@ -46,6 +46,20 @@ components:
       - docs/decisions/0008-hardware-measurement-boundaries.md
       - docs/migration-evidence/intent/hardware-measurements-and-odometry.md
     note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. A read-only DriveTelemetry compatibility adapter is ported in salus_hardware; calibrated/direct adapters and hardware validation remain pending.
+  jetson_hardware_contract_observation:
+    source: ROS2_SALUS real_global_v2_wifi on Jetson
+    target: salus_hardware and salus_localization profiles
+    state: characterized
+    contracts:
+      - sensor_msgs/Imu
+      - sensor_msgs/NavSatFix
+      - nav_msgs/Odometry
+      - DriveTelemetry
+      - RTCM backend boundary
+    evidence:
+      - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
+      - tools/observe_hardware_contracts.py
+    note: Passive SSH/ROS graph observation confirmed the live Pixhawk/MAVROS IMU and GNSS, RTK delivery chain, controller telemetry, derived Ackermann odometry, RS16 pipeline and EKF authorities without modifying the running legacy stack. It also found base_link sensor frames, a dual-typed /rtcm topic and stale public status aliases. salus_robot was not deployed or executed, no bag was recorded and hardware_validated remains false.
   capability_profiles:
     source: declared robot composition
     target: salus_interfaces/SystemCapabilities and salus_bringup

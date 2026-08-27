@@ -15,6 +15,8 @@ if(BUILD_TESTING)
   ament_add_pytest_test(test_route_smoke_probe test/test_route_smoke_probe.py)
   ament_add_pytest_test(test_nightly_smokes test/test_nightly_smokes.py)
   ament_add_pytest_test(test_sim_helper test/test_sim_helper.py)
+  ament_add_pytest_test(
+    test_observe_hardware_contracts test/test_observe_hardware_contracts.py)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
