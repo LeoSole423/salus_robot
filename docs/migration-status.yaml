@@ -70,6 +70,20 @@ components:
       - tools/smoke_control_sim.py
       - docs/migration-evidence/intent/legacy-vehicle-command-shadow.md
     note: Simulation-only observation path from the authoritative legacy command to /vehicle/command_shadow. It has no downstream consumer and cannot actuate Gazebo, UART or hardware.
+  vehicle_command_shadow_comparison:
+    source: /cmd_vel_final and /vehicle/command_shadow
+    target: /vehicle/command_shadow/diagnostics
+    state: ported
+    contracts:
+      - CmdVelFinal
+      - VehicleCommand
+      - DiagnosticArray
+    evidence:
+      - src/salus_control/salus_control/vehicle_command_comparison.py
+      - src/salus_control/test/test_vehicle_command_comparison.py
+      - tools/smoke_control_sim.py
+      - docs/migration-evidence/intent/vehicle-command-shadow-comparison.md
+    note: Non-authoritative simulation observer with FIFO pairing, monotonic timeout, bounded queues and latched mismatch counters. It publishes diagnostics only and cannot modify or block control.
   legacy_drive_measurement_adapter:
     source: controller_server/DriveTelemetry
     target: salus_hardware/legacy_drive_measurement_node

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import rclpy
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
 from geometry_msgs.msg import Twist
@@ -27,6 +28,7 @@ class ControlProbe(Node):
         self.battery = []
         self.guard = []
         self.vehicle_commands = []
+        self.command_diagnostics = []
         self.create_subscription(BatteryState, "/battery_state", self.battery.append, 10)
         self.create_subscription(BatteryMissionGuard, "/battery_mission_guard", self.guard.append, 10)
         self.create_subscription(
@@ -36,6 +38,12 @@ class ControlProbe(Node):
             10,
         )
         self.command = self.create_publisher(CmdVelFinal, "/cmd_vel_final", 10)
+        self.create_subscription(
+            DiagnosticArray,
+            "/vehicle/command_shadow/diagnostics",
+            self.command_diagnostics.append,
+            10,
+        )
         self.preset = self.create_client(SetSimBatteryPreset, "/sim_battery/set_preset")
         self.state = self.create_client(SetSimBatteryState, "/sim_battery/set_state")
 
@@ -55,6 +63,10 @@ def main() -> int:
         runtime.wait_topic_publishers("guard publisher", "/battery_mission_guard")
         runtime.wait_topic_publishers(
             "vehicle command shadow publisher", "/vehicle/command_shadow"
+        )
+        runtime.wait_topic_publishers(
+            "vehicle command comparison diagnostics",
+            "/vehicle/command_shadow/diagnostics",
         )
         runtime.wait(
             "progressive battery publications",
@@ -84,6 +96,22 @@ def main() -> int:
             10.0,
             observe=lambda: {"vehicle_commands": len(node.vehicle_commands)},
         )
+        runtime.wait(
+            "vehicle command shadow comparison",
+            lambda: any(
+                item.status
+                and item.status[0].level == DiagnosticStatus.OK
+                and any(
+                    value.key == "compared" and int(value.value) > 0
+                    for value in item.status[0].values
+                )
+                for item in node.command_diagnostics
+            ),
+            10.0,
+            observe=lambda: {
+                "command_diagnostics": len(node.command_diagnostics)
+            },
+        )
         runtime.wait("battery state service", node.state.service_is_ready, 10.0)
         for preset in ("full", "under_load", "watching", "return_home_rest",
                        "return_home_load", "stale", "suspect", "unavailable"):
@@ -106,6 +134,7 @@ def main() -> int:
             "battery_messages": len(node.battery),
             "guard_messages": len(node.guard),
             "vehicle_command_messages": len(node.vehicle_commands),
+            "vehicle_command_diagnostics": len(node.command_diagnostics),
         })
         node.destroy_node()
         rclpy.shutdown()

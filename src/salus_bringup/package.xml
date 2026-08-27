@@ -15,6 +15,7 @@
   <exec_depend>salus_simulation</exec_depend>
   <exec_depend>salus_web</exec_depend>
   <exec_depend>salus_hardware</exec_depend>
+  <test_depend>action_msgs</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
