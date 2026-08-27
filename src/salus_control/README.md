@@ -11,6 +11,11 @@
   `*_shadow` no tiene consumidores ni autoridad sobre Gazebo, UART o hardware.
   Usa timestamp de recepción, vigencia de `0.7 s` y conserva explícitamente la
   semántica histórica `brake_pct > 0 -> emergency_stop`.
+- Comparación shadow: `vehicle_command_shadow_comparison` correlaciona por FIFO
+  ambos tópicos con timeout monotónico, tolerancias explícitas y colas acotadas.
+  Publica únicamente `DiagnosticArray` en
+  `/vehicle/command_shadow/diagnostics`; sus divergencias quedan latched en
+  contadores y no bloquean ni modifican el comando autoritativo.
 - Estado: primer corte funcional en simulación. El backend UART está preservado
   como código de compatibilidad, pero no fue conectado ni validado en hardware.
 - Prueba: `colcon test --packages-select salus_control`.

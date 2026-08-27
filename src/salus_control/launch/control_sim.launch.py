@@ -38,5 +38,14 @@ def generate_launch_description() -> LaunchDescription:
                     {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}
                 ],
             ),
+            Node(
+                package="salus_control",
+                executable="vehicle_command_comparison_node",
+                name="vehicle_command_shadow_comparison",
+                output="screen",
+                parameters=[
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}
+                ],
+            ),
         ]
     )

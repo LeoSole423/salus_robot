@@ -39,7 +39,6 @@ actuador. `/cmd_vel_final` conserva la única ruta de control existente.
 
 ## Pendiente para próximos cortes
 
-- comparación continua con tolerancias y diagnóstico de divergencias;
 - consumidor canónico con watchdog propio, primero en simulación;
 - adaptadores de actuación independientes para ESP32 y Pixhawk;
 - validación en banco y robot antes de cualquier cambio de autoridad real.

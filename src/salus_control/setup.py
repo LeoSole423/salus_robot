@@ -23,6 +23,7 @@ setup(
         "console_scripts": [
             "controller_server_node = salus_control.controller_server_node:main",
             "legacy_vehicle_command_node = salus_control.legacy_vehicle_command_node:main",
+            "vehicle_command_comparison_node = salus_control.vehicle_command_comparison_node:main",
         ],
     },
 )
