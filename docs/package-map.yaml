@@ -18,7 +18,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_camera_and_vehicle_measurement_adapters_hardware_validation_pending
+    status: ported_camera_vehicle_measurement_and_capability_profile_adapters_hardware_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
@@ -42,7 +42,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
-    status: ported_nav2_routes_recovery_actions_profiles_patrol_and_battery_home_sim
+    status: ported_nav2_routes_recovery_capability_profiles_patrol_and_battery_home_sim
   salus_navigation_bt:
     owner: autonomy_bt
     build_type: ament_cmake
@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_cockpit_runtime_compact_telemetry_camera_ptz_sim
+    status: ported_cockpit_runtime_capability_state_compact_telemetry_camera_ptz_sim
   salus_simulation:
     owner: simulation
     build_type: ament_cmake
@@ -82,4 +82,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profile_with_nav2_validated_canonical_command_input_pending_hardware_validation
+    status: operational_sim_profiles_with_canonical_command_and_explicit_no_obstacle_detection_pending_hardware_validation

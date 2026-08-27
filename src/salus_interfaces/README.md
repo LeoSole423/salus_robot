@@ -4,7 +4,8 @@
 - No contiene: nodos, launches, lógica ni contratos legacy automáticos.
 - Interfaces actuales: control/batería, arbitraje y navegación punto a punto:
   `MeasurementMetadata`, `TractionMeasurement`, `SteeringMeasurement`,
-  `VehicleCommand`, `NavTelemetry`, `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
+  `VehicleCommand`, `CapabilityState`, `SystemCapabilities`, `NavTelemetry`,
+  `NavEvent`, `BrakeNav`, `SetManualMode`, `GetNavState`,
   `SetNavGoalLL`, `CancelNavGoal`, `SetRouteMissionLL`, `CancelRouteMission`,
   `GetRouteMissionState`, `SetPatrolMissionLL`, `CancelPatrolMission`,
   `GetPatrolMissionState`, `RequestReturnHome`, `SetNavigationProfile`,
@@ -29,6 +30,11 @@
   virtual Ackermann y velocidad de dirección, y añade habilitación, E-stop,
   freno normalizado, fuente y vigencia atómica. No contiene porcentajes del
   ESP32 ni activa todavía ningún backend.
+- `SystemCapabilities` declara atómicamente el perfil efectivo y publica en
+  `/system/capabilities` con reliable/transient-local/depth 1. El productor es
+  el adaptador de perfil de `salus_hardware`; `salus_web` y herramientas de
+  diagnóstico son consumidores. `ENABLED_BY_PROFILE` no equivale a salud
+  comprobada y una avería nunca selecciona automáticamente otro perfil.
 - Prueba: `colcon test --packages-select salus_interfaces`.
 - Migración: el resto de los contratos continúa pendiente y se incorporará por
   corte funcional.

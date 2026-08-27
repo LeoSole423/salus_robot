@@ -41,9 +41,13 @@ def diagnostic_level(value: int | bytes) -> int:
 class CommandArbiter:
     """Pure command policy, isolated from ROS publishers and clocks."""
 
-    def __init__(self, *, manual_timeout_s: float, monitor_timeout_s: float) -> None:
+    def __init__(
+        self, *, manual_timeout_s: float, monitor_timeout_s: float,
+        obstacle_detection_required: bool = True,
+    ) -> None:
         self.manual_timeout_s = max(0.1, float(manual_timeout_s))
         self.monitor_timeout_s = max(0.1, float(monitor_timeout_s))
+        self.obstacle_detection_required = bool(obstacle_detection_required)
         self.manual_enabled = False
         self.manual_command: CmdVelFinal | None = None
         self.manual_stamp_s: float | None = None
@@ -86,7 +90,7 @@ class CommandArbiter:
     def automatic_output(self, message: Twist, now_s: float) -> tuple[CmdVelFinal | None, str]:
         if self.manual_enabled:
             return None, "manual_enabled"
-        if not self.scan_is_fresh(now_s):
+        if self.obstacle_detection_required and not self.scan_is_fresh(now_s):
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "scan_stale"
         if self.path_health_state == PathHealth.STOP_AND_WAIT:
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "path_health_stop"
@@ -126,6 +130,7 @@ class NavCommandServer(Node):
             "cmd_vel_final_topic": "/cmd_vel_final", "collision_monitor_state_topic": "/collision_monitor_state",
             "safety_scan_topic": "/scan_clean", "gps_topic": "/gps/fix",
             "path_health_topic": "/path_health",
+            "obstacle_detection_required": True,
             "manual_cmd_timeout_s": 0.4, "collision_monitor_timeout_s": 1.0,
             "manual_watchdog_hz": 10.0, "nav_telemetry_hz": 5.0, "brake_hold_publish_hz": 10.0,
             "telemetry_topic": "/nav_command_server/telemetry", "event_topic": "/nav_command_server/events",
@@ -138,7 +143,11 @@ class NavCommandServer(Node):
             self.declare_parameter(name, value)
         p = lambda name: self.get_parameter(name).value
         self._lock = threading.Lock()
-        self._arbiter = CommandArbiter(manual_timeout_s=float(p("manual_cmd_timeout_s")), monitor_timeout_s=float(p("collision_monitor_timeout_s")))
+        self._arbiter = CommandArbiter(
+            manual_timeout_s=float(p("manual_cmd_timeout_s")),
+            monitor_timeout_s=float(p("collision_monitor_timeout_s")),
+            obstacle_detection_required=bool(p("obstacle_detection_required")),
+        )
         self._last_safe: Twist | None = None
         self._last_safe_stamp_s: float | None = None
         self._last_fix: NavSatFix | None = None

@@ -13,6 +13,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_keepout = LaunchConfiguration("use_keepout")
+    obstacle_detection_required = LaunchConfiguration("obstacle_detection_required")
     config_dir = Path(get_package_share_directory("salus_navigation")) / "config"
     config = LaunchConfiguration("nav2_params_file")
     params = [config, {
@@ -31,6 +32,7 @@ def generate_launch_description() -> LaunchDescription:
     actions = [
         DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
+        DeclareLaunchArgument("obstacle_detection_required", default_value="true"),
         DeclareLaunchArgument(
             "nav2_params_file", default_value=str(config_dir / "nav2_core_sim.yaml"),
             description="Explicit Nav2 parameter file for repeatable evaluation profiles.",
@@ -69,6 +71,9 @@ def generate_launch_description() -> LaunchDescription:
         name="nav2_startup_coordinator", output="screen", parameters=[{
             "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
             "use_keepout": ParameterValue(use_keepout, value_type=bool),
+            "obstacle_detection_required": ParameterValue(
+                obstacle_detection_required, value_type=bool
+            ),
         }],
     ))
     return LaunchDescription(actions)

@@ -12,6 +12,7 @@ find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BatteryMissionGuard.msg"
+  "msg/CapabilityState.msg"
   "msg/CmdVelFinal.msg"
   "msg/DriveTelemetry.msg"
   "msg/MeasurementMetadata.msg"
@@ -20,6 +21,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/NavTelemetry.msg"
   "msg/PathHealth.msg"
   "msg/SteeringMeasurement.msg"
+  "msg/SystemCapabilities.msg"
   "msg/TractionMeasurement.msg"
   "msg/VehicleCommand.msg"
   "srv/BrakeNav.srv"

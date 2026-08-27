@@ -18,6 +18,9 @@
   validación publica `UNAVAILABLE` y ningún campo consumible. Filtra por
   `source_id`, conserva timestamp/secuencia y nunca selecciona fuentes,
   publica odometría ni tiene autoridad sobre actuadores.
+- `capability_profile` publica `/system/capabilities` como snapshot latched del
+  perfil elegido al arrancar. En esta etapa admite `obstacle_detection` y
+  `no_obstacle_detection`; no observa salud dinámica ni conmuta ante fallos.
 - Estado: cámara PTZ dispone de contratos, políticas puras, backends
   simulado/ISAPI, persistencia atómica y el ejecutable `camera_node`; pasó
   pruebas unitarias y el smoke WebSocket en simulación. La validación física

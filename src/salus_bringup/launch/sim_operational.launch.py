@@ -40,6 +40,11 @@ def generate_launch_description() -> LaunchDescription:
             ),
         ),
         DeclareLaunchArgument(
+            "capability_profile",
+            default_value="obstacle_detection",
+            choices=["obstacle_detection", "no_obstacle_detection"],
+        ),
+        DeclareLaunchArgument(
             "headless", default_value="false",
             description="Run only the Gazebo server when true.",
         ),
@@ -70,6 +75,7 @@ def generate_launch_description() -> LaunchDescription:
                 "vehicle_io_profile": LaunchConfiguration("vehicle_io_profile"),
                 "compare_legacy_odometry": LaunchConfiguration("compare_legacy_odometry"),
                 "command_input_mode": LaunchConfiguration("command_input_mode"),
+                "capability_profile": LaunchConfiguration("capability_profile"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "rviz": LaunchConfiguration("rviz"),

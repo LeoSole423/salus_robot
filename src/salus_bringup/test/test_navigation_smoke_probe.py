@@ -58,3 +58,15 @@ def test_canonical_variant_preserves_nav_authority_and_checks_fresh_input() -> N
     assert 'String, "/controller/status"' in source
     assert 'status.get("input_mode") == "canonical_vehicle_command"' in source
     assert 'status.get("fresh") is True' in source
+
+
+def test_no_obstacle_variant_is_explicit_and_has_no_fake_scan() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    wrapper = (ROOT / "tools" / "smoke_navigation_no_obstacles_sim.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "capability_profile:=no_obstacle_detection" in wrapper
+    assert "EXPECT_NO_OBSTACLE_DETECTION=1" in wrapper
+    assert 'node.count_publishers("/scan_clean") == 0' in source
+    assert 'node.count_publishers("/cmd_vel_safe") == 1' in source
+    assert "STATE_DISABLED_BY_PROFILE" in source

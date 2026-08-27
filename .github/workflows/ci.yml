@@ -165,6 +165,13 @@ jobs:
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_canonical_sim.sh
+      - name: Smoke — navigation without obstacle detection
+        id: smoke_navigation_no_obstacles
+        if: always() && steps.workspace.outcome == 'success'
+        continue-on-error: true
+        env:
+          SMOKE_HARD_TIMEOUT_S: "240"
+        run: ./tools/run_smoke.sh ./tools/smoke_navigation_no_obstacles_sim.sh
       - name: Smoke — navigation zones
         id: smoke_zones
         if: always() && steps.workspace.outcome == 'success'
@@ -214,9 +221,10 @@ jobs:
           WORKSPACE: ${{ steps.workspace.outcome }}
           NAVIGATION: ${{ steps.smoke_navigation.outcome }}
           NAVIGATION_CANONICAL: ${{ steps.smoke_navigation_canonical.outcome }}
+          NAVIGATION_NO_OBSTACLES: ${{ steps.smoke_navigation_no_obstacles.outcome }}
           ZONES: ${{ steps.smoke_zones.outcome }}
           ROUTES: ${{ steps.smoke_routes.outcome }}
           PATROL_BATTERY: ${{ steps.smoke_patrol_battery.outcome }}
           SNAPSHOT: ${{ steps.smoke_snapshot.outcome }}
           WEB_COCKPIT: ${{ steps.smoke_web_cockpit.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION NAVIGATION_CANONICAL ZONES ROUTES PATROL_BATTERY SNAPSHOT WEB_COCKPIT
+        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION NAVIGATION_CANONICAL NAVIGATION_NO_OBSTACLES ZONES ROUTES PATROL_BATTERY SNAPSHOT WEB_COCKPIT

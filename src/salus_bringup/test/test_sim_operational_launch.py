@@ -26,6 +26,7 @@ def test_operational_profile_has_full_remote_defaults() -> None:
         '"runtime_dir", default_value="runtime/sim_operational"',
         '"command_input_mode",\n            default_value="legacy_cmd_vel"',
         '"command_input_mode": LaunchConfiguration("command_input_mode")',
+        '"capability_profile": LaunchConfiguration("capability_profile")',
     ):
         assert fragment in contents
 

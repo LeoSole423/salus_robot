@@ -61,6 +61,7 @@ def test_ci_assigns_scenario_specific_hard_timeouts() -> None:
     heavy_smokes = (
         "smoke_navigation_core_sim.sh",
         "smoke_navigation_canonical_sim.sh",
+        "smoke_navigation_no_obstacles_sim.sh",
         "smoke_navigation_zones_sim.sh",
         "smoke_route_executor_sim.sh",
         "smoke_patrol_battery_sim.sh",

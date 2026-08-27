@@ -41,6 +41,13 @@ def generate_launch_description() -> LaunchDescription:
     vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     command_input_mode = LaunchConfiguration("command_input_mode")
+    capability_profile = LaunchConfiguration("capability_profile")
+    obstacle_detection_enabled = PythonExpression([
+        "'", capability_profile, "' == 'obstacle_detection'",
+    ])
+    no_obstacle_detection = PythonExpression([
+        "'", capability_profile, "' == 'no_obstacle_detection'",
+    ])
 
     common = {"use_sim_time": use_sim_time}
     return LaunchDescription(
@@ -62,6 +69,15 @@ def generate_launch_description() -> LaunchDescription:
                 description=(
                     "Exclusive control input: legacy_cmd_vel or "
                     "canonical_vehicle_command."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "capability_profile",
+                default_value="obstacle_detection",
+                choices=["obstacle_detection", "no_obstacle_detection"],
+                description=(
+                    "Explicit capability profile. It never changes automatically "
+                    "after a sensor failure."
                 ),
             ),
             DeclareLaunchArgument(
@@ -180,8 +196,23 @@ def generate_launch_description() -> LaunchDescription:
                 "global_localization_sim.launch.py",
                 common,
             ),
-            _include("salus_perception", "lidar_sim.launch.py"),
-            _include("salus_navigation", "safety_arbitration_sim.launch.py", common),
+            _include(
+                "salus_hardware", "capability_profile.launch.py",
+                {"profile": capability_profile},
+            ),
+            _include(
+                "salus_perception", "lidar_sim.launch.py",
+                condition=IfCondition(obstacle_detection_enabled),
+            ),
+            _include(
+                "salus_navigation", "safety_arbitration_sim.launch.py", common,
+                condition=IfCondition(obstacle_detection_enabled),
+            ),
+            _include(
+                "salus_navigation", "safety_arbitration_no_obstacles_sim.launch.py",
+                common,
+                condition=IfCondition(no_obstacle_detection),
+            ),
             _include(
                 "salus_navigation",
                 "navigation_zones_sim.launch.py",
@@ -197,7 +228,27 @@ def generate_launch_description() -> LaunchDescription:
                 "navigation_core_sim.launch.py",
                 {"use_sim_time": use_sim_time, "use_keepout": use_keepout,
                  "nav2_params_file": nav2_params_file},
-                condition=IfCondition(launch_navigation),
+                condition=IfCondition(PythonExpression([
+                    "'", launch_navigation, "'.lower() == 'true' and ",
+                    obstacle_detection_enabled,
+                ])),
+            ),
+            _include(
+                "salus_navigation",
+                "navigation_core_sim.launch.py",
+                {
+                    "use_sim_time": use_sim_time,
+                    "use_keepout": use_keepout,
+                    "obstacle_detection_required": "false",
+                    "nav2_params_file": str(
+                        Path(get_package_share_directory("salus_navigation"))
+                        / "config" / "nav2_core_no_obstacles_sim.yaml"
+                    ),
+                },
+                condition=IfCondition(PythonExpression([
+                    "'", launch_navigation, "'.lower() == 'true' and ",
+                    no_obstacle_detection,
+                ])),
             ),
             _include(
                 "salus_navigation", "route_executor_sim.launch.py", common,
@@ -225,6 +276,7 @@ def generate_launch_description() -> LaunchDescription:
                     "ws_port": web_ws_port,
                     "waypoints_file": web_waypoints_file,
                     "telemetry_profile": web_telemetry_profile,
+                    "scan_preview_enabled": obstacle_detection_enabled,
                 },
                 condition=IfCondition(launch_web),
             ),
@@ -237,7 +289,10 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_perception",
                 "lidar_diagnostics.launch.py",
-                condition=IfCondition(rviz),
+                condition=IfCondition(PythonExpression([
+                    "'", rviz, "'.lower() == 'true' and ",
+                    obstacle_detection_enabled,
+                ])),
             ),
         ]
     )

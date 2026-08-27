@@ -24,6 +24,7 @@ class ReadinessSnapshot:
     transform_fresh: bool = False
     scan_valid: bool = False
     scan_fresh: bool = False
+    obstacle_detection_required: bool = True
     keepout_required: bool = True
     keepout_ready: bool = False
     lifecycle_manager_ready: bool = False
@@ -37,8 +38,8 @@ def missing_requirements(snapshot: ReadinessSnapshot) -> tuple[str, ...]:
         (snapshot.odometry_finite, "ODOMETRY_INVALID"),
         (snapshot.transform_available, "TF_UNAVAILABLE"),
         (snapshot.transform_fresh, "TF_STALE"),
-        (snapshot.scan_valid, "SCAN_INVALID"),
-        (snapshot.scan_fresh, "SCAN_STALE"),
+        (not snapshot.obstacle_detection_required or snapshot.scan_valid, "SCAN_INVALID"),
+        (not snapshot.obstacle_detection_required or snapshot.scan_fresh, "SCAN_STALE"),
         (not snapshot.keepout_required or snapshot.keepout_ready, "KEEPOUT_NOT_READY"),
         (snapshot.lifecycle_manager_ready, "LIFECYCLE_MANAGER_UNAVAILABLE"),
     )

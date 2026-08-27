@@ -65,9 +65,13 @@ class Nav2StartupCoordinator(Node):
     def __init__(self) -> None:
         super().__init__("nav2_startup_coordinator")
         self.declare_parameter("use_keepout", True)
+        self.declare_parameter("obstacle_detection_required", True)
         self.declare_parameter("input_freshness_s", 2.0)
         self.declare_parameter("activation_timeout_s", 30.0)
         self._use_keepout = bool(self.get_parameter("use_keepout").value)
+        self._obstacle_detection_required = bool(
+            self.get_parameter("obstacle_detection_required").value
+        )
         self._freshness_s = float(self.get_parameter("input_freshness_s").value)
         self._activation_timeout_s = float(self.get_parameter("activation_timeout_s").value)
         self._policy = StartupPolicy()
@@ -170,6 +174,7 @@ class Nav2StartupCoordinator(Node):
             transform_fresh=self._tf_fresh,
             scan_valid=self._scan is not None and _valid_scan(self._scan),
             scan_fresh=scan_fresh,
+            obstacle_detection_required=self._obstacle_detection_required,
             keepout_required=self._use_keepout,
             keepout_ready=self._mask_ready,
             lifecycle_manager_ready=self._manage.service_is_ready(),
