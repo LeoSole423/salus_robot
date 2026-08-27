@@ -45,6 +45,16 @@ def generate_launch_description() -> LaunchDescription:
             choices=["obstacle_detection", "no_obstacle_detection"],
         ),
         DeclareLaunchArgument(
+            "imu_source",
+            default_value="imu_primary",
+            choices=["imu_primary", "imu_secondary"],
+        ),
+        DeclareLaunchArgument(
+            "orientation_source",
+            default_value="course_over_ground",
+            choices=["course_over_ground", "external_heading"],
+        ),
+        DeclareLaunchArgument(
             "headless", default_value="false",
             description="Run only the Gazebo server when true.",
         ),
@@ -76,6 +86,8 @@ def generate_launch_description() -> LaunchDescription:
                 "compare_legacy_odometry": LaunchConfiguration("compare_legacy_odometry"),
                 "command_input_mode": LaunchConfiguration("command_input_mode"),
                 "capability_profile": LaunchConfiguration("capability_profile"),
+                "imu_source": LaunchConfiguration("imu_source"),
+                "orientation_source": LaunchConfiguration("orientation_source"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "rviz": LaunchConfiguration("rviz"),

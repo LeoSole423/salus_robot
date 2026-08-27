@@ -27,6 +27,8 @@ def test_operational_profile_has_full_remote_defaults() -> None:
         '"command_input_mode",\n            default_value="legacy_cmd_vel"',
         '"command_input_mode": LaunchConfiguration("command_input_mode")',
         '"capability_profile": LaunchConfiguration("capability_profile")',
+        '"imu_source": LaunchConfiguration("imu_source")',
+        '"orientation_source": LaunchConfiguration("orientation_source")',
     ):
         assert fragment in contents
 

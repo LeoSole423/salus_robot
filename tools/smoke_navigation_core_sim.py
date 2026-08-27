@@ -28,6 +28,7 @@ from salus_interfaces.msg import (
 )
 from std_msgs.msg import String
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
+from sensor_msgs.msg import Imu
 from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 
 
@@ -51,9 +52,16 @@ class NavigationSmoke(Node):
         self.vehicle_commands: list[VehicleCommand] = []
         self.controller_status: list[dict] = []
         self.capability_profiles: list[SystemCapabilities] = []
+        self.selected_orientations: list[Imu] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
         self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
+        self.create_subscription(
+            Imu,
+            "/localization/orientation",
+            self.selected_orientations.append,
+            10,
+        )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
@@ -386,6 +394,12 @@ def main() -> int:
             )
         wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the RViz goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
+        wait_for(
+            node,
+            lambda: bool(node.selected_orientations),
+            4.0,
+            "course-over-ground selection produced no global orientation",
+        )
         # Let the final odometry sample arrive after the action result.  The
         # action result is the authoritative goal-tolerance decision because
         # Nav2 evaluates the map->base_footprint transform, whereas this
@@ -445,6 +459,7 @@ def main() -> int:
                 "canonical_vehicle_command" if expect_canonical else "legacy_cmd_vel"
             ),
             "capability_profiles": len(node.capability_profiles),
+            "selected_orientations": len(node.selected_orientations),
             "expected_capability_profile": (
                 "no_obstacle_detection" if expect_no_obstacles else "obstacle_detection"
             ),

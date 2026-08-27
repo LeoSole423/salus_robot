@@ -186,7 +186,9 @@ components:
       - src/salus_localization/test/test_kinematic_ackermann_odometry_node.py
       - src/salus_bringup/launch/vehicle_io_sim.launch.py
       - tools/smoke_localization_sim.sh
-    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. Simulation can explicitly select the legacy compatibility path or the canonical adapter-conversion-odometry chain while preserving one main wheel-odometry authority; legacy remains the default. The validated simulation sign/scale are not hardware calibration. Real-bag and hardware calibration parity remain pending.
+      - tools/smoke_sensor_selection_sim.sh
+      - docs/migration-evidence/intent/imu-and-global-orientation-profiles.md
+    note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. Simulation explicitly selects one local IMU and one global orientation source without fallback; only imu_primary is produced, while external_heading uses a ground-truth fixture. The global EKF and navsat_transform share the selected heading, and stationary local yaw is diagnostic rather than a second absolute source. Simulation can select legacy or canonical vehicle odometry while preserving one main authority. Physical mounts, Pixhawk/PCB adapters, dual-GNSS semantics, real-bag parity and calibration remain pending.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception

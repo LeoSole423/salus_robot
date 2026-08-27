@@ -100,6 +100,14 @@ llegaron por MAVROS, USB o una PCB. La selección de fuentes será explícita po
 perfil; no habrá conmutación silenciosa entre dos fuentes con semánticas
 distintas.
 
+La IMU de movimiento local y la orientación global son selecciones
+independientes. Cada selector se suscribe sólo a la fuente declarada por el
+perfil y publica un único tópico lógico; ausencia, invalidez o staleness no
+habilitan otra fuente. La orientación global seleccionada alimenta tanto el EKF
+global como `navsat_transform`. Un yaw derivado de la odometría local no puede
+reemplazarla automáticamente. El hold temporal dentro de un estimador conserva
+la identidad de esa fuente y debe declararse y diagnosticarse.
+
 La ausencia de LiDAR es un perfil operativo válido sólo cuando la autonomía de
 evitación de obstáculos está deshabilitada explícitamente. La pérdida de un
 LiDAR requerido no transforma automáticamente el robot en ese perfil.

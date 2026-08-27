@@ -13,6 +13,8 @@
 
   <xacro:macro name="salus_sensor_mounts">
     <xacro:sensor_mount name="lidar_link" xyz="0.92 0 0.65" rpy="0 0.1745 0"/>
+    <xacro:sensor_mount name="imu_primary_link" xyz="0.66 0 0.63" rpy="0 0 0"/>
+    <!-- Compatibility frame for the pre-profile simulated IMU contract. -->
     <xacro:sensor_mount name="imu_link" xyz="0.66 0 0.63" rpy="0 0 0"/>
     <xacro:sensor_mount name="gps_link" xyz="0.66 0.2 0.62" rpy="0 0 0"/>
   </xacro:macro>

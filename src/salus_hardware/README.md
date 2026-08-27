@@ -19,8 +19,10 @@
   `source_id`, conserva timestamp/secuencia y nunca selecciona fuentes,
   publica odometría ni tiene autoridad sobre actuadores.
 - `capability_profile` publica `/system/capabilities` como snapshot latched del
-  perfil elegido al arrancar. En esta etapa admite `obstacle_detection` y
-  `no_obstacle_detection`; no observa salud dinámica ni conmuta ante fallos.
+  perfil elegido al arrancar. Además del eje de obstáculos, declara la única
+  `imu_source` y `orientation_source` seleccionadas. Sus salidas lógicas pasan
+  por `UNAVAILABLE`, `READY` y `STALE` según recepción/frescura, sin cambiar de
+  fuente. El estado de obstáculos continúa siendo sólo declarativo.
 - Estado: cámara PTZ dispone de contratos, políticas puras, backends
   simulado/ISAPI, persistencia atómica y el ejecutable `camera_node`; pasó
   pruebas unitarias y el smoke WebSocket en simulación. La validación física

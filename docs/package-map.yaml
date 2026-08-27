@@ -12,19 +12,19 @@ packages:
     build_type: ament_cmake
     language: xacro
     may_depend_on: []
-    status: ported_motion_description
+    status: ported_motion_description_with_primary_imu_identity
   salus_hardware:
     owner: hardware_adapters
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_camera_vehicle_measurement_and_capability_profile_adapters_hardware_validation_pending
+    status: ported_camera_vehicle_measurement_and_explicit_sensor_capability_profiles_hardware_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_global_simulation_and_selectable_kinematic_odometry_pending_hardware_validation
+    status: ported_global_simulation_selectable_kinematic_odometry_imu_and_heading_profiles_pending_hardware_validation
   salus_perception:
     owner: perception
     build_type: ament_python
@@ -82,4 +82,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profiles_with_canonical_command_and_explicit_no_obstacle_detection_pending_hardware_validation
+    status: operational_sim_profiles_with_explicit_obstacle_imu_heading_and_command_selection_pending_hardware_validation
