@@ -29,6 +29,7 @@ class ControlProbe(Node):
         self.guard = []
         self.vehicle_commands = []
         self.command_diagnostics = []
+        self.dry_run_diagnostics = []
         self.create_subscription(BatteryState, "/battery_state", self.battery.append, 10)
         self.create_subscription(BatteryMissionGuard, "/battery_mission_guard", self.guard.append, 10)
         self.create_subscription(
@@ -42,6 +43,12 @@ class ControlProbe(Node):
             DiagnosticArray,
             "/vehicle/command_shadow/diagnostics",
             self.command_diagnostics.append,
+            10,
+        )
+        self.create_subscription(
+            DiagnosticArray,
+            "/vehicle/command_dry_run/diagnostics",
+            self.dry_run_diagnostics.append,
             10,
         )
         self.preset = self.create_client(SetSimBatteryPreset, "/sim_battery/set_preset")
@@ -67,6 +74,10 @@ def main() -> int:
         runtime.wait_topic_publishers(
             "vehicle command comparison diagnostics",
             "/vehicle/command_shadow/diagnostics",
+        )
+        runtime.wait_topic_publishers(
+            "canonical command dry-run diagnostics",
+            "/vehicle/command_dry_run/diagnostics",
         )
         runtime.wait(
             "progressive battery publications",
@@ -112,6 +123,28 @@ def main() -> int:
                 "command_diagnostics": len(node.command_diagnostics)
             },
         )
+        runtime.wait(
+            "canonical command accepted by dry-run consumer",
+            lambda: any(
+                item.status
+                and item.status[0].level == DiagnosticStatus.OK
+                and item.status[0].message == "accepted"
+                for item in node.dry_run_diagnostics
+            ),
+            5.0,
+            observe=lambda: {"dry_run": len(node.dry_run_diagnostics)},
+        )
+        runtime.wait(
+            "canonical command dry-run watchdog",
+            lambda: any(
+                item.status
+                and item.status[0].level == DiagnosticStatus.ERROR
+                and item.status[0].message == "watchdog_timeout"
+                for item in node.dry_run_diagnostics
+            ),
+            3.0,
+            observe=lambda: {"dry_run": len(node.dry_run_diagnostics)},
+        )
         runtime.wait("battery state service", node.state.service_is_ready, 10.0)
         for preset in ("full", "under_load", "watching", "return_home_rest",
                        "return_home_load", "stale", "suspect", "unavailable"):
@@ -135,6 +168,7 @@ def main() -> int:
             "guard_messages": len(node.guard),
             "vehicle_command_messages": len(node.vehicle_commands),
             "vehicle_command_diagnostics": len(node.command_diagnostics),
+            "dry_run_diagnostics": len(node.dry_run_diagnostics),
         })
         node.destroy_node()
         rclpy.shutdown()

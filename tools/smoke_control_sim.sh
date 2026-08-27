@@ -15,6 +15,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-41}" -e GZ_PART
   test "$(ros2 topic type /battery_mission_guard)" = "salus_interfaces/msg/BatteryMissionGuard"
   test "$(ros2 topic type /vehicle/command_shadow)" = "salus_interfaces/msg/VehicleCommand"
   test "$(ros2 topic type /vehicle/command_shadow/diagnostics)" = "diagnostic_msgs/msg/DiagnosticArray"
+  test "$(ros2 topic type /vehicle/command_dry_run/diagnostics)" = "diagnostic_msgs/msg/DiagnosticArray"
   smoke_run control_probe "python3 /ros2_ws/tools/smoke_control_sim.py"
   smoke_note "battery_presets_validated"
   echo "Control simulation smoke test passed"
