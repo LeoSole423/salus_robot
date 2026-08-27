@@ -24,6 +24,7 @@ setup(
             "controller_server_node = salus_control.controller_server_node:main",
             "legacy_vehicle_command_node = salus_control.legacy_vehicle_command_node:main",
             "vehicle_command_comparison_node = salus_control.vehicle_command_comparison_node:main",
+            "canonical_command_dry_run_node = salus_control.canonical_command_dry_run_node:main",
         ],
     },
 )

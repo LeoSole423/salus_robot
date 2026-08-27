@@ -45,6 +45,6 @@ que el nuevo contrato esté validado en hardware.
 
 ## Próximo corte
 
-Implementar un consumidor de `VehicleCommand` con validación y watchdog propio,
-conectado primero a un backend de simulación seleccionable. La ruta legacy debe
+El corte posterior implementó validación y watchdog en `dry_run`. El siguiente
+paso es conectarlo a un backend de simulación seleccionable. La ruta legacy debe
 seguir siendo el default y no habrá conexión a hardware en ese corte.

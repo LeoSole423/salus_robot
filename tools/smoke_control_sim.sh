@@ -10,11 +10,21 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-41}" -e GZ_PART
   smoke_init control-battery
   trap smoke_cleanup EXIT
   smoke_start_launch control_launch "ros2 launch salus_control control_sim.launch.py"
+  for topic in \
+    /cmd_vel_final \
+    /battery_state \
+    /battery_mission_guard \
+    /vehicle/command_shadow \
+    /vehicle/command_shadow/diagnostics \
+    /vehicle/command_dry_run/diagnostics; do
+    smoke_wait_topic "${topic}" 30
+  done
   test "$(ros2 topic type /cmd_vel_final)" = "salus_interfaces/msg/CmdVelFinal"
   test "$(ros2 topic type /battery_state)" = "sensor_msgs/msg/BatteryState"
   test "$(ros2 topic type /battery_mission_guard)" = "salus_interfaces/msg/BatteryMissionGuard"
   test "$(ros2 topic type /vehicle/command_shadow)" = "salus_interfaces/msg/VehicleCommand"
   test "$(ros2 topic type /vehicle/command_shadow/diagnostics)" = "diagnostic_msgs/msg/DiagnosticArray"
+  test "$(ros2 topic type /vehicle/command_dry_run/diagnostics)" = "diagnostic_msgs/msg/DiagnosticArray"
   smoke_run control_probe "python3 /ros2_ws/tools/smoke_control_sim.py"
   smoke_note "battery_presets_validated"
   echo "Control simulation smoke test passed"

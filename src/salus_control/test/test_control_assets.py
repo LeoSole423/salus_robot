@@ -40,3 +40,15 @@ def test_simulation_launches_shadow_comparison_without_an_actuation_topic() -> N
     assert "vehicle_command_comparison_node =" in setup
     assert '"/vehicle/command_shadow/diagnostics"' in source
     assert "create_publisher(VehicleCommand" not in source
+
+
+def test_simulation_launches_non_authoritative_canonical_dry_run() -> None:
+    launch = (ROOT / "launch/control_sim.launch.py").read_text(encoding="utf-8")
+    setup = (ROOT / "setup.py").read_text(encoding="utf-8")
+    source = (ROOT / "salus_control/canonical_command_dry_run_node.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'executable="canonical_command_dry_run_node"' in launch
+    assert "canonical_command_dry_run_node =" in setup
+    assert '"/vehicle/command_dry_run/diagnostics"' in source
+    assert "create_publisher(VehicleCommand" not in source

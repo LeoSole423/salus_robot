@@ -36,7 +36,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: parity_passed_sim_with_vehicle_command_shadow_diagnostics
+    status: parity_passed_sim_with_canonical_command_dry_run
   salus_navigation:
     owner: autonomy
     build_type: ament_python

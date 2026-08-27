@@ -16,6 +16,11 @@
   Publica únicamente `DiagnosticArray` en
   `/vehicle/command_shadow/diagnostics`; sus divergencias quedan latched en
   contadores y no bloquean ni modifican el comando autoritativo.
+- Consumidor canónico `dry_run`: valida rangos, finitud, enum, timestamp,
+  vigencia y monotonía; limita `valid_for` a `0.7 s` y aplica un watchdog de
+  recepción monotónico. E-stop, disable y freno inhiben movimiento efectivo.
+  Publica sólo `/vehicle/command_dry_run/diagnostics`, con
+  `authoritative=false`; no tiene conexión a ningún backend.
 - Estado: primer corte funcional en simulación. El backend UART está preservado
   como código de compatibilidad, pero no fue conectado ni validado en hardware.
 - Prueba: `colcon test --packages-select salus_control`.

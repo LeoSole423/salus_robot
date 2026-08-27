@@ -47,5 +47,14 @@ def generate_launch_description() -> LaunchDescription:
                     {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}
                 ],
             ),
+            Node(
+                package="salus_control",
+                executable="canonical_command_dry_run_node",
+                name="canonical_command_dry_run",
+                output="screen",
+                parameters=[
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}
+                ],
+            ),
         ]
     )

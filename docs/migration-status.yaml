@@ -84,6 +84,19 @@ components:
       - tools/smoke_control_sim.py
       - docs/migration-evidence/intent/vehicle-command-shadow-comparison.md
     note: Non-authoritative simulation observer with FIFO pairing, monotonic timeout, bounded queues and latched mismatch counters. It publishes diagnostics only and cannot modify or block control.
+  canonical_command_dry_run:
+    source: /vehicle/command_shadow
+    target: salus_control/canonical_command_dry_run
+    state: ported
+    contracts:
+      - VehicleCommand
+      - DiagnosticArray
+    evidence:
+      - src/salus_control/salus_control/canonical_command_consumer.py
+      - src/salus_control/test/test_canonical_command_consumer.py
+      - tools/smoke_control_sim.py
+      - docs/migration-evidence/intent/canonical-command-consumer-dry-run.md
+    note: Non-authoritative canonical validation and monotonic watchdog with diagnostics-only dry-run output. It is not connected to Gazebo, UART, Pixhawk or hardware.
   legacy_drive_measurement_adapter:
     source: controller_server/DriveTelemetry
     target: salus_hardware/legacy_drive_measurement_node
