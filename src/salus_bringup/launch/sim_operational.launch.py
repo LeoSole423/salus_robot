@@ -32,6 +32,14 @@ def generate_launch_description() -> LaunchDescription:
             description="Run legacy odometry on isolated shadow topics.",
         ),
         DeclareLaunchArgument(
+            "command_input_mode",
+            default_value="legacy_cmd_vel",
+            description=(
+                "Exclusive control input: legacy_cmd_vel or "
+                "canonical_vehicle_command."
+            ),
+        ),
+        DeclareLaunchArgument(
             "headless", default_value="false",
             description="Run only the Gazebo server when true.",
         ),
@@ -61,6 +69,7 @@ def generate_launch_description() -> LaunchDescription:
                 "use_sim_time": LaunchConfiguration("use_sim_time"),
                 "vehicle_io_profile": LaunchConfiguration("vehicle_io_profile"),
                 "compare_legacy_odometry": LaunchConfiguration("compare_legacy_odometry"),
+                "command_input_mode": LaunchConfiguration("command_input_mode"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "rviz": LaunchConfiguration("rviz"),

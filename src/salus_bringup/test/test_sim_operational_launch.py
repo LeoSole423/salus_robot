@@ -24,6 +24,8 @@ def test_operational_profile_has_full_remote_defaults() -> None:
         'DeclareLaunchArgument("web_ws_port", default_value="8766")',
         'DeclareLaunchArgument("web_telemetry_profile", default_value="compact")',
         '"runtime_dir", default_value="runtime/sim_operational"',
+        '"command_input_mode",\n            default_value="legacy_cmd_vel"',
+        '"command_input_mode": LaunchConfiguration("command_input_mode")',
     ):
         assert fragment in contents
 

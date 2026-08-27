@@ -255,8 +255,9 @@ components:
     evidence:
       - src/salus_bringup/launch/integration_sim.launch.py
       - src/salus_bringup/launch/sim_operational.launch.py
+      - docs/migration-evidence/intent/canonical-command-motion-composition.md
       - docs/migration-evidence/intent/sim-operational-bringup.md
       - tools/smoke_integration_sim.sh
       - tools/smoke_sim_operational.sh
       - tools/smoke_operational_persistence.sh
-    note: El checkpoint integrado se conserva y sim_operational pasó una sesión end-to-end y una restauración de runtime en simulación. Repeticiones de confiabilidad, paridad legacy A/B y bringups reales siguen pendientes; no declarar paridad de hardware.
+    note: El checkpoint integrado se conserva, propaga selectores independientes para medición/odometría y entrada de comandos, y sim_operational pasó una sesión end-to-end y una restauración de runtime en simulación. El movimiento canónico está validado sin navegación; falta una meta Nav2 operacional canónica, paridad legacy A/B y bringups reales. No declarar paridad de hardware.

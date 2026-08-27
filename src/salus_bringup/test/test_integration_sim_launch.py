@@ -41,6 +41,8 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "launch_camera" in contents
     assert "vehicle_io_profile" in contents
     assert "compare_legacy_odometry" in contents
+    assert "command_input_mode" in contents
+    assert '"command_input_mode": command_input_mode' in contents
     assert "odometry_backend" in contents
     assert "web_waypoints_file" in contents
     assert "web_telemetry_profile" in contents
