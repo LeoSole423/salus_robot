@@ -108,8 +108,10 @@ components:
       - src/salus_control/salus_control/canonical_command_consumer.py
       - src/salus_control/salus_control/controller_server_node.py
       - tools/smoke_control_sim.py
+      - tools/smoke_navigation_canonical_sim.sh
       - docs/migration-evidence/intent/canonical-command-sim-backend.md
-    note: Selectable simulation-only canonical authority reuses the single Gazebo backend, with legacy input remaining the default. Canonical input is explicitly rejected with UART; acceleration, jerk and steering-rate constraints are not implemented by the current simulation plugin.
+      - docs/migration-evidence/intent/canonical-navigation-motion.md
+    note: Selectable simulation-only canonical authority reuses the single Gazebo backend, with legacy input remaining the default. A complete Nav2 goal is validated through the sole nav_command_server authority, the transitional VehicleCommand adapter and fresh canonical consumption. Canonical input is explicitly rejected with UART; acceleration, jerk and steering-rate constraints are not implemented by the current simulation plugin.
   legacy_drive_measurement_adapter:
     source: controller_server/DriveTelemetry
     target: salus_hardware/legacy_drive_measurement_node

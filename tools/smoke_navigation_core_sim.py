@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import sys
@@ -17,7 +18,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
-from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth
+from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth, VehicleCommand
+from std_msgs.msg import String
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
 from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 
@@ -39,6 +41,8 @@ class NavigationSmoke(Node):
         self.raw_commands: list[Twist] = []
         self.safe_commands: list[Twist] = []
         self.navigation_action_status: list[GoalStatusArray] = []
+        self.vehicle_commands: list[VehicleCommand] = []
+        self.controller_status: list[dict] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
         self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
@@ -48,6 +52,10 @@ class NavigationSmoke(Node):
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
         self.create_subscription(Twist, "/cmd_vel_safe", self.safe_commands.append, 10)
+        self.create_subscription(
+            VehicleCommand, "/vehicle/command_shadow", self.vehicle_commands.append, 10,
+        )
+        self.create_subscription(String, "/controller/status", self._on_controller_status, 10)
         self.create_subscription(
             GoalStatusArray,
             "/navigate_to_pose/_action/status",
@@ -64,6 +72,14 @@ class NavigationSmoke(Node):
         self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
         self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
+
+    def _on_controller_status(self, message: String) -> None:
+        try:
+            payload = json.loads(message.data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if isinstance(payload, dict):
+            self.controller_status.append(payload)
 
     @staticmethod
     def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
@@ -186,6 +202,7 @@ def main() -> int:
     node.runtime = runtime
     success = False
     failure = None
+    expect_canonical = os.environ.get("EXPECT_CANONICAL_COMMAND", "0") == "1"
     try:
         wait_for(
             node, lambda: node.startup.active, 45.0,
@@ -273,6 +290,8 @@ def main() -> int:
         node.raw_commands.clear()
         node.safe_commands.clear()
         node.final.clear()
+        node.vehicle_commands.clear()
+        node.controller_status.clear()
         node.runtime.wait(
             "RViz /goal_pose has no subscriber",
             lambda: node.rviz_goal.get_subscription_count() >= 1,
@@ -296,6 +315,30 @@ def main() -> int:
         except RuntimeError as exc:
             reason = node.path_health[-1].reason if node.path_health else "no PathHealth message"
             raise RuntimeError(f"{exc}; last path health: {reason}") from exc
+        if expect_canonical:
+            wait_for(
+                node,
+                lambda: (
+                    any(
+                        message.source == VehicleCommand.SOURCE_AUTO
+                        and message.drive_enabled
+                        and not message.emergency_stop
+                        and message.brake_ratio < 0.01
+                        and message.drive.speed > 0.1
+                        and (message.valid_for.sec > 0 or message.valid_for.nanosec > 0)
+                        for message in node.vehicle_commands
+                    )
+                    and any(
+                        status.get("input_mode") == "canonical_vehicle_command"
+                        and status.get("fresh") is True
+                        and str(status.get("source", "")).startswith("canonical_")
+                        and float(status.get("command", {}).get("speed_mps", 0.0)) > 0.1
+                        for status in node.controller_status
+                    )
+                ),
+                8.0,
+                "Nav2 command did not reach a fresh canonical controller input",
+            )
         wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the RViz goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
         # Let the final odometry sample arrive after the action result.  The
@@ -351,6 +394,11 @@ def main() -> int:
             "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
             "navigation_action_status": len(node.navigation_action_status),
+            "vehicle_commands": len(node.vehicle_commands),
+            "controller_status": len(node.controller_status),
+            "expected_command_input": (
+                "canonical_vehicle_command" if expect_canonical else "legacy_cmd_vel"
+            ),
             "navigation_startup": node.startup.snapshot(),
         })
         node.destroy_node()

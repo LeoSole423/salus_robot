@@ -23,6 +23,10 @@ ros2 launch salus_bringup integration_sim.launch.py \
 
 El valor predeterminado continúa siendo `legacy_cmd_vel`. Este selector es
 independiente de `vehicle_io_profile`, que elige mediciones y odometría.
+El escenario `tools/smoke_navigation_canonical_sim.sh` valida que una meta Nav2
+atraviesa el arbitraje único de `nav_command_server`, la traducción temporal a
+`VehicleCommand`, el consumidor canónico y el backend Gazebo. No publica
+directamente en `/cmd_vel_final`.
 
 Con Gazebo y RViz visibles:
 

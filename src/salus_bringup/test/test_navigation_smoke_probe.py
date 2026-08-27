@@ -44,3 +44,17 @@ def test_second_goal_waits_for_nav2_cancel_completion() -> None:
         '"right-turn diagnostic goal remained active"', 1
     )[1].split("start = node.odom[-1]", 1)[0]
     assert "navigate_action_is_idle" in cancellation
+
+
+def test_canonical_variant_preserves_nav_authority_and_checks_fresh_input() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    wrapper = (ROOT / "tools" / "smoke_navigation_canonical_sim.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "command_input_mode:=canonical_vehicle_command" in wrapper
+    assert "EXPECT_CANONICAL_COMMAND=1" in wrapper
+    assert 'create_publisher(CmdVelFinal, "/cmd_vel_final"' not in source
+    assert 'VehicleCommand, "/vehicle/command_shadow"' in source
+    assert 'String, "/controller/status"' in source
+    assert 'status.get("input_mode") == "canonical_vehicle_command"' in source
+    assert 'status.get("fresh") is True' in source

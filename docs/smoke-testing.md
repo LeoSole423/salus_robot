@@ -17,6 +17,7 @@ afirmaciones funcionales.
 | LiDAR | `empty.world` con obstáculo | nube 3D y scan derivado |
 | seguridad | `free.world` | arbitraje y parada segura |
 | Nav2 | `free.world` | goal único y cadena automática |
+| Nav2 canónico | `free.world` | goal Nav2, `VehicleCommand` fresco y actuación Gazebo |
 | zonas | `free.world`, runtime único | máscara keepout y recarga |
 | rutas | `free.world` | misión, checkpoints, progreso y cancelación |
 | patrulla/HOME | `free.world` | fases de misión y retorno por batería |
