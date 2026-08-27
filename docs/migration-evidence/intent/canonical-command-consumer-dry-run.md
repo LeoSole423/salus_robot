@@ -39,8 +39,8 @@ Twist, setpoints, porcentajes ni bytes. Su única salida es
 - smoke causal que observa aceptación y luego estado seguro por watchdog;
 - build y suite completa del repositorio.
 
-## Próximo corte
+## Continuación
 
-Añadir un backend canónico de simulación seleccionable mediante perfil. La ruta
-legacy continuará como default y será imposible habilitar simultáneamente dos
-autoridades sobre el tópico de actuación simulado.
+El backend canónico de simulación se añadió como modo seleccionable, conservando
+la ruta legacy como predeterminada y una sola autoridad de actuación. El dry-run
+permanece disponible como observador independiente.

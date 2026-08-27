@@ -9,9 +9,13 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
+    command_input_mode = LaunchConfiguration("command_input_mode")
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="false"),
+            DeclareLaunchArgument(
+                "command_input_mode", default_value="legacy_cmd_vel"
+            ),
             Node(
                 package="salus_control",
                 executable="controller_server_node",
@@ -21,6 +25,7 @@ def generate_launch_description() -> LaunchDescription:
                     {
                         "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
                         "transport_backend": "sim_gazebo",
+                        "command_input_mode": command_input_mode,
                         "serial_port": "/dev/null",
                         "sim_cmd_vel_topic": "/cmd_vel_gazebo",
                         "sim_odom_topic": "/odom_raw",

@@ -52,3 +52,14 @@ def test_simulation_launches_non_authoritative_canonical_dry_run() -> None:
     assert "canonical_command_dry_run_node =" in setup
     assert '"/vehicle/command_dry_run/diagnostics"' in source
     assert "create_publisher(VehicleCommand" not in source
+
+
+def test_simulation_selects_one_command_input_and_defaults_to_legacy() -> None:
+    launch = (ROOT / "launch/control_sim.launch.py").read_text(encoding="utf-8")
+    source = (ROOT / "salus_control/controller_server_node.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"command_input_mode", default_value="legacy_cmd_vel"' in launch
+    assert '"command_input_mode": command_input_mode' in launch
+    assert 'if self._command_input_mode == "legacy_cmd_vel"' in source
+    assert "canonical_vehicle_command is restricted to the sim_gazebo" in source

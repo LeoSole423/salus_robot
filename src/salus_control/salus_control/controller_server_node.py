@@ -6,7 +6,12 @@ import time
 from dataclasses import asdict
 
 import rclpy
-from salus_interfaces.msg import BatteryMissionGuard, CmdVelFinal, DriveTelemetry
+from salus_interfaces.msg import (
+    BatteryMissionGuard,
+    CmdVelFinal,
+    DriveTelemetry,
+    VehicleCommand,
+)
 from salus_interfaces.srv import SetSimBatteryPreset, SetSimBatteryState
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
@@ -23,12 +28,35 @@ from .control_logic import (
     safe_command,
     select_effective_command,
 )
+from .canonical_command_consumer import (
+    CanonicalCommandConfig,
+    CanonicalCommandConsumer,
+    CanonicalCommandSample,
+    desired_command_from_canonical,
+)
 from .serial_port_resolver import resolve_serial_port
 from .transport_backends import create_transport_backend
 
 
 def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
+
+
+def validate_command_input_mode(command_input_mode: str, transport_backend: str) -> str:
+    """Validate exclusive command authority for this migration cut."""
+    mode = str(command_input_mode).strip().lower()
+    backend = str(transport_backend).strip().lower()
+    if mode not in ("legacy_cmd_vel", "canonical_vehicle_command"):
+        raise ValueError(
+            "command_input_mode must be 'legacy_cmd_vel' or "
+            "'canonical_vehicle_command'"
+        )
+    if mode == "canonical_vehicle_command" and backend != "sim_gazebo":
+        raise ValueError(
+            "canonical_vehicle_command is restricted to the sim_gazebo "
+            "backend in this migration cut"
+        )
+    return mode
 
 
 class ControllerServerNode(Node):
@@ -76,6 +104,9 @@ class ControllerServerNode(Node):
         self.declare_parameter("battery_guard_loaded_low_persist_s", 90.0)
         self.declare_parameter("battery_guard_recovered_low_persist_s", 20.0)
         self.declare_parameter("transport_backend", "uart")
+        self.declare_parameter("command_input_mode", "legacy_cmd_vel")
+        self.declare_parameter("canonical_command_topic", "/vehicle/command_shadow")
+        self.declare_parameter("canonical_max_future_skew_s", 0.1)
         self.declare_parameter("sim_cmd_vel_topic", "/cmd_vel_gazebo")
         self.declare_parameter("sim_odom_topic", "/odom_raw")
         self.declare_parameter("sim_joint_states_topic", "/joint_states")
@@ -212,6 +243,13 @@ class ControllerServerNode(Node):
             ),
         )
         self._transport_backend = str(self.get_parameter("transport_backend").value)
+        self._command_input_mode = validate_command_input_mode(
+            self.get_parameter("command_input_mode").value,
+            self._transport_backend,
+        )
+        self._canonical_command_topic = str(
+            self.get_parameter("canonical_command_topic").value
+        )
         self._sim_cmd_vel_topic = str(self.get_parameter("sim_cmd_vel_topic").value)
         self._sim_odom_topic = str(self.get_parameter("sim_odom_topic").value)
         self._sim_joint_states_topic = str(
@@ -247,6 +285,19 @@ class ControllerServerNode(Node):
         self._auto_stamp_s = 0.0
         self._last_source = "init"
         self._last_steer_saturated = False
+        self._canonical_consumer = None
+        if self._command_input_mode == "canonical_vehicle_command":
+            self._canonical_consumer = CanonicalCommandConsumer(
+                CanonicalCommandConfig(
+                    max_forward_speed_mps=self._max_speed_mps,
+                    max_reverse_speed_mps=self._max_reverse_mps,
+                    max_steering_angle_rad=self._sim_max_steering_angle_rad,
+                    max_valid_for_s=self._auto_timeout_s,
+                    max_future_skew_s=float(
+                        self.get_parameter("canonical_max_future_skew_s").value
+                    ),
+                )
+            )
 
         self._client = create_transport_backend(
             node=self,
@@ -277,7 +328,19 @@ class ControllerServerNode(Node):
             f"resolved={self._serial_port})"
         )
 
-        self.create_subscription(CmdVelFinal, "/cmd_vel_final", self._on_cmd_vel_final, 10)
+        if self._command_input_mode == "legacy_cmd_vel":
+            self.create_subscription(
+                CmdVelFinal, "/cmd_vel_final", self._on_cmd_vel_final, 10
+            )
+            command_source_topic = "/cmd_vel_final"
+        else:
+            self.create_subscription(
+                VehicleCommand,
+                self._canonical_command_topic,
+                self._on_canonical_vehicle_command,
+                10,
+            )
+            command_source_topic = self._canonical_command_topic
         self._status_pub = self.create_publisher(String, "/controller/status", 10)
         self._telemetry_pub = self.create_publisher(String, "/controller/telemetry", 10)
         self._drive_telemetry_pub = self.create_publisher(
@@ -311,7 +374,7 @@ class ControllerServerNode(Node):
         self.get_logger().info(
             "controller_server ready "
             f"(backend={self._transport_backend}, serial={self._serial_port}@{self._serial_baud}, "
-            "source=/cmd_vel_final)"
+            f"input={self._command_input_mode}, source={command_source_topic})"
         )
         if self._sim_battery_preset_srv is not None:
             self.get_logger().info(
@@ -390,6 +453,33 @@ class ControllerServerNode(Node):
             f"curvature={cmd.applied_curvature_inv_m:.3f} brake_pct={cmd.brake_pct}"
         )
 
+    def _on_canonical_vehicle_command(self, msg: VehicleCommand) -> None:
+        assert self._canonical_consumer is not None
+        sample = CanonicalCommandSample(
+            stamp_ns=msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec,
+            source=int(msg.source),
+            drive_enabled=bool(msg.drive_enabled),
+            emergency_stop=bool(msg.emergency_stop),
+            brake_ratio=float(msg.brake_ratio),
+            speed_mps=float(msg.drive.speed),
+            steering_angle_rad=float(msg.drive.steering_angle),
+            steering_angle_velocity_rad_s=float(msg.drive.steering_angle_velocity),
+            acceleration_mps2=float(msg.drive.acceleration),
+            jerk_mps3=float(msg.drive.jerk),
+            valid_for_s=msg.valid_for.sec + msg.valid_for.nanosec / 1_000_000_000.0,
+        )
+        effective = self._canonical_consumer.ingest(
+            sample,
+            ros_now_ns=self.get_clock().now().nanoseconds,
+            monotonic_now_s=time.monotonic(),
+        )
+        self._auto_cmd = desired_command_from_canonical(
+            effective,
+            steering_limit_rad=self._sim_max_steering_angle_rad,
+        )
+        self._auto_stamp_s = time.monotonic()
+        self._last_source = f"canonical_{effective.reason}"
+
     def _on_set_sim_battery_preset(
         self,
         request: SetSimBatteryPreset.Request,
@@ -457,6 +547,30 @@ class ControllerServerNode(Node):
 
     def _control_tick(self) -> None:
         now = time.monotonic()
+        if self._canonical_consumer is not None:
+            effective = self._canonical_consumer.tick(now)
+            cmd = desired_command_from_canonical(
+                effective,
+                steering_limit_rad=self._sim_max_steering_angle_rad,
+            )
+            self._auto_cmd = cmd
+            source = f"canonical_{effective.reason}"
+            fresh = effective.valid
+            self._apply_to_controller(cmd)
+            self._last_source = source
+            status = {
+                "mode": "auto",
+                "input_mode": self._command_input_mode,
+                "source": source,
+                "fresh": fresh,
+                "global_estop": bool(cmd.estop),
+                "command": asdict(cmd),
+                "timestamp": time.time(),
+            }
+            msg = String()
+            msg.data = json.dumps(status, ensure_ascii=True)
+            self._status_pub.publish(msg)
+            return
         auto_cmd = self._auto_cmd
         auto_stamp_s = self._auto_stamp_s
 
