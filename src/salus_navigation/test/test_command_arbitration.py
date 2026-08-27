@@ -6,6 +6,17 @@ from salus_interfaces.msg import PathHealth
 from salus_navigation.nav_command_server import CommandArbiter
 
 
+def test_explicit_no_detection_profile_does_not_require_scan() -> None:
+    arbiter = CommandArbiter(
+        manual_timeout_s=0.4,
+        monitor_timeout_s=1.0,
+        obstacle_detection_required=False,
+    )
+    command, reason = arbiter.automatic_output(Twist(), 10.0)
+    assert command is not None
+    assert reason == "auto"
+
+
 def test_automatic_command_requires_fresh_safety_scan() -> None:
     arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
     twist = Twist()

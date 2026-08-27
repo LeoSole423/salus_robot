@@ -18,7 +18,12 @@ from typing import Any, Callable, Iterable, Mapping
 
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from nav_msgs.msg import Odometry
 from rosidl_runtime_py.convert import message_to_ordereddict
 from sensor_msgs.msg import BatteryState, LaserScan, NavSatFix
@@ -27,10 +32,12 @@ from std_srvs.srv import Trigger
 
 from salus_interfaces.msg import (
     BatteryMissionGuard,
+    CapabilityState,
     CmdVelFinal,
     DriveTelemetry,
     NavEvent,
     NavTelemetry,
+    SystemCapabilities,
 )
 from salus_interfaces.srv import (
     BrakeNav,
@@ -70,6 +77,26 @@ class RosGatewayError(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def capability_state_label(value: object) -> str:
+    """Project typed ROS constants into a stable operator-facing label."""
+
+    labels = {
+        CapabilityState.STATE_UNKNOWN: "unknown",
+        CapabilityState.STATE_NOT_INSTALLED: "not_installed",
+        CapabilityState.STATE_DISABLED_BY_PROFILE: "disabled_by_profile",
+        CapabilityState.STATE_UNAVAILABLE: "unavailable",
+        CapabilityState.STATE_INVALID: "invalid",
+        CapabilityState.STATE_STALE: "stale",
+        CapabilityState.STATE_FAILED: "failed",
+        CapabilityState.STATE_ENABLED_BY_PROFILE: "enabled_by_profile",
+        CapabilityState.STATE_READY: "ready",
+    }
+    try:
+        return labels.get(int(value), "unknown")
+    except (TypeError, ValueError):
+        return "unknown"
 
 
 class CockpitRosGateway(Node):
@@ -152,6 +179,17 @@ class CockpitRosGateway(Node):
             qos_profile_sensor_data,
         )
         self.create_subscription(String, "/gps/rtk_status", self._on_rtk, 10)
+        capability_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.create_subscription(
+            SystemCapabilities,
+            "/system/capabilities",
+            self._on_capabilities,
+            capability_qos,
+        )
         if bool(self.get_parameter("scan_preview_enabled").value):
             self.create_subscription(
                 LaserScan,
@@ -465,6 +503,20 @@ class CockpitRosGateway(Node):
         payload = _message_dict(message)
         payload["op"] = "nav_event"
         self._emit(payload)
+
+    def _on_capabilities(self, message: SystemCapabilities) -> None:
+        values = _message_dict(message)
+        capabilities = {}
+        for item in values.get("capabilities", []):
+            if not isinstance(item, Mapping) or not item.get("capability_id"):
+                continue
+            projected = dict(item)
+            projected["state_label"] = capability_state_label(item.get("state"))
+            capabilities[str(item["capability_id"])] = projected
+        with self._lock:
+            self._cache["capability_profile"] = message.profile
+            self._cache["capabilities"] = capabilities
+        self._on_cached_telemetry_change()
 
     def _on_drive_telemetry(self, message: DriveTelemetry) -> None:
         values = _message_dict(message)

@@ -202,6 +202,16 @@ async def scenario() -> dict:
         for section in ("nav", "route_mission", "patrol_mission", "zones"):
             if section not in state:
                 raise RuntimeError(f"state omitted {section}")
+        capabilities = state.get("capabilities", {})
+        obstacle_detection = capabilities.get("local_obstacle_detection", {})
+        if (
+            state.get("capability_profile") != "obstacle_detection"
+            or obstacle_detection.get("state_label") != "enabled_by_profile"
+            or obstacle_detection.get("enabled") is not True
+            or obstacle_detection.get("required") is not True
+        ):
+            raise RuntimeError(f"state omitted the effective capability profile: {state}")
+        evidence["capability_profile"] = state.get("capability_profile")
         evidence["operations"].append("state")
 
         zones = await first.request("set_zones_geojson", {

@@ -18,5 +18,6 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
           "path_health = salus_navigation.path_health:main",
           "patrol_mission_coordinator = salus_navigation.patrol_mission_coordinator:main",
           "route_executor = salus_navigation.route_executor_node:main",
+          "safety_command_passthrough = salus_navigation.safety_command_passthrough:main",
           "zones_manager = salus_navigation.zones_manager:main",
       ]})

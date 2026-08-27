@@ -10,6 +10,7 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
       maintainer="SALUS maintainers", maintainer_email="leonel.sole423@gmail.com",
       description="Hardware adapters for SALUS.", license="MIT", entry_points={"console_scripts": [
           "camera_node = salus_hardware.camera_node:main",
+          "capability_profile = salus_hardware.capability_profile_node:main",
           "legacy_drive_measurement_node = salus_hardware.legacy_drive_measurement_node:main",
           "vehicle_kinematic_converter = salus_hardware.kinematic_conversion_node:main",
       ]})

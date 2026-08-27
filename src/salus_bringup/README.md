@@ -28,6 +28,23 @@ atraviesa el arbitraje único de `nav_command_server`, la traducción temporal a
 `VehicleCommand`, el consumidor canónico y el backend Gazebo. No publica
 directamente en `/cmd_vel_final`.
 
+## Perfil explícito sin detección local
+
+Para robots donde la detección local de obstáculos no está instalada ni forma
+parte del alcance operativo:
+
+```bash
+ros2 launch salus_bringup integration_sim.launch.py \
+  capability_profile:=no_obstacle_detection
+```
+
+El default `obstacle_detection` conserva LiDAR, obstacle layers y collision
+monitor. El perfil degradado no inicia la tubería LiDAR ni fabrica scans vacíos;
+mantiene keepout, PathHealth, watchdogs, arbitraje, freno y E-stop. Un relay
+declarado conserva la frontera `/cmd_vel_safe`, pero no afirma protección
+anticolisión. La selección sólo ocurre al arrancar y jamás como fallback ante
+una avería.
+
 Con Gazebo y RViz visibles:
 
 ```bash

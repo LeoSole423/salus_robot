@@ -18,7 +18,14 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from robot_localization.srv import FromLL
-from salus_interfaces.msg import CmdVelFinal, NavTelemetry, PathHealth, VehicleCommand
+from salus_interfaces.msg import (
+    CapabilityState,
+    CmdVelFinal,
+    NavTelemetry,
+    PathHealth,
+    SystemCapabilities,
+    VehicleCommand,
+)
 from std_msgs.msg import String
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
 from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
@@ -43,6 +50,7 @@ class NavigationSmoke(Node):
         self.navigation_action_status: list[GoalStatusArray] = []
         self.vehicle_commands: list[VehicleCommand] = []
         self.controller_status: list[dict] = []
+        self.capability_profiles: list[SystemCapabilities] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
         self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
@@ -56,6 +64,12 @@ class NavigationSmoke(Node):
             VehicleCommand, "/vehicle/command_shadow", self.vehicle_commands.append, 10,
         )
         self.create_subscription(String, "/controller/status", self._on_controller_status, 10)
+        self.create_subscription(
+            SystemCapabilities,
+            "/system/capabilities",
+            self.capability_profiles.append,
+            10,
+        )
         self.create_subscription(
             GoalStatusArray,
             "/navigate_to_pose/_action/status",
@@ -203,6 +217,7 @@ def main() -> int:
     success = False
     failure = None
     expect_canonical = os.environ.get("EXPECT_CANONICAL_COMMAND", "0") == "1"
+    expect_no_obstacles = os.environ.get("EXPECT_NO_OBSTACLE_DETECTION", "0") == "1"
     try:
         wait_for(
             node, lambda: node.startup.active, 45.0,
@@ -214,6 +229,36 @@ def main() -> int:
             20.0,
             "raw/local/global odometry or telemetry unavailable",
         )
+        wait_for(
+            node,
+            lambda: bool(node.capability_profiles),
+            10.0,
+            "typed capability profile unavailable",
+        )
+        if expect_no_obstacles:
+            profile = node.capability_profiles[-1]
+            capabilities = {
+                item.capability_id: item for item in profile.capabilities
+            }
+            obstacle = capabilities.get("local_obstacle_detection")
+            if (
+                profile.profile != "no_obstacle_detection"
+                or obstacle is None
+                or obstacle.state != CapabilityState.STATE_DISABLED_BY_PROFILE
+                or obstacle.enabled
+                or obstacle.required
+            ):
+                raise RuntimeError("no-obstacle capability profile is not explicit")
+            wait_for(
+                node,
+                lambda: (
+                    node.count_publishers("/scan_clean") == 0
+                    and node.count_publishers("/scan_preview") == 0
+                    and node.count_publishers("/cmd_vel_safe") == 1
+                ),
+                5.0,
+                "no-obstacle profile started LiDAR output or lost unique safe command authority",
+            )
         # Lifecycle state and action discovery are not sufficient evidence on
         # a contended runner.  Wait until every action server in the first BT
         # tick accepts clients before submitting the first high-level goal.
@@ -398,6 +443,10 @@ def main() -> int:
             "controller_status": len(node.controller_status),
             "expected_command_input": (
                 "canonical_vehicle_command" if expect_canonical else "legacy_cmd_vel"
+            ),
+            "capability_profiles": len(node.capability_profiles),
+            "expected_capability_profile": (
+                "no_obstacle_detection" if expect_no_obstacles else "obstacle_detection"
             ),
             "navigation_startup": node.startup.snapshot(),
         })

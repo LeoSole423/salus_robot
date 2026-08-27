@@ -46,6 +46,20 @@ components:
       - docs/decisions/0008-hardware-measurement-boundaries.md
       - docs/migration-evidence/intent/hardware-measurements-and-odometry.md
     note: Contracts separate physical measurements from calibrated conversions, wheel odometry and fused localization. A read-only DriveTelemetry compatibility adapter is ported in salus_hardware; calibrated/direct adapters and hardware validation remain pending.
+  capability_profiles:
+    source: declared robot composition
+    target: salus_interfaces/SystemCapabilities and salus_bringup
+    state: ported
+    contracts:
+      - CapabilityState
+      - SystemCapabilities
+    evidence:
+      - src/salus_hardware/salus_hardware/capability_profile.py
+      - src/salus_navigation/launch/safety_arbitration_no_obstacles_sim.launch.py
+      - tools/smoke_navigation_no_obstacles_sim.sh
+      - docs/decisions/0009-explicit-obstacle-detection-capability.md
+      - docs/migration-evidence/intent/no-obstacle-detection-profile.md
+    note: Simulation explicitly selects obstacle_detection (default) or no_obstacle_detection. The degraded profile publishes no fictitious scan, preserves one /cmd_vel_safe authority, keepout, PathHealth, command arbitration, watchdogs and braking. ENABLED_BY_PROFILE is not runtime health; no automatic fallback or hardware validation exists.
   vehicle_command_contract:
     source: CmdVelFinal and controller_server actuation state
     target: salus_interfaces/VehicleCommand

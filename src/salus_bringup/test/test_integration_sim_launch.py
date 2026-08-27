@@ -43,6 +43,11 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "compare_legacy_odometry" in contents
     assert "command_input_mode" in contents
     assert '"command_input_mode": command_input_mode' in contents
+    assert '"capability_profile"' in contents
+    assert "no_obstacle_detection" in contents
+    assert "safety_arbitration_no_obstacles_sim.launch.py" in contents
+    assert "nav2_core_no_obstacles_sim.yaml" in contents
+    assert '"scan_preview_enabled": obstacle_detection_enabled' in contents
     assert "odometry_backend" in contents
     assert "web_waypoints_file" in contents
     assert "web_telemetry_profile" in contents

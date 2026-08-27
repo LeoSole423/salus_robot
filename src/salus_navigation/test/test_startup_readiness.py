@@ -52,6 +52,15 @@ def test_keepout_is_optional_only_when_explicitly_disabled() -> None:
     assert StartupPolicy().observe(snapshot)
 
 
+def test_scan_is_optional_only_in_explicit_no_detection_profile() -> None:
+    snapshot = ready_snapshot(
+        obstacle_detection_required=False, scan_valid=False, scan_fresh=False,
+    )
+    assert "SCAN_INVALID" not in missing_requirements(snapshot)
+    assert "SCAN_STALE" not in missing_requirements(snapshot)
+    assert StartupPolicy().observe(snapshot)
+
+
 def test_ready_inputs_request_start_exactly_once_and_can_activate() -> None:
     policy = StartupPolicy()
     assert policy.observe(ready_snapshot())
