@@ -47,6 +47,22 @@ finitas. Su cuaternión era normalizado y las covarianzas estaban presentes. El
 GNSS informó `NavSatStatus.status=0`, `service=GPS`, con diagonal de covarianza
 aproximada `[5.15, 5.15, 45.62] m²`. No se guardaron coordenadas.
 
+Una segunda ventana autorizada el 2026-08-28 permitió medir tasas con
+suscriptores CLI acotados, sin detener el stack ni publicar mensajes:
+
+| Tópico | Tasa observada | Intervalo/jitter observado |
+| --- | --- | --- |
+| `/imu/data` | ~10 Hz | 92–108 ms, desviación ~3.3 ms |
+| `/global_position/raw/fix` | ~2 Hz | 496–505 ms, desviación ~3.0 ms |
+| `/controller/drive_telemetry` | ~10 Hz | 84–117 ms, desviación ~6.9 ms |
+| `/wheel/odometry` | ~10 Hz | 83–110 ms, desviación ~5.0 ms |
+| `/scan_clean` | ~4.2 Hz | una pausa de 1.204 s; repetir con menor carga |
+
+La Jetson ya presentaba carga alta antes de estas mediciones y alcanzó un load
+average de aproximadamente 20 durante la ventana. Por eso la pausa de
+`/scan_clean` queda como indicio, no como defecto atribuido al LiDAR o a sus
+filtros.
+
 ## Cadena RTK observada
 
 ```text
@@ -61,6 +77,11 @@ rtk_source_manager
 0.50 s. Esto demuestra entrega reciente de correcciones, pero no un fix RTK: el
 `NavSatFix` observado seguía siendo un fix GPS autónomo, coherente con el robot
 en interior.
+
+En la segunda ventana, el receptor informó `gps_no_fix`,
+`NavSatStatus.status=-1`, covarianza diagonal de `10000 m²` y RTCM de
+aproximadamente 1.13 s de edad. Esto vuelve a confirmar que recepción RTCM y
+calidad del fix deben ser estados independientes. No se guardaron coordenadas.
 
 Se encontraron dos deudas de contrato:
 
@@ -97,7 +118,7 @@ La entrada RTK directa deberá exponer por separado:
 
 ## Aspectos no caracterizados
 
-- Frecuencias y jitter: se evitó mantener suscriptores de medición porque la
+- Frecuencias y jitter prolongados: sólo se tomaron ventanas cortas porque la
   Jetson estaba bajo carga durante una prueba activa.
 - Transformaciones físicas Pixhawk/antena y calibración de orientación.
 - Relación real AS5600 → mecanismo → ángulo efectivo de rueda.
@@ -109,6 +130,13 @@ La entrada RTK directa deberá exponer por separado:
 También se observó una advertencia no fatal al cargar el entorno por una ruta
 ausente de un workspace opcional (`/opt/salus_coverage_ws`). Se registra como
 deuda de entorno, sin corregirla durante la prueba.
+
+La herramienta de este PR se transfirió temporalmente y se ejecutó dentro del
+contenedor `ros2_salus` en modo inventario. Detectó correctamente el productor
+MAVROS, cuatro consumidores y el QoS de `/imu/data`. No usó `echo`; el script y
+el JSON temporal fueron eliminados al finalizar. Esta prueba valida la
+compatibilidad de la herramienta con el entorno real, no el runtime de
+`salus_robot`.
 
 ## Criterio para el siguiente paso real
 
