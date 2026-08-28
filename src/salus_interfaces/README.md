@@ -35,6 +35,15 @@
   el adaptador de perfil de `salus_hardware`; `salus_web` y herramientas de
   diagnóstico son consumidores. `ENABLED_BY_PROFILE` no equivale a salud
   comprobada y una avería nunca selecciona automáticamente otro perfil.
+- `RtcmFrame` transporta un frame RTCM ya validado con timestamp, fuente lógica
+  y secuencia local. Su `data` no debe replicarse en estados, diagnósticos ni
+  logs.
+- `GnssRtkStatus` separa la calidad GNSS de adquisición, antigüedad y entrega
+  de correcciones. La calidad se deriva exclusivamente de telemetría del
+  receptor: RTCM reciente nunca implica por sí solo `RTK_FLOAT` ni
+  `RTK_FIXED`. `source_id` y `status_detail` no pueden contener credenciales,
+  rutas de configuración ni payloads RTCM; `DIRECT_USB` es un backend declarado
+  por contrato y no implica que exista un driver.
 - Prueba: `colcon test --packages-select salus_interfaces`.
 - Migración: el resto de los contratos continúa pendiente y se incorporará por
   corte funcional.

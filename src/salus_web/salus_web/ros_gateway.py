@@ -35,6 +35,7 @@ from salus_interfaces.msg import (
     CapabilityState,
     CmdVelFinal,
     DriveTelemetry,
+    GnssRtkStatus,
     NavEvent,
     NavTelemetry,
     SystemCapabilities,
@@ -99,6 +100,86 @@ def capability_state_label(value: object) -> str:
         return "unknown"
 
 
+# These are deliberately tables rather than a derived enum-name conversion:
+# Cockpit consumes stable, human-readable values even if ROS constant names
+# evolve. Unknown future values must remain explicit rather than looking valid.
+GNSS_FIX_QUALITY_LABELS = {
+    GnssRtkStatus.UNKNOWN: "unknown",
+    GnssRtkStatus.NO_FIX: "no_fix",
+    GnssRtkStatus.AUTONOMOUS: "autonomous",
+    GnssRtkStatus.DGPS: "dgps",
+    GnssRtkStatus.RTK_FLOAT: "rtk_float",
+    GnssRtkStatus.RTK_FIXED: "rtk_fixed",
+}
+GNSS_ACQUISITION_STATE_LABELS = {
+    GnssRtkStatus.ACQUISITION_DISABLED: "disabled",
+    GnssRtkStatus.ACQUISITION_DISCONNECTED: "disconnected",
+    GnssRtkStatus.ACQUISITION_CONNECTED_NO_DATA: "connected_no_data",
+    GnssRtkStatus.ACQUISITION_RECEIVING: "receiving",
+    GnssRtkStatus.ACQUISITION_STALE: "stale",
+    GnssRtkStatus.ACQUISITION_ERROR: "error",
+}
+GNSS_DELIVERY_BACKEND_LABELS = {
+    GnssRtkStatus.BACKEND_DISABLED: "disabled",
+    GnssRtkStatus.BACKEND_PIXHAWK_MAVROS: "pixhawk_mavros",
+    GnssRtkStatus.BACKEND_DIRECT_USB: "direct_usb",
+}
+GNSS_DELIVERY_STATE_LABELS = {
+    GnssRtkStatus.DELIVERY_DISABLED: "disabled",
+    GnssRtkStatus.DELIVERY_IDLE: "idle",
+    GnssRtkStatus.DELIVERY_DELIVERING: "delivering",
+    GnssRtkStatus.DELIVERY_STALE: "stale",
+    GnssRtkStatus.DELIVERY_ERROR: "error",
+}
+
+
+def _enum_label(labels: Mapping[int, str], value: object) -> str:
+    try:
+        return labels.get(int(value), "unknown")
+    except (TypeError, ValueError):
+        return "unknown"
+
+
+def gnss_rtk_status_payload(message: GnssRtkStatus) -> dict[str, Any]:
+    """Project the canonical RTK observation without inferring GNSS quality.
+
+    The incoming contract owns the distinction between correction freshness and
+    receiver fix quality. This bridge only translates it to JSON-safe operator
+    fields; in particular it never derives an RTK solution from RTCM counters.
+    """
+    satellites_visible = int(message.satellites_visible)
+    correction_age_s = _finite_or_none(message.correction_age_s)
+    if correction_age_s is not None and correction_age_s < 0.0:
+        correction_age_s = None
+    return {
+        "available": True,
+        "source": "gnss_rtk_status",
+        "fix_quality": _enum_label(GNSS_FIX_QUALITY_LABELS, message.fix_quality),
+        "acquisition_state": _enum_label(
+            GNSS_ACQUISITION_STATE_LABELS, message.acquisition_state
+        ),
+        "delivery_backend": _enum_label(
+            GNSS_DELIVERY_BACKEND_LABELS, message.delivery_backend
+        ),
+        "delivery_state": _enum_label(
+            GNSS_DELIVERY_STATE_LABELS, message.delivery_state
+        ),
+        "receiver_fix_type": int(message.receiver_fix_type),
+        "satellites_visible": None if satellites_visible == 255 else satellites_visible,
+        "corrections_fresh": bool(message.corrections_fresh),
+        "correction_age_s": correction_age_s,
+        "received_count": int(message.received_count),
+        "crc_error_count": int(message.crc_error_count),
+        "source_id": str(message.source_id),
+        "status_detail": str(message.status_detail),
+    }
+
+
+def accepts_legacy_rtk_status(typed_status_received: bool) -> bool:
+    """Whether a legacy text update may replace the cached RTK projection."""
+    return not typed_status_received
+
+
 class CockpitRosGateway(Node):
     def __init__(self) -> None:
         super().__init__("salus_web_gateway")
@@ -142,6 +223,10 @@ class CockpitRosGateway(Node):
         )
         self._lock = Lock()
         self._cache: dict[str, Any] = {"connected": True, "mode": "connected"}
+        # Once the canonical status has arrived it remains authoritative for
+        # this process lifetime; the legacy text topic is only a migration
+        # fallback and must never roll the UI back to an inferred status.
+        self._typed_rtk_status_received = False
         self._broadcast: Callable[[dict[str, Any]], None] | None = None
 
         self._teleop = self.create_publisher(CmdVelFinal, "/cmd_vel_teleop", 10)
@@ -179,6 +264,12 @@ class CockpitRosGateway(Node):
             qos_profile_sensor_data,
         )
         self.create_subscription(String, "/gps/rtk_status", self._on_rtk, 10)
+        self.create_subscription(
+            GnssRtkStatus,
+            "/salus/hardware/gnss_primary/rtk_status",
+            self._on_gnss_rtk_status,
+            10,
+        )
         capability_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -589,6 +680,18 @@ class CockpitRosGateway(Node):
     def _on_rtk(self, message: String) -> None:
         status = {"raw": message.data, "available": True, "source": "rtk_status"}
         with self._lock:
+            if not accepts_legacy_rtk_status(self._typed_rtk_status_received):
+                return
+            self._cache["gps_status"] = status
+        if self._telemetry_profile == "full":
+            self._emit({"op": "gps_status", "gps_status": status})
+        else:
+            self._on_cached_telemetry_change()
+
+    def _on_gnss_rtk_status(self, message: GnssRtkStatus) -> None:
+        status = gnss_rtk_status_payload(message)
+        with self._lock:
+            self._typed_rtk_status_received = True
             self._cache["gps_status"] = status
         if self._telemetry_profile == "full":
             self._emit({"op": "gps_status", "gps_status": status})

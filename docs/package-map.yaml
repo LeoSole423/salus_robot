@@ -6,7 +6,7 @@ packages:
     build_type: ament_cmake
     language: interface_definition
     may_depend_on: []
-    status: physical_measurement_and_vehicle_command_contracts_ported
+    status: physical_measurement_vehicle_command_and_rtk_gnss_contracts_ported
   salus_description:
     owner: robot_model
     build_type: ament_cmake
@@ -18,7 +18,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_pixhawk_sensor_and_vehicle_measurement_adapters_with_hardware_validation_pending
+    status: ported_pixhawk_sensor_vehicle_measurement_and_read_only_rtk_observation_adapters_with_hardware_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
@@ -54,7 +54,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_cockpit_runtime_capability_state_compact_telemetry_camera_ptz_sim
+    status: ported_cockpit_runtime_capability_state_compact_telemetry_camera_ptz_and_typed_rtk_projection_sim
   salus_simulation:
     owner: simulation
     build_type: ament_cmake
@@ -82,4 +82,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profiles_with_explicit_obstacle_imu_heading_and_command_selection_pending_hardware_validation
+    status: operational_sim_profiles_and_partial_read_only_rtk_observation_pending_hardware_validation

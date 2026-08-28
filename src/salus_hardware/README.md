@@ -9,6 +9,16 @@
   `/hardware/gnss_primary/fix`. Es read-only: no inicia MAVROS, NTRIP, puertos,
   TF ni actuadores. Conserva `base_link`, timestamps, covarianzas y `NO_FIX`;
   otro frame requiere calibración física.
+- `legacy_rtk_observer` normaliza en modo read-only el estado JSON, el estado
+  textual del receptor y exactamente un `/rtcm` legado de tipo
+  `UInt8MultiArray`. Publica `RtcmFrame` validado y `GnssRtkStatus`, manteniendo
+  separadas la frescura de correcciones y la calidad GNSS. No abre NTRIP ni
+  entrega correcciones a MAVROS o USB.
+- `rtcm_dry_run_sink` valida la frontera canónica y publica únicamente
+  contadores/edad JSON para diagnóstico; nunca registra el payload ni actúa
+  sobre el receptor. Los backends `pixhawk_mavros`, `direct_usb` y `disabled`
+  se seleccionan explícitamente, sin fallback, y sólo `disabled` entrega en
+  este corte.
 - `legacy_drive_measurement_node` es un adaptador estrictamente de lectura:
   consume `DriveTelemetry` (por defecto `/controller/drive_telemetry`) y
   publica `TractionMeasurement` y `SteeringMeasurement` en
