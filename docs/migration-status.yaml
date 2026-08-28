@@ -60,6 +60,21 @@ components:
       - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
       - tools/observe_hardware_contracts.py
     note: Passive SSH/ROS graph observation confirmed the live Pixhawk/MAVROS IMU and GNSS, RTK delivery chain, controller telemetry, derived Ackermann odometry, RS16 pipeline and EKF authorities without modifying the running legacy stack. It also found base_link sensor frames, a dual-typed /rtcm topic and stale public status aliases. salus_robot was not deployed or executed, no bag was recorded and hardware_validated remains false.
+  pixhawk_sensor_inputs:
+    source: MAVROS /imu/data and /global_position/raw/fix
+    target: salus_hardware adapter and explicit salus_localization selectors
+    state: hardware_validated
+    contracts:
+      - /hardware/imu_primary/data
+      - /hardware/gnss_primary/fix
+      - /salus/imu/data
+      - /salus/gps/fix
+    evidence:
+      - docs/migration-evidence/intent/pixhawk-sensor-input-adapter.md
+      - src/salus_hardware/test/test_pixhawk_sensor_domain.py
+      - src/salus_localization/test/test_gnss_selection_policy.py
+      - src/salus_bringup/test/test_pixhawk_sensor_inputs_launch.py
+    note: Read-only Pixhawk/MAVROS adapter preserves the observed base_link frame, timestamps, covariance and honest NO_FIX state. Explicit selectors never fall back. A bounded Jetson run beside ROS2_SALUS confirmed one publisher per namespaced output, approximately 10 Hz IMU and 2 Hz GNSS, preserved frame/status and clean shutdown. This hardware validation covers only sensor inputs; real bringup, localization and actuation remain unvalidated.
   capability_profiles:
     source: declared robot composition
     target: salus_interfaces/SystemCapabilities and salus_bringup

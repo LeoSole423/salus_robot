@@ -27,6 +27,7 @@ setup(
             "sim_imu_from_odom = salus_localization.sim_imu_from_odom:main",
             "imu_normalizer = salus_localization.imu_normalizer:main",
             "imu_selector = salus_localization.imu_selector:main",
+            "gnss_selector = salus_localization.gnss_selector:main",
             "sim_gps_normalizer = salus_localization.sim_gps_normalizer:main",
             "gps_course_heading = salus_localization.gps_course_heading:main",
             "orientation_source_selector = salus_localization.orientation_source_selector:main",

@@ -18,7 +18,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_adapters_with_legacy_jetson_contracts_characterized_and_hardware_validation_pending
+    status: ported_pixhawk_sensor_and_vehicle_measurement_adapters_with_hardware_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python

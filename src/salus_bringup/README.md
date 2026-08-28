@@ -3,6 +3,20 @@
 Propietario de las composiciones completas y perfiles operativos. No contiene
 algoritmos, drivers ni contratos.
 
+## Entradas Pixhawk en coexistencia
+
+`pixhawk_sensor_inputs.launch.py` adapta IMU y GNSS del MAVROS ya operativo sin
+iniciar hardware ni actuación:
+
+```bash
+ros2 launch salus_bringup pixhawk_sensor_inputs.launch.py
+```
+
+Mientras `ROS2_SALUS` es propietario del robot, las salidas lógicas usan
+`/salus/imu/data` y `/salus/gps/fix` para no competir con `/imu/data` ni
+`/gps/fix`. El launch sólo contiene el adaptador y selectores read-only; no
+publica TF, abre UART, llama servicios ni envía comandos.
+
 ## Checkpoint integrado de simulación
 
 El launch actual reúne movimiento Ackermann, controlador simulado, localización
