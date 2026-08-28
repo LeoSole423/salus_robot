@@ -78,3 +78,4 @@ def test_console_entry_points_are_packaged() -> None:
     setup = (Path(__file__).parents[1] / "setup.py").read_text()
     assert "legacy_rtk_observer = salus_hardware.legacy_rtk_observer:main" in setup
     assert "rtcm_dry_run_sink = salus_hardware.rtcm_dry_run_sink:main" in setup
+    assert "pixhawk_rtk_adapter = salus_hardware.pixhawk_rtk_adapter:main" in setup

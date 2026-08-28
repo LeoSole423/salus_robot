@@ -18,7 +18,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_pixhawk_sensor_vehicle_measurement_and_read_only_rtk_observation_adapters_with_hardware_validation_pending
+    status: ported_pixhawk_sensor_vehicle_measurement_rtk_observation_and_opt_in_mavros_delivery_adapters_with_delivery_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
@@ -82,4 +82,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profiles_and_partial_read_only_rtk_observation_pending_hardware_validation
+    status: operational_sim_profiles_and_fail_closed_rtk_pixhawk_profile_pending_delivery_validation

@@ -12,9 +12,17 @@ lo expone bajo `/salus/hardware/...` sin intervenir en su cadena activa:
 ros2 launch salus_bringup rtk_gnss_observation.launch.py
 ```
 
-El perfil se puede desactivar por completo con `enabled:=false`. Por defecto,
-`delivery_backend:=disabled`; el único receptor de correcciones es un contador
-dry-run. Los parámetros declaran un solo tipo legado de RTCM
+El perfil predeterminado es `delivery_backend:=disabled` y
+`delivery_enabled:=false`. `pixhawk_mavros` añade observación `GPSRAW` y deja al
+adaptador como única autoridad del estado canónico; con `delivery_enabled=false`
+no crea un publicador RTCM hacia MAVROS. La combinación `pixhawk_mavros` +
+`true` está reservada para una validación aislada después de detener el bridge
+legado. `direct_usb` falla explícitamente como no implementado. El launch no
+inicia NTRIP, MAVROS/FCU, UART, TF ni nodos de movimiento.
+
+El perfil se puede desactivar por completo con `enabled:=false`. En el perfil
+predeterminado, el único receptor de correcciones es un contador dry-run. Los
+parámetros declaran un solo tipo legado de RTCM
 (`uint8_multi_array`), las entradas legacy, las salidas canónicas y el timeout
 de frescura (`stale_timeout_s:=5.0`). Este launch no abre clientes de
 correcciones, conexiones de receptor ni rutas de actuación; tampoco inicia TF
