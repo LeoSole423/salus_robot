@@ -4,6 +4,11 @@
 - No contiene: fusión, percepción, control de misión ni SDKs vendorizados.
 - Interfaces previstas: sensores y telemetría normalizados; control PTZ,
   presets y estado de cámara bajo `/camara/*`.
+- `pixhawk_sensor_adapter` consume las salidas MAVROS configuradas de IMU y
+  GNSS y las publica con identidad estable en `/hardware/imu_primary/data` y
+  `/hardware/gnss_primary/fix`. Es read-only: no inicia MAVROS, NTRIP, puertos,
+  TF ni actuadores. Conserva `base_link`, timestamps, covarianzas y `NO_FIX`;
+  otro frame requiere calibración física.
 - `legacy_drive_measurement_node` es un adaptador estrictamente de lectura:
   consume `DriveTelemetry` (por defecto `/controller/drive_telemetry`) y
   publica `TractionMeasurement` y `SteeringMeasurement` en

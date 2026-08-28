@@ -137,6 +137,24 @@ En otra terminal, los comandos manuales usan el mismo contenedor:
 `./tools/shell.sh` abre una shell ROS en ese mismo contenedor para inspección
 manual de tópicos y TF.
 
+## Observación pasiva de contratos de hardware
+
+Con la prueba del robot en curso, se puede inventariar tópicos sin publicar ni
+alterar el grafo ROS. La herramienta usa solamente consultas `ros2 topic` y
+genera JSON; las muestras opcionales conservan únicamente headers, estados y
+covarianzas numéricas (nunca posición, RTCM ni payloads).
+
+```bash
+python3 tools/observe_hardware_contracts.py --output /tmp/salus-contracts.json
+python3 tools/observe_hardware_contracts.py --output /tmp/imu-contract.json \
+  --topic /imu/data --sample-metadata --timeout 2
+```
+
+`--topic` se puede repetir. Sin él se inspeccionan todos los tópicos
+descubiertos. Las muestras están desactivadas por defecto, requieren tópicos
+explícitos y sólo se permiten para tipos seguros predefinidos; RTCM, imágenes,
+nubes y mensajes genéricos nunca se consultan con `echo`.
+
 Incluye movimiento, control simulado, localización local/global y LiDAR. Es un
 bringup de depuración; todavía no contiene Nav2, misiones ni Cockpit.
 

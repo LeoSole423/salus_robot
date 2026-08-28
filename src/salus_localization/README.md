@@ -35,6 +35,11 @@ existe en el fixture actual. Elegir la secundaria no fabrica datos ni conmuta
 de vuelta. El EKF publica `/odometry/local` y es la única autoridad de
 `odom -> base_footprint`.
 
+`gnss_selector` aplica la misma regla de identidad explícita a
+`gnss_primary|gnss_secondary`: se suscribe sólo a la elegida, exige frame y
+timestamps crecientes y no hace fallback. Conserva muestras `NO_FIX` para que
+la ausencia real de posición no se confunda con silencio o con un fix válido.
+
 ## Prueba
 
 ```bash

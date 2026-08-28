@@ -12,5 +12,6 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
           "camera_node = salus_hardware.camera_node:main",
           "capability_profile = salus_hardware.capability_profile_node:main",
           "legacy_drive_measurement_node = salus_hardware.legacy_drive_measurement_node:main",
+          "pixhawk_sensor_adapter = salus_hardware.pixhawk_sensor_adapter:main",
           "vehicle_kinematic_converter = salus_hardware.kinematic_conversion_node:main",
       ]})
