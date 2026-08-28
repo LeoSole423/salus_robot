@@ -7,6 +7,38 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
+def observer_parameters(
+    *,
+    legacy_status_topic,
+    legacy_fix_topic,
+    legacy_rtcm_topic,
+    canonical_status_topic,
+    canonical_rtcm_topic,
+    delivery_backend,
+    legacy_rtcm_type,
+    stale_timeout_s,
+):
+    """Return the complete read-only legacy observer parameter boundary."""
+    return {
+        "legacy_status_topic": legacy_status_topic,
+        "legacy_fix_topic": legacy_fix_topic,
+        "legacy_rtcm_topic": legacy_rtcm_topic,
+        "canonical_status_topic": canonical_status_topic,
+        "canonical_rtcm_topic": canonical_rtcm_topic,
+        "delivery_backend": delivery_backend,
+        "legacy_rtcm_type": legacy_rtcm_type,
+        "stale_timeout_s": stale_timeout_s,
+    }
+
+
+def dry_run_parameters(*, canonical_rtcm_topic):
+    """Return only parameters owned by the non-delivering canonical sink."""
+    return {
+        "input_topic": canonical_rtcm_topic,
+        "status_topic": "/salus/hardware/rtcm/dry_run_status",
+    }
+
+
 def generate_launch_description():
     enabled = LaunchConfiguration("enabled")
     legacy_status_topic = LaunchConfiguration("legacy_status_topic")
@@ -18,16 +50,16 @@ def generate_launch_description():
     legacy_rtcm_type = LaunchConfiguration("legacy_rtcm_type")
     stale_timeout_s = LaunchConfiguration("stale_timeout_s")
 
-    common_parameters = {
-        "legacy_status_topic": legacy_status_topic,
-        "legacy_fix_topic": legacy_fix_topic,
-        "legacy_rtcm_topic": legacy_rtcm_topic,
-        "canonical_status_topic": canonical_status_topic,
-        "canonical_rtcm_topic": canonical_rtcm_topic,
-        "delivery_backend": delivery_backend,
-        "legacy_rtcm_type": legacy_rtcm_type,
-        "stale_timeout_s": stale_timeout_s,
-    }
+    legacy_observer_parameters = observer_parameters(
+        legacy_status_topic=legacy_status_topic,
+        legacy_fix_topic=legacy_fix_topic,
+        legacy_rtcm_topic=legacy_rtcm_topic,
+        canonical_status_topic=canonical_status_topic,
+        canonical_rtcm_topic=canonical_rtcm_topic,
+        delivery_backend=delivery_backend,
+        legacy_rtcm_type=legacy_rtcm_type,
+        stale_timeout_s=stale_timeout_s,
+    )
 
     return LaunchDescription([
         DeclareLaunchArgument("enabled", default_value="true"),
@@ -58,10 +90,7 @@ def generate_launch_description():
             namespace="/salus/hardware",
             output="screen",
             condition=IfCondition(enabled),
-            parameters=[{
-                "input_topic": canonical_rtcm_topic,
-                "status_topic": "/salus/hardware/rtcm/dry_run_status",
-            }],
+            parameters=[legacy_observer_parameters],
         ),
         Node(
             package="salus_hardware",
@@ -70,6 +99,8 @@ def generate_launch_description():
             namespace="/salus/hardware",
             output="screen",
             condition=IfCondition(enabled),
-            parameters=[common_parameters],
+            parameters=[dry_run_parameters(
+                canonical_rtcm_topic=canonical_rtcm_topic,
+            )],
         ),
     ])
