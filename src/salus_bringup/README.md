@@ -3,6 +3,23 @@
 Propietario de las composiciones completas y perfiles operativos. No contiene
 algoritmos, drivers ni contratos.
 
+## Observación RTK/GNSS en coexistencia
+
+`rtk_gnss_observation.launch.py` observa el estado RTK/GNSS del stack legado y
+lo expone bajo `/salus/hardware/...` sin intervenir en su cadena activa:
+
+```bash
+ros2 launch salus_bringup rtk_gnss_observation.launch.py
+```
+
+El perfil se puede desactivar por completo con `enabled:=false`. Por defecto,
+`delivery_backend:=disabled`; el único receptor de correcciones es un contador
+dry-run. Los parámetros declaran un solo tipo legado de RTCM
+(`uint8_multi_array`), las entradas legacy, las salidas canónicas y el timeout
+de frescura (`stale_timeout_s:=5.0`). Este launch no abre clientes de
+correcciones, conexiones de receptor ni rutas de actuación; tampoco inicia TF
+global ni nodos de movimiento.
+
 ## Entradas Pixhawk en coexistencia
 
 `pixhawk_sensor_inputs.launch.py` adapta IMU y GNSS del MAVROS ya operativo sin

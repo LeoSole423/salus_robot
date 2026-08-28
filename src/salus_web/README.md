@@ -24,6 +24,11 @@ fix GPS o el cuaternión es inválido, no se fabrica una pose u orientación.
   [web-cockpit-bridge.md](../../docs/migration-evidence/intent/web-cockpit-bridge.md).
   La política compacta está en
   [compact-telemetry-scan-preview.md](../../docs/migration-evidence/intent/compact-telemetry-scan-preview.md).
+- `/salus/hardware/gnss_primary/rtk_status` (`GnssRtkStatus`) es la autoridad
+  RTK tipada cuando aparece. La proyección `gps_status` conserva por separado
+  calidad GNSS, adquisición/frescura RTCM y backend/estado de entrega. El
+  string `/gps/rtk_status` queda como fallback de migración y no puede reemplazar
+  un estado tipado ya recibido durante la vida del proceso.
   Los módulos puros no abren sockets ni acceden a ROS. El transporte y el
   adaptador ROS permanecen separados y la política multi-cliente está fijada
   por el ADR 0005.

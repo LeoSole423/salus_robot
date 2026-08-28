@@ -60,6 +60,23 @@ components:
       - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
       - tools/observe_hardware_contracts.py
     note: Passive SSH/ROS graph observation confirmed the live Pixhawk/MAVROS IMU and GNSS, RTK delivery chain, controller telemetry, derived Ackermann odometry, RS16 pipeline and EKF authorities without modifying the running legacy stack. It also found base_link sensor frames, a dual-typed /rtcm topic and stale public status aliases. salus_robot was not deployed or executed, no bag was recorded and hardware_validated remains false.
+  rtk_gnss_contract_routing:
+    source: ROS2_SALUS rtk_source_manager, rtk_bridge and legacy RTK status topics
+    target: salus_interfaces, salus_hardware, salus_bringup and salus_web
+    state: ported
+    contracts:
+      - RtcmFrame
+      - GnssRtkStatus
+    evidence:
+      - docs/migration-evidence/intent/rtk-gnss-contract-routing.md
+      - src/salus_interfaces/msg/RtcmFrame.msg
+      - src/salus_interfaces/msg/GnssRtkStatus.msg
+      - src/salus_hardware/salus_hardware/rtk_domain.py
+      - src/salus_hardware/salus_hardware/legacy_rtk_observer.py
+      - src/salus_hardware/salus_hardware/rtcm_dry_run_sink.py
+      - src/salus_bringup/launch/rtk_gnss_observation.launch.py
+      - src/salus_web/salus_web/ros_gateway.py
+    note: The legacy stack exposes NTRIP status JSON, std_msgs/UInt8MultiArray RTCM on /rtcm, and textual fix status. This cut adds canonical RTCM and typed GNSS/RTK observation contracts, pure CRC24Q/fix/acquisition policy, a read-only observer, a dry-run sink, a partial launch and typed-first web projection. RTCM freshness never determines GNSS fix quality; only one legacy type is subscribed on /rtcm. It starts no NTRIP client, MAVROS delivery, direct USB driver, TF, movement or actuator path, and emits no credentials, paths or RTCM payloads in status/logs. Indoor legacy observation is prior characterization only; validation of this cut on hardware remains pending.
   pixhawk_sensor_inputs:
     source: MAVROS /imu/data and /global_position/raw/fix
     target: salus_hardware adapter and explicit salus_localization selectors
