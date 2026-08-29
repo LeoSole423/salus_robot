@@ -74,9 +74,10 @@ components:
       - src/salus_hardware/salus_hardware/rtk_domain.py
       - src/salus_hardware/salus_hardware/legacy_rtk_observer.py
       - src/salus_hardware/salus_hardware/rtcm_dry_run_sink.py
+      - src/salus_hardware/salus_hardware/pixhawk_rtk_adapter.py
       - src/salus_bringup/launch/rtk_gnss_observation.launch.py
       - src/salus_web/salus_web/ros_gateway.py
-    note: The legacy stack exposes NTRIP status JSON, std_msgs/UInt8MultiArray RTCM on /rtcm, and textual fix status. This cut adds canonical RTCM and typed GNSS/RTK observation contracts, pure CRC24Q/fix/acquisition policy, a read-only observer, a dry-run sink, a partial launch and typed-first web projection. RTCM freshness never determines GNSS fix quality; only one legacy type is subscribed on /rtcm. It starts no NTRIP client, MAVROS delivery, direct USB driver, TF, movement or actuator path, and emits no credentials, paths or RTCM payloads in status/logs. Indoor legacy observation is prior characterization only; validation of this cut on hardware remains pending.
+    note: The canonical RTCM and typed GNSS/RTK boundary now includes an explicit Pixhawk adapter. GPSRAW constants 5/6 map to RTK_FLOAT/RTK_FIXED; RTCM freshness never determines fix quality. MAVROS delivery requires pixhawk_mavros plus delivery_enabled=true, defaults off and creates no output publisher while off. direct_usb remains unavailable without fallback. Outdoor coexistence validated the disabled-delivery Pixhawk profile with fix_type 6, 32 satellites, fresh canonical corrections, one canonical status publisher and the legacy bridge remaining the sole MAVROS RTCM publisher. Actual delivery validation remains pending and must not run alongside that bridge. No NTRIP, MAVROS/FCU process, UART, TF, movement or actuator path is started.
   pixhawk_sensor_inputs:
     source: MAVROS /imu/data and /global_position/raw/fix
     target: salus_hardware adapter and explicit salus_localization selectors

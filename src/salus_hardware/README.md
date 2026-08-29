@@ -16,9 +16,13 @@
   entrega correcciones a MAVROS o USB.
 - `rtcm_dry_run_sink` valida la frontera canónica y publica únicamente
   contadores/edad JSON para diagnóstico; nunca registra el payload ni actúa
-  sobre el receptor. Los backends `pixhawk_mavros`, `direct_usb` y `disabled`
-  se seleccionan explícitamente, sin fallback, y sólo `disabled` entrega en
-  este corte.
+  sobre el receptor.
+- `pixhawk_rtk_adapter` toma calidad exclusivamente de
+  `mavros_msgs/GPSRAW`, publica el estado tipado final y puede convertir
+  `RtcmFrame` a `mavros_msgs/RTCM`. La entrega requiere simultáneamente
+  `delivery_backend=pixhawk_mavros` y `delivery_enabled=true`; por defecto no
+  crea el publicador MAVROS. Rechaza CRC, tamaños mayores a 720 bytes,
+  duplicados/regresiones y `direct_usb` mientras no exista su driver.
 - `legacy_drive_measurement_node` es un adaptador estrictamente de lectura:
   consume `DriveTelemetry` (por defecto `/controller/drive_telemetry`) y
   publica `TractionMeasurement` y `SteeringMeasurement` en
@@ -44,3 +48,5 @@
   continúa pendiente.
 - Prueba: `colcon test --packages-select salus_hardware`.
 - Migración: comenzar por contratos de entrada/salida, no por drivers legacy.
+No debe habilitarse la entrega mientras el `rtk_bridge` legado siga publicando
+`/mavros_node/send_rtcm`. Este paquete no inicia NTRIP, MAVROS, FCU ni control.

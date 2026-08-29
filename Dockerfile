@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-launch \
     ros-humble-launch-ros \
     ros-humble-geometry-msgs \
+    ros-humble-mavros-msgs \
     ros-humble-nav-msgs \
     ros-humble-sensor-msgs \
     ros-humble-std-msgs \

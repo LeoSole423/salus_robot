@@ -2,7 +2,8 @@
 
 ## Estado
 
-Aceptado para la migración incremental; entrega física nueva pendiente.
+Aceptado para la migración incremental; backend MAVROS implementado opt-in y
+validación de entrega física nueva pendiente.
 
 ## Contexto
 
@@ -35,9 +36,17 @@ stale o reinicios de secuencia quedan explícitos y no habilitan fallback.
 
 Los backends son `disabled`, `pixhawk_mavros` y `direct_usb`. Pixhawk no es una
 compatibilidad temporal: continuará siendo una opción soportada. La selección
-es de perfil y no cambia automáticamente. Este corte declara los backends pero
-opera sólo en observación/dry-run; no crea un cliente NTRIP, no entrega al
-Pixhawk o USB y no tiene autoridad de movimiento.
+es de perfil y no cambia automáticamente. La entrega Pixhawk consume únicamente
+`RtcmFrame` validado y requiere a la vez `delivery_backend=pixhawk_mavros` y
+`delivery_enabled=true`; el segundo parámetro es `false` por defecto y, así, no
+se crea un publicador MAVROS. `direct_usb` permanece declarado pero se rechaza
+como no implementado, sin fallback.
+
+En el perfil Pixhawk, `mavros_msgs/GPSRAW` es la única autoridad de calidad:
+sus constantes oficiales 5 y 6 son `RTK_FLOAT` y `RTK_FIXED`. El observador
+legado publica adquisición en un tópico intermedio y el adaptador Pixhawk es el
+único publicador del estado canónico final. El launch no inicia MAVROS, FCU,
+NTRIP, UART, TF ni control; sólo consume una instancia MAVROS ya existente.
 
 Durante coexistencia, un adaptador puede consumir exactamente un tipo legacy
 configurado para `/rtcm` y normalizar sus estados. No replica rutas de archivos,
@@ -48,7 +57,7 @@ autoridad Web cuando está disponible; el string histórico queda como fallback.
 
 - Se puede cambiar caster, receptor o ruta Pixhawk/USB sin cambiar consumidores.
 - “Correcciones presentes” y “RTK Fixed” dejan de ser equivalentes.
-- La entrega MAVROS y el driver USB requieren cortes posteriores con sus propias
-  dependencias y validación física.
+- La entrega MAVROS está codificada pero permanece deshabilitada hasta una prueba
+  aislada sin el bridge legado; el driver USB requiere un corte posterior.
 - El launch parcial puede convivir con `ROS2_SALUS` porque sólo observa y
   publica tópicos namespaced nuevos.

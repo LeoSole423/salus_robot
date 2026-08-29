@@ -42,6 +42,49 @@ class DeliveryState(IntEnum):
 
 
 @dataclass(frozen=True)
+class RtcmDeliveryDecision:
+    accepted: bool
+    reason: str
+    source_id: str | None
+    sequence: int | None
+
+
+def evaluate_rtcm_delivery(
+    *,
+    data: bytes,
+    source_id: str,
+    sequence: int,
+    previous_source_id: str | None,
+    previous_sequence: int | None,
+) -> RtcmDeliveryDecision:
+    """Validate one canonical frame and enforce per-source monotonic ordering."""
+
+    reason = validate_rtcm3_frame(data)
+    if reason != "accepted":
+        return RtcmDeliveryDecision(
+            False, reason, previous_source_id, previous_sequence
+        )
+    # mavros_msgs/RTCM documents a maximum of four MAVLink fragments.
+    if len(data) > 720:
+        return RtcmDeliveryDecision(
+            False, "mavros_payload_too_large", previous_source_id, previous_sequence
+        )
+    if not source_id.strip():
+        return RtcmDeliveryDecision(
+            False, "missing_source_id", previous_source_id, previous_sequence
+        )
+    if source_id != previous_source_id:
+        previous_sequence = None
+    transition = sequence_transition(previous_sequence, sequence)
+    if transition not in ("first", "advanced"):
+        next_sequence = sequence if transition == "reset" else previous_sequence
+        return RtcmDeliveryDecision(
+            False, f"sequence_{transition}", source_id, next_sequence
+        )
+    return RtcmDeliveryDecision(True, "accepted", source_id, sequence)
+
+
+@dataclass(frozen=True)
 class LegacySourceStatus:
     sequence: int
     source_id: str
