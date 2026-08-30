@@ -4,6 +4,7 @@
 import math
 import os
 import sys
+import time
 from pathlib import Path
 
 import rclpy
@@ -29,6 +30,8 @@ class SnapshotSmoke(Node):
         self.startup = subscribe_navigation_startup(self)
         self.local_odom: Odometry | None = None
         self.fixture_scans_published = 0
+        self.fixture_scan_interval_s = 0.5
+        self.next_fixture_scan_at = 0.0
         self.create_subscription(
             Odometry, "/odometry/local", self._on_local_odom, 10
         )
@@ -40,9 +43,11 @@ class SnapshotSmoke(Node):
         self.local_odom = message
 
     def publish_fixture_scan(self) -> None:
-        """Publish explicit snapshot-only scan data at a transformable stamp."""
-        if self.local_odom is None:
+        """Publish a bounded-rate snapshot-only scan at a transformable stamp."""
+        now = time.monotonic()
+        if self.local_odom is None or now < self.next_fixture_scan_at:
             return
+        self.next_fixture_scan_at = now + self.fixture_scan_interval_s
         message = LaserScan()
         message.header.frame_id = "base_footprint"
         message.header.stamp = self.local_odom.header.stamp
@@ -84,7 +89,7 @@ def main() -> int:
             node.client,
             GetNavSnapshot.Request,
             interval_s=0.5,
-            response_timeout_s=5.0,
+            response_timeout_s=20.0,
         )
 
         def stimulate_snapshot() -> None:
