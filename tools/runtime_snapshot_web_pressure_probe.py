@@ -25,7 +25,14 @@ from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 def _spin_for(node: Node, duration_s: float) -> None:
     deadline = time.monotonic() + max(0.0, duration_s)
     while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=min(0.05, max(0.0, deadline - time.monotonic())))
+        rclpy.spin_once(
+            node,
+            timeout_sec=min(0.05, max(0.0, deadline - time.monotonic())),
+        )
+
+
+def _spin_until(node: Node, target_monotonic_s: float) -> None:
+    _spin_for(node, max(0.0, target_monotonic_s - time.monotonic()))
 
 
 class PressureProbe(Node):
@@ -79,14 +86,15 @@ def _response_record(index: int, started: float, response=None, error: str = "")
     }
 
 
-def run_control(node: PressureProbe, count: int, interval_s: float) -> None:
-    for _ in range(count):
-        _spin_for(node, 0.2)
+def run_control(node: PressureProbe, count: int, spacing_s: float) -> None:
+    window_started = time.monotonic()
+    for index in range(count):
+        _spin_until(node, window_started + index * spacing_s)
         node.publish_fixture_scan()
-        _spin_for(node, 0.1 + interval_s)
+    _spin_until(node, window_started + count * spacing_s)
 
 
-def run_direct(node: PressureProbe, count: int, interval_s: float) -> list[dict]:
+def run_direct(node: PressureProbe, count: int, spacing_s: float) -> list[dict]:
     deadline = time.monotonic() + 20.0
     while not node.snapshot.service_is_ready() and time.monotonic() < deadline:
         rclpy.spin_once(node, timeout_sec=0.05)
@@ -94,8 +102,9 @@ def run_direct(node: PressureProbe, count: int, interval_s: float) -> list[dict]
         raise RuntimeError("Snapshot service did not become ready")
 
     records: list[dict] = []
+    window_started = time.monotonic()
     for index in range(1, count + 1):
-        _spin_for(node, 0.2)
+        _spin_until(node, window_started + (index - 1) * spacing_s)
         node.publish_fixture_scan()
         _spin_for(node, 0.1)
         started = time.monotonic()
@@ -108,14 +117,20 @@ def run_direct(node: PressureProbe, count: int, interval_s: float) -> list[dict]
                 response = future.result()
             except Exception as exc:
                 records.append(
-                    _response_record(index, started, error=f"{type(exc).__name__}: {exc}")
+                    _response_record(
+                        index,
+                        started,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
                 )
             else:
                 records.append(_response_record(index, started, response=response))
         else:
             future.cancel()
-            records.append(_response_record(index, started, error="service timeout"))
-        _spin_for(node, interval_s)
+            records.append(
+                _response_record(index, started, error="service timeout")
+            )
+    _spin_until(node, window_started + count * spacing_s)
     return records
 
 
@@ -135,13 +150,14 @@ async def _connect_websocket(uri: str):
 
 
 async def _run_web_requests(
-    node: PressureProbe, uri: str, count: int, interval_s: float
+    node: PressureProbe, uri: str, count: int, spacing_s: float
 ) -> list[dict]:
     socket = await _connect_websocket(uri)
     records: list[dict] = []
+    window_started = time.monotonic()
     try:
         for index in range(1, count + 1):
-            _spin_for(node, 0.2)
+            _spin_until(node, window_started + (index - 1) * spacing_s)
             node.publish_fixture_scan()
             _spin_for(node, 0.1)
             request_id = f"phase2-{index}"
@@ -182,16 +198,16 @@ async def _run_web_requests(
                     if response is not None else 0
                 ),
             })
-            _spin_for(node, interval_s)
+        _spin_until(node, window_started + count * spacing_s)
     finally:
         await socket.close()
     return records
 
 
-def run_web(node: PressureProbe, port: int, count: int, interval_s: float) -> list[dict]:
+def run_web(node: PressureProbe, port: int, count: int, spacing_s: float) -> list[dict]:
     return asyncio.run(
         _run_web_requests(
-            node, f"ws://127.0.0.1:{port}", count, interval_s
+            node, f"ws://127.0.0.1:{port}", count, spacing_s
         )
     )
 
@@ -200,7 +216,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("none", "direct", "web"), required=True)
     parser.add_argument("--requests", type=int, default=5)
-    parser.add_argument("--interval-s", type=float, default=0.5)
+    parser.add_argument("--spacing-s", type=float, default=5.0)
     parser.add_argument("--web-port", type=int, default=18768)
     args = parser.parse_args()
 
@@ -218,7 +234,9 @@ def main() -> int:
     success = False
     failure = None
     records: list[dict] = []
-    started = time.monotonic()
+    probe_started = time.monotonic()
+    pressure_started = None
+    pressure_completed = None
     try:
         runtime.wait_navigation_startup(node.startup, 60.0)
         runtime.wait(
@@ -227,14 +245,16 @@ def main() -> int:
             10.0,
         )
 
+        pressure_started = time.monotonic()
         if args.mode == "none":
-            run_control(node, args.requests, args.interval_s)
+            run_control(node, args.requests, args.spacing_s)
         elif args.mode == "direct":
-            records = run_direct(node, args.requests, args.interval_s)
+            records = run_direct(node, args.requests, args.spacing_s)
         else:
             records = run_web(
-                node, args.web_port, args.requests, args.interval_s
+                node, args.web_port, args.requests, args.spacing_s
             )
+        pressure_completed = time.monotonic()
 
         if args.mode != "none" and not any(
             record["outcome"] == "response" for record in records
@@ -254,8 +274,10 @@ def main() -> int:
                 "mode": args.mode,
                 "requests_target": args.requests,
                 "fixture_scans_published": node.fixture_scans_published,
-                "pressure_started_monotonic_s": started,
-                "pressure_completed_monotonic_s": time.monotonic(),
+                "probe_started_monotonic_s": probe_started,
+                "pressure_started_monotonic_s": pressure_started,
+                "pressure_completed_monotonic_s": pressure_completed,
+                "spacing_s": args.spacing_s,
                 "requests": records,
                 "navigation_startup": node.startup.snapshot(),
             },
