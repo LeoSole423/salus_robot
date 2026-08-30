@@ -19,3 +19,20 @@ The workflow passes only the stable scenario id. `tools/run_registered_smoke.py`
 Each matrix entry receives a fresh GitHub runner and uploads `smoke-<id>-artifacts`. A failed scenario is therefore attributable and independently rerunnable without serially re-executing unrelated smokes.
 
 This stage intentionally rebuilds the ROS workspace in each matrix runner. Commit-scoped workspace sharing is a separate CI v2 experiment so performance optimization cannot obscure the isolation change.
+
+
+## Exact-SHA compiled workspace artifact experiment
+
+CI v2 can avoid rebuilding the ROS workspace independently in every smoke matrix runner by having `build-unit` package the exact compiled `build/` + `install/` trees after tests pass.
+
+The artifact contract is deliberately run/commit scoped:
+- the artifact name includes `github.sha`;
+- the archive contains a manifest with the exact commit SHA;
+- every consumer verifies that manifest before restoring;
+- no mutable cross-commit cache is used;
+- source is still checked out normally in every smoke runner;
+- both `build/` and `install/` are transferred because `colcon --symlink-install` may retain links that require both trees and the checkout source.
+
+Each smoke still runs in a fresh GitHub runner and fresh ROS/Gazebo process environment. Only compilation output is shared.
+
+This stage is an experiment. Keep it only if measured upload/download/restore cost and artifact size are preferable to rebuilding independently, while smoke correctness remains unchanged.
