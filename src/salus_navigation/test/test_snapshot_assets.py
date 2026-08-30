@@ -40,6 +40,9 @@ def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> 
     assert 'create_publisher(' in source
     assert 'LaserScan, "/scan_clean"' in source
     assert 'message.header.stamp = self.local_odom.header.stamp' in source
+    assert "fixture_scan_interval_s = 0.5" in source
+    assert "now < self.next_fixture_scan_at" in source
+    assert "response_timeout_s=20.0" in source
 
     wrapper = (REPO_ROOT / "tools/smoke_navigation_snapshot.sh").read_text(
         encoding="utf-8"
