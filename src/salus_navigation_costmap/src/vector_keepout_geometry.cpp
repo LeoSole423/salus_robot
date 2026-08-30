@@ -39,14 +39,16 @@ static double boundary_distance(const Polygon & p, Point q) {
 std::vector<unsigned char> rasterize(const std::vector<Polygon> & polygons, const RasterSpec & spec, const CostProfile & profile) {
   std::vector<unsigned char> output(static_cast<size_t>(spec.width) * spec.height, 0);
   const Bounds interest = spec.window.expanded(profile.halo_radius_m);
+  std::vector<const Polygon *> relevant;
+  relevant.reserve(polygons.size());
+  for (const auto & polygon : polygons) if (polygon.bounds.expanded(profile.halo_radius_m).intersects(interest)) relevant.push_back(&polygon);
   for (unsigned int y = 0; y < spec.height; ++y) for (unsigned int x = 0; x < spec.width; ++x) {
     const Point p{spec.window.min_x + (x + 0.5) * spec.resolution, spec.window.min_y + (y + 0.5) * spec.resolution};
     unsigned char cost = 0;
-    for (const auto & polygon : polygons) {
-      if (!polygon.bounds.expanded(profile.halo_radius_m).intersects(interest)) continue;
-      if (contains(polygon, p)) { cost = std::max(cost, profile.core_cost); continue; }
+    for (const auto * polygon : relevant) {
+      if (contains(*polygon, p)) { cost = std::max(cost, profile.core_cost); continue; }
       if (profile.halo_radius_m > 0.0) {
-        const double d = boundary_distance(polygon, p);
+        const double d = boundary_distance(*polygon, p);
         if (d <= profile.halo_radius_m) {
           const double decay = 99.0 * std::exp(-std::log(99.0 / std::max(1, int(profile.halo_edge_cost))) * d / profile.halo_radius_m);
           cost = std::max(cost, static_cast<unsigned char>(std::clamp(std::lround(decay), long(profile.halo_min_cost), 99L)));

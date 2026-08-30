@@ -24,10 +24,9 @@ public:
 private:
   void state_callback(const salus_interfaces::msg::ProjectedKeepoutState::SharedPtr message);
   std::vector<Polygon> transform_polygons(const std::vector<Polygon> & source, const std::string & target_frame) const;
-  void add_bounds(const std::vector<Polygon> &, double *, double *, double *, double *) const;
+  void add_bounds(const std::vector<Polygon> &, const Bounds &, double *, double *, double *, double *) const;
   std::mutex mutex_;
-  std::vector<Polygon> polygons_map_, previous_map_, previous_rendered_;
-  uint64_t revision_{0}; bool revision_dirty_{false};
+  std::vector<Polygon> polygons_map_, previous_map_, previous_rendered_, cycle_polygons_;
   CostProfile profile_; std::string source_topic_{"/zones_manager/projected_keepouts"};
   std::string map_frame_{"map"};
   rclcpp::Subscription<salus_interfaces::msg::ProjectedKeepoutState>::SharedPtr subscription_;
