@@ -103,6 +103,9 @@ class Nav2StartupCoordinator(Node):
         self._tf_fresh = False
         self._tf = Buffer()
         self._tf_listener = TransformListener(self._tf, self)
+        self._readiness_retired = False
+        self._terminal_snapshot: ReadinessSnapshot | None = None
+        self._readiness_subscriptions = []
         self._manage = self.create_client(
             ManageLifecycleNodes, "/lifecycle_manager_navigation/manage_nodes"
         )
@@ -115,23 +118,33 @@ class Nav2StartupCoordinator(Node):
         self._state_clients = {
             name: self.create_client(GetState, f"/{name}/get_state") for name in NAV2_NODES
         }
-        self.create_subscription(Clock, "/clock", self._on_clock, 10)
-        self.create_subscription(Odometry, "/odometry/global", self._on_odom, 10)
-        self.create_subscription(
-            LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data
+        self._readiness_subscriptions.append(
+            self.create_subscription(Clock, "/clock", self._on_clock, 10)
         )
-        mask_qos = QoSProfile(
-            depth=1, reliability=ReliabilityPolicy.RELIABLE,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        self._readiness_subscriptions.append(
+            self.create_subscription(Odometry, "/odometry/global", self._on_odom, 10)
         )
-        self.create_subscription(
-            OccupancyGrid, "/keepout_filter_mask", self._on_mask, mask_qos
-        )
+        if self._obstacle_detection_required:
+            self._readiness_subscriptions.append(
+                self.create_subscription(
+                    LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data
+                )
+            )
+        if self._use_keepout:
+            mask_qos = QoSProfile(
+                depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            )
+            self._readiness_subscriptions.append(
+                self.create_subscription(
+                    OccupancyGrid, "/keepout_filter_mask", self._on_mask, mask_qos
+                )
+            )
         self._diagnostics = self.create_publisher(
             DiagnosticArray, "/navigation_startup/diagnostics", 10
         )
-        self.create_timer(0.1, self._tick)
-        self.create_timer(0.5, self._publish_diagnostics)
+        self._tick_timer = self.create_timer(0.1, self._tick)
+        self._diagnostics_timer = self.create_timer(0.5, self._publish_diagnostics)
 
     def _on_clock(self, message: Clock) -> None:
         value = int(message.clock.sec) * 1_000_000_000 + int(message.clock.nanosec)
@@ -155,6 +168,18 @@ class Nav2StartupCoordinator(Node):
             and message.info.width > 0 and message.info.height > 0
             and len(message.data) == message.info.width * message.info.height
         )
+
+    def _retire_readiness_watchers(self) -> None:
+        """Release startup-only callbacks once Nav2 is stably ACTIVE."""
+        if self._readiness_retired:
+            return
+        self._terminal_snapshot = self._snapshot()
+        self._readiness_retired = True
+        self._tick_timer.cancel()
+        for subscription in self._readiness_subscriptions:
+            self.destroy_subscription(subscription)
+        self._readiness_subscriptions.clear()
+        self._tf_listener.unregister()
 
     def _poll_zones_state(self, now: float) -> None:
         if not self._use_keepout or self._mask_ready:
@@ -280,6 +305,7 @@ class Nav2StartupCoordinator(Node):
         if (all(state == "active" for state in self._node_states.values())
                 and self._poll_path_health(now)):
             self._policy.activation_succeeded()
+            self._retire_readiness_watchers()
         elif now - self._manage_requested_at > self._activation_timeout_s:
             self._policy.activation_failed("NAV2_NODES_NOT_ACTIVE")
 
@@ -294,7 +320,7 @@ class Nav2StartupCoordinator(Node):
             self._poll_startup()
 
     def _publish_diagnostics(self) -> None:
-        snapshot = self._snapshot()
+        snapshot = self._terminal_snapshot or self._snapshot()
         status = DiagnosticStatus()
         status.name = "navigation_startup"
         status.hardware_id = "salus_navigation"

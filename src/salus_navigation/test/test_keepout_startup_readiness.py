@@ -1,7 +1,10 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from salus_navigation.nav2_startup_coordinator import zones_state_mask_ready
+from salus_navigation.nav2_startup_coordinator import (
+    Nav2StartupCoordinator,
+    zones_state_mask_ready,
+)
 from salus_navigation.zones_manager import zones_document_is_empty
 
 
@@ -52,3 +55,52 @@ def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() ->
     assert 'self._mask_source = "bootstrap_empty_confirmed"' in initial
     assert "if zones_document_is_empty(document):" in initial
     assert "if self._clear_global.service_is_ready():" in reload_map
+
+
+
+def test_retiring_startup_watchers_is_idempotent_and_freezes_diagnostics() -> None:
+    class FakeTimer:
+        def __init__(self) -> None:
+            self.cancelled = 0
+
+        def cancel(self) -> None:
+            self.cancelled += 1
+
+    class FakeListener:
+        def __init__(self) -> None:
+            self.unregistered = 0
+
+        def unregister(self) -> None:
+            self.unregistered += 1
+
+    timer = FakeTimer()
+    listener = FakeListener()
+    destroyed = []
+    frozen = object()
+    coordinator = SimpleNamespace(
+        _readiness_retired=False,
+        _terminal_snapshot=None,
+        _tick_timer=timer,
+        _readiness_subscriptions=["clock", "odom"],
+        _tf_listener=listener,
+        _snapshot=lambda: frozen,
+        destroy_subscription=destroyed.append,
+    )
+
+    Nav2StartupCoordinator._retire_readiness_watchers(coordinator)
+    Nav2StartupCoordinator._retire_readiness_watchers(coordinator)
+
+    assert coordinator._readiness_retired is True
+    assert coordinator._terminal_snapshot is frozen
+    assert coordinator._readiness_subscriptions == []
+    assert destroyed == ["clock", "odom"]
+    assert timer.cancelled == 1
+    assert listener.unregistered == 1
+
+
+def test_startup_only_scan_and_keepout_subscriptions_are_conditional() -> None:
+    source = SOURCE.read_text(encoding="utf-8")
+    assert "if self._obstacle_detection_required:" in source
+    assert "if self._use_keepout:" in source
+    assert "self._tf_listener.unregister()" in source
+    assert "self._terminal_snapshot or self._snapshot()" in source
