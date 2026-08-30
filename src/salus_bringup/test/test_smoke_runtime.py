@@ -66,6 +66,50 @@ def test_navigation_startup_evidence_preserves_causal_reason() -> None:
     assert evidence.active
 
 
+def test_topic_evidence_distinguishes_source_layers(monkeypatch) -> None:
+    now = [10.0]
+    monkeypatch.setattr(runtime.time, "monotonic", lambda: now[0])
+    evidence = runtime.TopicEvidence("odometry", started_at_s=10.0)
+
+    assert evidence.state(publisher_count=0) is runtime.TopicReadinessState.NO_PUBLISHER
+    assert evidence.state(publisher_count=1) is runtime.TopicReadinessState.NO_MESSAGES
+
+    invalid = odom(1)
+    invalid.pose.pose.position.x = math.nan
+    evidence.record(invalid, lambda message: runtime.finite_odometry(message))
+    assert evidence.state(publisher_count=1) is runtime.TopicReadinessState.INVALID
+    assert evidence.snapshot(publisher_count=1)["errors"]
+
+    evidence = runtime.TopicEvidence("odometry", started_at_s=10.0)
+    evidence.record(odom(1), lambda message: runtime.finite_odometry(message))
+    evidence.record(odom(1), lambda message: runtime.finite_odometry(message))
+    assert evidence.state(publisher_count=1) is runtime.TopicReadinessState.NOT_PROGRESSIVE
+
+    evidence.record(odom(2), lambda message: runtime.finite_odometry(message))
+    snapshot = evidence.snapshot(publisher_count=1)
+    assert evidence.state(publisher_count=1) is runtime.TopicReadinessState.READY
+    assert snapshot["progressive"]
+    assert snapshot["publisher_count"] == 1
+
+
+def test_navigation_startup_evidence_reports_diagnostic_age(monkeypatch) -> None:
+    now = [20.0]
+    monkeypatch.setattr(runtime.time, "monotonic", lambda: now[0])
+    evidence = runtime.NavigationStartupEvidence()
+    message = DiagnosticArray()
+    status = DiagnosticStatus()
+    status.name = "navigation_startup"
+    status.values = [
+        KeyValue(key="state", value="STARTING"),
+        KeyValue(key="reason", value="LIFECYCLE_START_REQUESTED"),
+    ]
+    message.status = [status]
+    evidence.record(message)
+    assert evidence.snapshot()["age_s"] == 0.0
+    now[0] = 23.5
+    assert evidence.snapshot()["age_s"] == 3.5
+
+
 def test_timeout_is_bounded_and_report_is_written(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(runtime.rclpy, "spin_once", lambda *_args, **_kwargs: None)
     report_path = tmp_path / "timeout.json"
