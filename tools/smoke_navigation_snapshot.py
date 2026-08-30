@@ -74,11 +74,8 @@ def main() -> int:
     success, failure = False, None
     response = None
     try:
-        runtime.wait(
-            "navigation startup",
-            lambda: node.startup.active,
-            60.0,
-            observe=node.startup.snapshot,
+        runtime.wait_navigation_startup(
+            node.startup, 60.0, name="navigation startup"
         )
         runtime.wait(
             "local odometry for scan fixture",
