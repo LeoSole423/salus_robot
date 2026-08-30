@@ -199,6 +199,15 @@ def aggregate_trials(cells, trial_summaries):
             "steering_saturation_intervals": continuous_summary(
                 values("command_chain", "steering_saturation", "interval_count")
             ),
+            "steering_margin_min_rad": continuous_summary(
+                values("command_chain", "steering_margin", "minimum_rad")
+            ),
+            "steering_margin_p05_rad": continuous_summary(
+                values("command_chain", "steering_margin", "p05_rad")
+            ),
+            "steering_above_90pct_limit_fraction": continuous_summary(
+                values("command_chain", "steering_margin", "above_90pct_limit_fraction")
+            ),
             "steering_requested_to_applied_rad": continuous_summary(values(
                 "command_chain", "ackermann",
                 "requested_to_applied_steer_delta_rad", "max",

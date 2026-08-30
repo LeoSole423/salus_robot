@@ -22,6 +22,7 @@ from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       command_stage_alignments, expected_turn_from_path,
                       first_divergent_stage, latest_prior,
                       localization_metrics, saturation_intervals,
+                      steering_margin_summary,
                       tracking_metrics, trial_data_finite)
 from .models import (ExpectedTurn, Pose2D, TimedCommand,
                      TimedControllerStatus, TimedControllerTelemetry,
@@ -275,6 +276,7 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
                 "brake_ratio_histogram": _histogram(vehicle, "brake_ratio"),
             },
             "steering_saturation": saturation_intervals(status),
+            "steering_margin": steering_margin_summary(status),
             "alignment": {
                 "cmd_vel_to_cmd_vel_safe": _alignment_summary(raw_safe),
                 "cmd_vel_safe_to_cmd_vel_final": _alignment_summary(safe_final),

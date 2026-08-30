@@ -72,7 +72,11 @@ def main(argv=None):
     parser.add_argument("matrix", help="strict matrix YAML")
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
+    parser.add_argument("--planner-minimum-turning-radius", type=float)
     args = parser.parse_args(argv)
+    if (args.planner_minimum_turning_radius is not None and
+            args.planner_minimum_turning_radius <= 0.0):
+        parser.error("--planner-minimum-turning-radius must be positive")
     cells = expand_matrix(args.matrix)
     matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -100,6 +104,29 @@ def main(argv=None):
             )
             try:
                 _wait_ready(args.startup_timeout_s)
+                if args.planner_minimum_turning_radius is not None:
+                    set_radius = _run(
+                        ["ros2", "param", "set", "/planner_server",
+                         "GridBased.minimum_turning_radius",
+                         str(args.planner_minimum_turning_radius)],
+                        check=False, capture=True,
+                    )
+                    get_radius = _run(
+                        ["ros2", "param", "get", "/planner_server",
+                         "GridBased.minimum_turning_radius"],
+                        check=False, capture=True,
+                    )
+                    metadata["planner_minimum_turning_radius"] = _speed_metadata(
+                        args.planner_minimum_turning_radius, set_radius, get_radius
+                    )
+                    if set_radius.returncode != 0 or get_radius.returncode != 0:
+                        raise RuntimeError(
+                            "Smac runtime minimum_turning_radius update was rejected"
+                        )
+                    if not metadata["planner_minimum_turning_radius"]["matches_requested"]:
+                        raise RuntimeError(
+                            "Smac effective minimum_turning_radius does not match request"
+                        )
                 set_result = _run(["ros2", "param", "set", "/controller_server",
                                    "FollowPath.desired_linear_vel", str(cell.speed_mps)],
                                   check=False, capture=True)

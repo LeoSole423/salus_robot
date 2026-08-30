@@ -32,6 +32,7 @@ case "${mode}" in
   matrix)
     matrix="${2:-}"; test -n "${matrix}" || { usage; exit 2; }
     output="${3:-${repo_dir}/artifacts/evaluations/matrix-$(date -u +%Y%m%dT%H%M%S)}"
+    shift 3 || true
     mkdir -p "${output}"
     output="$(cd "${output}" && pwd)"
     matrix_domain_id="$(( (RANDOM % 100) + 100 ))"
@@ -41,7 +42,7 @@ case "${mode}" in
       -v "${output}:/evaluation-artifacts" ros2 bash -lc "
       source /opt/ros/humble/setup.bash
       source /ros2_ws/install/setup.bash
-      ros2 run salus_evaluation navigation_matrix_execute '${matrix}' /evaluation-artifacts
+      ros2 run salus_evaluation navigation_matrix_execute '${matrix}' /evaluation-artifacts $*
     "
     ;;
   *) usage; exit 2 ;;
