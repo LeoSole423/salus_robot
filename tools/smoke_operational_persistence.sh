@@ -20,7 +20,7 @@ docker compose run --rm \
   export SALUS_WEB_SMOKE_PORT="${web_port}"
 
   cockpit_port_open() {
-    python3 - "${web_port}" <<'PY'
+    python3 - "${web_port}" <<PY
 import socket
 import sys
 
