@@ -187,6 +187,8 @@ class CockpitRosGateway(Node):
         self.declare_parameter("service_timeout_s", 5.0)
         self.declare_parameter("service_discovery_timeout_s", 5.0)
         self.declare_parameter("long_service_timeout_s", 20.0)
+        self.declare_parameter("required_service_startup_timeout_s", 20.0)
+        self.declare_parameter("require_camera_service", False)
         self.declare_parameter("ws_host", "0.0.0.0")
         self.declare_parameter("ws_port", 8766)
         self.declare_parameter("enable_control_lock", True)
@@ -207,6 +209,10 @@ class CockpitRosGateway(Node):
         self._long_service_timeout_s = max(
             self._service_timeout_s,
             float(self.get_parameter("long_service_timeout_s").value),
+        )
+        self._required_service_startup_timeout_s = max(
+            self._service_timeout_s,
+            float(self.get_parameter("required_service_startup_timeout_s").value),
         )
         self._waypoints = AtomicWaypointRepository(
             Path(str(self.get_parameter("waypoints_file").value))
@@ -517,6 +523,52 @@ class CockpitRosGateway(Node):
             "image_size_bytes": len(response.image_png),
             "client_req_id": request.request_id,
         }
+
+    async def wait_for_required_service(
+        self,
+        operation: str,
+        request: Any,
+    ) -> Any:
+        """Require one causal service round-trip before exposing a dependent UI."""
+        client = self._service_clients[operation]
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self._required_service_startup_timeout_s
+        while not client.service_is_ready():
+            if loop.time() >= deadline:
+                raise RosGatewayError(
+                    "SERVICE_UNAVAILABLE",
+                    f"{operation} required service unavailable during startup",
+                )
+            await asyncio.sleep(0.05)
+
+        ros_future = client.call_async(request)
+        future: asyncio.Future[Any] = loop.create_future()
+
+        def complete(done: Any) -> None:
+            def resolve() -> None:
+                if future.done():
+                    return
+                try:
+                    future.set_result(done.result())
+                except Exception as error:
+                    future.set_exception(error)
+
+            loop.call_soon_threadsafe(resolve)
+
+        ros_future.add_done_callback(complete)
+        remaining_s = max(0.0, deadline - loop.time())
+        try:
+            result = await asyncio.wait_for(future, remaining_s)
+        except asyncio.TimeoutError as error:
+            ros_future.cancel()
+            raise RosGatewayError(
+                "SERVICE_TIMEOUT",
+                f"{operation} required service did not respond during startup",
+            ) from error
+        self.get_logger().info(
+            f"required Cockpit service {operation} completed startup round-trip"
+        )
+        return result
 
     async def _call(self, operation: str, request: Any) -> Any:
         client = self._service_clients[operation]

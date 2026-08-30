@@ -296,6 +296,7 @@ def generate_launch_description() -> LaunchDescription:
                     "waypoints_file": web_waypoints_file,
                     "telemetry_profile": web_telemetry_profile,
                     "scan_preview_enabled": obstacle_detection_enabled,
+                    "require_camera_service": launch_camera,
                 },
                 condition=IfCondition(launch_web),
             ),

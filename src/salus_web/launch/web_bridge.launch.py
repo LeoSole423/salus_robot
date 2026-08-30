@@ -16,6 +16,10 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("service_timeout_s", default_value="5.0"),
         DeclareLaunchArgument("service_discovery_timeout_s", default_value="5.0"),
         DeclareLaunchArgument("long_service_timeout_s", default_value="20.0"),
+        DeclareLaunchArgument(
+            "required_service_startup_timeout_s", default_value="20.0"
+        ),
+        DeclareLaunchArgument("require_camera_service", default_value="false"),
         DeclareLaunchArgument("telemetry_profile", default_value="compact"),
         DeclareLaunchArgument("compact_telemetry_hz", default_value="2.0"),
         DeclareLaunchArgument("heading_odometry_topic", default_value="/odometry/local"),
@@ -43,6 +47,12 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 "long_service_timeout_s": LaunchConfiguration(
                     "long_service_timeout_s"
+                ),
+                "required_service_startup_timeout_s": LaunchConfiguration(
+                    "required_service_startup_timeout_s"
+                ),
+                "require_camera_service": LaunchConfiguration(
+                    "require_camera_service"
                 ),
                 "telemetry_profile": LaunchConfiguration("telemetry_profile"),
                 "compact_telemetry_hz": LaunchConfiguration("compact_telemetry_hz"),
