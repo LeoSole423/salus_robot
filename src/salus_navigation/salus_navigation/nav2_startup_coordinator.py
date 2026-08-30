@@ -15,7 +15,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profi
 from rclpy.time import Time
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import LaserScan
-from salus_interfaces.srv import EvaluatePathHealth
+from salus_interfaces.srv import EvaluatePathHealth, GetZonesState
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from .startup_readiness import ReadinessSnapshot, StartupPolicy, StartupState
@@ -58,6 +58,15 @@ def _valid_scan(message: LaserScan) -> bool:
     )
 
 
+def zones_state_mask_ready(response) -> bool:
+    """Only zones_manager can confirm the persisted mask is active."""
+    return bool(
+        response is not None
+        and getattr(response, "ok", False)
+        and getattr(response, "mask_ready", False)
+    )
+
+
 class Nav2StartupCoordinator(Node):
     """ROS adapter around the pure startup policy."""
 
@@ -79,6 +88,9 @@ class Nav2StartupCoordinator(Node):
         self._scan: LaserScan | None = None
         self._scan_received_at = 0.0
         self._mask_ready = not self._use_keepout
+        self._mask_observed_valid = False
+        self._zones_state_future = None
+        self._zones_state_requested_at = 0.0
         self._manage_future = None
         self._manage_requested_at = 0.0
         self._state_futures = {name: None for name in NAV2_NODES}
@@ -96,6 +108,9 @@ class Nav2StartupCoordinator(Node):
         )
         self._path_health = self.create_client(
             EvaluatePathHealth, "/path_health/evaluate"
+        )
+        self._zones_state = self.create_client(
+            GetZonesState, "/zones_manager/get_state"
         )
         self._state_clients = {
             name: self.create_client(GetState, f"/{name}/get_state") for name in NAV2_NODES
@@ -131,11 +146,36 @@ class Nav2StartupCoordinator(Node):
         self._scan_received_at = time.monotonic()
 
     def _on_mask(self, message: OccupancyGrid) -> None:
-        self._mask_ready = (
+        # The map server publishes a structurally valid bootstrap placeholder
+        # before zones_manager applies persisted GeoJSON.  Observing a mask is
+        # useful diagnostics, but only zones_manager can prove the active mask
+        # corresponds to the persisted zone generation.
+        self._mask_observed_valid = (
             message.header.frame_id == "map"
             and message.info.width > 0 and message.info.height > 0
             and len(message.data) == message.info.width * message.info.height
         )
+
+    def _poll_zones_state(self, now: float) -> None:
+        if not self._use_keepout or self._mask_ready:
+            return
+        if self._zones_state_future is not None:
+            if self._zones_state_future.done():
+                try:
+                    response = self._zones_state_future.result()
+                    self._mask_ready = zones_state_mask_ready(response)
+                except Exception:
+                    self._mask_ready = False
+                self._zones_state_future = None
+            elif now - self._zones_state_requested_at > 2.0:
+                self._zones_state_future.cancel()
+                self._zones_state_future = None
+            return
+        if self._zones_state.service_is_ready():
+            self._zones_state_future = self._zones_state.call_async(
+                GetZonesState.Request()
+            )
+            self._zones_state_requested_at = now
 
     def _update_tf(self) -> None:
         self._tf_available = False
@@ -245,6 +285,8 @@ class Nav2StartupCoordinator(Node):
 
     def _tick(self) -> None:
         if self._policy.state is StartupState.WAITING_INPUTS:
+            now = time.monotonic()
+            self._poll_zones_state(now)
             self._update_tf()
             if self._policy.observe(self._snapshot()):
                 self._request_startup()
@@ -267,6 +309,8 @@ class Nav2StartupCoordinator(Node):
         values = {**snapshot.__dict__, "state": self._policy.state.value,
                   "reason": self._policy.reason,
                   "path_health_preflight": self._path_health_ready,
+                  "keepout_mask_observed": self._mask_observed_valid,
+                  "zones_state_service_ready": self._zones_state.service_is_ready(),
                   **self._node_states}
         status.values = [KeyValue(key=str(key), value=str(value)) for key, value in values.items()]
         message = DiagnosticArray()
