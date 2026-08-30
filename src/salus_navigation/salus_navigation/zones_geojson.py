@@ -139,7 +139,7 @@ def cost_mask_from_binary(image: np.ndarray, resolution: float, radius_m: float,
     """Return Nav2 scale-mask costs: 100 core, exponentially decaying halo."""
     core = image == 0
     costs = np.where(core, 100, 0).astype(np.uint8)
-    if radius_m <= 0.0:
+    if radius_m <= 0.0 or not np.any(core):
         return costs
     distance_m = cv2.distanceTransform((~core).astype(np.uint8), cv2.DIST_L2, 3) * resolution
     band = (distance_m > 0.0) & (distance_m <= radius_m)
