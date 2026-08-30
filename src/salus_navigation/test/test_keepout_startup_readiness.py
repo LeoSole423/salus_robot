@@ -173,6 +173,7 @@ def test_accept_active_projected_state_advances_revision_and_publishes() -> None
             return FakeNow(self.sec)
 
     publisher = FakePublisher()
+    clock = FakeClock()
     manager = SimpleNamespace(
         _lock=threading.Lock(),
         _document={"type": "FeatureCollection", "features": []},
@@ -183,7 +184,7 @@ def test_accept_active_projected_state_advances_revision_and_publishes() -> None
         _projected_polygons=[],
         _projected_pub=publisher,
         map_frame="map",
-        get_clock=FakeClock().now,
+        get_clock=lambda: clock,
     )
 
     ZonesManager._accept_active_state(
