@@ -55,20 +55,20 @@ def test_failure_cleanup_collects_full_diagnostics(tmp_path) -> None:
 
 
 def test_ci_assigns_scenario_specific_hard_timeouts() -> None:
-    workflow = (HARNESS.parents[1] / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    assert 'SMOKE_HARD_TIMEOUT_S: "120"' in workflow
-    assert 'SMOKE_HARD_TIMEOUT_S: "180"' in workflow
-    heavy_smokes = (
-        "smoke_navigation_core_sim.sh",
-        "smoke_navigation_canonical_sim.sh",
-        "smoke_navigation_no_obstacles_sim.sh",
-        "smoke_navigation_zones_sim.sh",
-        "smoke_route_executor_sim.sh",
-        "smoke_patrol_battery_sim.sh",
-        "smoke_navigation_snapshot.sh",
-    )
-    for smoke in heavy_smokes:
-        step_end = workflow.index(f"./tools/{smoke}")
-        step_start = workflow.rfind("      - name:", 0, step_end)
-        step = workflow[step_start:step_end]
-        assert 'SMOKE_HARD_TIMEOUT_S: "240"' in step, smoke
+    registry_path = HARNESS.parents[1] / "tools/smoke_scenarios.json"
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    scenarios = {scenario["id"]: scenario for scenario in registry["scenarios"]}
+
+    assert scenarios["control"]["timeouts_s"]["ci"] == 120
+    assert scenarios["integration"]["timeouts_s"]["ci"] == 180
+    for scenario_id in (
+        "navigation",
+        "navigation_canonical",
+        "navigation_no_obstacles",
+        "zones",
+        "routes",
+        "patrol_battery",
+        "snapshot",
+        "web_cockpit",
+    ):
+        assert scenarios[scenario_id]["timeouts_s"]["ci"] == 240
