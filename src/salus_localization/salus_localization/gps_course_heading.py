@@ -103,6 +103,9 @@ class GpsCourseHeading(Node):
         self.rtk_at_monotonic: Optional[float] = None
         self.output = self.create_publisher(Imu, str(p("output_topic")), 10)
         self.debug = self.create_publisher(String, str(p("debug_topic")), 10)
+        self._pending_output: Optional[Imu] = None
+        self._pending_output_stamp_s: Optional[float] = None
+        self._delivery_timer = self.create_timer(0.1, self._flush_pending_output)
         self.create_subscription(
             NavSatFix, str(p("gps_topic")), self.on_fix, qos_profile_sensor_data
         )
@@ -175,25 +178,20 @@ class GpsCourseHeading(Node):
                 None,
             )
         )
-        self.debug.publish(
-            String(
-                data=json.dumps(
-                    {
-                        "valid": estimate.valid,
-                        "reason": estimate.reason,
-                        "distance_m": estimate.distance_m,
-                        "speed_mps": estimate.speed_mps,
-                        "sample_dt_s": estimate.sample_dt_s,
-                        "steer_valid": self.steer_valid,
-                        "steer_deg": self.steer,
-                        "yaw_rate_rps": self.yaw_rate,
-                        "rtk_valid": rtk_valid,
-                        "rtk_age_s": rtk_age_s,
-                    },
-                    sort_keys=True,
-                )
-            )
-        )
+        debug_payload = {
+            "valid": estimate.valid,
+            "reason": estimate.reason,
+            "distance_m": estimate.distance_m,
+            "speed_mps": estimate.speed_mps,
+            "sample_dt_s": estimate.sample_dt_s,
+            "steer_valid": self.steer_valid,
+            "steer_deg": self.steer,
+            "yaw_rate_rps": self.yaw_rate,
+            "rtk_valid": rtk_valid,
+            "rtk_age_s": rtk_age_s,
+            "output_subscribers": self.output.get_subscription_count(),
+            "pending_output": self._pending_output is not None,
+        }
         if estimate.valid and estimate.yaw_rad is not None:
             msg = Imu()
             stamp = (
@@ -209,7 +207,31 @@ class GpsCourseHeading(Node):
             msg.orientation_covariance[8] = (
                 0.05 if estimate.reason == "ok" else 0.2
             )
-            self.output.publish(msg)
+            self._deliver_or_buffer(msg, now_s=now)
+        self.debug.publish(String(data=json.dumps(debug_payload, sort_keys=True)))
+
+    def _deliver_or_buffer(self, message: Imu, *, now_s: float) -> None:
+        if self.output.get_subscription_count() > 0:
+            self.output.publish(message)
+            self._pending_output = None
+            self._pending_output_stamp_s = None
+            return
+        self._pending_output = deepcopy(message)
+        self._pending_output_stamp_s = float(now_s)
+
+    def _flush_pending_output(self) -> None:
+        if self._pending_output is None or self._pending_output_stamp_s is None:
+            return
+        if self.output.get_subscription_count() <= 0:
+            return
+        max_age_s = float(self.get_parameter("max_fix_age_s").value)
+        if max(0.0, self.now() - self._pending_output_stamp_s) > max_age_s:
+            self._pending_output = None
+            self._pending_output_stamp_s = None
+            return
+        self.output.publish(self._pending_output)
+        self._pending_output = None
+        self._pending_output_stamp_s = None
 
 
 def main(args=None) -> None:
