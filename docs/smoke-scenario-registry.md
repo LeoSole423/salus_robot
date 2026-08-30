@@ -38,3 +38,19 @@ This removes the former single 90-minute runner that owned all nightly repetitio
 ### Nightly hard-timeout budgets
 
 Nightly hard timeouts remain scenario metadata rather than a workflow-wide override. Most current nightly scenarios retain the existing 120-second bound. `sim_operational` and `operational_persistence` use 180 seconds because historical healthy executions can consume roughly 90–130 seconds before cleanup, while the previous 120-second global hard wall produced kills around 133–134 seconds. The larger bound is limited to these heavy compositions and reflects their observed execution envelope; it does not add retries or relax functional assertions.
+
+## Compiled workspace artifact experiment
+
+CI v2 evaluated sharing an exact-SHA compiled `build/` + `install/` artifact between matrix runners instead of rebuilding the ROS workspace independently.
+
+The experiment proved the transfer contract was technically viable:
+- artifact size was about 4.36 MB;
+- packaging took about 1 second;
+- upload took about 7 seconds;
+- representative downloads took about 2 seconds;
+- restore was below 1 second;
+- restored `--symlink-install` workspaces executed successfully in isolated smoke runners.
+
+However, the architecture adds a serial producer barrier: every smoke must wait for the build job to finish before it can start. In the measured FULL runs (#105 run 249, `33315182497`, versus #108 experiment run 251, `33316089133`), approximate runner consumption dropped from 51.7 to 36.1 runner-minutes (about 30% lower), but workflow wall-clock increased from about 4.9 to 6.9 minutes (about 42% slower).
+
+Because CI v2 currently prioritizes shorter developer feedback latency, PR/main CI keeps independent per-runner workspace builds. The exact-SHA artifact approach may be reconsidered later if runner cost becomes more important than wall-clock latency.
