@@ -109,8 +109,23 @@ def test_numeric_parameter_metadata_uses_radius_names_and_units():
     assert "requested_speed_mps" not in result
 
 
+def test_numeric_parameter_metadata_keeps_speed_set_returncode():
+    from salus_evaluation.matrix_executor import _numeric_parameter_metadata
+
+    result = _numeric_parameter_metadata(
+        1.2, SimpleNamespace(returncode=0, stdout="Double value is: 1.2", stderr=""),
+        setup_result=SimpleNamespace(returncode=7, stdout="", stderr="rejected"),
+        quantity="speed_mps", unit="m/s",
+    )
+    assert result["setup_returncode"] == 7
+    assert result["get_returncode"] == 0
+    assert result["requested_speed_mps"] == 1.2
+    assert result["effective_speed_mps"] == 1.2
+    assert result["unit"] == "m/s" and result["matches_requested"]
+
+
 def test_candidate_nav2_params_changes_only_smac_radius(tmp_path):
-    from salus_evaluation.matrix_executor import write_candidate_nav2_params
+    from salus_evaluation.matrix_executor import _sha256, write_candidate_nav2_params
 
     base = tmp_path / "base.yaml"
     base.write_text("""planner_server:
@@ -124,12 +139,14 @@ controller_server:
     controller_frequency: 20.0
 """)
     candidate = write_candidate_nav2_params(base, tmp_path / "candidate.yaml", 2.5)
+    duplicate = write_candidate_nav2_params(base, tmp_path / "duplicate.yaml", 2.5)
     import yaml
     original, generated = yaml.safe_load(base.read_text()), yaml.safe_load(candidate.read_text())
     grid_based = generated["planner_server"]["ros__parameters"]["GridBased"]
     assert grid_based["minimum_turning_radius"] == 2.5
     generated["planner_server"]["ros__parameters"]["GridBased"]["minimum_turning_radius"] = 4.0
     assert generated == original
+    assert _sha256(candidate) == _sha256(duplicate)
 
 
 def test_radius_readback_mismatch_is_recorded_as_nonmatching():

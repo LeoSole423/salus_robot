@@ -228,7 +228,7 @@ def main(argv=None):
                 get_result = _run(["ros2", "param", "get", "/controller_server",
                                    "FollowPath.desired_linear_vel"], check=False, capture=True)
                 metadata["speed_parameter"] = _numeric_parameter_metadata(
-                    cell.speed_mps, get_result,
+                    cell.speed_mps, get_result, setup_result=set_result,
                     quantity="speed_mps", unit="m/s",
                 )
                 if set_result.returncode != 0 or get_result.returncode != 0:
