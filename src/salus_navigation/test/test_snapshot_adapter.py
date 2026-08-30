@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Point32
 from map_msgs.msg import OccupancyGridUpdate
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker, MarkerArray
@@ -71,3 +71,23 @@ def test_collision_markers_apply_pose_rotation_and_preserve_line_list_pairs() ->
     assert lines[0].points[1] == pytest.approx((2.0, 5.0))
     assert lines[1].points[0] == pytest.approx((1.0, 3.0))
     assert lines[1].points[1] == pytest.approx((0.0, 3.0))
+
+
+def test_old_projected_keepouts_use_current_tf_for_localization_corrections() -> None:
+    from salus_interfaces.msg import ProjectedKeepoutPolygon, ProjectedKeepoutState
+
+    state = ProjectedKeepoutState()
+    state.header.frame_id = "map"
+    state.header.stamp.sec = 1  # Deliberately older than the TF cache horizon.
+    polygon = ProjectedKeepoutPolygon()
+    polygon.outer.points = [Point32(x=10.0, y=0.0), Point32(x=11.0, y=0.0), Point32(x=10.0, y=1.0)]
+    state.polygons = [polygon]
+    calls = []
+    server = object.__new__(NavSnapshotServer)
+    server._transform = lambda target, source, stamp: calls.append(stamp) or Transform2D(source, target, -50.0, 0.0, 0.0)
+
+    keepouts = server._keepouts(state, "odom")
+
+    assert len(keepouts) == 1
+    assert keepouts[0].transform.x == -50.0
+    assert calls[0].nanoseconds == 0

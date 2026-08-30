@@ -37,6 +37,11 @@ means that the accepted vector state is available; `mask_source` reports
 - Unit tests cover empty state, disabled zones, holes, long-range goal
   rejection, snapshot vector rendering, and removal of legacy dependencies.
 - The costmap plugin's geometry tests cover core/halo and bounded patch work.
+- `VectorKeepoutLayerPolicy.FarZonesDoNotDirtyRollingWindow` verifies that a
+  polygon around x=1000 does not dirty a 30 m active window and that only the
+  intersecting polygon reaches rasterization. The requested patch allocation is
+  exactly `width × height` cells of that rolling update, independent of world
+  extent; no global keepout image is allocated.
 - Full deterministic teleport/rolling-window simulation and hardware evidence
   still require execution in the Humble simulation environment; no hardware
   launch was run by this migration.

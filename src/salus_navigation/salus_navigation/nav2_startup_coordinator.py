@@ -313,7 +313,9 @@ class Nav2StartupCoordinator(Node):
         values = {**snapshot.__dict__, "state": self._policy.state.value,
                   "reason": self._policy.reason,
                   "path_health_preflight": self._path_health_ready,
-                  "keepout_mask_observed": self._mask_observed_valid,
+                  # The vector state is authoritative through zones_manager;
+                  # there is no legacy OccupancyGrid observation in this path.
+                  "projected_keepouts_ready": self._mask_ready,
                   "zones_state_service_ready": self._zones_state.service_is_ready(),
                   **self._node_states}
         status.values = [KeyValue(key=str(key), value=str(value)) for key, value in values.items()]

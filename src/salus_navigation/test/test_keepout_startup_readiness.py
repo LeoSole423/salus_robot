@@ -23,6 +23,8 @@ def test_startup_uses_zone_authority_without_legacy_mask_subscription() -> None:
     assert '"/keepout_filter_mask"' not in source
     assert 'GetZonesState, "/zones_manager/get_state"' in source
     assert "self._poll_zones_state(now)" in source
+    assert '"projected_keepouts_ready": self._mask_ready' in source
+    assert "keepout_mask_observed" not in source
 
 
 def test_empty_document_is_a_valid_vector_state() -> None:

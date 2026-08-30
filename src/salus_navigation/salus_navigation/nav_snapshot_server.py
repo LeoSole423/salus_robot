@@ -276,7 +276,11 @@ class NavSnapshotServer(Node):
 
     def _keepouts(self, message: ProjectedKeepoutState, target: str) -> Tuple[KeepoutPolygon, ...]:
         source = message.header.frame_id or "map"
-        transform = self._transform(target, source, message.header.stamp)
+        # Keepouts are fixed in map.  Their publication stamp identifies the
+        # accepted geometry revision, not a historical map->odom pose.  Use
+        # the current transform so an old transient-local state still follows
+        # the latest localization correction.
+        transform = self._transform(target, source, Time())
         if transform is None:
             return ()
         return tuple(
