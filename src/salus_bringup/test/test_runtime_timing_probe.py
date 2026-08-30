@@ -68,11 +68,13 @@ def test_phase1_sidecar_is_attached_to_representative_runtime_smokes() -> None:
 
 
 def test_snapshot_and_web_probes_record_request_windows() -> None:
-    snapshot = (ROOT / "tools" / "smoke_navigation_snapshot.py").read_text(
-        encoding="utf-8"
-    )
-    web = (ROOT / "tools" / "smoke_web_cockpit.py").read_text(encoding="utf-8")
+    snapshot_path = ROOT / "tools" / "smoke_navigation_snapshot.py"
+    web_path = ROOT / "tools" / "smoke_web_cockpit.py"
+    snapshot = snapshot_path.read_text(encoding="utf-8")
+    web = web_path.read_text(encoding="utf-8")
 
+    compile(snapshot, str(snapshot_path), "exec")
+    compile(web, str(web_path), "exec")
     assert '"snapshot_request_timings"' in snapshot
     assert '"started_monotonic_s"' in snapshot
     assert '"request_timings"' in web
