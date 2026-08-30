@@ -210,7 +210,7 @@ class NavCommandServer(Node):
     def _publish(self, command: CmdVelFinal) -> None:
         self._final_pub.publish(command)
 
-    def _event(self, severity: int, code: str, message: str, **details: str) -> None:
+    def _event(self, severity: int, code: str, message: str, **details: str) -> int:
         self._event_id += 1
         event = NavEvent()
         event.stamp = self.get_clock().now().to_msg()
@@ -219,6 +219,7 @@ class NavCommandServer(Node):
         event.code, event.message, event.event_id = code, message, self._event_id
         event.details = [KeyValue(key=str(key), value=str(value)) for key, value in details.items()]
         self._event_pub.publish(event)
+        return int(event.event_id)
 
     def _on_monitor_state(self, message: CollisionMonitorState) -> None:
         with self._lock:
@@ -391,7 +392,13 @@ class NavCommandServer(Node):
         if response.error:
             self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", response.error, source="geographic")
             return response
-        self._event(DiagnosticStatus.OK, "GOAL_REQUESTED", "geographic goal requested", lat=waypoint[0], lon=waypoint[1])
+        response.goal_event_id = self._event(
+            DiagnosticStatus.OK,
+            "GOAL_REQUESTED",
+            "geographic goal requested",
+            lat=waypoint[0],
+            lon=waypoint[1],
+        )
         return response
 
     @staticmethod
