@@ -1,4 +1,5 @@
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time
@@ -126,3 +127,40 @@ def test_successful_legacy_apply_activates_exact_projected_candidate() -> None:
     args, kwargs = activations[0]
     assert args == (document, candidate)
     assert kwargs == {"mask_source": "map_server_load_map+global_costmap_clear"}
+
+
+def test_empty_projected_state_is_explicit_and_revisioned() -> None:
+    message = projected_keepout_state_message(
+        [],
+        frame_id="map",
+        revision=1,
+        stamp=Time(),
+    )
+
+    assert message.header.frame_id == "map"
+    assert message.revision == 1
+    assert list(message.polygons) == []
+
+
+def test_multiple_polygons_can_share_one_stable_zone_id() -> None:
+    message = projected_keepout_state_message(
+        [_projected("multi"), _projected("multi")],
+        frame_id="map",
+        revision=3,
+        stamp=Time(),
+    )
+
+    assert [polygon.zone_id for polygon in message.polygons] == ["multi", "multi"]
+
+
+def test_projected_state_publisher_has_late_subscriber_qos_contract() -> None:
+    source = (
+        Path(__file__).parents[1]
+        / "salus_navigation"
+        / "zones_manager.py"
+    ).read_text(encoding="utf-8")
+
+    assert '"/zones_manager/projected_keepouts"' in source
+    assert "QoSProfile(depth=1)" in source
+    assert "ReliabilityPolicy.RELIABLE" in source
+    assert "DurabilityPolicy.TRANSIENT_LOCAL" in source
