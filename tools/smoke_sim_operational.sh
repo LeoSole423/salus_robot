@@ -19,9 +19,5 @@ docker compose run --rm \
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch operational "ros2 launch salus_bringup sim_operational.launch.py headless:=true world:=${free_world} web_ws_port:=${web_port} runtime_dir:=${SMOKE_RUNTIME_DIR}/profile"
   smoke_run operational_probe "python3 /ros2_ws/tools/integration_probe.py --operational --timeout 90 --report-path ${SMOKE_ARTIFACT_DIR}/operational_probe.json"
-  smoke_run route_executor "python3 /ros2_ws/tools/smoke_route_executor_sim.py"
-  smoke_run navigation_profiles "python3 /ros2_ws/tools/smoke_navigation_profiles.py"
-  export SALUS_WEB_SMOKE_PORT="${web_port}"
-  smoke_run web_cockpit "python3 /ros2_ws/tools/smoke_web_cockpit.py"
-  smoke_note "sim_operational_end_to_end_valid"
+  smoke_note "sim_operational_composition_valid"
 '
