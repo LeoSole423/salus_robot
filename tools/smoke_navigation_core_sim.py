@@ -382,10 +382,16 @@ def main() -> int:
         node.plans.clear()
         node.raw_commands.clear()
         node.runtime.wait(
-            "right-turn RViz goal did not produce a plan",
+            "right-turn RViz /goal_pose has no subscriber",
+            lambda: node.rviz_goal.get_subscription_count() >= 1,
+            8.0,
+        )
+        node.rviz_goal.publish(right_turn_goal)
+        wait_for(
+            node,
             lambda: get_state(node).goal_active and bool(node.plans),
             8.0,
-            stimulate=lambda: node.rviz_goal.publish(right_turn_goal),
+            "right-turn RViz goal did not produce a plan",
         )
         wait_for(
             node,
