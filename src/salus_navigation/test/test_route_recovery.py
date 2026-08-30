@@ -2,7 +2,7 @@ from salus_interfaces.msg import PathHealth
 from salus_navigation.route_model import PreparedRoute, RouteWaypoint
 from salus_navigation.route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    resolve_forward_reanchor,
+    checkpoint_within_tolerance, resolve_forward_reanchor,
 )
 from salus_navigation.nav_command_server import diagnostic_level
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -94,6 +94,30 @@ def test_reanchor_moves_forward_and_loop_does_not_wrap_early():
     loop = resolve_forward_reanchor(
         route(loop=True), current_index=3, robot_x=0.1, robot_y=0.0, tolerance_m=8.0)
     assert loop.resolved_index == 3 and loop.reason == "no_forward_match"
+
+def test_recovery_checkpoint_geometry_requires_configured_tolerance():
+    assert checkpoint_within_tolerance(
+        checkpoint_x=3.0, checkpoint_y=0.0,
+        robot_x=3.09, robot_y=0.0, tolerance_m=1.2,
+    )
+    assert not checkpoint_within_tolerance(
+        checkpoint_x=3.0, checkpoint_y=0.0,
+        robot_x=4.21, robot_y=0.0, tolerance_m=1.2,
+    )
+
+
+def test_reanchor_cannot_skip_pending_checkpoint():
+    bounded = resolve_forward_reanchor(
+        route(),
+        current_index=0,
+        robot_x=14.8,
+        robot_y=0.0,
+        tolerance_m=20.0,
+        max_index=1,
+    )
+    assert bounded.resolved_index == 1
+    assert bounded.reanchored
+
 def test_recovery_event_severity_is_normalized_for_humble() -> None:
     assert diagnostic_level(DiagnosticStatus.WARN) == 1
     assert isinstance(diagnostic_level(DiagnosticStatus.ERROR), int)
