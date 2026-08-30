@@ -1,6 +1,18 @@
+from array import array
+
+import cv2
+import numpy as np
 import pytest
 
-from salus_navigation.snapshot_renderer import Grid, Polyline, SnapshotScene, Transform2D, render
+from salus_navigation.snapshot_renderer import (
+    Grid,
+    Polyline,
+    SnapshotScene,
+    Transform2D,
+    _grid_array,
+    _nearest_sample,
+    render,
+)
 
 
 def _grid(frame: str = "odom") -> Grid:
@@ -68,3 +80,41 @@ def test_transform_inverse_round_trip() -> None:
     restored = transform.inverse().apply(transform.apply(point))
     assert restored[0] == pytest.approx(point[0])
     assert restored[1] == pytest.approx(point[1])
+
+
+
+def test_grid_array_reuses_signed_byte_backing_storage() -> None:
+    values = array("b", [-1, 0, 25, 100])
+    grid = Grid("map", 1.0, (0.0, 0.0), 2, 2, values)
+    source = _grid_array(grid)
+
+    assert source is not None
+    assert source.dtype == np.int8
+    assert np.shares_memory(source, np.frombuffer(values, dtype=np.int8))
+    assert source.tolist() == [[25, 100], [-1, 0]]
+
+
+def test_nearest_sample_matches_opencv_reference_without_full_float_source() -> None:
+    source = np.arange(25, dtype=np.int8).reshape(5, 5)
+    map_x = np.array([
+        [-0.6, -0.5, -0.49, 0.0, 0.49, 0.5, 0.51],
+        [1.49, 1.5, 1.51, 3.49, 3.5, 4.49, 4.6],
+    ], dtype=np.float32)
+    map_y = np.array([
+        [0.0] * 7,
+        [4.0] * 7,
+    ], dtype=np.float32)
+    border = -9.0
+
+    expected = cv2.remap(
+        source.astype(np.float32),
+        map_x,
+        map_y,
+        cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=border,
+    )
+    sampled = _nearest_sample(source, map_x, map_y, border)
+
+    np.testing.assert_array_equal(sampled, expected)
+    assert sampled.dtype == np.float32
