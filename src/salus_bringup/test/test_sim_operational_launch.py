@@ -83,6 +83,8 @@ def test_persistence_smoke_restarts_minimal_contract_and_not_full_operational() 
     assert contents.count("persistence_contract.launch.py") == 2
     assert "smoke_operational_persistence.py --mode seed" in contents
     assert "smoke_operational_persistence.py --mode verify" in contents
+    assert 'smoke_wait "initial cockpit endpoint stopped"' in contents
+    assert 'smoke_wait "restarted cockpit endpoint ready"' in contents
     for unrelated in (
         "sim_operational.launch.py",
         "integration_probe.py",
