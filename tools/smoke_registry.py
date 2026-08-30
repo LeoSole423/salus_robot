@@ -70,6 +70,30 @@ def nightly_scripts() -> tuple[str, ...]:
     )
 
 
+def nightly_matrix() -> dict[str, list[dict[str, int | str]]]:
+    return {
+        "include": [
+            {
+                "id": scenario["id"],
+                "repetitions": int(scenario["nightly_repetitions"]),
+                "hard_timeout_s": int(scenario["timeouts_s"]["nightly"]),
+                "job_timeout_minutes": max(
+                    20,
+                    (
+                        int(scenario["nightly_repetitions"])
+                        * int(scenario["timeouts_s"]["nightly"])
+                        + 900
+                    )
+                    // 60
+                    + 1,
+                ),
+            }
+            for scenario in SCENARIOS
+            if scenario["participation"]["nightly"]
+        ]
+    }
+
+
 def default_nightly_repetitions() -> int:
     repetitions = {
         scenario["nightly_repetitions"]
@@ -85,10 +109,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nightly-scripts", action="store_true")
     parser.add_argument("--nightly-repetitions", action="store_true")
+    parser.add_argument("--nightly-matrix", action="store_true")
     parser.add_argument("--ids", choices=("pr", "full", "main", "nightly"))
     args = parser.parse_args()
     if args.nightly_scripts:
         print("\n".join(nightly_scripts()))
+    elif args.nightly_matrix:
+        print(json.dumps(nightly_matrix(), separators=(",", ":")))
     elif args.nightly_repetitions:
         print(default_nightly_repetitions())
     elif args.ids:
