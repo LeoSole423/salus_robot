@@ -1,7 +1,9 @@
 # salus_navigation_costmap
 
 `VectorKeepoutLayer` is an opt-in Nav2 Humble `CostmapLayer` that consumes the
-revisioned map-frame polygons published by `zones_manager`. It allocates only a
+revisioned map-frame polygons published by `zones_manager`. A revision describes
+one producer lifetime only: after a producer restart, a lower revision replaces
+the prior state safely. It allocates only a
 requested costmap update patch and uses polygon bounding boxes before testing
 cells; it never creates or publishes a world-sized raster.
 

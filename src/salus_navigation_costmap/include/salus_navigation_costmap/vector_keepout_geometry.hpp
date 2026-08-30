@@ -18,5 +18,11 @@ struct CostProfile { double halo_radius_m{1.5}; unsigned char halo_edge_cost{12}
 
 Bounds bounds_of(const std::vector<Point> & ring);
 bool contains(const Polygon & polygon, Point point);
+Polygon transformed(Polygon polygon, double tx, double ty, double yaw);
+std::vector<Polygon> intersecting(const std::vector<Polygon> & polygons, const Bounds & window, double margin);
+bool add_dirty_bounds(const std::vector<Polygon> & polygons, const Bounds & window, double margin, Bounds * dirty);
+unsigned char max_keepout_cost(unsigned char existing, unsigned char keepout_cost);
+struct ProjectedState { std::vector<Polygon> current; std::vector<Polygon> previous; uint64_t revision{0}; };
+void replace_state(ProjectedState * state, std::vector<Polygon> next, uint64_t revision);
 std::vector<unsigned char> rasterize(const std::vector<Polygon> & polygons, const RasterSpec & spec, const CostProfile & profile);
 }  // namespace salus_navigation_costmap

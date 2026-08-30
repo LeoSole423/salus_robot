@@ -26,6 +26,11 @@ bool contains(const Polygon & p, Point point) {
   for (const auto & hole : p.holes) if (ring_contains(hole, point)) return false;
   return true;
 }
+Polygon transformed(Polygon p, double tx, double ty, double yaw) { const double c = std::cos(yaw), s = std::sin(yaw); auto apply = [&](Point & v) { v = {tx + c * v.x - s * v.y, ty + s * v.x + c * v.y}; }; for (auto & v : p.outer) apply(v); for (auto & ring : p.holes) for (auto & v : ring) apply(v); p.bounds = bounds_of(p.outer); return p; }
+std::vector<Polygon> intersecting(const std::vector<Polygon> & polygons, const Bounds & window, double margin) { std::vector<Polygon> result; for (const auto & p : polygons) if (p.bounds.expanded(margin).intersects(window)) result.push_back(p); return result; }
+bool add_dirty_bounds(const std::vector<Polygon> & polygons, const Bounds & window, double margin, Bounds * dirty) { bool any = false; for (const auto & p : polygons) { const auto b = p.bounds.expanded(margin); if (!b.intersects(window)) continue; if (!any) { *dirty = b; any = true; } else { dirty->min_x = std::min(dirty->min_x, b.min_x); dirty->min_y = std::min(dirty->min_y, b.min_y); dirty->max_x = std::max(dirty->max_x, b.max_x); dirty->max_y = std::max(dirty->max_y, b.max_y); } } return any; }
+unsigned char max_keepout_cost(unsigned char existing, unsigned char keepout) { return keepout == 0 ? existing : (existing == 255 || keepout > existing ? keepout : existing); }
+void replace_state(ProjectedState * state, std::vector<Polygon> next, uint64_t revision) { state->previous = std::move(state->current); state->current = std::move(next); state->revision = revision; }
 static double segment_distance(Point p, Point a, Point b) {
   const double dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
   const double t = d2 == 0.0 ? 0.0 : std::clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / d2, 0.0, 1.0);
