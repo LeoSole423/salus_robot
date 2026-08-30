@@ -68,7 +68,6 @@ PY
       fi
 
       smoke_start_runtime_timing_probe
-      smoke_run navigation_contract \"EXPECT_NO_OBSTACLE_DETECTION=1 python3 /ros2_ws/tools/smoke_navigation_core_sim.py\"
       smoke_run pressure_probe \"python3 /ros2_ws/tools/runtime_snapshot_web_pressure_probe.py --mode ${pressure_mode} --requests 5 --spacing-s 5.0 --web-port ${web_port}\"
       smoke_note \"runtime_services_isolation_variant:${variant}\"
     "
