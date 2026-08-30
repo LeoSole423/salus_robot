@@ -16,18 +16,32 @@ docker compose run --rm \
   smoke_init operational-persistence
   trap smoke_cleanup EXIT
   web_port=$((18700 + ${ROS_DOMAIN_ID}))
-  world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/empty.world"
   profile_runtime="${SMOKE_RUNTIME_DIR}/profile"
-  smoke_start_launch initial "ros2 launch salus_bringup sim_operational.launch.py headless:=true world:=${world} web_ws_port:=${web_port} runtime_dir:=${profile_runtime}"
   export SALUS_WEB_SMOKE_PORT="${web_port}"
-  smoke_run initial_operational_probe "python3 /ros2_ws/tools/integration_probe.py --operational --timeout 90 --report-path ${SMOKE_ARTIFACT_DIR}/initial_operational_probe.json"
-  smoke_run seed_cockpit_state "python3 /ros2_ws/tools/smoke_web_cockpit.py"
+
+  cockpit_port_open() {
+    python3 - "${web_port}" <<PY
+import socket
+import sys
+
+port = int(sys.argv[1])
+with socket.socket() as sock:
+    sock.settimeout(0.2)
+    raise SystemExit(0 if sock.connect_ex(("127.0.0.1", port)) == 0 else 1)
+PY
+  }
+
+  smoke_start_launch initial "ros2 launch salus_bringup persistence_contract.launch.py web_ws_port:=${web_port} runtime_dir:=${profile_runtime}"
+  smoke_run seed_persistence "python3 /ros2_ws/tools/smoke_operational_persistence.py --mode seed"
+
   initial_pid="${SMOKE_LAUNCH_PIDS[0]}"
   kill -TERM -- "-${initial_pid}" 2>/dev/null || kill -TERM "${initial_pid}" 2>/dev/null || true
   wait "${initial_pid}" 2>/dev/null || true
-  smoke_note "initial_launch_stopped"
-  smoke_start_launch restarted "ros2 launch salus_bringup sim_operational.launch.py headless:=true world:=${world} web_ws_port:=${web_port} runtime_dir:=${profile_runtime}"
-  smoke_run operational_probe "python3 /ros2_ws/tools/integration_probe.py --operational --timeout 90 --report-path ${SMOKE_ARTIFACT_DIR}/restart_probe.json"
-  smoke_run persistence_probe "python3 /ros2_ws/tools/smoke_operational_persistence.py"
+  smoke_wait "initial cockpit endpoint stopped" 10 "! cockpit_port_open"
+  smoke_note "initial_persistence_owners_stopped"
+
+  smoke_start_launch restarted "ros2 launch salus_bringup persistence_contract.launch.py web_ws_port:=${web_port} runtime_dir:=${profile_runtime}"
+  smoke_wait "restarted cockpit endpoint ready" 15 "cockpit_port_open"
+  smoke_run verify_persistence "python3 /ros2_ws/tools/smoke_operational_persistence.py --mode verify"
   smoke_note "operational_persistence_valid"
 '
