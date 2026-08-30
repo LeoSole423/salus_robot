@@ -1,0 +1,9 @@
+schema_version: 1
+id: ackermann_speed_curvature_smoke_v1
+repetitions: 1
+max_speed_mps: 1.6
+speeds_mps: [1.2]
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
+  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}

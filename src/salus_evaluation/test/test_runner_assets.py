@@ -22,8 +22,10 @@ def test_runner_only_publishes_goal_and_markers_not_control_or_tf_topics():
     assert '"/tf"' not in contents and '"/tf_static"' not in contents
 
 
-def test_tool_exposes_run_and_rviz_observe_modes():
+def test_tool_exposes_run_observe_and_matrix_modes():
     contents = (ROOT.parents[1] / "tools" / "nav_eval.sh").read_text()
     assert "run <scenario.yaml>" in contents
     assert "observe" in contents
+    assert "matrix <matrix.yaml>" in contents
+    assert "navigation_matrix_execute" in contents
     assert "ros2 run salus_evaluation navigation_evaluation" in contents

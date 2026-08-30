@@ -11,6 +11,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/config/scenarios", glob("config/scenarios/*.yaml")),
+        ("share/" + package_name + "/config/matrices", glob("config/matrices/*.yaml")),
         ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
     ],
     install_requires=["setuptools", "PyYAML"],
@@ -22,5 +23,7 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={"console_scripts": [
         "navigation_evaluation = salus_evaluation.evaluation_runner:main",
+        "navigation_matrix_summary = salus_evaluation.matrix_runner:main",
+        "navigation_matrix_execute = salus_evaluation.matrix_executor:main",
     ]},
 )

@@ -1,0 +1,12 @@
+schema_version: 1
+id: ackermann_speed_curvature_v1
+repetitions: 3
+max_speed_mps: 1.6
+speeds_mps: [0.8, 1.2, 1.6]
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: arrival_short, scenario: scenarios/arrival_short.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
+  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}
+  - {id: left_tight_valid, scenario: scenarios/left_tight_valid.yaml, direction: left, requested_radius_m: 4.0}
+  - {id: right_tight_valid, scenario: scenarios/right_tight_valid.yaml, direction: right, requested_radius_m: 4.0}

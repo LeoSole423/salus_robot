@@ -212,7 +212,8 @@ def test_all_shipped_scenarios_are_strictly_valid():
     root = Path(__file__).parents[1] / "config" / "scenarios"
     scenarios = [load_scenario(path) for path in root.glob("*.yaml")]
     assert {item.scenario_id for item in scenarios} == {
-        "straight_5m", "right_quarter", "left_quarter", "arrival_short"}
+        "straight_5m", "right_quarter", "left_quarter", "arrival_short",
+        "left_gentle", "right_gentle", "left_tight_valid", "right_tight_valid"}
 
 
 def test_schema_rejects_unknown_fields(tmp_path):
