@@ -34,6 +34,27 @@ def zones_document_is_empty(document: dict[str, Any]) -> bool:
     return document.get("type") == "FeatureCollection" and not document.get("features")
 
 
+def unrepresentable_zone_error(
+    clipped: dict[str, int], outside: list[str]
+) -> str:
+    """Describe enabled zones that the legacy fixed mask cannot represent."""
+    parts: list[str] = []
+    if outside:
+        parts.append("outside=" + ",".join(sorted(set(outside))))
+    if clipped:
+        details = ",".join(
+            f"{zone_id}:{int(count)}"
+            for zone_id, count in sorted(clipped.items())
+        )
+        parts.append("clipped=" + details)
+    if not parts:
+        return ""
+    return (
+        "enabled keepout zone cannot be represented by the legacy fixed mask; "
+        + "; ".join(parts)
+    )
+
+
 class ZonesManager(Node):
     """GeoJSON API boundary; no partial mask replaces a previously active one."""
 
@@ -224,7 +245,18 @@ class ZonesManager(Node):
         polygons, error = self._project(document)
         if polygons is None:
             return False, error
-        image, _, _ = rasterize_polygons(polygons, self.width, self.height, self.resolution, self.origin_x, self.origin_y, self.buffer_margin_m)
+        image, clipped, outside = rasterize_polygons(
+            polygons,
+            self.width,
+            self.height,
+            self.resolution,
+            self.origin_x,
+            self.origin_y,
+            self.buffer_margin_m,
+        )
+        representation_error = unrepresentable_zone_error(clipped, outside)
+        if representation_error:
+            return False, representation_error
         costs = cost_mask_from_binary(image, self.resolution, self.degrade_radius_m if self.degrade_enabled else 0.0, self.degrade_edge_cost, self.degrade_min_cost)
         scale = scale_image_from_costs(costs)
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
