@@ -1,0 +1,26 @@
+# Overlay for #146 validation only. Do not include this in production profiles
+# until the legacy filter migration is explicitly enabled and validated.
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      plugins: [obstacle_layer, inflation_layer, vector_keepout_layer]
+      vector_keepout_layer:
+        plugin: salus_navigation_costmap::VectorKeepoutLayer
+        enabled: false
+        source_topic: /zones_manager/projected_keepouts
+        map_frame: map
+        halo_radius_m: 1.5
+        halo_edge_cost: 12
+        halo_min_cost: 1
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      plugins: [obstacle_layer, inflation_layer, vector_keepout_layer]
+      vector_keepout_layer:
+        plugin: salus_navigation_costmap::VectorKeepoutLayer
+        enabled: false
+        source_topic: /zones_manager/projected_keepouts
+        map_frame: map
+        halo_radius_m: 1.5
+        halo_edge_cost: 12
+        halo_min_cost: 1

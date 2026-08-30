@@ -1,0 +1,5 @@
+<library path="salus_navigation_costmap">
+  <class type="salus_navigation_costmap::VectorKeepoutLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>Rasterizes only map-fixed keepouts intersecting the active costmap window.</description>
+  </class>
+</library>
