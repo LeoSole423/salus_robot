@@ -79,6 +79,7 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
     old_document = {"type": "FeatureCollection", "features": [{"id": "old"}]}
     new_document = {"type": "FeatureCollection", "features": [{"id": "new"}]}
     reload_calls = []
+    accept_calls = []
     manager = SimpleNamespace(
         _require_map_server_active=lambda: (True, ""),
         _document=old_document,
@@ -87,6 +88,7 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
         _projected_revision=7,
         _write_mask=lambda _document: (False, "outside=zone_new", None),
         _reload_map=lambda: reload_calls.append(True) or (True, ""),
+        _accept_active_state=lambda *_args, **_kwargs: accept_calls.append(True),
     )
 
     result = ZonesManager._apply(manager, new_document, persist=True)
@@ -96,6 +98,46 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
     assert manager._document_text == "old-json"
     assert manager._projected_revision == 7
     assert not reload_calls
+    assert not accept_calls
+
+
+def test_successful_apply_publishes_projected_state_only_after_legacy_reload() -> None:
+    document = {"type": "FeatureCollection", "features": []}
+    projected = [{
+        "id": "zone_a",
+        "enabled": True,
+        "outer_xy": [{"x": 1.0, "y": 1.0}],
+        "holes_xy": [],
+    }]
+    events = []
+    manager = SimpleNamespace(
+        _require_map_server_active=lambda: (True, ""),
+        _document=document,
+        _projected_polygons=[],
+        _write_mask=lambda _document: (True, "", projected),
+        _reload_map=lambda: events.append("reload") or (True, ""),
+        _accept_active_state=lambda accepted_document, accepted_projected, **kwargs: (
+            events.append(
+                (
+                    "accept",
+                    accepted_document,
+                    accepted_projected,
+                    kwargs["mask_source"],
+                )
+            )
+        ),
+    )
+
+    result = ZonesManager._apply(manager, document, persist=True)
+
+    assert result == (True, "", 0, 0)
+    assert events[0] == "reload"
+    assert events[1] == (
+        "accept",
+        document,
+        projected,
+        "map_server_load_map+global_costmap_clear",
+    )
 
 
 def test_projected_keepout_message_filters_disabled_and_preserves_holes() -> None:
