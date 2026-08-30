@@ -46,6 +46,7 @@ FULL_FILES = {
     "compose.yaml",
     "dependencies.repos",
     "entrypoint.sh",
+    "docs/package-map.yaml",
 }
 FAST_ONLY_PREFIXES = ("docs/",)
 FAST_ONLY_FILES = {

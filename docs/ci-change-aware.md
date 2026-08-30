@@ -58,7 +58,8 @@ Cualquiera de estas rutas ejecuta todos los smokes:
 - `Dockerfile`;
 - `compose.yaml`;
 - `dependencies.repos`;
-- `entrypoint.sh`.
+- `entrypoint.sh`;
+- `docs/package-map.yaml` (fuente de verdad de ownership y dependencias).
 
 También se fuerza `FULL` si no hay lista de cambios disponible o aparece una
 ruta que el selector no reconoce. Un path nuevo nunca se interpreta como seguro

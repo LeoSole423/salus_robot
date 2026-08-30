@@ -72,6 +72,7 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
             ".github/workflows/ci.yml",
             "tools/run_smoke.sh",
             "entrypoint.sh",
+            "docs/package-map.yaml",
         ):
             with self.subTest(path=path):
                 self.assertTrue(classify([path]).full_ci)
