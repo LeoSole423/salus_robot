@@ -11,6 +11,7 @@ from typing import Any
 import cv2
 import rclpy
 from ament_index_python.packages import get_package_share_directory
+from lifecycle_msgs.srv import GetState
 from nav2_msgs.srv import ClearEntireCostmap, LoadMap
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -37,6 +38,7 @@ class ZonesManager(Node):
             "runtime_dir": "runtime/zones", "map_frame": "map",
             "fromll_service": "/fromLL", "fromll_service_fallback": "/navsat_transform/fromLL",
             "load_map_service": "/keepout_filter_mask_server/load_map",
+            "load_map_state_service": "/keepout_filter_mask_server/get_state",
             "clear_global_costmap_service": "/global_costmap/clear_entirely_global_costmap",
             "mask_origin_x": -150.0, "mask_origin_y": -150.0,
             "mask_width": 3000, "mask_height": 3000, "mask_resolution": 0.1,
@@ -77,7 +79,14 @@ class ZonesManager(Node):
             self.create_client(FromLL, str(value("fromll_service")), callback_group=self._client_group),
             self.create_client(FromLL, str(value("fromll_service_fallback")), callback_group=self._client_group),
         ]
-        self._load_map = self.create_client(LoadMap, str(value("load_map_service")), callback_group=self._client_group)
+        self._load_map = self.create_client(
+            LoadMap, str(value("load_map_service")), callback_group=self._client_group
+        )
+        self._load_map_state = self.create_client(
+            GetState,
+            str(value("load_map_state_service")),
+            callback_group=self._client_group,
+        )
         self._clear_global = self.create_client(ClearEntireCostmap, str(value("clear_global_costmap_service")), callback_group=self._client_group)
         self.create_service(SetZonesGeoJson, "/zones_manager/set_geojson", self._set_geojson, callback_group=self._service_group)
         self.create_service(GetZonesState, "/zones_manager/get_state", self._get_state, callback_group=self._service_group)
@@ -92,11 +101,30 @@ class ZonesManager(Node):
             0.5, self._load_initial_state, callback_group=self._service_group
         )
 
+    def _schedule_initial_reload(self) -> None:
+        self._initialization_timer = self.create_timer(
+            self._initial_reload_retry_s,
+            self._load_initial_state,
+            callback_group=self._service_group,
+        )
+
     def _load_initial_state(self) -> None:
         # Treat this repeating ROS timer as a one-shot.  Mask generation may
         # take longer than its period; cancelling up front prevents another
         # initialization callback from already being queued behind this one.
         self._initialization_timer.cancel()
+
+        # A lifecycle service being discoverable does not mean LoadMap is
+        # legal.  Wait for the map server's actual ACTIVE state before doing
+        # the expensive 3000x3000 mask generation or sending LoadMap.
+        active, error = self._require_map_server_active()
+        if not active:
+            self.get_logger().info(
+                f"initial zone mask waiting for active map server: {error}"
+            )
+            self._schedule_initial_reload()
+            return
+
         self._initial_reload_attempt += 1
         try:
             text = self.geojson_path.read_text(encoding="utf-8")
@@ -116,11 +144,7 @@ class ZonesManager(Node):
             "initial zone mask not ready; retrying "
             f"({self._initial_reload_attempt}/{self._initial_reload_max_attempts}): {error}"
         )
-        self._initialization_timer = self.create_timer(
-            self._initial_reload_retry_s,
-            self._load_initial_state,
-            callback_group=self._service_group,
-        )
+        self._schedule_initial_reload()
 
     def _await(self, client, request: Any):
         if not client.wait_for_service(timeout_sec=self.timeout_s):
@@ -135,6 +159,20 @@ class ZonesManager(Node):
             return future.result(), ""
         except Exception as exc:  # ROS middleware errors need a service response.
             return None, str(exc)
+
+    def _map_server_state(self) -> tuple[str | None, str]:
+        response, error = self._await(self._load_map_state, GetState.Request())
+        if response is None:
+            return None, f"keepout map lifecycle unavailable: {error}"
+        return str(response.current_state.label), ""
+
+    def _require_map_server_active(self) -> tuple[bool, str]:
+        state, error = self._map_server_state()
+        if state is None:
+            return False, error
+        if state != "active":
+            return False, f"keepout map server not active: {state}"
+        return True, ""
 
     def _project(self, document: dict[str, Any]):
         client = next((item for item in self._fromll_clients if item.service_is_ready()), None)
@@ -194,6 +232,11 @@ class ZonesManager(Node):
         return True, ""
 
     def _apply(self, document: dict[str, Any], *, persist: bool) -> tuple[bool, str, int, int]:
+        # Do not generate/stage a replacement mask until LoadMap is causally
+        # legal for the lifecycle-managed map server.
+        active, error = self._require_map_server_active()
+        if not active:
+            return False, error, 0, 0
         # Stage files first.  Only publish them as current after Nav2 accepts the new map.
         old_document, old_text = self._document, self._document_text
         if not persist:
