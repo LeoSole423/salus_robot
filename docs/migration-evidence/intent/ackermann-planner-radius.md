@@ -70,6 +70,20 @@ seleccionar radio.
 
 El primer candidato `2,5 m` usó el mismo ejecutor con
 `--planner-minimum-turning-radius 2.5`; no alcanzó el trial por timeout de
-servicio de parámetros durante startup y no generó un bundle terminal. Se
-clasifica como infraestructura/runtime (#119/#117/#72), no como evidencia
-contra 2,5 m. No se ajustaron timeouts, retries, TF, costmaps ni RPP.
+servicio de parámetros durante startup y no generó un bundle terminal. Esa
+evidencia no se clasifica todavía: el harness original no esperaba causalmente
+`/planner_server` activo ni sus servicios de parámetros antes del override.
+El executor ahora exige lifecycle ACTIVE, servicios get/set anunciados y un
+get real de parámetro antes del set; además, los artifacts del radio usan
+`requested_radius_m`/`effective_radius_m` y unidad `m`, no campos de velocidad.
+Sólo una repetición posterior a esa readiness permitirá distinguir carrera del
+harness de infraestructura/runtime (#119/#117/#72). No se ajustaron timeouts,
+retries, TF, costmaps ni RPP.
+
+Reintento posterior a la corrección:
+`artifacts/evaluations/issue-57-radius-2p5-ready-20260830`. El launch alcanzó
+`/planner_server` ACTIVE, pero registró timeouts de respuesta de
+`/planner_server/get_parameters` y `/planner_server/set_parameters`; no llegó
+a publicar una meta ni un bundle terminal. La frontera ahora queda clasificada
+con precisión como servicio de parámetros del planner bajo presión runtime,
+no como rechazo cinemático ni como carrera de readiness del harness.

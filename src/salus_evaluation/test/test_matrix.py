@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -91,6 +92,52 @@ def test_effective_speed_readback_rejects_malformed_or_ambiguous_values(readback
 
 def test_effective_speed_readback_rejects_a_different_applied_speed():
     assert effective_speed_matches(1.2, "Double value is: 1.19") == (1.19, False)
+
+
+def test_numeric_parameter_metadata_uses_radius_names_and_units():
+    from salus_evaluation.matrix_executor import _numeric_parameter_metadata
+
+    result = _numeric_parameter_metadata(
+        2.5, SimpleNamespace(returncode=0, stdout="set", stderr=""),
+        SimpleNamespace(returncode=0, stdout="Double value is: 2.5", stderr=""),
+        quantity="radius_m", unit="m",
+    )
+    assert result["requested_radius_m"] == 2.5
+    assert result["effective_radius_m"] == 2.5
+    assert result["unit"] == "m" and result["matches_requested"]
+    assert "requested_speed_mps" not in result
+
+
+def test_planner_override_readiness_requires_active_lifecycle_and_parameter_services(monkeypatch):
+    from salus_evaluation import matrix_executor
+
+    def response(command, **_kwargs):
+        joined = " ".join(command)
+        if "topic echo" in joined or "param get" in joined:
+            return SimpleNamespace(returncode=0, stdout="true\n", stderr="")
+        if "lifecycle get" in joined:
+            return SimpleNamespace(returncode=0, stdout="active [3]\n", stderr="")
+        if "service list" in joined:
+            return SimpleNamespace(
+                returncode=0,
+                stdout="/planner_server/set_parameters\n/planner_server/get_parameters\n",
+                stderr="",
+            )
+        raise AssertionError(command)
+
+    monkeypatch.setattr(matrix_executor, "_run", response)
+    ready, evidence = matrix_executor._readiness_snapshot(require_planner=True)
+    assert ready and evidence["planner_parameter_services"]["set_available"]
+
+    def missing_set(command, **kwargs):
+        result = response(command, **kwargs)
+        if "service list" in " ".join(command):
+            result.stdout = "/planner_server/get_parameters\n"
+        return result
+
+    monkeypatch.setattr(matrix_executor, "_run", missing_set)
+    ready, evidence = matrix_executor._readiness_snapshot(require_planner=True)
+    assert not ready and not evidence["planner_parameter_services"]["set_available"]
 
 
 def test_matrix_exit_is_aggregated_after_all_trials_and_ignores_calibration():
