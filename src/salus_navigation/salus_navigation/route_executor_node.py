@@ -336,6 +336,9 @@ class RouteExecutorNode(Node):
 
     def _stop_for_recovery(self, decision) -> None:
         with self._lock:
+            # Invalidating the request epoch must also invalidate any pending
+            # service correlation state; a stale callback will then be ignored.
+            self._goal_request_pending = False
             self._goal_epoch += 1
             self._cancel_goal.call_async(
                 CancelNavGoal.Request()

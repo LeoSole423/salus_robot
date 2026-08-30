@@ -73,6 +73,20 @@ def test_route_goal_results_are_correlated_to_the_current_request_boundary():
 
     assert "uint32 goal_event_id" in interface
     assert "response.goal_event_id = self._event(" in nav
+    assert "message.nav_result_event_id = self._goal_result_event_id" in nav
+    assert "self._goal_result_event_id = int(result_event_id)" in nav
     assert "self._goal_request_pending = True" in route
     assert "self._goal_result_event_floor = int(result.goal_event_id)" in route
     assert "terminal_nav_result_is_current(" in route
+
+
+def test_recovery_epoch_invalidation_clears_pending_goal_correlation():
+    route = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
+    recovery = route[
+        route.index("    def _stop_for_recovery"):
+        route.index("    def _begin_recovery_retry")
+    ]
+    assert "self._goal_request_pending = False" in recovery
+    assert recovery.index("self._goal_request_pending = False") < recovery.index(
+        "self._goal_epoch += 1"
+    )
