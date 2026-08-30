@@ -38,12 +38,12 @@ run_variant() {
 
       smoke_start_runtime_timing_probe
 
-      smoke_wait_topic_message /odometry/local 45
-      smoke_wait_topic_message /odometry/global 45
       if [[ \"${launch_nav2}\" == \"true\" ]]; then
-        smoke_wait_lifecycle /bt_navigator 60
-        smoke_wait_topic_message /local_costmap/costmap 30
+        python3 /ros2_ws/tools/runtime_nav2_isolation_gate.py --require-nav2 --timeout-s 60
+      else
+        python3 /ros2_ws/tools/runtime_nav2_isolation_gate.py --timeout-s 60
       fi
+
 
       steady_started=\$(cut -d' ' -f1 /proc/uptime)
       sleep 30
