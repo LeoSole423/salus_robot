@@ -317,6 +317,22 @@ class RuntimeTimingProbe(Node):
             "logger": message.name,
             "level": int(message.level),
             "message": message.msg[:600],
+            "tf_latest_stamp_ns": {
+                "map_to_odom": self.streams["tf_map_to_odom"].last_stamp_ns,
+                "odom_to_base": self.streams["tf_odom_to_base"].last_stamp_ns,
+            },
+            "tf_age_vs_clock_s": {
+                name: (
+                    None
+                    if not self.latest_clock_ns or stream.last_stamp_ns is None
+                    else (self.latest_clock_ns - stream.last_stamp_ns)
+                    / 1_000_000_000.0
+                )
+                for name, stream in (
+                    ("map_to_odom", self.streams["tf_map_to_odom"]),
+                    ("odom_to_base", self.streams["tf_odom_to_base"]),
+                )
+            },
         }
         match = EXTRAPOLATION.search(message.msg)
         if match:
