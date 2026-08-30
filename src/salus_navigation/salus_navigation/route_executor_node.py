@@ -30,7 +30,7 @@ from .route_preparation import prepare, validate_inputs
 from .route_progress import project
 from .route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    resolve_forward_reanchor,
+    checkpoint_within_tolerance, resolve_forward_reanchor,
 )
 from .route_state_machine import transition
 from .nav_command_server import diagnostic_level
@@ -98,6 +98,7 @@ class RouteExecutorNode(Node):
             max_attempts=int(self.get_parameter("blocked_retry_max_attempts").value),
         )
         self._recovery_clears = None
+        self._recovery_checkpoint_reached = False
         self._event_id = 0
         self._nav_cancel_timeout_s = max(
             0.1, float(self.get_parameter("nav_cancel_timeout_s").value)
@@ -277,20 +278,7 @@ class RouteExecutorNode(Node):
                 # event instead of inferring a checkpoint from a later state
                 # poll.  Publish it before actions or dispatching the next
                 # goal so the reached original index is never ambiguous.
-                self._event(
-                    DiagnosticStatus.OK,
-                    "ROUTE_CHECKPOINT_REACHED",
-                    "route checkpoint reached",
-                    mission_id=self._mission.mission_id,
-                    input_index=point.input_index,
-                    chunk_id=self._mission.chunk_id,
-                    loop_iteration=self._mission.loop_iteration,
-                )
-                actions = parse_actions(point.action_json, point.input_index)[0]
-                if point.key and actions:
-                    self._start_actions(point.input_index, actions)
-                else:
-                    self._advance()
+                self._complete_current_checkpoint("nav2_succeeded")
             elif message.nav_result_text == "goal rejected":
                 self._pause("NAV_GOAL_REJECTED: NavigateToPose goal rejected")
             else:
@@ -327,6 +315,21 @@ class RouteExecutorNode(Node):
                             else self._mission.progress.distance_to_target_m),
             )
             decision = self._recovery.observe(observation)
+            if (
+                decision.state != RecoveryState.CLEAR
+                and self._chunk is not None
+                and self._pose is not None
+                and checkpoint_within_tolerance(
+                    checkpoint_x=self._chunk.waypoints[self._target_offset].map_x,
+                    checkpoint_y=self._chunk.waypoints[self._target_offset].map_y,
+                    robot_x=self._pose.x,
+                    robot_y=self._pose.y,
+                    tolerance_m=float(
+                        self.get_parameter("waypoint_reached_tolerance_m").value
+                    ),
+                )
+            ):
+                self._recovery_checkpoint_reached = True
             if self._recovery_clears is not None:
                 self._check_recovery_clears()
         if decision.action == RecoveryAction.CANCEL_AND_BRAKE:
@@ -353,6 +356,13 @@ class RouteExecutorNode(Node):
 
     def _begin_recovery_retry(self, decision) -> None:
         with self._lock:
+            if self._recovery_checkpoint_reached:
+                self._recovery_checkpoint_reached = False
+                self._nav_failure_code = ""
+                self._collision_stop = False
+                self._finish_recovery(True)
+                self._complete_current_checkpoint("recovery_geometry")
+                return
             route = self._mission.prepared
             pose = self._pose
             resolution = resolve_forward_reanchor(
@@ -487,6 +497,7 @@ class RouteExecutorNode(Node):
             self._pause("route chunk contains no original checkpoint")
             return
         self._target_offset = offsets[self._checkpoint_cursor]
+        self._recovery_checkpoint_reached = False
         point = self._chunk.waypoints[self._target_offset]
         request = SetNavGoalLL.Request()
         request.lat, request.lon, request.yaw_deg = point.lat, point.lon, point.yaw_deg
@@ -522,6 +533,24 @@ class RouteExecutorNode(Node):
                 else:
                     self._pause(f"NAV_GOAL_REJECTED: {exc}")
 
+    def _complete_current_checkpoint(self, completion_source: str) -> None:
+        point = self._chunk.waypoints[self._target_offset]
+        self._event(
+            DiagnosticStatus.OK,
+            "ROUTE_CHECKPOINT_REACHED",
+            "route checkpoint reached",
+            mission_id=self._mission.mission_id,
+            input_index=point.input_index,
+            chunk_id=self._mission.chunk_id,
+            loop_iteration=self._mission.loop_iteration,
+            completion_source=completion_source,
+        )
+        actions = parse_actions(point.action_json, point.input_index)[0]
+        if point.key and actions:
+            self._start_actions(point.input_index, actions)
+        else:
+            self._advance()
+
     def _advance(self) -> None:
         self._mission.reached += 1
         self._checkpoint_cursor += 1
@@ -536,6 +565,7 @@ class RouteExecutorNode(Node):
 
     def _pause(self, reason: str) -> None:
         self._goal_request_pending = False
+        self._recovery_checkpoint_reached = False
         if self._mission.phase == RoutePhase.ACTIVE:
             transition(self._mission, RoutePhase.PAUSED, reason)
         self._goal_epoch += 1
