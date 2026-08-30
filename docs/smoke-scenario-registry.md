@@ -54,3 +54,19 @@ The experiment proved the transfer contract was technically viable:
 However, the architecture adds a serial producer barrier: every smoke must wait for the build job to finish before it can start. In the measured FULL runs (#105 run 249, `33315182497`, versus #108 experiment run 251, `33316089133`), approximate runner consumption dropped from 51.7 to 36.1 runner-minutes (about 30% lower), but workflow wall-clock increased from about 4.9 to 6.9 minutes (about 42% slower).
 
 Because CI v2 currently prioritizes shorter developer feedback latency, PR/main CI keeps independent per-runner workspace builds. The exact-SHA artifact approach may be reconsidered later if runner cost becomes more important than wall-clock latency.
+
+
+## Operational smoke contract ownership
+
+CI v2 keeps the operational scenarios focused on their stated boundaries instead of repeating full functional suites.
+
+Coverage ownership after decomposition:
+
+- `sim_operational`: owns canonical full-system composition only. It launches `sim_operational.launch.py` and uses the operational integration probe to verify the composed graph, common source/readiness contracts, TF, required services, and key authorities.
+- `routes`: owns route execution and navigation-profile application. `smoke_route_executor_sim.sh` continues to execute both `smoke_route_executor_sim.py` and `smoke_navigation_profiles.py`.
+- `web_cockpit`: owns the full Cockpit WebSocket protocol, control lease, camera operations, scan preview, zones, waypoints, manual-safe-stop, snapshot, and safe-operation acknowledgements.
+- `operational_persistence`: owns only persistence of Cockpit waypoints and simulated camera presets across owner restart. It launches the minimal `persistence_contract.launch.py` composition containing Web + Camera, seeds state, restarts those owners, and verifies restoration.
+
+The persistence contract intentionally does not require Gazebo, localization, Nav2, keepout, routes, or patrol. Failures in those systems therefore cannot invalidate a persistence assertion.
+
+The existing nightly hard-timeout metadata is left unchanged by this decomposition. After runtime measurements from the focused scenarios are available, budgets may be tightened in a separate evidence-based adjustment.
