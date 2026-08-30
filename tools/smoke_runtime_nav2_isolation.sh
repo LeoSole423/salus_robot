@@ -45,23 +45,11 @@ run_variant() {
         smoke_wait_topic_message /local_costmap/costmap 30
       fi
 
-      python3 - \"${SMOKE_ARTIFACT_DIR}/steady_window.json\" <<'PY'
-import json
-import sys
-import time
-
-path = sys.argv[1]
-started = time.monotonic()
-time.sleep(30.0)
-completed = time.monotonic()
-with open(path, "w", encoding="utf-8") as stream:
-    json.dump({
-        "started_monotonic_s": started,
-        "completed_monotonic_s": completed,
-        "duration_s": completed - started,
-    }, stream, sort_keys=True)
-    stream.write("\n")
-PY
+      steady_started=\$(cut -d' ' -f1 /proc/uptime)
+      sleep 30
+      steady_completed=\$(cut -d' ' -f1 /proc/uptime)
+      steady_duration=\$(awk -v start=\"\${steady_started}\" -v end=\"\${steady_completed}\" 'BEGIN { printf \"%.6f\", end - start }')
+      printf '{\"started_monotonic_s\":%s,\"completed_monotonic_s\":%s,\"duration_s\":%s}\\n' \"\${steady_started}\" \"\${steady_completed}\" \"\${steady_duration}\" >\"\${SMOKE_ARTIFACT_DIR}/steady_window.json\"
       smoke_note \"runtime_nav2_isolation_variant:${variant}\"
     "
 }
