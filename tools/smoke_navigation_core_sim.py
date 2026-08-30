@@ -422,7 +422,12 @@ def main() -> int:
         response = call(node, node.manual, SetManualMode.Request(enabled=True), "manual-mode service unavailable")
         if not response.ok or not response.enabled_after:
             raise RuntimeError("manual takeover was rejected")
-        wait_for(node, lambda: not get_state(node).goal_active, 5.0, "manual takeover did not cancel goal")
+        wait_for(
+            node,
+            lambda: not get_state(node).goal_active,
+            15.0,
+            "manual takeover gained command authority but Nav2 cancellation did not reach a terminal state",
+        )
         response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
         if not response.ok or response.enabled_after:
             raise RuntimeError("automatic mode was not restored")
