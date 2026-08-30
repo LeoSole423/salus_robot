@@ -68,6 +68,81 @@ class TimedCommand:
 
 
 @dataclass(frozen=True)
+class TimedFinalCommand:
+    """Final velocity command with its public authority metadata."""
+
+    stamp_s: float
+    linear_x_mps: float
+    angular_z_rps: float
+    brake_pct: int
+    source: int
+
+
+@dataclass(frozen=True)
+class TimedVehicleCommand:
+    """Ackermann command observed at the vehicle boundary."""
+
+    stamp_s: float
+    source: int
+    drive_enabled: bool
+    emergency_stop: bool
+    brake_ratio: float
+    speed_mps: float
+    steering_angle_rad: float
+
+
+@dataclass(frozen=True)
+class TimedDriveTelemetry:
+    """Measured drive state, normalized to SI radians and metres per second."""
+
+    stamp_s: float
+    ready: bool
+    fresh: bool
+    drive_enabled: bool
+    estop: bool
+    speed_valid: bool
+    steer_valid: bool
+    control_source: str
+    speed_mps_measured: float
+    steer_rad_measured: float
+    brake_applied_pct: int
+
+
+@dataclass(frozen=True)
+class TimedControllerStatus:
+    """Effective controller command parsed from its observer-only JSON status."""
+
+    stamp_s: float
+    source: str
+    fresh: bool
+    drive_enabled: bool
+    estop: bool
+    speed_mps: float
+    brake_pct: int
+    requested_linear_x_mps: float
+    requested_angular_z_rps: float
+    requested_steer_rad: float
+    applied_steer_rad: float
+    steering_limit_used_rad: float
+    steer_saturated: bool
+    speed_limited: bool
+    min_speed_enforced: bool
+
+
+@dataclass(frozen=True)
+class TimedControllerTelemetry:
+    """Requested automatic command and configured Ackermann limits from JSON."""
+
+    stamp_s: float
+    requested_speed_mps: float
+    requested_steer_rad: float
+    applied_steer_rad: float
+    steering_limit_deg: float
+    operational_steering_limit_deg: float
+    effective_steering_limit_deg: float
+
+
+@dataclass(frozen=True)
 class TrackingMetrics:
     """Path tracking measurements for one goal."""
 

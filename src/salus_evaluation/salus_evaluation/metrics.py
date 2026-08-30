@@ -6,6 +6,10 @@ from .models import (ArrivalMetrics, ExpectedTurn, LocalizationMetrics, Pose2D,
                      SignMetrics, TrackingMetrics)
 
 
+COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S = 0.2
+COMMAND_CHAIN_EPSILON = 1.0e-6
+
+
 def angle_delta(a, b):
     """Return signed shortest angular difference a-b."""
     return math.atan2(math.sin(a - b), math.cos(a - b))
@@ -177,3 +181,73 @@ def localization_metrics(ground_truth, estimates, max_alignment_gap_s=0.2):
                                _percentile(errors, .95),
                                math.sqrt(sum(x*x for x in yaw_errors)/len(yaw_errors)),
                                errors[-1])
+
+
+def latest_prior(samples, stamp_s, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):
+    """Return the latest causally prior sample and its auditable alignment gap."""
+    eligible = [item for item in samples if item.stamp_s <= stamp_s]
+    if not eligible:
+        return None, None
+    sample = max(eligible, key=lambda item: item.stamp_s)
+    gap_s = stamp_s - sample.stamp_s
+    return (sample, gap_s) if gap_s <= max_gap_s else (None, gap_s)
+
+
+def command_stage_alignments(input_stage, output_stage, *, epsilon=COMMAND_CHAIN_EPSILON):
+    """Compare velocity stages using only causal prior samples."""
+    alignments = []
+    for output in output_stage:
+        incoming, gap_s = latest_prior(input_stage, output.stamp_s)
+        if incoming is None:
+            alignments.append({
+                "input_stage": input_stage[0].stage if input_stage else "unavailable",
+                "output_stage": output.stage,
+                "output_stamp_s": output.stamp_s,
+                "alignment_gap_s": gap_s,
+                "available": False,
+            })
+            continue
+        linear_delta = output.linear_x_mps - incoming.linear_x_mps
+        angular_delta = output.angular_z_rps - incoming.angular_z_rps
+        alignments.append({
+            "input_stage": incoming.stage,
+            "output_stage": output.stage,
+            "input_stamp_s": incoming.stamp_s,
+            "output_stamp_s": output.stamp_s,
+            "alignment_gap_s": gap_s,
+            "linear_delta_mps": linear_delta,
+            "angular_delta_rps": angular_delta,
+            "divergent": (
+                abs(linear_delta) > epsilon or abs(angular_delta) > epsilon
+            ),
+            "available": True,
+        })
+    return tuple(alignments)
+
+
+def saturation_intervals(statuses, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):
+    """Count observed saturation intervals without extrapolating data gaps."""
+    intervals, duration_s = 0, 0.0
+    previous = None
+    for current in sorted(statuses, key=lambda item: item.stamp_s):
+        if current.steer_saturated:
+            contiguous = (
+                previous is not None
+                and previous.steer_saturated
+                and 0.0 <= current.stamp_s - previous.stamp_s <= max_gap_s
+            )
+            if contiguous:
+                duration_s += current.stamp_s - previous.stamp_s
+            else:
+                intervals += 1
+        previous = current
+    return {"interval_count": intervals, "observed_duration_s": duration_s}
+
+
+def first_divergent_stage(*alignment_groups):
+    """Return the first observed command boundary that changed a Twist command."""
+    for group in alignment_groups:
+        for alignment in group:
+            if alignment.get("divergent"):
+                return alignment["output_stage"]
+    return None
