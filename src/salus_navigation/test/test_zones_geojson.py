@@ -88,6 +88,32 @@ def test_rasterize_reports_partially_clipped_enabled_polygon():
     assert not outside
 
 
+def test_rasterize_reports_clipped_hole_vertices():
+    polygon = {
+        "id": "with_hole",
+        "enabled": True,
+        "outer_xy": [
+            {"x": 0.1, "y": 0.1},
+            {"x": 0.8, "y": 0.1},
+            {"x": 0.8, "y": 0.8},
+            {"x": 0.1, "y": 0.1},
+        ],
+        "holes_xy": [[
+            {"x": -0.1, "y": 0.2},
+            {"x": 0.3, "y": 0.2},
+            {"x": 0.3, "y": 0.4},
+            {"x": -0.1, "y": 0.2},
+        ]],
+    }
+
+    _, clipped, outside = rasterize_polygons(
+        [polygon], 10, 10, 0.1, 0.0, 0.0, 0.0
+    )
+
+    assert clipped == {"with_hole": 2}
+    assert not outside
+
+
 def test_halo_mask_is_deterministic():
     image = np.full((16, 16), 255, dtype=np.uint8); image[7:9, 7:9] = 0
     costs = cost_mask_from_binary(image, 0.1, 0.5, 12, 1)
