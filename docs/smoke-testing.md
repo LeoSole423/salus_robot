@@ -36,6 +36,8 @@ distancia recorrida durante `JOIN_LOOP`, distancia al target, último comando
 seguro/final y el historial de path-health. Estos campos son evidencia de
 fallo; no sustituyen ni suavizan las aserciones de fase y retorno HOME.
 
-En un PR se ejecutan `build-unit`, `simulation-core` y
-`navigation-missions`. El workflow nocturno admite repeticiones configurables
-(normalmente diez) para detectar flakiness y conserva artefactos de diagnóstico.
+En un PR, `build-unit` es obligatorio y `simulation-core` /
+`navigation-missions` ejecutan sólo los escenarios seleccionados por
+[`ci-change-aware.md`](ci-change-aware.md). Cambios compartidos o desconocidos
+caen en FULL CI. El workflow nocturno conserva la suite completa, admite
+repeticiones configurables (normalmente diez) y mantiene artefactos de diagnóstico.
