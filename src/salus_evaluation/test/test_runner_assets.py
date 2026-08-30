@@ -13,6 +13,15 @@ def test_observer_launch_has_no_command_or_tf_authority():
     assert '"precision_target_m", default_value="0.25"' in contents
 
 
+def test_runner_only_publishes_goal_and_markers_not_control_or_tf_topics():
+    contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
+    assert 'create_publisher(PoseStamped, "/goal_pose"' in contents
+    assert 'create_publisher(MarkerArray, "/navigation_evaluation/markers"' in contents
+    assert 'create_publisher(Twist, "/cmd_vel' not in contents
+    assert 'create_publisher(VehicleCommand, "/vehicle/command' not in contents
+    assert '"/tf"' not in contents and '"/tf_static"' not in contents
+
+
 def test_tool_exposes_run_and_rviz_observe_modes():
     contents = (ROOT.parents[1] / "tools" / "nav_eval.sh").read_text()
     assert "run <scenario.yaml>" in contents
