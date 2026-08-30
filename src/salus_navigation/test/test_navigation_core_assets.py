@@ -61,12 +61,26 @@ def test_rviz_goal_contract_rejects_wrong_frame_and_invalid_orientation() -> Non
 
 def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     config = (ROOT / "config" / "nav2_core_sim.yaml").read_text(encoding="utf-8")
+    no_obstacles_config = (
+        ROOT / "config" / "nav2_core_no_obstacles_sim.yaml"
+    ).read_text(encoding="utf-8")
     launch = (ROOT / "launch" / "navigation_core_sim.launch.py").read_text(encoding="utf-8")
     tree = (ROOT / "config" / "navigation_core.xml").read_text(encoding="utf-8")
+    coordinator = (
+        ROOT / "salus_navigation" / "nav2_startup_coordinator.py"
+    ).read_text(encoding="utf-8")
+    observer = (ROOT / "salus_navigation" / "nav_observer.py").read_text(
+        encoding="utf-8"
+    )
+    package = (ROOT / "package.xml").read_text(encoding="utf-8")
     assert "SmacPlannerHybrid" in config
     assert "RegulatedPurePursuitController" in config
     assert "/scan_clean" in config
     assert "keepout_filter" in config
+    for profile in (config, no_obstacles_config):
+        assert "smooth_path: false" in profile
+        assert "ConstrainedSmoother" not in profile
+        assert "smoother_server" not in profile
     source = (ROOT / "salus_navigation" / "nav_command_server.py").read_text(encoding="utf-8")
     assert '"/keepout_filter_mask"' in source
     assert "TRANSIENT_LOCAL" in source
@@ -76,12 +90,20 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "navigation_profile_coordinator" in launch
     assert "nav_observer" in launch
     assert "path_health" in launch
+    assert "smoother_server" not in launch
+    assert "smoother_server" not in coordinator
+    assert "smoother_server" not in observer
+    assert "nav2_smoother" not in package
     assert "/path_health/evaluate" in tree
     assert 'context="1"' in tree
     assert "IsPathHealthValid" in tree
     assert tree.count('server_timeout="500"') == 4
     assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree
+    assert "SmoothPath" not in tree
+    assert "smoothed_path" not in tree
+    assert 'path="{candidate_path}"' in tree
+    assert 'input_path="{candidate_path}" output_path="{path}"' in tree
     assert '<FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>' in tree
     assert "Spin" not in tree and "BackUp" not in tree
 
@@ -97,3 +119,5 @@ def test_startup_coordinator_keeps_lifecycle_activation_causal() -> None:
     assert "ManageLifecycleNodes.Request.STARTUP" in source
     assert 'EvaluatePathHealth, "/path_health/evaluate"' in source
     assert "path_health_preflight" in source
+    assert '"planner_server", "controller_server", "bt_navigator", "behavior_server"' in source
+    assert "smoother_server" not in source

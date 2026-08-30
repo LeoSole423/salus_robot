@@ -196,6 +196,29 @@ def get_state(node: NavigationSmoke):
     return call(node, node.state, GetNavState.Request(), "state service unavailable")
 
 
+def nav2_graph_contract(node: NavigationSmoke) -> bool:
+    names = {
+        f"{namespace.rstrip('/')}/{name}" if namespace != "/" else f"/{name}"
+        for name, namespace in node.get_node_names_and_namespaces()
+    }
+    expected = {
+        "/planner_server",
+        "/controller_server",
+        "/bt_navigator",
+        "/behavior_server",
+    }
+    states = node.startup.values
+    return (
+        expected.issubset(names)
+        and "/smoother_server" not in names
+        and "smoother_server" not in states
+        and all(
+            states.get(name) == "active"
+            for name in (item.lstrip("/") for item in expected)
+        )
+    )
+
+
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
@@ -212,6 +235,12 @@ def main() -> int:
         wait_for(
             node, lambda: node.startup.active, 45.0,
             "navigation startup did not become active",
+        )
+        wait_for(
+            node,
+            lambda: nav2_graph_contract(node),
+            8.0,
+            "Nav2 lifecycle graph did not match the no-smoother contract",
         )
         wait_for(
             node,
