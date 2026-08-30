@@ -188,6 +188,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("service_discovery_timeout_s", 5.0)
         self.declare_parameter("long_service_timeout_s", 20.0)
         self.declare_parameter("required_service_startup_timeout_s", 20.0)
+        self.declare_parameter("require_camera_service", False)
         self.declare_parameter("ws_host", "0.0.0.0")
         self.declare_parameter("ws_port", 8766)
         self.declare_parameter("enable_control_lock", True)
