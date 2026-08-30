@@ -6,7 +6,7 @@ coherent scene and the renderer only converts it to PNG bytes.
 
 from dataclasses import dataclass
 import math
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -52,7 +52,7 @@ class Grid:
     origin: Point
     width: int
     height: int
-    data: Tuple[int, ...]
+    data: Sequence[int]
     transform: Optional[Transform2D] = None
 
 
