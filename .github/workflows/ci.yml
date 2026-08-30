@@ -44,7 +44,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test change classifier
-        run: python3 -m unittest tools/test_ci_smoke_selection.py
+        run: python3 -m unittest tools/test_ci_smoke_selection.py tools/test_smoke_registry.py
       - name: Classify changed boundaries
         id: scope
         env:

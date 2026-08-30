@@ -4,14 +4,8 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_dir}"
 
-scenarios=(
-  smoke_control_sim.sh smoke_motion_sim.sh smoke_localization_sim.sh
-  smoke_lidar_sim.sh smoke_safety_sim.sh smoke_integration_sim.sh smoke_navigation_core_sim.sh
-  smoke_navigation_zones_sim.sh smoke_route_executor_sim.sh
-  smoke_patrol_battery_sim.sh smoke_navigation_snapshot.sh
-  smoke_sim_operational.sh smoke_operational_persistence.sh
-)
-repetitions="${SMOKE_REPETITIONS:-10}"
+mapfile -t scenarios < <(python3 tools/smoke_registry.py --nightly-scripts)
+repetitions="${SMOKE_REPETITIONS:-$(python3 tools/smoke_registry.py --nightly-repetitions)}"
 failures=0
 scenario_runs=0
 passed_runs=0

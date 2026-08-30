@@ -10,27 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-CORE_SMOKES = (
-    "control",
-    "motion",
-    "localization",
-    "localization_canonical",
-    "sensor_selection",
-    "lidar",
-    "safety",
-    "integration",
-)
-NAVIGATION_SMOKES = (
-    "navigation",
-    "navigation_canonical",
-    "navigation_no_obstacles",
-    "zones",
-    "routes",
-    "patrol_battery",
-    "snapshot",
-    "web_cockpit",
-)
-ALL_SMOKES = CORE_SMOKES + NAVIGATION_SMOKES
+try:
+    from tools.smoke_registry import ids as registry_ids
+except ModuleNotFoundError:  # Direct execution: python3 tools/ci_select_smokes.py
+    from smoke_registry import ids as registry_ids
+
+CORE_SMOKES = registry_ids(family="core", participation="pr")
+NAVIGATION_SMOKES = registry_ids(family="navigation", participation="pr")
+ALL_SMOKES = registry_ids(participation="pr")
 
 FULL_PREFIXES = (
     ".github/workflows/",
