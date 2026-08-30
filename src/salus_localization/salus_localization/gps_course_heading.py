@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass
 import json
 import math
