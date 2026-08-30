@@ -135,11 +135,48 @@ def _world_to_px_unbounded(point: Point, window: Tuple[float, float, float, floa
 
 
 def _grid_array(grid: Grid) -> Optional[np.ndarray]:
+    """Return a top-down view of grid storage without whole-raster float copies."""
     if grid.width <= 0 or grid.height <= 0 or grid.resolution <= 0.0:
         return None
-    if len(grid.data) != grid.width * grid.height:
+    cells = grid.width * grid.height
+    if len(grid.data) != cells:
         return None
-    return np.asarray(grid.data, dtype=np.float32).reshape(grid.height, grid.width)[::-1, :]
+
+    # ROS OccupancyGrid.data is a signed-byte buffer.  Keep that storage
+    # zero-copy so a 3000x3000 keepout mask is not materialized again for
+    # every render.  Generic Python sequences remain supported for tests and
+    # non-ROS callers.
+    try:
+        buffer = memoryview(grid.data)
+    except TypeError:
+        values = np.asarray(grid.data)
+    else:
+        if buffer.ndim == 1 and buffer.itemsize == 1:
+            values = np.frombuffer(buffer, dtype=np.int8, count=cells)
+        else:
+            values = np.asarray(grid.data)
+    return values.reshape(grid.height, grid.width)[::-1, :]
+
+
+def _nearest_sample(
+    source: np.ndarray,
+    map_x: np.ndarray,
+    map_y: np.ndarray,
+    border: float,
+) -> np.ndarray:
+    """Sample only requested pixels with OpenCV INTER_NEAREST semantics."""
+    output = np.full(map_x.shape, border, dtype=np.float32)
+    cols = np.rint(map_x).astype(np.int32)
+    rows = np.rint(map_y).astype(np.int32)
+    valid = (
+        (cols >= 0)
+        & (cols < source.shape[1])
+        & (rows >= 0)
+        & (rows < source.shape[0])
+    )
+    if np.any(valid):
+        output[valid] = source[rows[valid], cols[valid]]
+    return output
 
 
 def _sample_grid(scene: SnapshotScene, grid: Grid, target_frame: str, window: Tuple[float, float, float, float], border: float) -> np.ndarray:
@@ -161,8 +198,7 @@ def _sample_grid(scene: SnapshotScene, grid: Grid, target_frame: str, window: Tu
     top_y = grid.origin[1] + grid.height * grid.resolution
     map_x = (source_x - grid.origin[0]) / grid.resolution
     map_y = (top_y - source_y) / grid.resolution
-    return cv2.remap(source, map_x.astype(np.float32), map_y.astype(np.float32), cv2.INTER_NEAREST,
-                     borderMode=cv2.BORDER_CONSTANT, borderValue=float(border))
+    return _nearest_sample(source, map_x, map_y, border)
 
 
 def _sample_grid_to_grid(scene: SnapshotScene, source_grid: Grid, target_grid: Grid, border: float) -> np.ndarray:
@@ -187,8 +223,7 @@ def _sample_grid_to_grid(scene: SnapshotScene, source_grid: Grid, target_grid: G
     source_top = source_grid.origin[1] + source_grid.height * source_grid.resolution
     map_x = (source_x - source_grid.origin[0]) / source_grid.resolution - 0.5
     map_y = (source_top - source_y) / source_grid.resolution - 0.5
-    return cv2.remap(source, map_x.astype(np.float32), map_y.astype(np.float32), cv2.INTER_NEAREST,
-                     borderMode=cv2.BORDER_CONSTANT, borderValue=float(border))
+    return _nearest_sample(source, map_x, map_y, border)
 
 
 def _occupancy_to_color(occupancy: np.ndarray) -> np.ndarray:
