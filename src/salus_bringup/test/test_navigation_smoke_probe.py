@@ -90,9 +90,12 @@ def test_short_goal_uses_causal_terminal_event_not_periodic_telemetry() -> None:
 
     assert 'NavEvent, "/nav_command_server/events"' in source
     assert baseline < publish
-    assert "message.event_id > short_goal_event_baseline" in source
+    assert "def has_causal_goal_success(" in source
+    assert 'message.code == "GOAL_ACCEPTED"' in source
     assert 'message.code == "GOAL_RESULT_SUCCEEDED"' in source
-    assert '"goal did not publish terminal success event"' in source
+    assert 'nav_event_detail(message, "goal_generation")' in source
+    assert "has_causal_goal_success(" in source
+    assert '"goal did not publish causal terminal success event"' in source
     assert 'message.nav_result_text == "succeeded"' not in source
 
 
