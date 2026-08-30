@@ -46,7 +46,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test change classifier
-        run: python3 -m unittest tools/test_ci_smoke_selection.py tools/test_smoke_registry.py
+        run: |
+          python3 -m unittest tools/test_ci_smoke_selection.py tools/test_smoke_registry.py
+          bash -n tools/package_workspace_artifact.sh tools/restore_workspace_artifact.sh
       - name: Classify changed boundaries
         id: scope
         env:
@@ -89,10 +91,22 @@ jobs:
           cache-to: type=gha,mode=max,scope=salus-humble
       - name: Validate, build, lint and run unit tests
         run: ./tools/test.sh
+      - name: Package exact-SHA compiled workspace
+        if: needs.classify-changes.outputs.run_smokes == 'true'
+        run: bash tools/package_workspace_artifact.sh "${{ github.sha }}" "${{ runner.temp }}/salus-workspace-${{ github.sha }}.tar.gz"
+      - name: Upload exact-SHA compiled workspace
+        if: needs.classify-changes.outputs.run_smokes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-workspace-${{ github.sha }}
+          path: ${{ runner.temp }}/salus-workspace-${{ github.sha }}.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
 
   smoke:
     name: smoke / ${{ matrix.id }}
-    needs: classify-changes
+    needs: [classify-changes, build-unit]
     if: needs.classify-changes.outputs.run_smokes == 'true'
     strategy:
       fail-fast: false
@@ -116,8 +130,13 @@ jobs:
             USER_UID=${{ env.SALUS_UID }}
             USER_GID=${{ env.SALUS_GID }}
           cache-from: type=gha,scope=salus-humble
-      - name: Build workspace for this runner
-        run: ./tools/build.sh
+      - name: Download exact-SHA compiled workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-workspace-${{ github.sha }}
+          path: ${{ runner.temp }}/compiled-workspace
+      - name: Restore exact-SHA compiled workspace
+        run: bash tools/restore_workspace_artifact.sh "${{ runner.temp }}/compiled-workspace/salus-workspace-${{ github.sha }}.tar.gz" "${{ github.sha }}"
       - name: Run registered smoke
         run: python3 tools/run_registered_smoke.py "${{ matrix.id }}" --context ci
       - name: Upload smoke diagnostics
