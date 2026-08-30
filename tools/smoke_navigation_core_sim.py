@@ -146,6 +146,29 @@ class NavigationSmoke(Node):
         return request
 
 
+def nav_event_detail(message: NavEvent, key: str) -> str | None:
+    for detail in message.details:
+        if detail.key == key:
+            return detail.value
+    return None
+
+
+def has_causal_goal_success(events: list[NavEvent], baseline_event_id: int) -> bool:
+    accepted_generations = {
+        nav_event_detail(message, "goal_generation")
+        for message in events
+        if message.event_id > baseline_event_id
+        and message.code == "GOAL_ACCEPTED"
+    }
+    accepted_generations.discard(None)
+    return any(
+        message.event_id > baseline_event_id
+        and message.code == "GOAL_RESULT_SUCCEEDED"
+        and nav_event_detail(message, "goal_generation") in accepted_generations
+        for message in events
+    )
+
+
 def wait_for(node: NavigationSmoke, predicate, timeout_s: float, error: str) -> None:
     node.runtime.wait(error, predicate, timeout_s)
 
@@ -532,13 +555,12 @@ def main() -> int:
             )
         wait_for(
             node,
-            lambda: any(
-                message.event_id > short_goal_event_baseline
-                and message.code == "GOAL_RESULT_SUCCEEDED"
-                for message in node.events
+            lambda: has_causal_goal_success(
+                node.events,
+                short_goal_event_baseline,
             ),
             4.0,
-            "goal did not publish terminal success event",
+            "goal did not publish causal terminal success event",
         )
 
         node.final.clear()
