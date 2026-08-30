@@ -47,3 +47,14 @@ the deadband preserve the upstream requested speed (subject only to the configur
 maximum). The value is retained only as a virtual steering-reference speed when
 linear velocity is effectively zero, so a downstream adapter never increases a
 Nav2 or safety slowdown command.
+
+### Ackermann turning authority
+
+`/cmd_vel_final.angular.z` is converted to requested curvature using the
+command's linear speed (or the documented near-zero steering reference), then
+to steering with the wheelbase. The applied steering is limited by the smaller
+of the physical `steering_limit_rad` and the source-specific operational
+limit. This saturation remains observable as requested/applied curvature and
+steering plus `steer_saturated`. There is intentionally no fixed
+`max_abs_angular_z`: such a yaw-rate cap would impose a speed-dependent second
+curvature authority rather than a fixed Ackermann steering limit.
