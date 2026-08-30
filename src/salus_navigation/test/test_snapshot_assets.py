@@ -33,8 +33,8 @@ def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> 
     poller = source.index("poller = AsyncServicePoller")
     snapshot_wait = source.index('"snapshot readiness"')
     assert "subscribe_navigation_startup" in source
-    assert "lambda: node.startup.active" in source
-    assert "observe=node.startup.snapshot" in source
+    assert "runtime.wait_navigation_startup" in source
+    assert "node.startup, 60.0" in source
     assert startup_wait < poller < snapshot_wait
     assert '"navigation_startup": node.startup.snapshot()' in source
     assert 'create_publisher(' in source

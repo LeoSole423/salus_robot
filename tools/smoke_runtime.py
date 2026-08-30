@@ -49,6 +49,77 @@ class SmokeTimeout(RuntimeError):
     pass
 
 
+class TopicReadinessState(str, Enum):
+    NO_PUBLISHER = "NO_PUBLISHER"
+    NO_MESSAGES = "NO_MESSAGES"
+    INVALID = "INVALID"
+    NOT_PROGRESSIVE = "NOT_PROGRESSIVE"
+    READY = "READY"
+
+
+@dataclass
+class TopicEvidence:
+    """Reusable causal evidence for a required ROS topic."""
+
+    label: str = ""
+    started_at_s: float = field(default_factory=time.monotonic)
+    received: int = 0
+    valid: int = 0
+    first_latency_s: float | None = None
+    timestamps_ns: list[int] = field(default_factory=list)
+    frames: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+    def record(self, message: Any, validator: Callable[[Any], Any]) -> None:
+        self.received += 1
+        if self.first_latency_s is None:
+            self.first_latency_s = max(0.0, time.monotonic() - self.started_at_s)
+        try:
+            result = validator(message)
+            if result is False:
+                raise ValueError("validator rejected message")
+        except ValueError as exc:
+            self.errors.append(str(exc))
+            return
+        self.valid += 1
+        self.timestamps_ns.append(stamp_ns(message))
+        header = getattr(message, "header", None)
+        self.frames.append(getattr(header, "frame_id", "") if header is not None else "")
+
+    @property
+    def has_progress(self) -> bool:
+        return (
+            len(self.timestamps_ns) >= 2
+            and self.timestamps_ns[-1] > self.timestamps_ns[-2]
+        )
+
+    def state(self, *, publisher_count: int | None = None) -> TopicReadinessState:
+        if publisher_count is not None and publisher_count <= 0:
+            return TopicReadinessState.NO_PUBLISHER
+        if self.received == 0:
+            return TopicReadinessState.NO_MESSAGES
+        if self.valid == 0:
+            return TopicReadinessState.INVALID
+        if not self.has_progress:
+            return TopicReadinessState.NOT_PROGRESSIVE
+        return TopicReadinessState.READY
+
+    def snapshot(self, *, publisher_count: int | None = None) -> dict[str, Any]:
+        state = self.state(publisher_count=publisher_count)
+        return {
+            "label": self.label,
+            "state": state.value,
+            "publisher_count": publisher_count,
+            "received": self.received,
+            "valid": self.valid,
+            "first_latency_s": self.first_latency_s,
+            "timestamps_ns": self.timestamps_ns[-3:],
+            "frames": self.frames[-3:],
+            "errors": self.errors[-3:],
+            "progressive": self.has_progress,
+        }
+
+
 @dataclass
 class NavigationStartupEvidence:
     """Last causal startup diagnostic published by the Nav2 coordinator."""
@@ -57,12 +128,14 @@ class NavigationStartupEvidence:
     state: str = "UNSEEN"
     reason: str = "no navigation startup diagnostic received"
     values: dict[str, str] = field(default_factory=dict)
+    last_received_monotonic_s: float | None = None
 
     def record(self, message: DiagnosticArray) -> None:
         for status in message.status:
             if status.name != "navigation_startup":
                 continue
             self.messages += 1
+            self.last_received_monotonic_s = time.monotonic()
             self.values = {item.key: item.value for item in status.values}
             self.state = self.values.get("state", "UNKNOWN")
             self.reason = self.values.get("reason", status.message)
@@ -71,9 +144,16 @@ class NavigationStartupEvidence:
     def active(self) -> bool:
         return self.state == "ACTIVE"
 
-    def snapshot(self) -> dict[str, Any]:
+    def snapshot(self, now_s: float | None = None) -> dict[str, Any]:
+        now = time.monotonic() if now_s is None else float(now_s)
+        age_s = (
+            None
+            if self.last_received_monotonic_s is None
+            else max(0.0, now - self.last_received_monotonic_s)
+        )
         return {
             "messages": self.messages,
+            "age_s": age_s,
             "state": self.state,
             "reason": self.reason,
             "values": self.values,
@@ -215,6 +295,20 @@ class SmokeRuntime:
         if result is None:
             raise RuntimeError(f"service {name!r} returned no response")
         return result
+
+    def wait_navigation_startup(
+        self,
+        evidence: NavigationStartupEvidence,
+        timeout_s: float,
+        *,
+        name: str = "navigation startup active",
+    ) -> None:
+        self.wait(
+            name,
+            lambda: evidence.active,
+            timeout_s,
+            observe=evidence.snapshot,
+        )
 
     def wait_action(self, name: str, action_client, timeout_s: float = 15.0) -> None:
         self.wait(

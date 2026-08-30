@@ -8,8 +8,6 @@ import json
 import math
 import os
 import sys
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +21,7 @@ from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 from salus_interfaces.srv import EvaluatePathHealth, GetNavState, SetSimBatteryPreset
 from salus_interfaces.msg import CmdVelFinal
-from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
+from smoke_runtime import SmokeRuntime, TopicEvidence, subscribe_navigation_startup
 from tf2_ros import Buffer, TransformException, TransformListener
 
 
@@ -123,36 +121,6 @@ def validate_scan(message: LaserScan) -> None:
         raise ValidationError("scan contains neither usable ranges nor valid +Inf readings")
 
 
-@dataclass
-class TopicEvidence:
-    received: int = 0
-    valid: int = 0
-    first_latency_s: float | None = None
-    timestamps_ns: list[int] = field(default_factory=list)
-    frames: list[str] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
-
-    def record(self, message: Any, validator) -> None:
-        self.received += 1
-        if self.first_latency_s is None:
-            self.first_latency_s = time.monotonic() - _PROBE_STARTED_AT
-        try:
-            validator(message)
-        except ValidationError as exc:
-            self.errors.append(str(exc))
-            return
-        self.valid += 1
-        self.timestamps_ns.append(stamp_ns(message))
-        self.frames.append(message.header.frame_id)
-
-    @property
-    def has_progress(self) -> bool:
-        return len(self.timestamps_ns) >= 2 and self.timestamps_ns[-1] > self.timestamps_ns[-2]
-
-
-_PROBE_STARTED_AT = 0.0
-
-
 class IntegrationProbe(Node):
     OPERATIONAL_NODES = {
         "route_executor",
@@ -172,9 +140,9 @@ class IntegrationProbe(Node):
     def __init__(self, *, operational: bool = False) -> None:
         super().__init__("integration_structure_probe", parameter_overrides=[])
         self.operational = operational
-        self.odom = TopicEvidence()
-        self.scan = TopicEvidence()
-        self.scan_preview = TopicEvidence()
+        self.odom = TopicEvidence("odometry")
+        self.scan = TopicEvidence("scan")
+        self.scan_preview = TopicEvidence("scan_preview")
         self.final_commands = 0
         self.startup = subscribe_navigation_startup(self)
         self.tf_buffer = Buffer()
@@ -258,9 +226,18 @@ class IntegrationProbe(Node):
 
     def report(self) -> dict[str, Any]:
         return {
-            "odometry": self.odom.__dict__,
-            "scan": self.scan.__dict__,
-            "scan_preview": self.scan_preview.__dict__,
+            "odometry": self.odom.snapshot(
+                publisher_count=self.count_publishers("/odometry/global")
+            ),
+            "scan": self.scan.snapshot(
+                publisher_count=self.count_publishers("/scan_clean")
+            ),
+            "scan_preview": self.scan_preview.snapshot(
+                publisher_count=(
+                    self.count_publishers("/scan_preview")
+                    if self.operational else None
+                )
+            ),
             "tf": self.tf_result,
             "services": {
                 name: client.service_is_ready()
@@ -281,16 +258,6 @@ class IntegrationProbe(Node):
         return all(client.service_is_ready() for client in self.required_services.values())
 
 
-def _failure_reason(evidence: TopicEvidence, label: str) -> str:
-    if evidence.received == 0:
-        return f"{label}: topic absent or QoS incompatible (no messages received)"
-    if evidence.valid == 0:
-        return f"{label}: invalid messages ({'; '.join(evidence.errors[-3:])})"
-    if not evidence.has_progress:
-        return f"{label}: timestamps stagnant (valid={evidence.valid}, timestamps={evidence.timestamps_ns[-3:]})"
-    return ""
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=float, default=30.0)
@@ -307,29 +274,30 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    global _PROBE_STARTED_AT
     args = parse_args()
-    _PROBE_STARTED_AT = time.monotonic()
     rclpy.init()
     node = IntegrationProbe(operational=args.operational)
     runtime = SmokeRuntime(node, "integration-structure", args.report_path, global_timeout_s=args.timeout)
     success = False
     failure = None
     try:
-        runtime.wait(
-            "navigation startup active", lambda: node.startup.active, args.timeout,
-            observe=node.startup.snapshot,
-        )
+        runtime.wait_navigation_startup(node.startup, args.timeout)
         runtime.wait_lifecycle("/bt_navigator", 10.0)
         runtime.wait_lifecycle("/collision_monitor", 10.0)
         runtime.wait(
             "integrated contracts valid",
             lambda: (
-                not _failure_reason(node.odom, "odometry")
-                and not _failure_reason(node.scan, "scan")
+                node.odom.state(
+                    publisher_count=node.count_publishers("/odometry/global")
+                ).value == "READY"
+                and node.scan.state(
+                    publisher_count=node.count_publishers("/scan_clean")
+                ).value == "READY"
                 and (
                     not node.operational
-                    or not _failure_reason(node.scan_preview, "scan_preview")
+                    or node.scan_preview.state(
+                        publisher_count=node.count_publishers("/scan_preview")
+                    ).value == "READY"
                 )
                 and node.check_tf() and node.services_ready() and node.graph_ready()
             ),
