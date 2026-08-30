@@ -73,3 +73,23 @@ def test_halo_mask_is_deterministic():
     assert 0 < costs[6, 7] < 100
     assert costs[0, 0] == 0
     assert hashlib.sha256(costs.tobytes()).hexdigest() == "85d22a9c179b08a2d8c427d925b4db21a3a5e063152b776d5f6ee47337133a6d"
+
+
+
+def test_empty_keepout_mask_skips_distance_transform(monkeypatch):
+    image = np.full((3000, 3000), 255, dtype=np.uint8)
+    calls = []
+
+    def unexpected_distance_transform(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("empty keepout mask must not run distanceTransform")
+
+    monkeypatch.setattr(
+        "salus_navigation.zones_geojson.cv2.distanceTransform",
+        unexpected_distance_transform,
+    )
+    costs = cost_mask_from_binary(image, 0.1, 1.5, 12, 1)
+    assert not calls
+    assert costs.shape == image.shape
+    assert costs.dtype == np.uint8
+    assert np.count_nonzero(costs) == 0
