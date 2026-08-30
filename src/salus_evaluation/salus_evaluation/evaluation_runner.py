@@ -55,7 +55,10 @@ def _finite_float(value):
     """Accept only finite JSON numbers; malformed data stays observable as absent."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    result = float(value)
+    try:
+        result = float(value)
+    except OverflowError:
+        return None
     return result if math.isfinite(result) else None
 
 
@@ -80,7 +83,7 @@ def _status_snapshot(stamp_s, payload):
     if not all(isinstance(value, bool) for value in booleans) or any(
             value is None for value in numeric.values()):
         return None
-    source = payload.get("source", "unknown")
+    source = payload.get("source")
     if not isinstance(source, str) or not (
             isinstance(command["brake_pct"], int) and
             not isinstance(command["brake_pct"], bool)):
@@ -269,6 +272,7 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
                 "source_counts": _source_counts(vehicle),
                 "drive_enabled_count": sum(item.drive_enabled for item in vehicle),
                 "emergency_stop_count": sum(item.emergency_stop for item in vehicle),
+                "brake_ratio_histogram": _histogram(vehicle, "brake_ratio"),
             },
             "steering_saturation": saturation_intervals(status),
             "alignment": {
@@ -278,6 +282,10 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
                     "total": len(translations),
                     "correlated": sum(row["available"] for row in translations),
                     "unavailable": sum(not row["available"] for row in translations),
+                    "stale": sum(
+                        not row["available"] and row["alignment_gap_s"] is not None
+                        for row in translations
+                    ),
                 },
                 "ackermann_to_measured": {
                     "total": len(applied_measurements),
@@ -287,6 +295,16 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
                     ),
                     "telemetry_unavailable": sum(
                         row["telemetry_alignment_gap_s"] is None or
+                        row["telemetry_requested_speed_mps"] is None
+                        for row in applied_measurements
+                    ),
+                    "status_stale": sum(
+                        row["status_alignment_gap_s"] is not None and
+                        row["status_speed_mps"] is None
+                        for row in applied_measurements
+                    ),
+                    "telemetry_stale": sum(
+                        row["telemetry_alignment_gap_s"] is not None and
                         row["telemetry_requested_speed_mps"] is None
                         for row in applied_measurements
                     ),

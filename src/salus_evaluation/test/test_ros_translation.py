@@ -52,9 +52,23 @@ def test_controller_json_snapshots_require_the_documented_nested_payloads():
     assert _status_snapshot(1.0, {}) is None
     assert _telemetry_snapshot(1.0, {}) is None
     assert _status_snapshot(1.0, {"command": {"speed_mps": 1.0}}) is None
+    missing_source = {"fresh": True, "command": dict(status.__dict__)}
+    missing_source["command"].pop("source", None)
+    missing_source["command"].update({
+        "drive_enabled": True, "estop": False, "speed_mps": 1.0,
+        "brake_pct": 0, "requested_linear_x_mps": 1.0,
+        "requested_angular_z_rps": .2, "requested_steer_rad": .3,
+        "applied_steer_rad": .2, "steering_limit_used_rad": .25,
+        "steer_saturated": True, "speed_limited": False,
+        "min_speed_enforced": False,
+    })
+    assert _status_snapshot(1.0, missing_source) is None
 
 
-@pytest.mark.parametrize("value", ["abc", "false", float("nan"), float("inf"), True])
+@pytest.mark.parametrize(
+    "value", ["abc", "false", float("nan"), float("inf"), True,
+              pytest.param(10 ** 10000, id="huge_int")]
+)
 def test_controller_snapshots_reject_invalid_types_and_non_finite_numbers(value):
     payload = {"source": "auto", "fresh": True, "command": {
         "drive_enabled": True, "estop": False, "speed_mps": value,
@@ -95,6 +109,7 @@ def test_command_chain_summary_preserves_translation_and_observed_aggregates():
     assert translation["vehicle_brake_ratio"] == .25
     summary = chain["summary"]
     assert summary["cmd_vel_final"]["brake_pct_histogram"] == {"25": 1}
+    assert summary["vehicle_command"]["brake_ratio_histogram"] == {"0.25": 1}
     assert summary["ackermann"][
         "requested_to_applied_steer_delta_rad"
     ]["last"] == pytest.approx(-.05)
