@@ -1,0 +1,274 @@
+[INFO] [launch]: All log files can be found below /home/ros/.ros/log/2026-08-30-21-49-07-684780-leosole-Dell-G15-5530-42
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [ign gazebo-1]: process started with pid [66]
+[INFO] [robot_state_publisher-2]: process started with pid [68]
+[INFO] [parameter_bridge-3]: process started with pid [71]
+[INFO] [parameter_bridge-4]: process started with pid [73]
+[INFO] [create-5]: process started with pid [75]
+[INFO] [controller_server_node-6]: process started with pid [77]
+[INFO] [legacy_vehicle_command_node-7]: process started with pid [79]
+[INFO] [vehicle_command_comparison_node-8]: process started with pid [81]
+[INFO] [canonical_command_dry_run_node-9]: process started with pid [83]
+[INFO] [sim_imu_from_odom-10]: process started with pid [85]
+[INFO] [imu_normalizer-11]: process started with pid [87]
+[INFO] [imu_selector-12]: process started with pid [89]
+[INFO] [ackermann_odometry-13]: process started with pid [91]
+[INFO] [ekf_node-14]: process started with pid [93]
+[INFO] [sim_gps_normalizer-15]: process started with pid [95]
+[INFO] [global_stationary_gates-16]: process started with pid [97]
+[INFO] [gps_course_heading-17]: process started with pid [99]
+[INFO] [orientation_source_selector-18]: process started with pid [112]
+[INFO] [map_gps_absolute_measurement-19]: process started with pid [125]
+[INFO] [navsat_transform_node-20]: process started with pid [127]
+[INFO] [ekf_node-21]: process started with pid [131]
+[INFO] [capability_profile-22]: process started with pid [134]
+[INFO] [cloud_normalizer-23]: process started with pid [137]
+[INFO] [scan_ground_filter-24]: process started with pid [141]
+[INFO] [pointcloud_to_laserscan_node-25]: process started with pid [152]
+[INFO] [scan_noise_filter-26]: process started with pid [157]
+[INFO] [scan_preview-27]: process started with pid [175]
+[INFO] [collision_monitor-28]: process started with pid [185]
+[INFO] [lifecycle_manager-29]: process started with pid [188]
+[INFO] [nav_command_server-30]: process started with pid [191]
+[INFO] [map_server-31]: process started with pid [197]
+[INFO] [costmap_filter_info_server-32]: process started with pid [199]
+[INFO] [lifecycle_manager-33]: process started with pid [206]
+[INFO] [zones_manager-34]: process started with pid [212]
+[INFO] [planner_server-35]: process started with pid [214]
+[INFO] [controller_server-36]: process started with pid [220]
+[INFO] [bt_navigator-37]: process started with pid [226]
+[INFO] [behavior_server-38]: process started with pid [234]
+[INFO] [nav_observer-39]: process started with pid [263]
+[INFO] [path_health-40]: process started with pid [272]
+[INFO] [navigation_profile_coordinator-41]: process started with pid [274]
+[INFO] [lifecycle_manager-42]: process started with pid [281]
+[INFO] [nav2_startup_coordinator-43]: process started with pid [290]
+[INFO] [route_executor-44]: process started with pid [294]
+[INFO] [patrol_mission_coordinator-45]: process started with pid [296]
+[INFO] [nav_snapshot_server-46]: process started with pid [301]
+[INFO] [web_bridge-47]: process started with pid [314]
+[INFO] [camera_node-48]: process started with pid [323]
+[robot_state_publisher-2] [INFO] [1788126548.128262743] [robot_state_publisher]: got segment base_footprint
+[robot_state_publisher-2] [INFO] [1788126548.132052045] [robot_state_publisher]: got segment base_link
+[robot_state_publisher-2] [INFO] [1788126548.132111939] [robot_state_publisher]: got segment front_left_steer_link
+[robot_state_publisher-2] [INFO] [1788126548.132146620] [robot_state_publisher]: got segment front_left_wheel_link
+[robot_state_publisher-2] [INFO] [1788126548.132167021] [robot_state_publisher]: got segment front_right_steer_link
+[robot_state_publisher-2] [INFO] [1788126548.132175156] [robot_state_publisher]: got segment front_right_wheel_link
+[robot_state_publisher-2] [INFO] [1788126548.132183326] [robot_state_publisher]: got segment gps_link
+[robot_state_publisher-2] [INFO] [1788126548.132191623] [robot_state_publisher]: got segment imu_link
+[robot_state_publisher-2] [INFO] [1788126548.132199589] [robot_state_publisher]: got segment imu_primary_link
+[robot_state_publisher-2] [INFO] [1788126548.132207165] [robot_state_publisher]: got segment lidar_link
+[robot_state_publisher-2] [INFO] [1788126548.132215209] [robot_state_publisher]: got segment rear_left_wheel_link
+[robot_state_publisher-2] [INFO] [1788126548.132223476] [robot_state_publisher]: got segment rear_right_wheel_link
+[parameter_bridge-4] [INFO] [1788126548.163381553] [joint_state_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/model/salus_ackermann/joint_state (gz.msgs.Model) -> /world/salus_empty/model/salus_ackermann/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[create-5] [INFO] [1788126548.119419780] [spawn_salus_ackermann]: Requesting list of world names.
+[lifecycle_manager-29] [INFO] [1788126548.224007881] [lifecycle_manager_collision_monitor]: Creating
+[lifecycle_manager-29] [INFO] [1788126548.241038363] [lifecycle_manager_collision_monitor]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[costmap_filter_info_server-32] [INFO] [1788126548.224977821] [costmap_filter_info_server]: This is costmap filter info publisher
+[lifecycle_manager-33] [INFO] [1788126548.232478984] [lifecycle_manager_keepout_filters]: Creating
+[lifecycle_manager-33] [INFO] [1788126548.254681715] [lifecycle_manager_keepout_filters]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[controller_server-36] [INFO] [1788126548.259421409] [controller_server]: 
+[controller_server-36] 	controller_server lifecycle node launched. 
+[controller_server-36] 	Waiting on external lifecycle transitions to activate
+[controller_server-36] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-35] [INFO] [1788126548.260712222] [planner_server]: 
+[planner_server-35] 	planner_server lifecycle node launched. 
+[planner_server-35] 	Waiting on external lifecycle transitions to activate
+[planner_server-35] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-35] [INFO] [1788126548.276917615] [planner_server]: Creating
+[controller_server-36] [INFO] [1788126548.282827239] [controller_server]: Creating controller server
+[bt_navigator-37] [INFO] [1788126548.341993319] [bt_navigator]: 
+[bt_navigator-37] 	bt_navigator lifecycle node launched. 
+[bt_navigator-37] 	Waiting on external lifecycle transitions to activate
+[bt_navigator-37] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[bt_navigator-37] [INFO] [1788126548.342859570] [bt_navigator]: Creating
+[map_server-31] [INFO] [1788126548.345222791] [keepout_filter_mask_server]: 
+[map_server-31] 	keepout_filter_mask_server lifecycle node launched. 
+[map_server-31] 	Waiting on external lifecycle transitions to activate
+[map_server-31] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[map_server-31] [INFO] [1788126548.345412852] [keepout_filter_mask_server]: Creating
+[lifecycle_manager-33] [INFO] [1788126548.364894697] [lifecycle_manager_keepout_filters]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-33] [INFO] [1788126548.364991476] [lifecycle_manager_keepout_filters]: [34m[1mConfiguring keepout_filter_mask_server[0m[0m
+[map_server-31] [INFO] [1788126548.368626335] [keepout_filter_mask_server]: Configuring
+[map_server-31] [INFO] [1788126548.368703366] [map_io]: Loading yaml file: /ros2_ws/install/salus_navigation/share/salus_navigation/config/keepout_empty.yaml
+[map_server-31] [INFO] [1788126548.368960674] [map_io]: resolution: 0.1
+[map_server-31] [INFO] [1788126548.368969357] [map_io]: origin[0]: -150
+[map_server-31] [INFO] [1788126548.368972224] [map_io]: origin[1]: -150
+[map_server-31] [INFO] [1788126548.368975439] [map_io]: origin[2]: 0
+[map_server-31] [INFO] [1788126548.368978118] [map_io]: free_thresh: 0
+[map_server-31] [INFO] [1788126548.368981348] [map_io]: occupied_thresh: 1
+[map_server-31] [INFO] [1788126548.368984800] [map_io]: mode: scale
+[map_server-31] [INFO] [1788126548.368988789] [map_io]: negate: 0
+[map_server-31] [INFO] [1788126548.369194974] [map_io]: Loading image_file: /ros2_ws/install/salus_navigation/share/salus_navigation/config/keepout_empty.pgm
+[map_server-31] [INFO] [1788126548.375151883] [map_io]: Read map /ros2_ws/install/salus_navigation/share/salus_navigation/config/keepout_empty.pgm: 1 X 1 map @ 0.1 m/cell
+[lifecycle_manager-29] [INFO] [1788126548.375605457] [lifecycle_manager_collision_monitor]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-29] [INFO] [1788126548.376003615] [lifecycle_manager_collision_monitor]: [34m[1mConfiguring collision_monitor[0m[0m
+[lifecycle_manager-42] [INFO] [1788126548.388747957] [lifecycle_manager_navigation]: Creating
+[lifecycle_manager-42] [INFO] [1788126548.390516458] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[planner_server-35] [INFO] [1788126548.409989427] [global_costmap.global_costmap]: 
+[planner_server-35] 	global_costmap lifecycle node launched. 
+[planner_server-35] 	Waiting on external lifecycle transitions to activate
+[planner_server-35] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-35] [INFO] [1788126548.415679654] [global_costmap.global_costmap]: Creating Costmap
+[costmap_filter_info_server-32] [INFO] [1788126548.416143735] [keepout_costmap_filter_info_server]: 
+[costmap_filter_info_server-32] 	keepout_costmap_filter_info_server lifecycle node launched. 
+[costmap_filter_info_server-32] 	Waiting on external lifecycle transitions to activate
+[costmap_filter_info_server-32] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[lifecycle_manager-33] [INFO] [1788126548.433487950] [lifecycle_manager_keepout_filters]: [34m[1mConfiguring keepout_costmap_filter_info_server[0m[0m
+[collision_monitor-28] [INFO] [1788126548.434627852] [collision_monitor]: 
+[collision_monitor-28] 	collision_monitor lifecycle node launched. 
+[collision_monitor-28] 	Waiting on external lifecycle transitions to activate
+[collision_monitor-28] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[collision_monitor-28] [INFO] [1788126548.435233552] [collision_monitor]: Configuring
+[controller_server-36] [INFO] [1788126548.436638590] [local_costmap.local_costmap]: 
+[controller_server-36] 	local_costmap lifecycle node launched. 
+[controller_server-36] 	Waiting on external lifecycle transitions to activate
+[controller_server-36] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-36] [INFO] [1788126548.450217867] [local_costmap.local_costmap]: Creating Costmap
+[costmap_filter_info_server-32] [INFO] [1788126548.438945666] [keepout_costmap_filter_info_server]: Configuring
+[lifecycle_manager-33] [INFO] [1788126548.454888926] [lifecycle_manager_keepout_filters]: [34m[1mActivating keepout_filter_mask_server[0m[0m
+[map_server-31] [INFO] [1788126548.455174620] [keepout_filter_mask_server]: Activating
+[map_server-31] [INFO] [1788126548.455292819] [keepout_filter_mask_server]: Creating bond (keepout_filter_mask_server) to lifecycle manager.
+[collision_monitor-28] [INFO] [1788126548.463054188] [collision_monitor]: [footprint]: Creating Polygon
+[collision_monitor-28] [INFO] [1788126548.477839960] [collision_monitor]: [stop_zone]: Creating Polygon
+[behavior_server-38] [INFO] [1788126548.504671993] [behavior_server]: 
+[behavior_server-38] 	behavior_server lifecycle node launched. 
+[behavior_server-38] 	Waiting on external lifecycle transitions to activate
+[behavior_server-38] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[collision_monitor-28] [INFO] [1788126548.511480909] [collision_monitor]: [critical_slow_zone]: Creating Polygon
+[collision_monitor-28] [INFO] [1788126548.526972072] [collision_monitor]: [slow_zone]: Creating Polygon
+[collision_monitor-28] [INFO] [1788126548.538205335] [collision_monitor]: [scan]: Creating Scan
+[lifecycle_manager-29] [INFO] [1788126548.549799817] [lifecycle_manager_collision_monitor]: [34m[1mActivating collision_monitor[0m[0m
+[collision_monitor-28] [INFO] [1788126548.550962118] [collision_monitor]: Activating
+[collision_monitor-28] [INFO] [1788126548.551070826] [collision_monitor]: Creating bond (collision_monitor) to lifecycle manager.
+[create-5] [INFO] [1788126548.553454450] [spawn_salus_ackermann]: Requested creation of entity.
+[create-5] [INFO] [1788126548.553669708] [spawn_salus_ackermann]: OK creation of entity.
+[lifecycle_manager-33] [INFO] [1788126548.565263848] [lifecycle_manager_keepout_filters]: Server keepout_filter_mask_server connected with bond.
+[lifecycle_manager-33] [INFO] [1788126548.565394104] [lifecycle_manager_keepout_filters]: [34m[1mActivating keepout_costmap_filter_info_server[0m[0m
+[costmap_filter_info_server-32] [INFO] [1788126548.571910964] [keepout_costmap_filter_info_server]: Activating
+[costmap_filter_info_server-32] [INFO] [1788126548.572038289] [keepout_costmap_filter_info_server]: Creating bond (keepout_costmap_filter_info_server) to lifecycle manager.
+[lifecycle_manager-29] [INFO] [1788126548.660940947] [lifecycle_manager_collision_monitor]: Server collision_monitor connected with bond.
+[lifecycle_manager-29] [INFO] [1788126548.661044631] [lifecycle_manager_collision_monitor]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-29] [INFO] [1788126548.661082386] [lifecycle_manager_collision_monitor]: [34m[1mCreating bond timer...[0m[0m
+[lifecycle_manager-33] [INFO] [1788126548.687108993] [lifecycle_manager_keepout_filters]: Server keepout_costmap_filter_info_server connected with bond.
+[lifecycle_manager-33] [INFO] [1788126548.687174628] [lifecycle_manager_keepout_filters]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-33] [INFO] [1788126548.687192092] [lifecycle_manager_keepout_filters]: [34m[1mCreating bond timer...[0m[0m
+[INFO] [create-5]: process has finished cleanly [pid 75]
+[controller_server_node-6] [INFO] [1788126549.015987652] [salus_controller]: controller serial port selected (reason=explicit, requested=/dev/null, resolved=/dev/null)
+[parameter_bridge-3] [INFO] [1788126549.173482719] [motion_bridge]: Creating ROS->GZ Bridge: [/cmd_vel_gazebo (geometry_msgs/msg/Twist) -> /cmd_vel_steer (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1788126549.195665138] [motion_bridge]: Creating GZ->ROS Bridge: [/odom (gz.msgs.Odometry) -> /odom_raw (nav_msgs/msg/Odometry)] (Lazy 0)
+[controller_server_node-6] [INFO] [1788126549.217043064] [salus_controller]: controller_server ready (backend=sim_gazebo, serial=/dev/null@115200, input=legacy_cmd_vel, source=/cmd_vel_final)
+[controller_server_node-6] [INFO] [1788126549.217409623] [salus_controller]: sim battery services ready (/sim_battery/set_preset, /sim_battery/set_state)
+[parameter_bridge-3] [INFO] [1788126549.220177332] [motion_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1788126549.233207803] [motion_bridge]: Creating GZ->ROS Bridge: [/gps/fix_raw (gz.msgs.NavSat) -> /gps/fix_raw (sensor_msgs/msg/NavSatFix)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1788126549.253790414] [motion_bridge]: Creating GZ->ROS Bridge: [/lidar/points (gz.msgs.PointCloudPacked) -> /scan_3d_raw (sensor_msgs/msg/PointCloud2)] (Lazy 0)
+[pointcloud_to_laserscan_node-25] [INFO] [1788126549.320259823] [pointcloud_to_laserscan]: Got a subscriber to laserscan, starting pointcloud subscriber
+[nav_command_server-30] [INFO] [1788126549.525557695] [nav_command_server]: nav command server ready: safe/manual commands and LL single goals
+[web_bridge-47] [INFO] [1788126549.900033928] [salus_web_gateway]: required Cockpit service get_camera_ptz_state discovered in 0.355s and completed startup round-trip in 0.003s
+[web_bridge-47] [INFO] [1788126549.924499421] [salus_web_gateway]: Cockpit WebSocket listening on 0.0.0.0:18781
+[ign gazebo-1] [1;33mWarning [Utils.cc:129][0m [/sdf/model[@name="salus_ackermann"]/link[@name="base_footprint"]/sensor[@name="lidar_3d_sensor"]/lidar/noise[@type="gaussian"]:/tmp/salus_ackermann_lepkmdif.urdf:L0]: XML Attribute[type] in element[noise] not defined in SDF.
+[ign gazebo-1] MESA: error: Failed to query drm device.
+[ign gazebo-1] libGL error: glx: failed to create dri3 screen
+[ign gazebo-1] libGL error: failed to load driver: iris
+[ign gazebo-1] libGL error: failed to open /dev/dri/card1: No such file or directory
+[ign gazebo-1] libGL error: failed to load driver: iris
+[parameter_bridge-3] [INFO] [1788126550.814936695] [motion_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[navsat_transform_node-20] [INFO] [1788126550.834895856] [navsat_transform]: Datum (latitude, longitude, altitude) is (-31.49, -64.24, 0.00)
+[navsat_transform_node-20] [INFO] [1788126550.835317475] [navsat_transform]: Datum UTM coordinate is (20J, 382121.84, 6515889.94)
+[navsat_transform_node-20] [INFO] [1788126550.837604309] [navsat_transform]: Corrected for magnetic declination of 0, user-specified offset of 0 and meridian convergence of 0.0113143. Transform heading factor is now 0.0113143
+[lifecycle_manager-42] [INFO] [1788126551.400088619] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-42] [INFO] [1788126551.400270384] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[planner_server-35] [INFO] [1788126551.401265882] [planner_server]: Configuring
+[planner_server-35] [INFO] [1788126551.401372370] [global_costmap.global_costmap]: Configuring
+[planner_server-35] [INFO] [1788126551.437986510] [global_costmap.global_costmap]: Using plugin "obstacle_layer"
+[planner_server-35] [INFO] [1788126551.442194631] [global_costmap.global_costmap]: Subscribed to Topics: scan
+[planner_server-35] [INFO] [1788126551.446705600] [global_costmap.global_costmap]: Initialized plugin "obstacle_layer"
+[planner_server-35] [INFO] [1788126551.446746535] [global_costmap.global_costmap]: Using plugin "inflation_layer"
+[planner_server-35] [INFO] [1788126551.447450055] [global_costmap.global_costmap]: Initialized plugin "inflation_layer"
+[planner_server-35] [INFO] [1788126551.447489178] [global_costmap.global_costmap]: Using costmap filter "keepout_filter"
+[planner_server-35] [INFO] [1788126551.451517968] [global_costmap.global_costmap]: Initialized costmap filter "keepout_filter"
+[planner_server-35] [INFO] [1788126551.471735201] [planner_server]: Created global planner plugin GridBased of type nav2_smac_planner/SmacPlannerHybrid
+[planner_server-35] [INFO] [1788126551.471840402] [planner_server]: Configuring GridBased of type SmacPlannerHybrid
+[planner_server-35] [INFO] [1788126551.473941843] [planner_server]: Even sized heuristic lookup table size set 80.000000, increasing size by 1 to make odd
+[planner_server-35] [INFO] [1788126551.544993325] [planner_server]: Configured plugin GridBased of type SmacPlannerHybrid with maximum iterations 3000000, max on approach iterations 1000, and allowing unknown traversal. Tolerance 0.50.Using motion model: Dubin.
+[planner_server-35] [INFO] [1788126551.545054522] [planner_server]: Planner Server has GridBased  planners available.
+[lifecycle_manager-42] [INFO] [1788126551.564496007] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[controller_server-36] [INFO] [1788126551.564898805] [controller_server]: Configuring controller interface
+[controller_server-36] [INFO] [1788126551.565127803] [controller_server]: getting goal checker plugins..
+[controller_server-36] [INFO] [1788126551.565270147] [controller_server]: Controller frequency set to 20.0000Hz
+[controller_server-36] [INFO] [1788126551.565314148] [local_costmap.local_costmap]: Configuring
+[controller_server-36] [INFO] [1788126551.575213877] [local_costmap.local_costmap]: Using plugin "obstacle_layer"
+[controller_server-36] [INFO] [1788126551.577404304] [local_costmap.local_costmap]: Subscribed to Topics: scan
+[controller_server-36] [INFO] [1788126551.580565903] [local_costmap.local_costmap]: Initialized plugin "obstacle_layer"
+[controller_server-36] [INFO] [1788126551.580975166] [local_costmap.local_costmap]: Using plugin "inflation_layer"
+[controller_server-36] [INFO] [1788126551.581666631] [local_costmap.local_costmap]: Initialized plugin "inflation_layer"
+[controller_server-36] [INFO] [1788126551.581696183] [local_costmap.local_costmap]: Using costmap filter "keepout_filter"
+[controller_server-36] [INFO] [1788126551.586476100] [local_costmap.local_costmap]: Initialized costmap filter "keepout_filter"
+[controller_server-36] [INFO] [1788126551.605030670] [controller_server]: Created progress_checker : progress_checker of type nav2_controller::SimpleProgressChecker
+[controller_server-36] [INFO] [1788126551.605996321] [controller_server]: Created goal checker : general_goal_checker of type nav2_controller::PositionGoalChecker
+[controller_server-36] [INFO] [1788126551.606276956] [controller_server]: Controller Server has general_goal_checker  goal checkers available.
+[controller_server-36] [INFO] [1788126551.606746129] [controller_server]: Created controller : FollowPath of type nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-36] [INFO] [1788126551.613040484] [controller_server]: Controller Server has FollowPath  controllers available.
+[lifecycle_manager-42] [INFO] [1788126551.624920807] [lifecycle_manager_navigation]: [34m[1mConfiguring bt_navigator[0m[0m
+[bt_navigator-37] [INFO] [1788126551.625163550] [bt_navigator]: Configuring
+[lifecycle_manager-42] [INFO] [1788126551.757253861] [lifecycle_manager_navigation]: [34m[1mConfiguring behavior_server[0m[0m
+[behavior_server-38] [INFO] [1788126551.757535572] [behavior_server]: Configuring
+[behavior_server-38] [INFO] [1788126551.782391566] [behavior_server]: Creating behavior plugin wait of type nav2_behaviors/Wait
+[behavior_server-38] [INFO] [1788126551.783261273] [behavior_server]: Configuring wait
+[lifecycle_manager-42] [INFO] [1788126551.805980964] [lifecycle_manager_navigation]: [34m[1mActivating planner_server[0m[0m
+[planner_server-35] [INFO] [1788126551.807121155] [planner_server]: Activating
+[planner_server-35] [INFO] [1788126551.807328290] [global_costmap.global_costmap]: Activating
+[planner_server-35] [INFO] [1788126551.807455391] [global_costmap.global_costmap]: Checking transform
+[planner_server-35] [INFO] [1788126551.807634016] [global_costmap.global_costmap]: start
+[planner_server-35] [INFO] [1788126551.809987102] [global_costmap.global_costmap]: KeepoutFilter: Subscribing to "/costmap_filter_info" topic for filter info...
+[planner_server-35] [INFO] [1788126551.823642318] [global_costmap.global_costmap]: KeepoutFilter: Received filter info from /costmap_filter_info topic.
+[planner_server-35] [INFO] [1788126551.823714761] [global_costmap.global_costmap]: KeepoutFilter: Subscribing to "/keepout_filter_mask" topic for filter mask...
+[planner_server-35] [INFO] [1788126551.835420508] [global_costmap.global_costmap]: KeepoutFilter: Received filter mask from /keepout_filter_mask topic.
+[planner_server-35] [INFO] [1788126552.166988354] [planner_server]: Activating plugin GridBased of type SmacPlannerHybrid
+[planner_server-35] [INFO] [1788126552.172826197] [planner_server]: Creating bond (planner_server) to lifecycle manager.
+[lifecycle_manager-42] [INFO] [1788126552.289077508] [lifecycle_manager_navigation]: Server planner_server connected with bond.
+[lifecycle_manager-42] [INFO] [1788126552.289229846] [lifecycle_manager_navigation]: [34m[1mActivating controller_server[0m[0m
+[controller_server-36] [INFO] [1788126552.289841004] [controller_server]: Activating
+[controller_server-36] [INFO] [1788126552.289918782] [local_costmap.local_costmap]: Activating
+[controller_server-36] [INFO] [1788126552.289955057] [local_costmap.local_costmap]: Checking transform
+[controller_server-36] [INFO] [1788126552.290093826] [local_costmap.local_costmap]: start
+[controller_server-36] [INFO] [1788126552.294998922] [local_costmap.local_costmap]: KeepoutFilter: Subscribing to "/costmap_filter_info" topic for filter info...
+[controller_server-36] [INFO] [1788126552.313938899] [local_costmap.local_costmap]: KeepoutFilter: Received filter info from /costmap_filter_info topic.
+[controller_server-36] [INFO] [1788126552.314025605] [local_costmap.local_costmap]: KeepoutFilter: Subscribing to "/keepout_filter_mask" topic for filter mask...
+[controller_server-36] [INFO] [1788126552.325482263] [local_costmap.local_costmap]: KeepoutFilter: Received filter mask from /keepout_filter_mask topic.
+[controller_server-36] [INFO] [1788126552.503866953] [controller_server]: Activating controller: FollowPath of type regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-36] [INFO] [1788126552.503982487] [controller_server]: Creating bond (controller_server) to lifecycle manager.
+[lifecycle_manager-42] [INFO] [1788126552.624017163] [lifecycle_manager_navigation]: Server controller_server connected with bond.
+[lifecycle_manager-42] [INFO] [1788126552.624090748] [lifecycle_manager_navigation]: [34m[1mActivating bt_navigator[0m[0m
+[bt_navigator-37] [INFO] [1788126552.624554185] [bt_navigator]: Activating
+[bt_navigator-37] [INFO] [1788126552.704644378] [bt_navigator]: Creating bond (bt_navigator) to lifecycle manager.
+[lifecycle_manager-42] [INFO] [1788126552.812262360] [lifecycle_manager_navigation]: Server bt_navigator connected with bond.
+[lifecycle_manager-42] [INFO] [1788126552.812600998] [lifecycle_manager_navigation]: [34m[1mActivating behavior_server[0m[0m
+[behavior_server-38] [INFO] [1788126552.814060994] [behavior_server]: Activating
+[behavior_server-38] [INFO] [1788126552.814189093] [behavior_server]: Activating wait
+[behavior_server-38] [INFO] [1788126552.814295269] [behavior_server]: Creating bond (behavior_server) to lifecycle manager.
+[lifecycle_manager-42] [INFO] [1788126552.949186401] [lifecycle_manager_navigation]: Server behavior_server connected with bond.
+[lifecycle_manager-42] [INFO] [1788126552.949274770] [lifecycle_manager_navigation]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-42] [INFO] [1788126552.949320668] [lifecycle_manager_navigation]: [34m[1mCreating bond timer...[0m[0m
+[map_server-31] [INFO] [1788126554.179313996] [keepout_filter_mask_server]: Handling LoadMap request
+[map_server-31] [INFO] [1788126554.179393878] [map_io]: Loading yaml file: /tmp/salus-smoke-runtime/20260830T214906-59738-9723/profile/zones/keepout_mask.yaml
+[map_server-31] [INFO] [1788126554.179535623] [map_io]: resolution: 0.1
+[map_server-31] [INFO] [1788126554.179545461] [map_io]: origin[0]: -150
+[map_server-31] [INFO] [1788126554.179551072] [map_io]: origin[1]: -150
+[map_server-31] [INFO] [1788126554.179555811] [map_io]: origin[2]: 0
+[map_server-31] [INFO] [1788126554.179560396] [map_io]: free_thresh: 0
+[map_server-31] [INFO] [1788126554.179565467] [map_io]: occupied_thresh: 1
+[map_server-31] [INFO] [1788126554.179569928] [map_io]: mode: scale
+[map_server-31] [INFO] [1788126554.179574490] [map_io]: negate: 0
+[map_server-31] [INFO] [1788126554.179595839] [map_io]: Loading image_file: /tmp/salus-smoke-runtime/20260830T214906-59738-9723/profile/zones/keepout_mask.pgm
+[map_server-31] [INFO] [1788126554.841127989] [map_io]: Read map /tmp/salus-smoke-runtime/20260830T214906-59738-9723/profile/zones/keepout_mask.pgm: 3000 X 3000 map @ 0.1 m/cell
+[controller_server-36] [WARN] [1788126554.916292405] [local_costmap.local_costmap]: KeepoutFilter: New filter mask arrived from /keepout_filter_mask topic. Updating old filter mask.
+[planner_server-35] [WARN] [1788126554.917697389] [global_costmap.global_costmap]: KeepoutFilter: New filter mask arrived from /keepout_filter_mask topic. Updating old filter mask.
+[planner_server-35] [INFO] [1788126554.943979321] [global_costmap.global_costmap]: Received request to clear entirely the global_costmap
+[planner_server-35] [INFO] [1788126554.947943847] [global_costmap.global_costmap]: KeepoutFilter: Subscribing to "/costmap_filter_info" topic for filter info...
+[planner_server-35] [INFO] [1788126554.958911328] [global_costmap.global_costmap]: KeepoutFilter: Received filter info from /costmap_filter_info topic.
+[planner_server-35] [INFO] [1788126554.958982961] [global_costmap.global_costmap]: KeepoutFilter: Subscribing to "/keepout_filter_mask" topic for filter mask...
+[controller_server_node-6] [INFO] [1788126554.965019387] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=2 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[planner_server-35] [WARN] [1788126555.010123824] [global_costmap.global_costmap]: KeepoutFilter: New filter mask arrived from /keepout_filter_mask topic. Updating old filter mask.
+[controller_server_node-6] [INFO] [1788126555.025520662] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1788126555.035447292] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100

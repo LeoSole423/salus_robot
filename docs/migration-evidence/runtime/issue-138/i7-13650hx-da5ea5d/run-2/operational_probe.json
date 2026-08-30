@@ -1,0 +1,423 @@
+{
+  "duration_s": 5.546423150999999,
+  "error": "",
+  "evidence": {
+    "graph": {
+      "cmd_vel_final_publishers": 1,
+      "final_commands": 0,
+      "node_counts": {
+        "ackermann_odometry": 1,
+        "behavior_server": 1,
+        "bt_navigator": 1,
+        "bt_navigator_navigate_through_poses_rclcpp_node": 1,
+        "bt_navigator_navigate_to_pose_rclcpp_node": 1,
+        "canonical_command_dry_run": 1,
+        "capability_profile": 1,
+        "cloud_normalizer": 1,
+        "collision_monitor": 1,
+        "controller_server": 1,
+        "ekf_filter_node_global": 1,
+        "ekf_filter_node_local": 1,
+        "global_costmap": 1,
+        "global_stationary_gates": 1,
+        "gps_course_heading": 1,
+        "imu_normalizer": 1,
+        "imu_selector": 1,
+        "integration_structure_probe": 1,
+        "joint_state_bridge": 1,
+        "keepout_costmap_filter_info_server": 1,
+        "keepout_filter_mask_server": 1,
+        "legacy_vehicle_command_adapter": 1,
+        "lifecycle_manager_collision_monitor": 1,
+        "lifecycle_manager_keepout_filters": 1,
+        "lifecycle_manager_navigation": 1,
+        "local_costmap": 1,
+        "map_gps_absolute_measurement": 1,
+        "motion_bridge": 1,
+        "nav2_startup_coordinator": 1,
+        "nav_command_server": 1,
+        "nav_observer": 1,
+        "nav_snapshot_server": 1,
+        "navigation_profile_coordinator": 1,
+        "navsat_transform": 1,
+        "orientation_source_selector": 1,
+        "path_health": 1,
+        "patrol_mission_coordinator": 1,
+        "planner_server": 1,
+        "pointcloud_to_laserscan": 1,
+        "robot_state_publisher": 1,
+        "route_executor": 1,
+        "runtime_timing_probe": 1,
+        "salus_camera": 1,
+        "salus_controller": 1,
+        "salus_web_gateway": 1,
+        "scan_ground_filter": 1,
+        "scan_noise_filter": 1,
+        "scan_preview": 1,
+        "sim_gps_normalizer": 1,
+        "sim_imu_from_odom": 1,
+        "transform_listener_impl_583e96b84b40": 1,
+        "transform_listener_impl_58bfa1b010d0": 1,
+        "transform_listener_impl_59082b04e930": 1,
+        "transform_listener_impl_5f0303a7e400": 1,
+        "transform_listener_impl_603c784b0840": 1,
+        "transform_listener_impl_6245eb10ac70": 1,
+        "transform_listener_impl_626c00bc3880": 1,
+        "transform_listener_impl_651823ce8580": 1,
+        "vehicle_command_shadow_comparison": 1,
+        "zones_manager": 1
+      },
+      "operational_ready": true,
+      "ready": true,
+      "scan_3d_raw_publishers": 1
+    },
+    "isolation": {
+      "gz_partition": "salus-smoke-20260830T214906-59738-9723",
+      "probe_pid": 44,
+      "ros_domain_id": "81",
+      "run_token": "20260830T214906-59738-9723",
+      "runtime_dir": "/tmp/salus-smoke-runtime/20260830T214906-59738-9723"
+    },
+    "navigation_startup": {
+      "age_s": 0.03342979600029139,
+      "messages": 5,
+      "reason": "ALL_NAV2_NODES_ACTIVE",
+      "state": "ACTIVE",
+      "values": {
+        "behavior_server": "active",
+        "bt_navigator": "active",
+        "clock_progressive": "True",
+        "controller_server": "active",
+        "keepout_mask_observed": "True",
+        "keepout_ready": "True",
+        "keepout_required": "True",
+        "lifecycle_manager_ready": "True",
+        "obstacle_detection_required": "True",
+        "odometry_finite": "True",
+        "odometry_progressive": "True",
+        "path_health_preflight": "True",
+        "planner_server": "active",
+        "reason": "ALL_NAV2_NODES_ACTIVE",
+        "scan_fresh": "True",
+        "scan_valid": "True",
+        "state": "ACTIVE",
+        "transform_available": "True",
+        "transform_fresh": "True",
+        "zones_state_service_ready": "True"
+      }
+    },
+    "odometry": {
+      "errors": [],
+      "first_latency_s": 3.0490174589999697,
+      "frames": [
+        "map",
+        "map",
+        "map"
+      ],
+      "label": "odometry",
+      "progressive": true,
+      "publisher_count": 1,
+      "received": 75,
+      "state": "READY",
+      "timestamps_ns": [
+        2415000000,
+        2457000000,
+        2478000000
+      ],
+      "valid": 75
+    },
+    "scan": {
+      "errors": [],
+      "first_latency_s": 3.038114200000109,
+      "frames": [
+        "base_footprint",
+        "base_footprint",
+        "base_footprint"
+      ],
+      "label": "scan",
+      "progressive": true,
+      "publisher_count": 1,
+      "received": 25,
+      "state": "READY",
+      "timestamps_ns": [
+        2202000000,
+        2301000000,
+        2400000000
+      ],
+      "valid": 25
+    },
+    "scan_preview": {
+      "errors": [],
+      "first_latency_s": 3.0386618339998677,
+      "frames": [
+        "base_footprint",
+        "base_footprint",
+        "base_footprint"
+      ],
+      "label": "scan_preview",
+      "progressive": true,
+      "publisher_count": 1,
+      "received": 5,
+      "state": "READY",
+      "timestamps_ns": [
+        1101000000,
+        1602000000,
+        2100000000
+      ],
+      "valid": 5
+    },
+    "services": {
+      "controller": true,
+      "navigation": true,
+      "path_health": true,
+      "robot_state_publisher": true
+    },
+    "tf": {
+      "map_to_odom": true,
+      "map_to_odom_stamp_ns": 2478000000,
+      "odom_to_base_footprint": true,
+      "odom_to_base_footprint_stamp_ns": 2478000000
+    }
+  },
+  "phases": [
+    {
+      "duration_s": 5.513009327999953,
+      "error": "",
+      "iterations": 367,
+      "last_condition": {
+        "age_s": 4.288600030122325e-05,
+        "messages": 5,
+        "reason": "ALL_NAV2_NODES_ACTIVE",
+        "state": "ACTIVE",
+        "values": {
+          "behavior_server": "active",
+          "bt_navigator": "active",
+          "clock_progressive": "True",
+          "controller_server": "active",
+          "keepout_mask_observed": "True",
+          "keepout_ready": "True",
+          "keepout_required": "True",
+          "lifecycle_manager_ready": "True",
+          "obstacle_detection_required": "True",
+          "odometry_finite": "True",
+          "odometry_progressive": "True",
+          "path_health_preflight": "True",
+          "planner_server": "active",
+          "reason": "ALL_NAV2_NODES_ACTIVE",
+          "scan_fresh": "True",
+          "scan_valid": "True",
+          "state": "ACTIVE",
+          "transform_available": "True",
+          "transform_fresh": "True",
+          "zones_state_service_ready": "True"
+        }
+      },
+      "name": "navigation startup active",
+      "state": "PASSED",
+      "timeout_s": 90.0
+    },
+    {
+      "duration_s": 0.0007764360002511239,
+      "error": "",
+      "iterations": 1,
+      "last_condition": {
+        "last_state": "service unavailable",
+        "service_ready": true
+      },
+      "name": "lifecycle /bt_navigator",
+      "state": "PASSED",
+      "timeout_s": 10.0
+    },
+    {
+      "duration_s": 0.0009268489998248697,
+      "error": "",
+      "iterations": 2,
+      "last_condition": {
+        "last_state": "service unavailable",
+        "service_ready": true
+      },
+      "name": "lifecycle /collision_monitor",
+      "state": "PASSED",
+      "timeout_s": 10.0
+    },
+    {
+      "duration_s": 0.004021266000108881,
+      "error": "",
+      "iterations": 1,
+      "last_condition": {
+        "graph": {
+          "cmd_vel_final_publishers": 1,
+          "final_commands": 0,
+          "node_counts": {
+            "ackermann_odometry": 1,
+            "behavior_server": 1,
+            "bt_navigator": 1,
+            "bt_navigator_navigate_through_poses_rclcpp_node": 1,
+            "bt_navigator_navigate_to_pose_rclcpp_node": 1,
+            "canonical_command_dry_run": 1,
+            "capability_profile": 1,
+            "cloud_normalizer": 1,
+            "collision_monitor": 1,
+            "controller_server": 1,
+            "ekf_filter_node_global": 1,
+            "ekf_filter_node_local": 1,
+            "global_costmap": 1,
+            "global_stationary_gates": 1,
+            "gps_course_heading": 1,
+            "imu_normalizer": 1,
+            "imu_selector": 1,
+            "integration_structure_probe": 1,
+            "joint_state_bridge": 1,
+            "keepout_costmap_filter_info_server": 1,
+            "keepout_filter_mask_server": 1,
+            "legacy_vehicle_command_adapter": 1,
+            "lifecycle_manager_collision_monitor": 1,
+            "lifecycle_manager_keepout_filters": 1,
+            "lifecycle_manager_navigation": 1,
+            "local_costmap": 1,
+            "map_gps_absolute_measurement": 1,
+            "motion_bridge": 1,
+            "nav2_startup_coordinator": 1,
+            "nav_command_server": 1,
+            "nav_observer": 1,
+            "nav_snapshot_server": 1,
+            "navigation_profile_coordinator": 1,
+            "navsat_transform": 1,
+            "orientation_source_selector": 1,
+            "path_health": 1,
+            "patrol_mission_coordinator": 1,
+            "planner_server": 1,
+            "pointcloud_to_laserscan": 1,
+            "robot_state_publisher": 1,
+            "route_executor": 1,
+            "runtime_timing_probe": 1,
+            "salus_camera": 1,
+            "salus_controller": 1,
+            "salus_web_gateway": 1,
+            "scan_ground_filter": 1,
+            "scan_noise_filter": 1,
+            "scan_preview": 1,
+            "sim_gps_normalizer": 1,
+            "sim_imu_from_odom": 1,
+            "transform_listener_impl_583e96b84b40": 1,
+            "transform_listener_impl_58bfa1b010d0": 1,
+            "transform_listener_impl_59082b04e930": 1,
+            "transform_listener_impl_5f0303a7e400": 1,
+            "transform_listener_impl_603c784b0840": 1,
+            "transform_listener_impl_6245eb10ac70": 1,
+            "transform_listener_impl_626c00bc3880": 1,
+            "transform_listener_impl_651823ce8580": 1,
+            "vehicle_command_shadow_comparison": 1,
+            "zones_manager": 1
+          },
+          "operational_ready": true,
+          "ready": true,
+          "scan_3d_raw_publishers": 1
+        },
+        "navigation_startup": {
+          "age_s": 0.030384073000277567,
+          "messages": 5,
+          "reason": "ALL_NAV2_NODES_ACTIVE",
+          "state": "ACTIVE",
+          "values": {
+            "behavior_server": "active",
+            "bt_navigator": "active",
+            "clock_progressive": "True",
+            "controller_server": "active",
+            "keepout_mask_observed": "True",
+            "keepout_ready": "True",
+            "keepout_required": "True",
+            "lifecycle_manager_ready": "True",
+            "obstacle_detection_required": "True",
+            "odometry_finite": "True",
+            "odometry_progressive": "True",
+            "path_health_preflight": "True",
+            "planner_server": "active",
+            "reason": "ALL_NAV2_NODES_ACTIVE",
+            "scan_fresh": "True",
+            "scan_valid": "True",
+            "state": "ACTIVE",
+            "transform_available": "True",
+            "transform_fresh": "True",
+            "zones_state_service_ready": "True"
+          }
+        },
+        "odometry": {
+          "errors": [],
+          "first_latency_s": 3.0490174589999697,
+          "frames": [
+            "map",
+            "map",
+            "map"
+          ],
+          "label": "odometry",
+          "progressive": true,
+          "publisher_count": 1,
+          "received": 75,
+          "state": "READY",
+          "timestamps_ns": [
+            2415000000,
+            2457000000,
+            2478000000
+          ],
+          "valid": 75
+        },
+        "scan": {
+          "errors": [],
+          "first_latency_s": 3.038114200000109,
+          "frames": [
+            "base_footprint",
+            "base_footprint",
+            "base_footprint"
+          ],
+          "label": "scan",
+          "progressive": true,
+          "publisher_count": 1,
+          "received": 25,
+          "state": "READY",
+          "timestamps_ns": [
+            2202000000,
+            2301000000,
+            2400000000
+          ],
+          "valid": 25
+        },
+        "scan_preview": {
+          "errors": [],
+          "first_latency_s": 3.0386618339998677,
+          "frames": [
+            "base_footprint",
+            "base_footprint",
+            "base_footprint"
+          ],
+          "label": "scan_preview",
+          "progressive": true,
+          "publisher_count": 1,
+          "received": 5,
+          "state": "READY",
+          "timestamps_ns": [
+            1101000000,
+            1602000000,
+            2100000000
+          ],
+          "valid": 5
+        },
+        "services": {
+          "controller": true,
+          "navigation": true,
+          "path_health": true,
+          "robot_state_publisher": true
+        },
+        "tf": {
+          "map_to_odom": false,
+          "odom_to_base_footprint": false
+        }
+      },
+      "name": "integrated contracts valid",
+      "state": "PASSED",
+      "timeout_s": 20.0
+    }
+  ],
+  "scenario": "integration-structure",
+  "state": "PASSED"
+}

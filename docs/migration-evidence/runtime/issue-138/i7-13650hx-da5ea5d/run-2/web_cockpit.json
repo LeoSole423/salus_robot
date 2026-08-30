@@ -1,0 +1,302 @@
+{
+  "error": null,
+  "evidence": {
+    "broadcast_ops": [
+      "ack",
+      "nav_event",
+      "nav_telemetry",
+      "scan_preview",
+      "state"
+    ],
+    "camera": {
+      "initial": {
+        "active_preset": "home",
+        "applied_preset": "",
+        "error": "",
+        "last_command": "none",
+        "ok": true,
+        "op": "camera_ptz_state",
+        "pan_deg": 0.0,
+        "saved_preset": "",
+        "tilt_deg": 0.0,
+        "zoom_in": false,
+        "zoom_level": 1.0
+      },
+      "moved": {
+        "active_preset": "",
+        "applied_preset": "",
+        "error": "",
+        "last_command": "ptz_absolute",
+        "ok": true,
+        "op": "camera_ptz_state",
+        "pan_deg": 25.0,
+        "saved_preset": "",
+        "tilt_deg": 10.0,
+        "zoom_in": true,
+        "zoom_level": 2.0
+      },
+      "preset": {
+        "active_preset": "left",
+        "applied_preset": "",
+        "error": "",
+        "last_command": "preset:left",
+        "ok": true,
+        "op": "camera_ptz_state",
+        "pan_deg": 90.0,
+        "saved_preset": "",
+        "tilt_deg": 0.0,
+        "zoom_in": false,
+        "zoom_level": 1.0
+      },
+      "saved": {
+        "active_preset": "home",
+        "applied_preset": "",
+        "error": "",
+        "last_command": "save_preset:home",
+        "ok": true,
+        "op": "camera_ptz_state",
+        "pan_deg": 25.0,
+        "saved_preset": "",
+        "tilt_deg": 10.0,
+        "zoom_in": true,
+        "zoom_level": 2.0
+      }
+    },
+    "capability_profile": "obstacle_detection",
+    "operations": [
+      "unlock",
+      "exclusive_lease",
+      "camera_ptz",
+      "state",
+      "zones",
+      "waypoints",
+      "manual_safe_stop",
+      "snapshot",
+      "safe_operations"
+    ],
+    "port": 18781,
+    "request_timings": {
+      "primary": [
+        {
+          "client_req_id": "smoke-1",
+          "completed_monotonic_s": 3368.703053353,
+          "duration_s": 0.002068523000161804,
+          "operation": "get_camera_ptz_state",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3368.70098483
+        },
+        {
+          "client_req_id": "smoke-2",
+          "completed_monotonic_s": 3368.703540957,
+          "duration_s": 0.00047106099964366877,
+          "operation": "camera_ptz_move",
+          "outcome": "response",
+          "response_error": "CONTROL_LOCKED",
+          "response_ok": false,
+          "started_monotonic_s": 3368.703069896
+        },
+        {
+          "client_req_id": "smoke-3",
+          "completed_monotonic_s": 3369.165559872,
+          "duration_s": 0.0009208839996972529,
+          "operation": "set_control_lock",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.164638988
+        },
+        {
+          "client_req_id": "smoke-4",
+          "completed_monotonic_s": 3369.177838045,
+          "duration_s": 0.00422767300005944,
+          "operation": "camera_ptz_move",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.173610372
+        },
+        {
+          "client_req_id": "smoke-5",
+          "completed_monotonic_s": 3369.184605317,
+          "duration_s": 0.006760399000086181,
+          "operation": "camera_ptz_set_preset",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.177844918
+        },
+        {
+          "client_req_id": "smoke-6",
+          "completed_monotonic_s": 3369.188407584,
+          "duration_s": 0.0037927079997643887,
+          "operation": "camera_ptz_preset",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.184614876
+        },
+        {
+          "client_req_id": "smoke-7",
+          "completed_monotonic_s": 3369.188751891,
+          "duration_s": 0.0003382659997441806,
+          "operation": "control_heartbeat",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.188413625
+        },
+        {
+          "client_req_id": "smoke-8",
+          "completed_monotonic_s": 3369.192839317,
+          "duration_s": 0.004083879000063462,
+          "operation": "get_state",
+          "outcome": "response",
+          "response_error": "",
+          "response_ok": true,
+          "started_monotonic_s": 3369.188755438
+        },
+        {
+          "client_req_id": "smoke-9",
+          "completed_monotonic_s": 3370.073555055,
+          "duration_s": 0.8807056470000134,
+          "operation": "set_zones_geojson",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3369.192849408
+        },
+        {
+          "client_req_id": "smoke-10",
+          "completed_monotonic_s": 3370.077483583,
+          "duration_s": 0.003921744999843213,
+          "operation": "save_waypoints_file",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.073561838
+        },
+        {
+          "client_req_id": "smoke-11",
+          "completed_monotonic_s": 3370.079107782,
+          "duration_s": 0.0016185730000870535,
+          "operation": "load_waypoints_file",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.077489209
+        },
+        {
+          "client_req_id": "smoke-12",
+          "completed_monotonic_s": 3370.084221571,
+          "duration_s": 0.005104680999920674,
+          "operation": "set_manual_mode",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.07911689
+        },
+        {
+          "client_req_id": "smoke-13",
+          "completed_monotonic_s": 3370.08522221,
+          "duration_s": 0.0009910910002872697,
+          "operation": "set_manual_cmd",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.084231119
+        },
+        {
+          "client_req_id": "smoke-14",
+          "completed_monotonic_s": 3370.089380566,
+          "duration_s": 0.004149621999658848,
+          "operation": "set_manual_mode",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.085230944
+        },
+        {
+          "client_req_id": "smoke-15",
+          "completed_monotonic_s": 3370.137110811,
+          "duration_s": 0.04772246400034419,
+          "operation": "get_nav_snapshot",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.089388347
+        },
+        {
+          "client_req_id": "smoke-16",
+          "completed_monotonic_s": 3370.141074467,
+          "duration_s": 0.00395271400020647,
+          "operation": "cancel_goal",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.137121753
+        },
+        {
+          "client_req_id": "smoke-17",
+          "completed_monotonic_s": 3370.1501032,
+          "duration_s": 0.009019869999974617,
+          "operation": "cancel_route",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.14108333
+        },
+        {
+          "client_req_id": "smoke-18",
+          "completed_monotonic_s": 3370.15457867,
+          "duration_s": 0.0044687529998554965,
+          "operation": "cancel_patrol",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.150109917
+        },
+        {
+          "client_req_id": "smoke-19",
+          "completed_monotonic_s": 3370.159693084,
+          "duration_s": 0.005106767000143009,
+          "operation": "brake",
+          "outcome": "response",
+          "response_error": null,
+          "response_ok": true,
+          "started_monotonic_s": 3370.154586317
+        }
+      ],
+      "secondary": [
+        {
+          "client_req_id": "smoke-1",
+          "completed_monotonic_s": 3369.172918416,
+          "duration_s": 0.0011580309997043514,
+          "operation": "set_goal_ll",
+          "outcome": "response",
+          "response_error": "CONTROL_OWNED",
+          "response_ok": false,
+          "started_monotonic_s": 3369.171760385
+        },
+        {
+          "client_req_id": "smoke-2",
+          "completed_monotonic_s": 3369.173603026,
+          "duration_s": 0.0006787199999962468,
+          "operation": "camera_ptz_preset",
+          "outcome": "response",
+          "response_error": "CONTROL_OWNED",
+          "response_ok": false,
+          "started_monotonic_s": 3369.172924306
+        }
+      ]
+    },
+    "scan_preview": {
+      "frame_id": "base_footprint",
+      "range_count": 90,
+      "valid_count": 5
+    }
+  },
+  "scenario": "web-cockpit",
+  "success": true
+}

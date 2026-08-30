@@ -1,0 +1,28 @@
+{
+  "isolation": {
+    "fastdds_builtin_transports": "UDPv4",
+    "gz_partition": "salus-smoke-20260830T214852-58514-10204",
+    "ros_domain_id": "80",
+    "run_token": "20260830T214852-58514-10204",
+    "runtime_dir": "/tmp/salus-smoke-runtime/20260830T214852-58514-10204"
+  },
+  "readiness": [
+    "launch_started:operational",
+    "launch_started:runtime_timing",
+    "passed:operational_probe",
+    "passed:web_probe",
+    "cockpit_contract_valid"
+  ],
+  "run_id": "web-cockpit-20260830T214853-1",
+  "scenario": "web-cockpit",
+  "smoke_timeout_s": 240,
+  "started_at": "2026-08-30T21:48:53Z",
+  "status": "0",
+  "timing": {
+    "cleanup_s": 0,
+    "functional_s": 2,
+    "pre_cleanup_s": 8,
+    "startup_s": 6,
+    "total_s": 8
+  }
+}
