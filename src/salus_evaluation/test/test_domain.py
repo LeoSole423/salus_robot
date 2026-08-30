@@ -6,11 +6,15 @@ import pytest
 from salus_evaluation.gates import GateState, functional_gates, performance_gate
 from salus_evaluation.metrics import (absolute_goal, arrival_metrics,
                                       command_response_sign,
+                                      command_stage_alignments,
                                       expected_turn_from_path,
+                                      first_divergent_stage,
                                       localization_metrics, tracking_metrics,
+                                      saturation_intervals,
                                       trial_data_finite)
 from salus_evaluation.models import (GoalSpec, ExpectedTurn, Pose2D,
-                                     TimedCommand, TimedPose)
+                                     TimedCommand, TimedControllerStatus,
+                                     TimedPose)
 from salus_evaluation.schema import load_scenario
 
 
@@ -93,6 +97,42 @@ def test_finite_validation_covers_goal_plan_commands_and_pose_streams():
                                  (Pose2D(0, 0, 0),))
     assert not trial_data_finite(Pose2D(1, 0, 0), ((good_pose,),),
                                  (good_command,), (Pose2D(math.inf, 0, 0),))
+
+
+def test_command_chain_identifies_the_first_downstream_limiter_causally():
+    raw = (TimedCommand(1.0, 1.0, .4),)
+    safe = (TimedCommand(1.1, .6, .4, "cmd_vel_safe"),)
+    final = (TimedCommand(1.2, .6, .4, "cmd_vel_final"),)
+    raw_safe = command_stage_alignments(raw, safe)
+    safe_final = command_stage_alignments(safe, final)
+    assert raw_safe[0]["alignment_gap_s"] == pytest.approx(.1)
+    assert raw_safe[0]["linear_delta_mps"] == pytest.approx(-.4)
+    assert raw_safe[0]["divergent"]
+    assert first_divergent_stage(raw_safe, safe_final) == "cmd_vel_safe"
+
+
+def test_command_chain_does_not_pair_a_future_or_stale_sample():
+    raw = (TimedCommand(1.0, 1.0, .4),)
+    safe = (
+        TimedCommand(.9, 1.0, .4, "cmd_vel_safe"),
+        TimedCommand(1.3, 1.0, .4, "cmd_vel_safe"),
+    )
+    alignments = command_stage_alignments(raw, safe)
+    assert not alignments[0]["available"]
+    assert not alignments[1]["available"]
+
+
+def test_saturation_duration_does_not_extrapolate_over_a_gap():
+    def status(stamp, saturated):
+        return TimedControllerStatus(
+            stamp, "auto", True, True, False, 1.0, 0, 1.0, .2,
+            .3, .2, .25, saturated, False, False,
+        )
+
+    result = saturation_intervals((status(1.0, True), status(1.1, True),
+                                   status(1.5, True), status(1.6, True)))
+    assert result["interval_count"] == 2
+    assert result["observed_duration_s"] == pytest.approx(.2)
 
 
 def test_functional_sign_gate_fails_and_performance_starts_calibrating():

@@ -18,6 +18,13 @@ si la maniobra inicial pide izquierda, derecha o recto. Si no puede inferirlo,
 el gate `turn_sign` falla en lugar de omitir esa comprobación. Ambos modos
 generan el mismo bundle versionado en `artifacts/evaluations/`.
 
+El bundle v2 conserva `commands.csv` como la solicitud Nav2 en `/cmd_vel` y
+agrega las etapas `/cmd_vel_safe`, `/cmd_vel_final`, `VehicleCommand` y
+`DriveTelemetry`, junto con los diagnósticos observados de control. Las
+correlaciones usan sólo la última muestra causal previa dentro de 0,2 s y
+registran su `alignment_gap_s`; la ausencia de una pareja válida se informa sin
+alterar los gates funcionales. La dirección medida se persiste en radianes.
+
 La comparación de localización sólo acepta muestras de verdad terreno a menos
 de 0.2 s de cada estimación. Los datos no finitos en meta, poses, velocidades,
 comandos o plan invalidan la ejecución.
