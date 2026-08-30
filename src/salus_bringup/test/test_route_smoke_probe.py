@@ -45,3 +45,25 @@ def test_route_startup_requires_active_bt_navigator():
     evidence = ready_evidence()
     evidence["bt_state"] = "inactive"
     assert not probe.startup_evidence_is_ready(evidence)
+
+
+def test_first_checkpoint_trace_compares_local_and_global_progress():
+    source = PROBE.read_text(encoding="utf-8")
+    assert '"/odometry/local"' in source
+    assert "self.local_odom.append" in source
+    assert "def sample_route_progress(" in source
+    assert '"global_displacement_m"' in source
+    assert '"local_displacement_m"' in source
+    assert '"distance_to_target_m"' in source
+    assert '"cross_track_error_m"' in source
+    assert '"progress_ratio"' in source
+    assert '"failure_code"' in source
+    assert '"map_to_odom"' in source
+    assert '"/gps/course_heading/debug"' in source
+    assert '"/localization/orientation_selection/debug"' in source
+    assert '"course_heading"' in source
+    assert '"orientation_selection"' in source
+    assert '"first_checkpoint_progress_trace": node.progress_trace' in source
+    assert "self.next_progress_sample_at" in source
+    assert "now < self.next_progress_sample_at" in source
+    assert "self.next_progress_sample_at = now + 0.5" in source
