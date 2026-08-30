@@ -37,6 +37,28 @@ from .nav_command_server import diagnostic_level
 from .route_actions import ActionExecution, ActionState, parse_actions
 
 
+TERMINAL_NAV_RESULTS = frozenset(
+    ("succeeded", "aborted", "cancelled", "goal rejected")
+)
+
+
+def terminal_nav_result_is_current(
+    *,
+    request_pending: bool,
+    goal_active: bool,
+    result_text: str,
+    result_event_id: int,
+    request_event_floor: int,
+    last_result_event_id: int,
+) -> bool:
+    """Accept only terminal telemetry causally newer than this goal request."""
+    if request_pending or goal_active or result_text not in TERMINAL_NAV_RESULTS:
+        return False
+    return int(result_event_id) > max(
+        int(request_event_floor), int(last_result_event_id)
+    )
+
+
 class RouteExecutorNode(Node):
     """Keep a pending preparation separate from the active mission."""
 
@@ -61,6 +83,8 @@ class RouteExecutorNode(Node):
         self._target_offset = 0
         self._checkpoint_cursor = 0
         self._goal_epoch = 0
+        self._goal_request_pending = False
+        self._goal_result_event_floor = -1
         self._last_result_event_id = -1
         self._action: ActionExecution | None = None
         self._action_future = None
@@ -236,12 +260,16 @@ class RouteExecutorNode(Node):
                 self._nav_failure_code = ""
             if self._chunk is not None and self._pose is not None:
                 self._mission.progress = project(self._chunk, self._pose.x, self._pose.y)
-            if message.nav_result_event_id == self._last_result_event_id:
+            if not terminal_nav_result_is_current(
+                request_pending=self._goal_request_pending,
+                goal_active=bool(message.goal_active),
+                result_text=str(message.nav_result_text),
+                result_event_id=int(message.nav_result_event_id),
+                request_event_floor=self._goal_result_event_floor,
+                last_result_event_id=self._last_result_event_id,
+            ):
                 return
-            if message.goal_active or message.nav_result_text not in (
-                    "succeeded", "aborted", "cancelled", "goal rejected"):
-                return
-            self._last_result_event_id = message.nav_result_event_id
+            self._last_result_event_id = int(message.nav_result_event_id)
             if message.nav_result_text == "succeeded":
                 self._recovery.reset()
                 point = self._chunk.waypoints[self._target_offset]
@@ -308,6 +336,9 @@ class RouteExecutorNode(Node):
 
     def _stop_for_recovery(self, decision) -> None:
         with self._lock:
+            # Invalidating the request epoch must also invalidate any pending
+            # service correlation state; a stale callback will then be ignored.
+            self._goal_request_pending = False
             self._goal_epoch += 1
             self._cancel_goal.call_async(
                 CancelNavGoal.Request()
@@ -466,6 +497,7 @@ class RouteExecutorNode(Node):
         request.suppress_success_brake = has_next or self._mission.prepared.loop or after_chunk < len(self._mission.prepared.waypoints)
         self._goal_epoch += 1
         epoch = self._goal_epoch
+        self._goal_request_pending = True
         future = self._set_goal.call_async(request)
         future.add_done_callback(lambda done: self._on_goal_request(done, epoch))
 
@@ -476,10 +508,15 @@ class RouteExecutorNode(Node):
             try:
                 result = future.result()
                 if result is None or not result.ok:
-                    raise RuntimeError("empty response" if result is None else result.error)
+                    raise RuntimeError(
+                        "empty response" if result is None else result.error
+                    )
+                self._goal_request_pending = False
+                self._goal_result_event_floor = int(result.goal_event_id)
                 if self._recovery.state == RecoveryState.RECOVERING:
                     self._finish_recovery(True)
             except Exception as exc:
+                self._goal_request_pending = False
                 if self._recovery.state == RecoveryState.RECOVERING:
                     self._finish_recovery(False, f"NAV_GOAL_REJECTED: {exc}")
                 else:
@@ -498,6 +535,7 @@ class RouteExecutorNode(Node):
         self._dispatch()
 
     def _pause(self, reason: str) -> None:
+        self._goal_request_pending = False
         if self._mission.phase == RoutePhase.ACTIVE:
             transition(self._mission, RoutePhase.PAUSED, reason)
         self._goal_epoch += 1
@@ -511,6 +549,7 @@ class RouteExecutorNode(Node):
         with self._lock:
             self._preparation_epoch += 1
             self._preparation = None
+            self._goal_request_pending = False
             self._recovery.reset()
             self._recovery_clears = None
             if self._action is not None:

@@ -167,6 +167,9 @@ class NavCommandServer(Node):
         self._goal_terminal_event.set()
         self._goal_result_status = GoalStatus.STATUS_UNKNOWN
         self._goal_result_text = "idle"
+        # Stable id of the NavEvent that established the current terminal
+        # result. Unrelated events must never advance this value.
+        self._goal_result_event_id = 0
         self._suppress_success_brake = False
 
         self._final_pub = self.create_publisher(CmdVelFinal, str(p("cmd_vel_final_topic")), 10)
@@ -210,7 +213,7 @@ class NavCommandServer(Node):
     def _publish(self, command: CmdVelFinal) -> None:
         self._final_pub.publish(command)
 
-    def _event(self, severity: int, code: str, message: str, **details: str) -> None:
+    def _event(self, severity: int, code: str, message: str, **details: str) -> int:
         self._event_id += 1
         event = NavEvent()
         event.stamp = self.get_clock().now().to_msg()
@@ -219,6 +222,7 @@ class NavCommandServer(Node):
         event.code, event.message, event.event_id = code, message, self._event_id
         event.details = [KeyValue(key=str(key), value=str(value)) for key, value in details.items()]
         self._event_pub.publish(event)
+        return int(event.event_id)
 
     def _on_monitor_state(self, message: CollisionMonitorState) -> None:
         with self._lock:
@@ -391,7 +395,13 @@ class NavCommandServer(Node):
         if response.error:
             self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", response.error, source="geographic")
             return response
-        self._event(DiagnosticStatus.OK, "GOAL_REQUESTED", "geographic goal requested", lat=waypoint[0], lon=waypoint[1])
+        response.goal_event_id = self._event(
+            DiagnosticStatus.OK,
+            "GOAL_REQUESTED",
+            "geographic goal requested",
+            lat=waypoint[0],
+            lon=waypoint[1],
+        )
         return response
 
     @staticmethod
@@ -519,10 +529,18 @@ class NavCommandServer(Node):
             stale = epoch != self._goal_epoch
             if handle is None or not handle.accepted:
                 if not stale:
+                    # Publish and bind the terminal event before exposing the
+                    # goal as terminal to cancellation/replacement callers.
+                    result_event_id = self._event(
+                        DiagnosticStatus.ERROR,
+                        "GOAL_REJECTED",
+                        "NavigateToPose goal rejected",
+                    )
                     self._goal_pending = False
                     self._goal_cancel_requested = False
                     self._goal_cancel_reason = ""
                     self._goal_result_text = "goal rejected"
+                    self._goal_result_event_id = int(result_event_id)
                     self._goal_terminal_event.set()
                 accepted = False
                 cancel_after_accept = False
@@ -541,11 +559,6 @@ class NavCommandServer(Node):
                         self._goal_cancel_requested or self._arbiter.manual_enabled
                     )
         if not accepted:
-            self._event(
-                DiagnosticStatus.ERROR,
-                "GOAL_REJECTED",
-                "NavigateToPose goal rejected",
-            )
             return
         if stale:
             handle.cancel_goal_async()
@@ -583,30 +596,35 @@ class NavCommandServer(Node):
                 else "aborted"
             )
             suppress_brake = self._suppress_success_brake
+            if status == GoalStatus.STATUS_SUCCEEDED:
+                result_event_id = self._event(
+                    DiagnosticStatus.OK,
+                    "GOAL_RESULT_SUCCEEDED",
+                    "navigation goal succeeded",
+                    goal_generation=epoch,
+                )
+            elif status == GoalStatus.STATUS_CANCELED:
+                result_event_id = self._event(
+                    DiagnosticStatus.WARN,
+                    "GOAL_CANCELLED",
+                    "navigation goal cancelled",
+                    goal_generation=epoch,
+                )
+            else:
+                result_event_id = self._event(
+                    DiagnosticStatus.ERROR,
+                    "GOAL_RESULT_ABORTED",
+                    "navigation goal aborted",
+                    goal_generation=epoch,
+                )
+            # This id belongs to the terminal result itself. Keep it stable
+            # across later GOAL_REQUESTED/ACCEPTED or safety/debug events.
+            self._goal_result_event_id = int(result_event_id)
+            # Cancellation/replacement callers may proceed only after the
+            # terminal result has an established causal event boundary.
             self._goal_terminal_event.set()
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self._event(
-                DiagnosticStatus.OK,
-                "GOAL_RESULT_SUCCEEDED",
-                "navigation goal succeeded",
-                goal_generation=epoch,
-            )
-            if not suppress_brake:
-                self._start_brake_hold(0.25, 100)
-        elif status == GoalStatus.STATUS_CANCELED:
-            self._event(
-                DiagnosticStatus.WARN,
-                "GOAL_CANCELLED",
-                "navigation goal cancelled",
-                goal_generation=epoch,
-            )
-        else:
-            self._event(
-                DiagnosticStatus.ERROR,
-                "GOAL_RESULT_ABORTED",
-                "navigation goal aborted",
-                goal_generation=epoch,
-            )
+        if status == GoalStatus.STATUS_SUCCEEDED and not suppress_brake:
+            self._start_brake_hold(0.25, 100)
 
     def _on_cancel_goal(self, _request: CancelNavGoal.Request, response: CancelNavGoal.Response) -> CancelNavGoal.Response:
         was_active, completed = self._cancel_goal(
@@ -664,7 +682,9 @@ class NavCommandServer(Node):
             message.robot_lat = 0.0 if fix is None else fix.latitude
             message.robot_lon = 0.0 if fix is None else fix.longitude
             message.nav_result_status, message.nav_result_text = self._goal_result_status, self._goal_result_text
-            message.nav_result_event_id, message.failure_code, message.failure_component = self._event_id, self._failure_code, self._failure_component
+            message.nav_result_event_id = self._goal_result_event_id
+            message.failure_code = self._failure_code
+            message.failure_component = self._failure_component
         self._telemetry_pub.publish(message)
 
 

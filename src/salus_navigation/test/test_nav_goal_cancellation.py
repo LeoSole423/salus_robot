@@ -45,12 +45,14 @@ def make_server(*, handle=None, pending=False, manual=False, timeout_s=0.01):
         server._goal_terminal_event.set()
     server._goal_result_status = GoalStatus.STATUS_UNKNOWN
     server._goal_result_text = "navigating" if handle is not None else "sending navigation goal"
+    server._goal_result_event_id = 10
     server._suppress_success_brake = False
     server._cancel_result_timeout_s = timeout_s
     server._arbiter = SimpleNamespace(manual_enabled=manual)
     server._publish = lambda _message: None
     server._start_brake_hold = lambda _duration, _pct: None
-    server._event = lambda *_args, **_kwargs: None
+    event_ids = iter(range(14, 1000))
+    server._event = lambda *_args, **_kwargs: next(event_ids)
     server.get_logger = lambda: SimpleNamespace(error=lambda _message: None)
     server._goal_in_keepout = lambda _x, _y: False
     server._navigate_client = SimpleNamespace(server_is_ready=lambda: True)
@@ -153,3 +155,18 @@ def test_pending_goal_is_cancelled_when_acceptance_arrives_during_manual_takeove
 
     assert not server._goal_active_locked()
     assert server._goal_terminal_event.is_set()
+
+
+def test_terminal_result_event_id_does_not_advance_on_unrelated_events() -> None:
+    server = make_server(handle=FakeHandle())
+
+    server._on_goal_result(terminal_future(GoalStatus.STATUS_CANCELED), 3)
+
+    assert server._goal_result_text == "cancelled"
+    assert server._goal_result_event_id == 14
+
+    unrelated_event_id = server._event(
+        0, "UNRELATED_EVENT", "must not re-identify the old terminal result"
+    )
+    assert unrelated_event_id == 15
+    assert server._goal_result_event_id == 14
