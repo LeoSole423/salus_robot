@@ -50,6 +50,8 @@ class RouteExecutorNode(Node):
         self.declare_parameter("blocked_retry_reanchor_tolerance_m", 8.0)
         self.declare_parameter("costmap_clear_timeout_s", 3.0)
         self.declare_parameter("nav_cancel_timeout_s", 15.0)
+        self.declare_parameter("profile_coordinator_discovery_timeout_s", 5.0)
+        self.declare_parameter("profile_transaction_timeout_s", 24.0)
         self._lock = threading.RLock()
         self._mission = RouteMission()
         self._preparation = None
@@ -568,16 +570,37 @@ class RouteExecutorNode(Node):
                 response.ok = False
                 response.error = "navigation profile cannot be changed while a mission is active"
                 return response
-        timeout = 4.0
-        if not self._apply_profile.wait_for_service(timeout_sec=timeout):
-            response.ok, response.error = False, "navigation profile coordinator unavailable"
+        discovery_timeout = max(
+            0.1,
+            float(
+                self.get_parameter(
+                    "profile_coordinator_discovery_timeout_s"
+                ).value
+            ),
+        )
+        transaction_timeout = max(
+            discovery_timeout,
+            float(self.get_parameter("profile_transaction_timeout_s").value),
+        )
+        if not self._apply_profile.wait_for_service(
+            timeout_sec=discovery_timeout
+        ):
+            response.ok, response.error = (
+                False,
+                "navigation profile coordinator unavailable",
+            )
             return response
         try:
-            future = self._apply_profile.call_async(SetNavigationProfile.Request(profile=target))
+            future = self._apply_profile.call_async(
+                SetNavigationProfile.Request(profile=target)
+            )
             ready = threading.Event()
             future.add_done_callback(lambda _done: ready.set())
-            if not ready.wait(timeout):
-                raise TimeoutError("coordinator response timed out")
+            if not ready.wait(transaction_timeout):
+                raise TimeoutError(
+                    "coordinator exceeded profile transaction contract "
+                    f"({transaction_timeout:.1f}s)"
+                )
             result = future.result()
             response.ok, response.error = result.ok, result.error
             response.active_profile = result.active_profile

@@ -50,3 +50,15 @@ def test_route_cancel_waits_for_terminal_nav2_before_returning_ok():
     assert '"ROUTE_CANCEL_TIMEOUT"' in cancel
     assert '"ROUTE_CANCEL_FAILED"' in cancel
     assert "response.ok, response.error = True, \"\"" in cancel
+
+
+def test_profile_forwarder_outlives_coordinator_transaction_contract():
+    root = ROOT / "salus_navigation"
+    route = (root / "route_executor_node.py").read_text()
+    coordinator = (root / "navigation_profile_coordinator.py").read_text()
+    smoke = (ROOT.parents[1] / "tools" / "smoke_navigation_profiles.py").read_text()
+    assert '"transaction_timeout_s", 21.0' in coordinator
+    assert '"profile_transaction_timeout_s", 24.0' in route
+    assert '"profile_coordinator_discovery_timeout_s", 5.0' in route
+    assert "28.0" in smoke
+    assert "component_deadline = min(" in coordinator

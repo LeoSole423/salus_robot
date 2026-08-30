@@ -35,8 +35,12 @@ def main() -> int:
             ("rural", {"ground": [0.25], "local": [0.8, 3.0], "global": [0.8, 3.0]}),
             ("urban", {"ground": [0.20], "local": [1.4, 1.3], "global": [1.5, 1.4]}),
         ):
-            response = runtime.call("set profile", apply,
-                                    SetNavigationProfile.Request(profile=profile), 8.0)
+            response = runtime.call(
+                "set profile",
+                apply,
+                SetNavigationProfile.Request(profile=profile),
+                28.0,
+            )
             if not response.ok or response.active_profile != profile:
                 raise RuntimeError(f"profile {profile} rejected: {response.error}")
             observed = {
