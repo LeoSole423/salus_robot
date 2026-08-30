@@ -73,6 +73,9 @@ def main() -> int:
     )
     success, failure = False, None
     response = None
+    poller = None
+    request_timings = []
+    active_request = None
     try:
         runtime.wait_navigation_startup(
             node.startup, 60.0, name="navigation startup"
@@ -90,8 +93,52 @@ def main() -> int:
         )
 
         def stimulate_snapshot() -> None:
+            nonlocal active_request
             node.publish_fixture_scan()
+            previous_sent = poller.sent
+            previous_responses = poller.responses
+            previous_timeouts = poller.timeouts
+            previous_future = poller.future
             poller.poll()
+            now = time.monotonic()
+            if poller.sent > previous_sent:
+                active_request = {
+                    "request_index": poller.sent,
+                    "started_monotonic_s": poller.sent_at,
+                }
+            finished = (
+                active_request is not None
+                and previous_future is not None
+                and poller.future is None
+            )
+            if finished:
+                outcome = (
+                    "response"
+                    if poller.responses > previous_responses
+                    else "timeout"
+                    if poller.timeouts > previous_timeouts
+                    else "error"
+                )
+                latest = poller.latest
+                request_timings.append({
+                    **active_request,
+                    "completed_monotonic_s": now,
+                    "duration_s": max(
+                        0.0, now - float(active_request["started_monotonic_s"])
+                    ),
+                    "outcome": outcome,
+                    "response_ok": (
+                        bool(latest.ok)
+                        if outcome == "response" and latest is not None
+                        else None
+                    ),
+                    "response_error": (
+                        str(latest.error)
+                        if outcome == "response" and latest is not None
+                        else poller.last_error
+                    ),
+                })
+                active_request = None
 
         runtime.wait(
             "snapshot readiness",
@@ -148,6 +195,9 @@ def main() -> int:
                 "fixture_scans_published": node.fixture_scans_published,
                 "service_ready": node.client.service_is_ready(),
                 "response_ok": bool(response and response.ok),
+                "snapshot_poller": poller.evidence() if poller is not None else {},
+                "snapshot_request_timings": request_timings,
+                "snapshot_active_request": active_request,
                 "layers": {
                     name: bool(getattr(response.layers, name))
                     for name in (
