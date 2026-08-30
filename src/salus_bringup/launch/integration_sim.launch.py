@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -19,12 +19,26 @@ def _include(package: str, launch_file: str, arguments=None, condition=None):
     )
 
 
+def _validate_runtime_composition(context, *args, **kwargs):
+    launch_zones = LaunchConfiguration("launch_zones").perform(context).lower()
+    use_keepout = LaunchConfiguration("use_keepout").perform(context).lower()
+    if launch_zones not in {"true", "false"} or use_keepout not in {"true", "false"}:
+        raise ValueError("launch_zones and use_keepout must be true or false")
+    if launch_zones == "false" and use_keepout == "true":
+        raise ValueError(
+            "use_keepout=true requires launch_zones=true; for the diagnostic "
+            "no-zones control set both launch_zones:=false and use_keepout:=false"
+        )
+    return []
+
+
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     gz_args = LaunchConfiguration("gz_args")
     world = LaunchConfiguration("world")
     rviz = LaunchConfiguration("rviz")
     launch_navigation = LaunchConfiguration("launch_navigation")
+    launch_zones = LaunchConfiguration("launch_zones")
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
     patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
@@ -38,6 +52,7 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     nav2_params_file = LaunchConfiguration("nav2_params_file")
+    nav2_no_obstacles_params_file = LaunchConfiguration("nav2_no_obstacles_params_file")
     vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     command_input_mode = LaunchConfiguration("command_input_mode")
@@ -119,9 +134,17 @@ def generate_launch_description() -> LaunchDescription:
                 description="Start the Nav2 autonomous navigation core.",
             ),
             DeclareLaunchArgument(
+                "launch_zones",
+                default_value="true",
+                description=(
+                    "Start zones manager and keepout map servers. Diagnostic false "
+                    "removes that workload; production/default behavior is unchanged."
+                ),
+            ),
+            DeclareLaunchArgument(
                 "use_keepout",
                 default_value="true",
-                description="Enable dynamic GeoJSON keepout costmap filters.",
+                description="Require dynamic GeoJSON keepout readiness in Nav2 startup.",
             ),
             DeclareLaunchArgument(
                 "zones_runtime_dir",
@@ -176,8 +199,20 @@ def generate_launch_description() -> LaunchDescription:
                     Path(get_package_share_directory("salus_navigation"))
                     / "config" / "nav2_core_sim.yaml"
                 ),
-                description="Nav2 parameter file passed unchanged to navigation_core_sim.",
+                description="Obstacle-detection Nav2 parameter file.",
             ),
+            DeclareLaunchArgument(
+                "nav2_no_obstacles_params_file",
+                default_value=str(
+                    Path(get_package_share_directory("salus_navigation"))
+                    / "config" / "nav2_core_no_obstacles_sim.yaml"
+                ),
+                description=(
+                    "No-obstacle Nav2 parameter file; overridable for controlled "
+                    "diagnostic compositions."
+                ),
+            ),
+            OpaqueFunction(function=_validate_runtime_composition),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -240,7 +275,10 @@ def generate_launch_description() -> LaunchDescription:
                     "use_keepout": use_keepout,
                     "runtime_dir": zones_runtime_dir,
                 },
-                condition=IfCondition(launch_navigation),
+                condition=IfCondition(PythonExpression([
+                    "'", launch_navigation, "'.lower() == 'true' and '",
+                    launch_zones, "'.lower() == 'true'",
+                ])),
             ),
             _include(
                 "salus_navigation",
@@ -259,10 +297,7 @@ def generate_launch_description() -> LaunchDescription:
                     "use_sim_time": use_sim_time,
                     "use_keepout": use_keepout,
                     "obstacle_detection_required": "false",
-                    "nav2_params_file": str(
-                        Path(get_package_share_directory("salus_navigation"))
-                        / "config" / "nav2_core_no_obstacles_sim.yaml"
-                    ),
+                    "nav2_params_file": nav2_no_obstacles_params_file,
                 },
                 condition=IfCondition(PythonExpression([
                     "'", launch_navigation, "'.lower() == 'true' and ",
