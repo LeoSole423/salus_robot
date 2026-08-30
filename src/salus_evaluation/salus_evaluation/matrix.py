@@ -6,6 +6,7 @@ import csv
 import html
 import json
 import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,36 @@ import yaml
 
 
 SCHEMA_VERSION = 1
+EFFECTIVE_SPEED_TOLERANCE_MPS = 1.0e-6
+
+
+def parse_effective_speed(readback):
+    """Extract the one numeric value from a ROS parameter readback, if unambiguous."""
+    values = re.findall(
+        r"(?<![\w.])[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?(?![\w.])",
+        str(readback),
+    )
+    if len(values) != 1:
+        return None
+    value = float(values[0])
+    return value if math.isfinite(value) else None
+
+
+def effective_speed_matches(requested_mps, readback, tolerance_mps=EFFECTIVE_SPEED_TOLERANCE_MPS):
+    """Return the parsed effective speed and whether it matches the request."""
+    requested = _finite_positive(requested_mps, "requested_speed_mps")
+    if not math.isfinite(tolerance_mps) or tolerance_mps < 0.0:
+        raise ValueError("speed tolerance must be finite and non-negative")
+    effective = parse_effective_speed(readback)
+    return effective, effective is not None and abs(effective - requested) <= tolerance_mps
+
+
+def matrix_exit_code(trial_outcomes):
+    """Fail only setup or existing functional-gate failures after all trials ran."""
+    return int(any(
+        outcome in ("setup_failure", "functional_failure")
+        for outcome in trial_outcomes
+    ))
 
 
 @dataclass(frozen=True)

@@ -75,3 +75,7 @@ Produce `matrix-manifest.json`, `matrix-summary.json`, CSV y HTML. Los
 agregados continuos incluyen mínimo, mediana, máximo y P95 cuando hay al menos
 dos muestras. Los performance gates se mantienen explícitamente en
 `calibrating/report-only`; los gates funcionales de cada bundle no cambian.
+Al finalizar se conservan todas las celdas y el proceso devuelve non-zero si
+alguna tuvo setup failure o un gate funcional existente falló. Una métrica
+calibrating no cambia ese exit status. El error final de yaw no se aproxima en
+esta matriz: queda explícitamente para #63, que definirá su semántica.

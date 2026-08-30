@@ -29,7 +29,8 @@ Ackermann ni steering aplicado: éstos siguen en los streams del trial.
 Cada trial conserva el bundle v2 existente. La matriz lo referencia por
 `trial_id`, agrega success/failure, métricas de tracking/llegada/replans y la
 evidencia de saturación/diferencia de steering ya observada. Las métricas de
-performance son sólo reportes `calibrating`.
+performance son sólo reportes `calibrating`. El yaw final no se aproxima ni se
+deduce de `heading_p95_rad`; su métrica y semántica pertenecen a #63.
 
 ## Fallos y aceptación
 
@@ -39,6 +40,13 @@ en la tasa de éxito y sus medidas disponibles; no se descarta. Cada ejecución
 real debe iniciar una simulación limpia y registrar el resultado de la
 mutación/lectura de `FollowPath.desired_linear_vel`; un rechazo runtime es
 evidencia, no un motivo para alterar parámetros estáticos.
+
+La matriz completa todas las celdas. Al final devuelve non-zero por setup
+failure o por el non-zero de `navigation_evaluation` (gates funcionales ya
+existentes); performance `calibrating` no modifica el exit code. El readback
+de velocidad se registra como requested/effective numéricos y se verifica con
+una tolerancia explícita de 1e-6 m/s; un readback ausente, ambiguo o distinto
+preserva un setup failure.
 
 Estado: `ported` para el dominio y pendiente de baseline de simulación; no
 validado en hardware.

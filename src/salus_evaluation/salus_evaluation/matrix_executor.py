@@ -10,7 +10,8 @@ import signal
 import subprocess
 import time
 
-from .matrix import expand_matrix, write_matrix_artifacts
+from .matrix import (EFFECTIVE_SPEED_TOLERANCE_MPS, effective_speed_matches,
+                     expand_matrix, matrix_exit_code, write_matrix_artifacts)
 
 
 def _run(command, *, check=True, capture=False):
@@ -49,6 +50,23 @@ def _record_metadata(directory, metadata):
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _speed_metadata(requested_mps, set_result, get_result):
+    """Persist auditable set/get output plus the numeric, verified readback."""
+    effective, matches = effective_speed_matches(requested_mps, get_result.stdout)
+    return {
+        "set_returncode": set_result.returncode,
+        "set_stdout": set_result.stdout,
+        "set_stderr": set_result.stderr,
+        "get_returncode": get_result.returncode,
+        "get_stdout": get_result.stdout,
+        "get_stderr": get_result.stderr,
+        "requested_speed_mps": requested_mps,
+        "effective_speed_mps": effective,
+        "tolerance_mps": EFFECTIVE_SPEED_TOLERANCE_MPS,
+        "matches_requested": matches,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("matrix", help="strict matrix YAML")
@@ -59,6 +77,7 @@ def main(argv=None):
     matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
     trial_dirs = []
+    outcomes = []
     for cell in cells:
         trial_dir = root / "trials" / cell.trial_id
         trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -86,18 +105,28 @@ def main(argv=None):
                                   check=False, capture=True)
                 get_result = _run(["ros2", "param", "get", "/controller_server",
                                    "FollowPath.desired_linear_vel"], check=False, capture=True)
-                metadata["speed_parameter_set"] = {
-                    "returncode": set_result.returncode, "stdout": set_result.stdout,
-                    "stderr": set_result.stderr, "effective_readback": get_result.stdout.strip(),
-                }
+                metadata["speed_parameter"] = _speed_metadata(
+                    cell.speed_mps, set_result, get_result
+                )
                 if set_result.returncode != 0 or get_result.returncode != 0:
                     raise RuntimeError("FollowPath.desired_linear_vel runtime update was rejected")
-                _run(["ros2", "run", "salus_evaluation", "navigation_evaluation", "--ros-args",
-                      "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
-                      f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}"])
+                if not metadata["speed_parameter"]["matches_requested"]:
+                    raise RuntimeError(
+                        "FollowPath.desired_linear_vel effective readback does not match request"
+                    )
+                evaluation = _run(
+                    ["ros2", "run", "salus_evaluation", "navigation_evaluation", "--ros-args",
+                     "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
+                     f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}"],
+                    check=False,
+                )
                 _record_metadata(trial_dir, metadata)
+                outcomes.append(
+                    "passed" if evaluation.returncode == 0 else "functional_failure"
+                )
             except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
                 _failure_bundle(trial_dir, str(exc), metadata)
+                outcomes.append("setup_failure")
             finally:
                 os.killpg(launch.pid, signal.SIGTERM)
                 try:
@@ -106,7 +135,7 @@ def main(argv=None):
                     os.killpg(launch.pid, signal.SIGKILL)
                     launch.wait()
     write_matrix_artifacts(root / "summary", matrix_path, cells, trial_dirs)
-    return 0
+    return matrix_exit_code(outcomes)
 
 
 if __name__ == "__main__":  # pragma: no cover - console entry point

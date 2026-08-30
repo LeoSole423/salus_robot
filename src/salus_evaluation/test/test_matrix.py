@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 
 from salus_evaluation.matrix import (aggregate_trials, continuous_summary,
-                                     expand_matrix, load_matrix,
+                                     effective_speed_matches, expand_matrix,
+                                     load_matrix, matrix_exit_code,
+                                     parse_effective_speed,
                                      write_matrix_artifacts)
 
 
@@ -73,6 +75,42 @@ def test_aggregation_keeps_failed_trials_and_performance_report_only(tmp_path):
 
 def test_one_continuous_sample_has_no_artificial_p95():
     assert continuous_summary([.2])["p95"] is None
+
+
+def test_effective_speed_readback_is_numeric_and_matches_with_explicit_tolerance():
+    effective, matches = effective_speed_matches(1.2, "Double value is: 1.2000004")
+    assert effective == pytest.approx(1.2000004)
+    assert matches
+
+
+@pytest.mark.parametrize("readback", ("not set", "1.2 1.3", "nan"))
+def test_effective_speed_readback_rejects_malformed_or_ambiguous_values(readback):
+    assert parse_effective_speed(readback) is None
+    assert effective_speed_matches(1.2, readback) == (None, False)
+
+
+def test_effective_speed_readback_rejects_a_different_applied_speed():
+    assert effective_speed_matches(1.2, "Double value is: 1.19") == (1.19, False)
+
+
+def test_matrix_exit_is_aggregated_after_all_trials_and_ignores_calibration():
+    assert matrix_exit_code(("passed", "passed", "passed")) == 0
+    outcomes = []
+    for outcome in ("passed", "functional_failure", "passed"):
+        outcomes.append(outcome)
+    assert outcomes == ["passed", "functional_failure", "passed"]
+    assert matrix_exit_code(outcomes) == 1
+    assert matrix_exit_code(("passed", "calibrating", "passed")) == 0
+
+
+def test_matrix_setup_failure_requires_nonzero_exit_without_discarding_other_results(tmp_path):
+    from salus_evaluation.matrix_executor import _failure_bundle
+
+    directory = tmp_path / "failed-trial"
+    _failure_bundle(directory, "readback mismatch", {"trial_id": "failed"})
+    summary = json.loads((directory / "summary.json").read_text())
+    assert summary["reason"] == "matrix_setup_failure"
+    assert matrix_exit_code(("passed", "setup_failure", "passed")) == 1
 
 
 def test_matrix_artifact_is_reproducible_and_links_each_trial(tmp_path):
