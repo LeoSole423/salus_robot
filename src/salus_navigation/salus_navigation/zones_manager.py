@@ -11,14 +11,17 @@ from typing import Any
 import cv2
 import rclpy
 from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import Point32, Polygon
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.srv import ClearEntireCostmap, LoadMap
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from robot_localization.srv import FromLL
 from std_srvs.srv import Trigger
 
+from salus_interfaces.msg import ProjectedKeepoutPolygon, ProjectedKeepoutState
 from salus_interfaces.srv import GetZonesState, SetZonesGeoJson
 from .zones_geojson import (
     cost_mask_from_binary, feature_and_polygon_counts, iter_polygons,
@@ -53,6 +56,40 @@ def unrepresentable_zone_error(
         "enabled keepout zone cannot be represented by the legacy fixed mask; "
         + "; ".join(parts)
     )
+
+
+def _polygon_message(points: list[dict[str, float]]) -> Polygon:
+    message = Polygon()
+    for point in points:
+        vertex = Point32()
+        vertex.x = float(point["x"])
+        vertex.y = float(point["y"])
+        vertex.z = 0.0
+        message.points.append(vertex)
+    return message
+
+
+def projected_keepout_state_message(
+    polygons: list[dict[str, Any]],
+    *,
+    frame_id: str,
+    revision: int,
+    stamp: Any,
+) -> ProjectedKeepoutState:
+    """Build the accepted map-frame vector keepout state for publication."""
+    message = ProjectedKeepoutState()
+    message.header.frame_id = frame_id
+    message.header.stamp = stamp
+    message.revision = int(revision)
+    for polygon in polygons:
+        if not polygon["enabled"]:
+            continue
+        item = ProjectedKeepoutPolygon()
+        item.zone_id = str(polygon["id"])
+        item.outer = _polygon_message(polygon["outer_xy"])
+        item.holes = [_polygon_message(hole) for hole in polygon["holes_xy"]]
+        message.polygons.append(item)
+    return message
 
 
 class ZonesManager(Node):
@@ -101,6 +138,15 @@ class ZonesManager(Node):
         self._document = EMPTY_GEOJSON
         self._document_text = json.dumps(EMPTY_GEOJSON, separators=(",", ":"))
         self._mask_ready, self._mask_source = False, "none"
+        self._projected_revision = 0
+        projected_qos = QoSProfile(depth=1)
+        projected_qos.reliability = ReliabilityPolicy.RELIABLE
+        projected_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
+        self._projected_keepouts_pub = self.create_publisher(
+            ProjectedKeepoutState,
+            "/zones_manager/projected_keepouts",
+            projected_qos,
+        )
         self._fromll_clients = [
             self.create_client(FromLL, str(value("fromll_service")), callback_group=self._client_group),
             self.create_client(FromLL, str(value("fromll_service_fallback")), callback_group=self._client_group),
@@ -167,11 +213,11 @@ class ZonesManager(Node):
         # Avoid manufacturing and redistributing a 3000x3000 empty grid only
         # to prove the absence of keepouts.
         if zones_document_is_empty(document):
-            with self._lock:
-                self._document = document
-                self._document_text = json.dumps(document, separators=(",", ":"))
-                self._mask_ready = True
-                self._mask_source = "bootstrap_empty_confirmed"
+            self._activate_document(
+                document,
+                [],
+                mask_source="bootstrap_empty_confirmed",
+            )
             return
 
         ok, error, _, _ = self._apply(document, persist=not self.geojson_path.exists())
@@ -239,12 +285,14 @@ class ZonesManager(Node):
             polygons.append(converted)
         return polygons, ""
 
-    def _write_mask(self, document: dict[str, Any]) -> tuple[bool, str]:
+    def _write_mask(
+        self, document: dict[str, Any]
+    ) -> tuple[bool, str, list[dict[str, Any]]]:
         if not self.use_keepout:
             document = EMPTY_GEOJSON
         polygons, error = self._project(document)
         if polygons is None:
-            return False, error
+            return False, error, []
         image, clipped, outside = rasterize_polygons(
             polygons,
             self.width,
@@ -256,7 +304,7 @@ class ZonesManager(Node):
         )
         representation_error = unrepresentable_zone_error(clipped, outside)
         if representation_error:
-            return False, representation_error
+            return False, representation_error, []
         costs = cost_mask_from_binary(image, self.resolution, self.degrade_radius_m if self.degrade_enabled else 0.0, self.degrade_edge_cost, self.degrade_min_cost)
         scale = scale_image_from_costs(costs)
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
@@ -264,11 +312,39 @@ class ZonesManager(Node):
         staged_yaml = self.runtime_dir / ".keepout_mask.tmp.yaml"
         staged_geojson = self.runtime_dir / ".no_go_zones.tmp.geojson"
         if not cv2.imwrite(str(staged_image), scale):
-            return False, "failed to write keepout mask"
+            return False, "failed to write keepout mask", []
         staged_yaml.write_text(json.dumps({"image": self.mask_path.name, "mode": "scale", "resolution": self.resolution, "origin": [self.origin_x, self.origin_y, 0.0], "negate": 0, "occupied_thresh": 1.0, "free_thresh": 0.0}, indent=2) + "\n", encoding="utf-8")
         staged_geojson.write_text(json.dumps(document, separators=(",", ":")) + "\n", encoding="utf-8")
         staged_image.replace(self.mask_path); staged_yaml.replace(self.mask_yaml_path); staged_geojson.replace(self.geojson_path)
-        return True, ""
+        return True, "", polygons
+
+    def _publish_projected_state(
+        self, polygons: list[dict[str, Any]], revision: int
+    ) -> None:
+        message = projected_keepout_state_message(
+            polygons,
+            frame_id=self.map_frame,
+            revision=revision,
+            stamp=self.get_clock().now().to_msg(),
+        )
+        self._projected_keepouts_pub.publish(message)
+
+    def _activate_document(
+        self,
+        document: dict[str, Any],
+        projected_polygons: list[dict[str, Any]],
+        *,
+        mask_source: str,
+    ) -> None:
+        document_text = json.dumps(document, separators=(",", ":"))
+        with self._lock:
+            self._document = document
+            self._document_text = document_text
+            self._mask_ready = True
+            self._mask_source = mask_source
+            self._projected_revision += 1
+            revision = self._projected_revision
+        self._publish_projected_state(projected_polygons, revision)
 
     def _reload_map(self) -> tuple[bool, str]:
         request = LoadMap.Request(); request.map_url = str(self.mask_yaml_path)
@@ -294,10 +370,10 @@ class ZonesManager(Node):
         if not active:
             return False, error, 0, 0
         # Stage files first.  Only publish them as current after Nav2 accepts the new map.
-        old_document, old_text = self._document, self._document_text
+        old_document = self._document
         if not persist:
             document = normalize_geojson(document)
-        ok, error = self._write_mask(document)
+        ok, error, projected_polygons = self._write_mask(document)
         if not ok:
             return False, error, 0, 0
         ok, error = self._reload_map()
@@ -306,9 +382,11 @@ class ZonesManager(Node):
             self._write_mask(old_document)
             return False, error, 0, 0
         features, polygons = feature_and_polygon_counts(document)
-        with self._lock:
-            self._document, self._document_text = document, json.dumps(document, separators=(",", ":"))
-            self._mask_ready, self._mask_source = True, "map_server_load_map+global_costmap_clear"
+        self._activate_document(
+            document,
+            projected_polygons,
+            mask_source="map_server_load_map+global_costmap_clear",
+        )
         return True, "", features, polygons
 
     def _set_geojson(self, request, response):
