@@ -396,9 +396,11 @@ def main() -> int:
         nonlocal stop
         stop = True
 
+    rclpy.init()
+    # rclpy installs its own handlers during init; replace them afterwards so
+    # the sidecar gets one final JSON flush during smoke process-group teardown.
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
-    rclpy.init()
     node = RuntimeTimingProbe(args.scenario, args.report_path)
     next_sample = time.monotonic() + 1.0
     try:
