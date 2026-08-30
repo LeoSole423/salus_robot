@@ -365,11 +365,17 @@ class RouteExecutorNode(Node):
                 return
             route = self._mission.prepared
             pose = self._pose
+            pending_index = self._mission.target_index + self._target_offset
+            if route.loop and route.waypoints:
+                pending_index %= len(route.waypoints)
             resolution = resolve_forward_reanchor(
                 route, current_index=self._mission.target_index,
                 robot_x=None if pose is None else pose.x,
                 robot_y=None if pose is None else pose.y,
-                tolerance_m=float(self.get_parameter("blocked_retry_reanchor_tolerance_m").value),
+                tolerance_m=float(
+                    self.get_parameter("blocked_retry_reanchor_tolerance_m").value
+                ),
+                max_index=pending_index,
             )
             self._mission.target_index = resolution.resolved_index
             if not all(client.service_is_ready() for client in self._clear_costmaps):
@@ -582,6 +588,7 @@ class RouteExecutorNode(Node):
             self._goal_request_pending = False
             self._recovery.reset()
             self._recovery_clears = None
+            self._recovery_checkpoint_reached = False
             if self._action is not None:
                 self._action.cancel("mission cancelled")
             self._action = self._action_future = None
