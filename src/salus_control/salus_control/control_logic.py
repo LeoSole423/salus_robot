@@ -157,9 +157,10 @@ def command_from_cmd_vel(
         speed = requested_speed
         if speed < deadband:
             speed = 0.0
-        elif speed < min_effective:
-            speed = min_effective
-            min_speed_enforced = requested_speed > 1.0e-6
+        # Never raise a positive upstream command to a downstream minimum.
+        # vx_min_effective_mps remains only a steering-reference fallback for
+        # near-zero linear velocity in _compute_ackermann_steer_command().
+        min_speed_enforced = False
     elif linear < 0.0:
         reverse_speed = clamp(abs(linear), 0.0, max_reverse)
         speed_limited = abs(reverse_speed - abs(linear)) > 1.0e-6

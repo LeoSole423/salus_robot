@@ -38,3 +38,12 @@
   mantiene desactivado para preservar `angular.z > 0 -> yaw > 0`.
 - Presets: `full`, `under_load`, `watching`, `return_home_rest`,
   `return_home_load`, `stale`, `suspect` y `unavailable`.
+
+
+### Low-speed command invariant
+
+`vx_min_effective_mps` is not an output speed floor. Positive commands above
+the deadband preserve the upstream requested speed (subject only to the configured
+maximum). The value is retained only as a virtual steering-reference speed when
+linear velocity is effectively zero, so a downstream adapter never increases a
+Nav2 or safety slowdown command.
