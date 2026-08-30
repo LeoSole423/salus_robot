@@ -29,9 +29,14 @@ from sensor_msgs.msg import Imu, LaserScan, NavSatFix
 from tf2_msgs.msg import TFMessage
 
 
+SAMPLE_INTERVAL_S = 1.0
+EXPENSIVE_SAMPLE_INTERVAL_S = 5.0
+REPORT_INTERVAL_S = 5.0
+
 INTERESTING_LOG = re.compile(
     r"(Failed to meet update rate|extrapolation|Unable to transform robot pose|"
-    r"Failed to make progress|tick rate|Message Filter dropping|controller loop)",
+    r"Failed to make progress|tick rate|Message Filter dropping|controller loop|"
+    r"snapshot generation exceeded target)",
     re.IGNORECASE,
 )
 EXTRAPOLATION = re.compile(
@@ -141,7 +146,11 @@ class ResourceSampler:
         self.previous_wall_s: float | None = None
         self.previous_cpu: tuple[int, int] | None = None
         self.previous_cgroup: dict[str, int] | None = None
+        self.previous_process_wall_s: float | None = None
         self.previous_process_ticks: dict[int, int] = {}
+        self.cached_top_processes: list[dict[str, Any]] = []
+        self.cpu_limit = self._cpu_limit()
+        self.visible_cpu_count = os.cpu_count()
 
     @staticmethod
     def _system_cpu() -> tuple[int, int] | None:
@@ -189,11 +198,10 @@ class ResourceSampler:
                 continue
         return result
 
-    def sample(self, now_s: float) -> dict[str, Any]:
+    def sample(self, now_s: float, *, include_processes: bool = False) -> dict[str, Any]:
         elapsed = None if self.previous_wall_s is None else max(1.0e-6, now_s - self.previous_wall_s)
         system = self._system_cpu()
         cgroup = self._cgroup_cpu()
-        processes = self._processes()
         system_pct = None
         if elapsed is not None and self.previous_cpu is not None and system is not None:
             total_delta = system[0] - self.previous_cpu[0]
@@ -211,20 +219,36 @@ class ResourceSampler:
             old_throttled = self.previous_cgroup.get("throttled_usec")
             if throttled is not None and old_throttled is not None:
                 throttled_delta_us = max(0, throttled - old_throttled)
-        top = []
-        if elapsed is not None:
-            for pid, (ticks, command) in processes.items():
-                previous = self.previous_process_ticks.get(pid)
-                if previous is None:
-                    continue
-                cpu_pct = max(0, ticks - previous) / self.clock_ticks / elapsed * 100.0
-                if cpu_pct >= 0.5:
-                    top.append({"pid": pid, "cpu_pct": cpu_pct, "command": command})
-            top.sort(key=lambda item: item["cpu_pct"], reverse=True)
+        if include_processes:
+            processes = self._processes()
+            process_elapsed = (
+                None
+                if self.previous_process_wall_s is None
+                else max(1.0e-6, now_s - self.previous_process_wall_s)
+            )
+            top = []
+            if process_elapsed is not None:
+                for pid, (ticks, command) in processes.items():
+                    previous = self.previous_process_ticks.get(pid)
+                    if previous is None:
+                        continue
+                    cpu_pct = (
+                        max(0, ticks - previous)
+                        / self.clock_ticks
+                        / process_elapsed
+                        * 100.0
+                    )
+                    if cpu_pct >= 0.5:
+                        top.append({"pid": pid, "cpu_pct": cpu_pct, "command": command})
+                top.sort(key=lambda item: item["cpu_pct"], reverse=True)
+            self.cached_top_processes = top[:8]
+            self.previous_process_wall_s = now_s
+            self.previous_process_ticks = {
+                pid: values[0] for pid, values in processes.items()
+            }
         self.previous_wall_s = now_s
         self.previous_cpu = system
         self.previous_cgroup = cgroup
-        self.previous_process_ticks = {pid: values[0] for pid, values in processes.items()}
         try:
             load = list(os.getloadavg())
         except OSError:
@@ -232,12 +256,13 @@ class ResourceSampler:
         return {
             "system_cpu_pct": system_pct,
             "container_cpu_pct": cgroup_pct,
-            "cgroup_cpu_max": self._cpu_limit(),
+            "cgroup_cpu_max": self.cpu_limit,
             "cgroup_nr_throttled": cgroup.get("nr_throttled"),
             "cgroup_throttled_delta_us": throttled_delta_us,
             "loadavg": load,
-            "visible_cpu_count": os.cpu_count(),
-            "top_processes": top[:8],
+            "visible_cpu_count": self.visible_cpu_count,
+            "top_processes_sampled": include_processes,
+            "top_processes": self.cached_top_processes,
         }
 
 
@@ -248,6 +273,11 @@ class RuntimeTimingProbe(Node):
         self.report_path = report_path
         self.started_wall_s = time.monotonic()
         self.last_sample_wall_s = self.started_wall_s
+        self.last_expensive_sample_wall_s = (
+            self.started_wall_s - EXPENSIVE_SAMPLE_INTERVAL_S
+        )
+        self.last_report_wall_s = self.started_wall_s
+        self.publisher_counts: dict[str, int] = {}
         self.latest_clock_ns = 0
         self.previous_sample_clock_ns = 0
         self.timeline: list[dict[str, Any]] = []
@@ -379,36 +409,56 @@ class RuntimeTimingProbe(Node):
             if not self.latest_clock_ns or not self.previous_sample_clock_ns
             else (self.latest_clock_ns - self.previous_sample_clock_ns) / 1_000_000_000.0
         )
+        expensive_sample = (
+            not self.publisher_counts
+            or now - self.last_expensive_sample_wall_s
+            >= EXPENSIVE_SAMPLE_INTERVAL_S
+        )
+        if expensive_sample:
+            self.publisher_counts = {
+                topic: self.count_publishers(topic)
+                for topic in (
+                    "/clock",
+                    "/wheel/odometry",
+                    "/imu/data",
+                    "/gps/fix_raw",
+                    "/gps/fix",
+                    "/odometry/local",
+                    "/odometry/global",
+                    "/tf",
+                    "/local_costmap/costmap",
+                    "/scan_clean",
+                )
+            }
+            self.last_expensive_sample_wall_s = now
+
         entry = {
             "wall_monotonic_s": now,
             "wall_since_start_s": now - self.started_wall_s,
             "ros_time_ns": self.latest_clock_ns,
             "ros_progress_s": ros_delta_s,
             "ros_to_wall_ratio": None if ros_delta_s is None else ros_delta_s / elapsed,
-            "publishers": {
-                "/clock": self.count_publishers("/clock"),
-                "/wheel/odometry": self.count_publishers("/wheel/odometry"),
-                "/imu/data": self.count_publishers("/imu/data"),
-                "/gps/fix_raw": self.count_publishers("/gps/fix_raw"),
-                "/gps/fix": self.count_publishers("/gps/fix"),
-                "/odometry/local": self.count_publishers("/odometry/local"),
-                "/odometry/global": self.count_publishers("/odometry/global"),
-                "/tf": self.count_publishers("/tf"),
-                "/local_costmap/costmap": self.count_publishers("/local_costmap/costmap"),
-                "/scan_clean": self.count_publishers("/scan_clean"),
-            },
+            "publishers": dict(self.publisher_counts),
             "streams": {
                 name: stream.take_window(elapsed, self.latest_clock_ns)
                 for name, stream in self.streams.items()
             },
-            "resources": self.resources.sample(now),
+            "resources": self.resources.sample(
+                now, include_processes=expensive_sample
+            ),
         }
         self.timeline.append(entry)
         if len(self.timeline) > 300:
             self.timeline = self.timeline[-300:]
         self.last_sample_wall_s = now
         self.previous_sample_clock_ns = self.latest_clock_ns
+        if now - self.last_report_wall_s >= REPORT_INTERVAL_S:
+            self._write_report()
+            self.last_report_wall_s = now
+
+    def flush(self) -> None:
         self._write_report()
+        self.last_report_wall_s = time.monotonic()
 
     def _write_report(self) -> None:
         payload = {
@@ -426,7 +476,10 @@ class RuntimeTimingProbe(Node):
         }
         self.report_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.report_path.with_suffix(self.report_path.suffix + ".tmp")
-        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temporary.write_text(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
         temporary.replace(self.report_path)
 
 
@@ -448,15 +501,15 @@ def main() -> int:
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
     node = RuntimeTimingProbe(args.scenario, args.report_path)
-    next_sample = time.monotonic() + 1.0
+    next_sample = time.monotonic() + SAMPLE_INTERVAL_S
     try:
         while rclpy.ok() and not stop:
             rclpy.spin_once(node, timeout_sec=0.1)
             now = time.monotonic()
             if now >= next_sample:
                 node.sample()
-                next_sample = now + 1.0
-        node.sample()
+                next_sample = now + SAMPLE_INTERVAL_S
+        node.flush()
         return 0
     finally:
         node.destroy_node()
