@@ -16,6 +16,7 @@ from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import qos_profile_sensor_data
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import (
     CapabilityState,
@@ -27,7 +28,7 @@ from salus_interfaces.msg import (
 )
 from std_msgs.msg import String
 from salus_interfaces.srv import CancelNavGoal, GetNavState, SetManualMode, SetNavGoalLL
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, NavSatFix
 from smoke_runtime import SmokeRuntime, subscribe_navigation_startup
 
 
@@ -51,6 +52,8 @@ class NavigationSmoke(Node):
         self.controller_status: list[dict] = []
         self.capability_profiles: list[SystemCapabilities] = []
         self.selected_orientations: list[Imu] = []
+        self.raw_gps_fixes: list[NavSatFix] = []
+        self.gps_fixes: list[NavSatFix] = []
         self.course_heading_debug: list[dict] = []
         self.orientation_selection_debug: list[dict] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
@@ -61,6 +64,18 @@ class NavigationSmoke(Node):
             "/localization/orientation",
             self.selected_orientations.append,
             10,
+        )
+        self.create_subscription(
+            NavSatFix,
+            "/gps/fix_raw",
+            self.raw_gps_fixes.append,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            NavSatFix,
+            "/gps/fix",
+            self.gps_fixes.append,
+            qos_profile_sensor_data,
         )
         self.create_subscription(
             String,
@@ -283,6 +298,26 @@ def main() -> int:
             lambda: bool(node.course_heading_debug),
             8.0,
             observe=lambda: {
+                "raw_gps_publishers": node.count_publishers("/gps/fix_raw"),
+                "raw_gps_messages": len(node.raw_gps_fixes),
+                "raw_gps_last_stamp": (
+                    {
+                        "sec": node.raw_gps_fixes[-1].header.stamp.sec,
+                        "nanosec": node.raw_gps_fixes[-1].header.stamp.nanosec,
+                    }
+                    if node.raw_gps_fixes
+                    else None
+                ),
+                "normalized_gps_publishers": node.count_publishers("/gps/fix"),
+                "normalized_gps_messages": len(node.gps_fixes),
+                "normalized_gps_last_stamp": (
+                    {
+                        "sec": node.gps_fixes[-1].header.stamp.sec,
+                        "nanosec": node.gps_fixes[-1].header.stamp.nanosec,
+                    }
+                    if node.gps_fixes
+                    else None
+                ),
                 "course_heading_publishers": node.count_publishers(
                     "/gps/course_heading/debug"
                 ),
@@ -547,6 +582,8 @@ def main() -> int:
             ),
             "capability_profiles": len(node.capability_profiles),
             "selected_orientations": len(node.selected_orientations),
+            "raw_gps_fixes": len(node.raw_gps_fixes),
+            "normalized_gps_fixes": len(node.gps_fixes),
             "course_heading_debug": (
                 node.course_heading_debug[-1] if node.course_heading_debug else {}
             ),
