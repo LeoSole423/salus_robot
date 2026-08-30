@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("scenario_id")
-    parser.add_argument("--context", choices=("ci", "nightly"), default="ci")
+    parser.add_argument("--context", choices=("ci", "nightly", "manual"), default="ci")
     args = parser.parse_args()
 
     scenario = BY_ID.get(args.scenario_id)
@@ -31,8 +31,12 @@ def main() -> int:
     if args.context == "nightly" and not participation["nightly"]:
         parser.error(f"{args.scenario_id} does not participate in nightly")
 
+    # Manual execution preserves registry-owned metadata without making a
+    # resource-heavy scenario a required PR/main gate. Manual runs use the CI
+    # hard-timeout budget and may execute any registered scenario.
+    timeout_context = "nightly" if args.context == "nightly" else "ci"
     env = os.environ.copy()
-    env["SMOKE_HARD_TIMEOUT_S"] = str(scenario["timeouts_s"][args.context])
+    env["SMOKE_HARD_TIMEOUT_S"] = str(scenario["timeouts_s"][timeout_context])
     for key, value in scenario.get("env", {}).items():
         env[str(key)] = str(value)
 
