@@ -81,3 +81,15 @@ def test_no_obstacle_variant_is_explicit_and_has_no_fake_scan() -> None:
     assert 'node.count_publishers("/scan_clean") == 0' in source
     assert 'node.count_publishers("/cmd_vel_safe") == 1' in source
     assert "STATE_DISABLED_BY_PROFILE" in source
+
+
+def test_course_heading_timeout_reports_raw_and_normalized_gps_boundaries() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    assert '"/gps/fix_raw"' in source
+    assert '"/gps/fix"' in source
+    assert '"raw_gps_publishers"' in source
+    assert '"raw_gps_messages"' in source
+    assert '"normalized_gps_publishers"' in source
+    assert '"normalized_gps_messages"' in source
+    assert '"raw_gps_last_stamp"' in source
+    assert '"normalized_gps_last_stamp"' in source
