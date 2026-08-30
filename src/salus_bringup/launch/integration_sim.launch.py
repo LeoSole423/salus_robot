@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -17,6 +17,19 @@ def _include(package: str, launch_file: str, arguments=None, condition=None):
         launch_arguments=(arguments or {}).items(),
         condition=condition,
     )
+
+
+def _validate_runtime_composition(context, *args, **kwargs):
+    launch_zones = LaunchConfiguration("launch_zones").perform(context).lower()
+    use_keepout = LaunchConfiguration("use_keepout").perform(context).lower()
+    if launch_zones not in {"true", "false"} or use_keepout not in {"true", "false"}:
+        raise ValueError("launch_zones and use_keepout must be true or false")
+    if launch_zones == "false" and use_keepout == "true":
+        raise ValueError(
+            "use_keepout=true requires launch_zones=true; for the diagnostic "
+            "no-zones control set both launch_zones:=false and use_keepout:=false"
+        )
+    return []
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -199,6 +212,7 @@ def generate_launch_description() -> LaunchDescription:
                     "diagnostic compositions."
                 ),
             ),
+            OpaqueFunction(function=_validate_runtime_composition),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
