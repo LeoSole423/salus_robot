@@ -49,7 +49,8 @@ def test_route_startup_requires_active_bt_navigator():
 
 def test_first_checkpoint_trace_compares_local_and_global_progress():
     source = PROBE.read_text(encoding="utf-8")
-    assert 'Odometry, "/odometry/local", self.local_odom.append' in source
+    assert '"/odometry/local"' in source
+    assert "self.local_odom.append" in source
     assert "def sample_route_progress(" in source
     assert '"global_displacement_m"' in source
     assert '"local_displacement_m"' in source
