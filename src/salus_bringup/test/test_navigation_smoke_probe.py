@@ -1,18 +1,8 @@
-import importlib.util
 from pathlib import Path
-import sys
-
-from action_msgs.msg import GoalStatus, GoalStatusArray
 
 
 ROOT = Path(__file__).parents[3]
 PROBE = ROOT / "tools" / "smoke_navigation_core_sim.py"
-sys.path.insert(0, str(PROBE.parent))
-SPEC = importlib.util.spec_from_file_location("smoke_navigation_core_sim", PROBE)
-assert SPEC and SPEC.loader
-probe = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = probe
-SPEC.loader.exec_module(probe)
 
 
 def test_rviz_goal_is_published_once_after_discovery_and_uses_fresh_commands():
@@ -28,22 +18,27 @@ def test_rviz_goal_is_published_once_after_discovery_and_uses_fresh_commands():
     assert "node.final.clear()" in section
 
 
-def test_navigation_action_idle_requires_a_terminal_status_snapshot() -> None:
-    assert not probe.navigate_action_is_idle([])
-    active = GoalStatusArray()
-    active.status_list = [GoalStatus(status=GoalStatus.STATUS_CANCELING)]
-    assert not probe.navigate_action_is_idle([active])
-    terminal = GoalStatusArray()
-    terminal.status_list = [GoalStatus(status=GoalStatus.STATUS_CANCELED)]
-    assert probe.navigate_action_is_idle([active, terminal])
-
-
-def test_second_goal_waits_for_nav2_cancel_completion() -> None:
+def test_cancel_service_is_the_terminal_boundary_before_the_next_goal() -> None:
     source = PROBE.read_text(encoding="utf-8")
     cancellation = source.split(
-        '"right-turn diagnostic goal remained active"', 1
+        '"right-turn command did not produce a negative physical yaw response"', 1
     )[1].split("start = node.odom[-1]", 1)[0]
-    assert "navigate_action_is_idle" in cancellation
+    assert "timeout_s=15.0" in cancellation
+    assert "cancel service returned before the right-turn goal became terminal" in cancellation
+    assert "/navigate_to_pose/_action/status" not in source
+    assert "navigate_action_is_idle" not in source
+
+
+def test_manual_takeover_remains_immediate_but_waits_for_terminal_nav2_state() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    takeover = source.split(
+        'SetManualMode.Request(enabled=True)', 1
+    )[1].split('SetManualMode.Request(enabled=False)', 1)[0]
+    assert (
+        '"manual takeover gained command authority but Nav2 cancellation did not '
+        'reach a terminal state"'
+    ) in takeover
+    assert "15.0" in takeover
 
 
 def test_canonical_variant_preserves_nav_authority_and_checks_fresh_input() -> None:

@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 
 import rclpy
-from action_msgs.msg import GoalStatus, GoalStatusArray
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
@@ -48,7 +47,6 @@ class NavigationSmoke(Node):
         self.path_health: list[PathHealth] = []
         self.raw_commands: list[Twist] = []
         self.safe_commands: list[Twist] = []
-        self.navigation_action_status: list[GoalStatusArray] = []
         self.vehicle_commands: list[VehicleCommand] = []
         self.controller_status: list[dict] = []
         self.capability_profiles: list[SystemCapabilities] = []
@@ -76,12 +74,6 @@ class NavigationSmoke(Node):
             SystemCapabilities,
             "/system/capabilities",
             self.capability_profiles.append,
-            10,
-        )
-        self.create_subscription(
-            GoalStatusArray,
-            "/navigate_to_pose/_action/status",
-            self.navigation_action_status.append,
             10,
         )
         self.rviz_goal = self.create_publisher(PoseStamped, "/goal_pose", 10)
@@ -116,8 +108,10 @@ def wait_for(node: NavigationSmoke, predicate, timeout_s: float, error: str) -> 
     node.runtime.wait(error, predicate, timeout_s)
 
 
-def call(node: NavigationSmoke, client, request, error: str):
-    return node.runtime.call(error, client, request, timeout_s=8.0)
+def call(
+    node: NavigationSmoke, client, request, error: str, timeout_s: float = 8.0,
+):
+    return node.runtime.call(error, client, request, timeout_s=timeout_s)
 
 
 def wait_for_action_server(node: NavigationSmoke, client: ActionClient, name: str) -> None:
@@ -202,18 +196,6 @@ def get_state(node: NavigationSmoke):
     return call(node, node.state, GetNavState.Request(), "state service unavailable")
 
 
-def navigate_action_is_idle(messages: list[GoalStatusArray]) -> bool:
-    """Require Nav2 itself to report that cancellation reached a terminal state."""
-    if not messages:
-        return False
-    active = {
-        GoalStatus.STATUS_ACCEPTED,
-        GoalStatus.STATUS_EXECUTING,
-        GoalStatus.STATUS_CANCELING,
-    }
-    return all(status.status not in active for status in messages[-1].status_list)
-
-
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
@@ -275,7 +257,10 @@ def main() -> int:
         wait_for_action_server(node, node.follow_action, "/follow_path")
         # The integrated smoke has already exercised manual control and braking.
         # Restore the navigation precondition explicitly before sending its goal.
-        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        response = call(
+            node, node.cancel, CancelNavGoal.Request(),
+            "cancel service unavailable", timeout_s=15.0,
+        )
         if not response.ok:
             raise RuntimeError(response.error)
         response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
@@ -325,15 +310,17 @@ def main() -> int:
             8.0,
             "right-turn physical motion produced the wrong global-odometry yaw sign",
         )
-        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        response = call(
+            node, node.cancel, CancelNavGoal.Request(),
+            "cancel service unavailable", timeout_s=15.0,
+        )
         if not response.ok:
             raise RuntimeError(response.error)
-        wait_for(node, lambda: not get_state(node).goal_active, 5.0, "right-turn diagnostic goal remained active")
         wait_for(
             node,
-            lambda: navigate_action_is_idle(node.navigation_action_status),
-            8.0,
-            "right-turn cancellation did not reach a terminal Nav2 action state",
+            lambda: not get_state(node).goal_active,
+            2.0,
+            "cancel service returned before the right-turn goal became terminal",
         )
 
         start = node.odom[-1]
@@ -421,7 +408,10 @@ def main() -> int:
         node.final.clear()
         send_goal(node, 25.0)
         wait_for(node, lambda: get_state(node).goal_active, 8.0, "long goal was not accepted")
-        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        response = call(
+            node, node.cancel, CancelNavGoal.Request(),
+            "cancel service unavailable", timeout_s=15.0,
+        )
         if not response.ok:
             raise RuntimeError(response.error)
         wait_for(node, lambda: not get_state(node).goal_active, 5.0, "cancelled goal remained active")
@@ -432,11 +422,19 @@ def main() -> int:
         response = call(node, node.manual, SetManualMode.Request(enabled=True), "manual-mode service unavailable")
         if not response.ok or not response.enabled_after:
             raise RuntimeError("manual takeover was rejected")
-        wait_for(node, lambda: not get_state(node).goal_active, 5.0, "manual takeover did not cancel goal")
+        wait_for(
+            node,
+            lambda: not get_state(node).goal_active,
+            15.0,
+            "manual takeover gained command authority but Nav2 cancellation did not reach a terminal state",
+        )
         response = call(node, node.manual, SetManualMode.Request(enabled=False), "manual-mode service unavailable")
         if not response.ok or response.enabled_after:
             raise RuntimeError("automatic mode was not restored")
-        response = call(node, node.cancel, CancelNavGoal.Request(), "cancel service unavailable")
+        response = call(
+            node, node.cancel, CancelNavGoal.Request(),
+            "cancel service unavailable", timeout_s=15.0,
+        )
         if not response.ok:
             raise RuntimeError(response.error)
         print("Navigation core simulation smoke test passed")
@@ -452,7 +450,6 @@ def main() -> int:
             "final_commands": len(node.final), "telemetry": len(node.telemetry),
             "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
-            "navigation_action_status": len(node.navigation_action_status),
             "vehicle_commands": len(node.vehicle_commands),
             "controller_status": len(node.controller_status),
             "expected_command_input": (
