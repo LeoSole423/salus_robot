@@ -317,7 +317,6 @@ def main() -> int:
     evidence = {}
     error = None
     try:
-        evidence = {}
         asyncio.run(scenario(evidence))
         success = True
         print("Cockpit WebSocket simulation smoke test passed")
