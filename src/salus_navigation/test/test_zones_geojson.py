@@ -58,12 +58,34 @@ def test_rasterize_hole_disabled_buffer_and_outside():
     assert image.min() == 0 and image.max() == 255
     # A disabled duplicate leaves the output unchanged.
     disabled = normalize_geojson(polygon_document(enabled=False))
-    disabled_image, _, _ = rasterize_polygons(projected(disabled), 80, 80, 0.1, -2.0, -2.0, 0.0)
+    disabled_image, disabled_clipped, disabled_outside = rasterize_polygons(
+        projected(disabled), 80, 80, 0.1, -2.0, -2.0, 0.0
+    )
     assert np.all(disabled_image == 255)
+    assert not disabled_clipped and not disabled_outside
     buffered, _, _ = rasterize_polygons(projected(document), 80, 80, 0.1, -2.0, -2.0, 0.4)
     assert int(np.sum(buffered == 0)) > int(np.sum(image == 0))
     _, _, outside = rasterize_polygons([{"id": "outside", "enabled": True, "outer_xy": [{"x": 99.0, "y": 99.0}] * 4, "holes_xy": []}], 10, 10, 0.1, 0.0, 0.0, 0.0)
     assert outside == ["outside"]
+
+
+def test_rasterize_reports_partially_clipped_enabled_polygon():
+    polygon = {
+        "id": "clipped",
+        "enabled": True,
+        "outer_xy": [
+            {"x": -0.1, "y": 0.2},
+            {"x": 0.5, "y": 0.2},
+            {"x": 0.5, "y": 0.5},
+            {"x": -0.1, "y": 0.2},
+        ],
+        "holes_xy": [],
+    }
+    _, clipped, outside = rasterize_polygons(
+        [polygon], 10, 10, 0.1, 0.0, 0.0, 0.0
+    )
+    assert clipped == {"clipped": 2}
+    assert not outside
 
 
 def test_halo_mask_is_deterministic():
