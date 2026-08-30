@@ -110,9 +110,20 @@ def rasterize_polygons(
             clipped[polygon["id"]] = count
         cv2.fillPoly(image, [np.array(points, dtype=np.int32)], 0)
         for hole in polygon["holes_xy"]:
-            converted = _points_to_pixels(hole, width, height, resolution, origin_x, origin_y)
+            converted = _points_to_pixels(
+                hole, width, height, resolution, origin_x, origin_y
+            )
             if converted is not None:
-                cv2.fillPoly(image, [np.array(converted[0], dtype=np.int32)], 255)
+                hole_points, hole_clipped = converted
+                if hole_clipped:
+                    clipped[polygon["id"]] = (
+                        clipped.get(polygon["id"], 0) + hole_clipped
+                    )
+                cv2.fillPoly(
+                    image,
+                    [np.array(hole_points, dtype=np.int32)],
+                    255,
+                )
     if buffer_margin_m > 0.0:
         radius = max(1, int(round(buffer_margin_m / resolution)))
         occupied = (image == 0).astype(np.uint8)

@@ -5,7 +5,11 @@ from salus_navigation.nav2_startup_coordinator import (
     Nav2StartupCoordinator,
     zones_state_mask_ready,
 )
-from salus_navigation.zones_manager import zones_document_is_empty
+from salus_navigation.zones_manager import (
+    ZonesManager,
+    unrepresentable_zone_error,
+    zones_document_is_empty,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -39,6 +43,52 @@ def test_confirmed_empty_zone_document_can_reuse_empty_bootstrap() -> None:
         "type": "FeatureCollection",
         "features": [{"type": "Feature"}],
     })
+
+
+def test_unrepresentable_enabled_zone_is_rejected_explicitly() -> None:
+    assert unrepresentable_zone_error({}, []) == ""
+    error = unrepresentable_zone_error(
+        {"zone_clipped": 2},
+        ["zone_outside"],
+    )
+    assert "legacy fixed mask" in error
+    assert "outside=zone_outside" in error
+    assert "clipped=zone_clipped:2" in error
+
+
+def test_zone_mask_rejects_unrepresentable_geometry_before_staging() -> None:
+    source = ZONES_SOURCE.read_text(encoding="utf-8")
+    write_mask = source[
+        source.index("    def _write_mask("):
+        source.index("    def _reload_map(")
+    ]
+    raster = write_mask.index("rasterize_polygons(")
+    reject = write_mask.index("if representation_error:")
+    cost = write_mask.index("cost_mask_from_binary(")
+    stage = write_mask.index("self.runtime_dir.mkdir(")
+
+    assert raster < reject < cost < stage
+    assert "return False, representation_error" in write_mask
+
+
+def test_unrepresentable_zone_keeps_previous_active_document() -> None:
+    old_document = {"type": "FeatureCollection", "features": [{"id": "old"}]}
+    new_document = {"type": "FeatureCollection", "features": [{"id": "new"}]}
+    reload_calls = []
+    manager = SimpleNamespace(
+        _require_map_server_active=lambda: (True, ""),
+        _document=old_document,
+        _document_text="old-json",
+        _write_mask=lambda _document: (False, "outside=zone_new"),
+        _reload_map=lambda: reload_calls.append(True) or (True, ""),
+    )
+
+    result = ZonesManager._apply(manager, new_document, persist=True)
+
+    assert result == (False, "outside=zone_new", 0, 0)
+    assert manager._document is old_document
+    assert manager._document_text == "old-json"
+    assert not reload_calls
 
 
 def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() -> None:
