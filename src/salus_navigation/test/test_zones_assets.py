@@ -28,3 +28,28 @@ def test_costmaps_and_runtime_data_are_separated():
     assert "runtime/zones" in manager
     assert "map_server_load_map+global_costmap_clear" in manager
     assert "callback_group=self._service_group" in manager
+
+
+def test_zone_manager_waits_for_active_map_server_before_generating_or_loading_mask():
+    manager = (ROOT / "salus_navigation" / "zones_manager.py").read_text(
+        encoding="utf-8"
+    )
+    assert "from lifecycle_msgs.srv import GetState" in manager
+    assert '"/keepout_filter_mask_server/get_state"' in manager
+    assert "keepout map server not active" in manager
+
+    initial = manager[
+        manager.index("    def _load_initial_state"):
+        manager.index("    def _await")
+    ]
+    assert initial.index("self._require_map_server_active()") < initial.index(
+        "self._apply("
+    )
+
+    apply = manager[
+        manager.index("    def _apply("):
+        manager.index("    def _set_geojson")
+    ]
+    assert apply.index("self._require_map_server_active()") < apply.index(
+        "self._write_mask(document)"
+    )
