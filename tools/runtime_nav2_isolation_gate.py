@@ -49,14 +49,14 @@ class IsolationGate(Node):
         setattr(self, name, getattr(self, name) + 1)
 
     def ready(self) -> bool:
-        base = self.local_odom > 0 and self.global_odom > 0
+        base = self.local_odom >= 3 and self.global_odom >= 3
         if not self.require_nav2:
             return base
         return bool(
             base
             and self.local_costmap > 0
             and self.startup is not None
-            and self.startup.is_ready()
+            and self.startup.active
         )
 
     def evidence(self) -> dict:
