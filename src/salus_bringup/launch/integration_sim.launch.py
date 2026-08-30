@@ -38,6 +38,7 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     nav2_params_file = LaunchConfiguration("nav2_params_file")
+    nav2_no_obstacles_params_file = LaunchConfiguration("nav2_no_obstacles_params_file")
     vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     command_input_mode = LaunchConfiguration("command_input_mode")
@@ -178,6 +179,14 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 description="Nav2 parameter file passed unchanged to navigation_core_sim.",
             ),
+            DeclareLaunchArgument(
+                "nav2_no_obstacles_params_file",
+                default_value=str(
+                    Path(get_package_share_directory("salus_navigation"))
+                    / "config" / "nav2_core_no_obstacles_sim.yaml"
+                ),
+                description="Nav2 parameter file for the no-obstacle capability profile.",
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -259,10 +268,7 @@ def generate_launch_description() -> LaunchDescription:
                     "use_sim_time": use_sim_time,
                     "use_keepout": use_keepout,
                     "obstacle_detection_required": "false",
-                    "nav2_params_file": str(
-                        Path(get_package_share_directory("salus_navigation"))
-                        / "config" / "nav2_core_no_obstacles_sim.yaml"
-                    ),
+                    "nav2_params_file": nav2_no_obstacles_params_file,
                 },
                 condition=IfCondition(PythonExpression([
                     "'", launch_navigation, "'.lower() == 'true' and ",

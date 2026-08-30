@@ -51,6 +51,8 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "no_obstacle_detection" in contents
     assert "safety_arbitration_no_obstacles_sim.launch.py" in contents
     assert "nav2_core_no_obstacles_sim.yaml" in contents
+    assert '"nav2_no_obstacles_params_file"' in contents
+    assert '"nav2_params_file": nav2_no_obstacles_params_file' in contents
     assert '"scan_preview_enabled": obstacle_detection_enabled' in contents
     assert "odometry_backend" in contents
     assert "web_waypoints_file" in contents

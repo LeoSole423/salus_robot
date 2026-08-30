@@ -244,6 +244,29 @@ def saturation_intervals(statuses, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):
     return {"interval_count": intervals, "observed_duration_s": duration_s}
 
 
+def steering_margin_summary(statuses):
+    """Summarize remaining autonomous steering authority from status samples."""
+    margins = [
+        max(0.0, item.steering_limit_used_rad - abs(item.applied_steer_rad))
+        for item in statuses
+        if item.steering_limit_used_rad > 0.0
+    ]
+    if not margins:
+        return {
+            "sample_count": 0, "minimum_rad": None, "p05_rad": None,
+            "above_90pct_limit_fraction": None,
+        }
+    near_limit = sum(
+        abs(item.applied_steer_rad) >= .9 * item.steering_limit_used_rad
+        for item in statuses if item.steering_limit_used_rad > 0.0
+    )
+    return {
+        "sample_count": len(margins), "minimum_rad": min(margins),
+        "p05_rad": _percentile(margins, .05),
+        "above_90pct_limit_fraction": near_limit / len(margins),
+    }
+
+
 def first_divergent_stage(*alignment_groups):
     """Return the first observed command boundary that changed a Twist command."""
     for group in alignment_groups:
