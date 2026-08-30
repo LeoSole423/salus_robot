@@ -83,20 +83,20 @@ def test_no_obstacle_variant_is_explicit_and_has_no_fake_scan() -> None:
     assert "STATE_DISABLED_BY_PROFILE" in source
 
 
-def test_short_goal_uses_causal_terminal_event_not_periodic_telemetry() -> None:
+def test_short_goal_queries_stable_terminal_result_from_nav_state() -> None:
     source = PROBE.read_text(encoding="utf-8")
-    baseline = source.index("short_goal_event_baseline = max(")
+    baseline = source.index(
+        "short_goal_result_baseline = get_state(node).nav_result_event_id"
+    )
     publish = source.index("node.rviz_goal.publish(rviz_goal)", baseline)
+    terminal = source.index("terminal_state = get_state(node)", publish)
 
-    assert 'NavEvent, "/nav_command_server/events"' in source
-    assert baseline < publish
-    assert "def has_causal_goal_success(" in source
-    assert 'message.code == "GOAL_ACCEPTED"' in source
-    assert 'message.code == "GOAL_RESULT_SUCCEEDED"' in source
-    assert 'nav_event_detail(message, "goal_generation")' in source
-    assert "has_causal_goal_success(" in source
-    assert '"goal did not publish causal terminal success event"' in source
+    assert baseline < publish < terminal
+    assert "terminal_state.nav_result_event_id <= short_goal_result_baseline" in source
+    assert "terminal_state.nav_result_status != GoalStatus.STATUS_SUCCEEDED" in source
+    assert 'terminal_state.nav_result_text != "succeeded"' in source
     assert 'message.nav_result_text == "succeeded"' not in source
+    assert '"/nav_command_server/events"' not in source
 
 
 def test_course_heading_timeout_reports_raw_and_normalized_gps_boundaries() -> None:
