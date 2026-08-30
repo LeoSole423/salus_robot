@@ -138,6 +138,7 @@ class NavCommandServer(Node):
             "brake_service": "/nav_command_server/brake", "set_manual_mode_service": "/nav_command_server/set_manual_mode",
             "get_state_service": "/nav_command_server/get_state", "fromll_service": "/fromLL",
             "fromll_service_fallback": "/navsat_transform/fromLL", "fromll_timeout_s": 2.0,
+            "cancel_result_timeout_s": 12.0,
             "navigate_action": "/navigate_to_pose", "rviz_goal_topic": "/goal_pose",
         }.items():
             self.declare_parameter(name, value)
@@ -160,6 +161,10 @@ class NavCommandServer(Node):
         self._goal_epoch = 0
         self._goal_pending = False
         self._goal_handle = None
+        self._goal_cancel_requested = False
+        self._goal_cancel_reason = ""
+        self._goal_terminal_event = threading.Event()
+        self._goal_terminal_event.set()
         self._goal_result_status = GoalStatus.STATUS_UNKNOWN
         self._goal_result_text = "idle"
         self._suppress_success_brake = False
@@ -192,6 +197,7 @@ class NavCommandServer(Node):
             self.create_client(FromLL, str(p("fromll_service_fallback")), callback_group=self._client_group),
         ]
         self._fromll_timeout_s = max(0.1, float(p("fromll_timeout_s")))
+        self._cancel_result_timeout_s = max(0.1, float(p("cancel_result_timeout_s")))
         self._navigate_client = ActionClient(self, NavigateToPose, str(p("navigate_action")), callback_group=self._client_group)
         self.create_timer(1.0 / max(1.0, float(p("manual_watchdog_hz"))), self._manual_watchdog)
         self.create_timer(1.0 / max(1.0, float(p("nav_telemetry_hz"))), self._publish_telemetry)
@@ -285,18 +291,33 @@ class NavCommandServer(Node):
                 cancel.wait(1.0 / self._brake_hold_hz)
         threading.Thread(target=publish_hold, daemon=True, name="nav_brake_hold").start()
 
-    def _cancel_goal(self, reason: str, *, apply_brake: bool) -> bool:
+    def _goal_active_locked(self) -> bool:
+        return self._goal_pending or self._goal_handle is not None
+
+    def _cancel_goal(
+        self, reason: str, *, apply_brake: bool, wait_terminal: bool = False,
+    ) -> tuple[bool, bool]:
+        """Request cancellation without declaring the goal terminal early."""
         with self._lock:
-            handle, was_active = self._goal_handle, self._goal_pending or self._goal_handle is not None
-            self._goal_epoch += 1
-            self._goal_pending, self._goal_handle = False, None
-            self._goal_result_text = reason
-        if handle is not None:
+            was_active = self._goal_active_locked()
+            if not was_active:
+                return False, True
+            first_request = not self._goal_cancel_requested
+            self._goal_cancel_requested = True
+            self._goal_cancel_reason = reason
+            self._goal_result_text = f"cancelling: {reason}"
+            handle = self._goal_handle
+            terminal_event = self._goal_terminal_event
+        if handle is not None and first_request:
             handle.cancel_goal_async()
         if apply_brake:
             self._publish(CommandArbiter.stop(CmdVelFinal.SOURCE_SAFETY, 100))
             self._start_brake_hold(0.4, 100)
-        return was_active
+        completed = (
+            terminal_event.wait(self._cancel_result_timeout_s)
+            if wait_terminal else terminal_event.is_set()
+        )
+        return True, completed
 
     def _on_brake(self, request: BrakeNav.Request, response: BrakeNav.Response) -> BrakeNav.Response:
         self._start_brake_hold(max(0.0, request.duration_s), clamp_brake_pct(request.brake_pct))
@@ -306,9 +327,15 @@ class NavCommandServer(Node):
 
     def _on_set_manual_mode(self, request: SetManualMode.Request, response: SetManualMode.Response) -> SetManualMode.Response:
         if request.enabled:
-            cancelled = self._cancel_goal("manual takeover", apply_brake=True)
+            cancelled, _ = self._cancel_goal(
+                "manual takeover", apply_brake=True, wait_terminal=False
+            )
             if cancelled:
-                self._event(DiagnosticStatus.WARN, "GOAL_CANCELLED", "goal cancelled by manual takeover")
+                self._event(
+                    DiagnosticStatus.WARN,
+                    "GOAL_CANCEL_REQUESTED",
+                    "goal cancellation requested by manual takeover",
+                )
         with self._lock:
             if self._brake_cancel is not None:
                 self._brake_cancel.set()
@@ -404,17 +431,36 @@ class NavCommandServer(Node):
         with self._lock:
             if self._arbiter.manual_enabled:
                 return "manual control enabled; disable manual mode to send goals"
+            replacing = self._goal_active_locked()
         if self._goal_in_keepout(x_m, y_m):
             return "goal lies in keepout zone"
         if not self._navigate_client.server_is_ready():
             return "NavigateToPose action server unavailable"
-        self._cancel_goal("replaced by new goal", apply_brake=False)
+        if replacing:
+            _, completed = self._cancel_goal(
+                "replaced by new goal", apply_brake=False, wait_terminal=True
+            )
+            if not completed:
+                return (
+                    "previous navigation goal cancellation did not reach a terminal "
+                    f"state within {self._cancel_result_timeout_s:.1f}s"
+                )
         with self._lock:
+            if self._arbiter.manual_enabled:
+                return "manual control enabled; disable manual mode to send goals"
+            if self._goal_active_locked():
+                return "previous navigation goal is still active"
             self._goal_epoch += 1
             epoch = self._goal_epoch
             self._goal_pending = True
+            self._goal_cancel_requested = False
+            self._goal_cancel_reason = ""
+            self._goal_terminal_event.clear()
             self._suppress_success_brake = suppress_success_brake
-            self._goal_result_status, self._goal_result_text = GoalStatus.STATUS_UNKNOWN, "sending navigation goal"
+            self._goal_result_status, self._goal_result_text = (
+                GoalStatus.STATUS_UNKNOWN,
+                "sending navigation goal",
+            )
         point = Point(x=x_m, y=y_m)
         self._send_map_goal(point, yaw_deg, epoch)
         return ""
@@ -447,14 +493,21 @@ class NavCommandServer(Node):
 
     def _send_map_goal(self, point, yaw_deg: float, epoch: int) -> None:
         with self._lock:
-            if epoch != self._goal_epoch or self._arbiter.manual_enabled:
+            if epoch != self._goal_epoch:
+                return
+            if self._arbiter.manual_enabled:
+                self._goal_pending = False
+                self._goal_result_text = "manual control enabled before goal dispatch"
+                self._goal_terminal_event.set()
                 return
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = "map"
         goal.pose.header.stamp = self.get_clock().now().to_msg()
         goal.pose.pose.position.x, goal.pose.pose.position.y = point.x, point.y
         goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = self._quaternion_from_yaw(yaw_deg)
-        self._navigate_client.send_goal_async(goal).add_done_callback(lambda done: self._on_goal_response(done, epoch))
+        self._navigate_client.send_goal_async(goal).add_done_callback(
+            lambda done: self._on_goal_response(done, epoch)
+        )
 
     def _on_goal_response(self, future, epoch: int) -> None:
         try:
@@ -463,25 +516,50 @@ class NavCommandServer(Node):
             handle = None
             self.get_logger().error(f"NavigateToPose request failed: {exc}")
         with self._lock:
-            stale = epoch != self._goal_epoch or self._arbiter.manual_enabled
+            stale = epoch != self._goal_epoch
             if handle is None or not handle.accepted:
-                if epoch == self._goal_epoch:
-                    self._goal_pending, self._goal_result_text = False, "goal rejected"
+                if not stale:
+                    self._goal_pending = False
+                    self._goal_cancel_requested = False
+                    self._goal_cancel_reason = ""
+                    self._goal_result_text = "goal rejected"
+                    self._goal_terminal_event.set()
                 accepted = False
+                cancel_after_accept = False
             else:
                 accepted = True
+                cancel_after_accept = False
                 if not stale:
-                    self._goal_pending, self._goal_handle, self._goal_result_text = False, handle, "navigating"
+                    self._goal_pending = False
+                    self._goal_handle = handle
+                    self._goal_result_text = (
+                        f"cancelling: {self._goal_cancel_reason}"
+                        if self._goal_cancel_requested
+                        else "navigating"
+                    )
+                    cancel_after_accept = (
+                        self._goal_cancel_requested or self._arbiter.manual_enabled
+                    )
         if not accepted:
-            self._event(DiagnosticStatus.ERROR, "GOAL_REJECTED", "NavigateToPose goal rejected")
+            self._event(
+                DiagnosticStatus.ERROR,
+                "GOAL_REJECTED",
+                "NavigateToPose goal rejected",
+            )
             return
         if stale:
             handle.cancel_goal_async()
             return
+        result_future = handle.get_result_async()
+        result_future.add_done_callback(lambda done: self._on_goal_result(done, epoch))
         self._event(
-            DiagnosticStatus.OK, "GOAL_ACCEPTED",
-            "NavigateToPose goal accepted", goal_generation=epoch)
-        handle.get_result_async().add_done_callback(lambda done: self._on_goal_result(done, epoch))
+            DiagnosticStatus.OK,
+            "GOAL_ACCEPTED",
+            "NavigateToPose goal accepted",
+            goal_generation=epoch,
+        )
+        if cancel_after_accept:
+            handle.cancel_goal_async()
 
     def _on_goal_result(self, future, epoch: int) -> None:
         try:
@@ -492,35 +570,68 @@ class NavCommandServer(Node):
         with self._lock:
             if epoch != self._goal_epoch:
                 return
-            self._goal_handle, self._goal_pending, self._goal_result_status = None, False, status
-            self._goal_result_text = "succeeded" if status == GoalStatus.STATUS_SUCCEEDED else "cancelled" if status == GoalStatus.STATUS_CANCELED else "aborted"
+            self._goal_handle = None
+            self._goal_pending = False
+            self._goal_cancel_requested = False
+            self._goal_cancel_reason = ""
+            self._goal_result_status = status
+            self._goal_result_text = (
+                "succeeded"
+                if status == GoalStatus.STATUS_SUCCEEDED
+                else "cancelled"
+                if status == GoalStatus.STATUS_CANCELED
+                else "aborted"
+            )
             suppress_brake = self._suppress_success_brake
+            self._goal_terminal_event.set()
         if status == GoalStatus.STATUS_SUCCEEDED:
             self._event(
-                DiagnosticStatus.OK, "GOAL_RESULT_SUCCEEDED",
-                "navigation goal succeeded", goal_generation=epoch)
+                DiagnosticStatus.OK,
+                "GOAL_RESULT_SUCCEEDED",
+                "navigation goal succeeded",
+                goal_generation=epoch,
+            )
             if not suppress_brake:
                 self._start_brake_hold(0.25, 100)
         elif status == GoalStatus.STATUS_CANCELED:
             self._event(
-                DiagnosticStatus.WARN, "GOAL_CANCELLED",
-                "navigation goal cancelled", goal_generation=epoch)
+                DiagnosticStatus.WARN,
+                "GOAL_CANCELLED",
+                "navigation goal cancelled",
+                goal_generation=epoch,
+            )
         else:
             self._event(
-                DiagnosticStatus.ERROR, "GOAL_RESULT_ABORTED",
-                "navigation goal aborted", goal_generation=epoch)
+                DiagnosticStatus.ERROR,
+                "GOAL_RESULT_ABORTED",
+                "navigation goal aborted",
+                goal_generation=epoch,
+            )
 
     def _on_cancel_goal(self, _request: CancelNavGoal.Request, response: CancelNavGoal.Response) -> CancelNavGoal.Response:
+        was_active, completed = self._cancel_goal(
+            "cancelled by service", apply_brake=True, wait_terminal=True
+        )
+        if was_active and not completed:
+            response.ok = False
+            response.error = (
+                "Nav2 cancellation did not reach a terminal state within "
+                f"{self._cancel_result_timeout_s:.1f}s"
+            )
+            self._event(
+                DiagnosticStatus.ERROR,
+                "GOAL_CANCEL_TIMEOUT",
+                response.error,
+            )
+            return response
         response.ok, response.error = True, ""
-        if self._cancel_goal("cancelled by service", apply_brake=True):
-            self._event(DiagnosticStatus.WARN, "GOAL_CANCELLED", "goal cancelled by service")
         return response
 
     def _on_get_state(self, _request: GetNavState.Request, response: GetNavState.Response) -> GetNavState.Response:
         with self._lock:
             manual, fix = self._arbiter.manual_command, self._last_fix
             response.ok, response.error = True, ""
-            response.goal_active = self._goal_pending or self._goal_handle is not None
+            response.goal_active = self._goal_active_locked()
             response.manual_enabled = self._arbiter.manual_enabled
             response.manual_linear_x_cmd = 0.0 if manual is None else manual.twist.linear.x
             response.manual_angular_z_cmd = 0.0 if manual is None else manual.twist.angular.z
@@ -535,7 +646,7 @@ class NavCommandServer(Node):
         with self._lock:
             now_s, manual, fix = self._now_s(), self._arbiter.manual_command, self._last_fix
             message = NavTelemetry()
-            message.goal_active = self._goal_pending or self._goal_handle is not None
+            message.goal_active = self._goal_active_locked()
             message.manual_enabled = self._arbiter.manual_enabled
             message.auto_mode = "manual" if self._arbiter.manual_enabled else "navigate_to_pose" if message.goal_active else "safety_arbitration"
             message.active_action = "NavigateToPose" if message.goal_active else "none"
