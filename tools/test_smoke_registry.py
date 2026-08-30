@@ -67,6 +67,10 @@ class SmokeRegistryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             nightly_matrix(0)
 
+    def test_heavy_operational_nightly_budgets_cover_observed_healthy_envelope(self):
+        self.assertEqual(BY_ID["sim_operational"]["timeouts_s"]["nightly"], 180)
+        self.assertEqual(BY_ID["operational_persistence"]["timeouts_s"]["nightly"], 180)
+
 
 if __name__ == "__main__":
     unittest.main()
