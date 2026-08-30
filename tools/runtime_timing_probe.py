@@ -25,7 +25,7 @@ from rclpy.qos import (
     qos_profile_sensor_data,
 )
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Imu, LaserScan, NavSatFix
 from tf2_msgs.msg import TFMessage
 
 
@@ -257,6 +257,10 @@ class RuntimeTimingProbe(Node):
             name: StreamStats(name)
             for name in (
                 "clock",
+                "wheel_odometry",
+                "imu_data",
+                "gps_fix_raw",
+                "gps_fix",
                 "local_ekf",
                 "global_ekf",
                 "tf_map_to_odom",
@@ -266,6 +270,16 @@ class RuntimeTimingProbe(Node):
             )
         }
         self.create_subscription(Clock, "/clock", self._on_clock, qos_profile_sensor_data)
+        self.create_subscription(
+            Odometry, "/wheel/odometry", self._on_wheel_odom, qos_profile_sensor_data
+        )
+        self.create_subscription(Imu, "/imu/data", self._on_imu, qos_profile_sensor_data)
+        self.create_subscription(
+            NavSatFix, "/gps/fix_raw", self._on_gps_raw, qos_profile_sensor_data
+        )
+        self.create_subscription(
+            NavSatFix, "/gps/fix", self._on_gps, qos_profile_sensor_data
+        )
         self.create_subscription(Odometry, "/odometry/local", self._on_local_odom, 20)
         self.create_subscription(Odometry, "/odometry/global", self._on_global_odom, 20)
         grid_qos = QoSProfile(
@@ -284,6 +298,18 @@ class RuntimeTimingProbe(Node):
     def _on_clock(self, message: Clock) -> None:
         self.latest_clock_ns = stamp_ns(message.clock)
         self.streams["clock"].record(self.latest_clock_ns)
+
+    def _on_wheel_odom(self, message: Odometry) -> None:
+        self.streams["wheel_odometry"].record(stamp_ns(message.header.stamp))
+
+    def _on_imu(self, message: Imu) -> None:
+        self.streams["imu_data"].record(stamp_ns(message.header.stamp))
+
+    def _on_gps_raw(self, message: NavSatFix) -> None:
+        self.streams["gps_fix_raw"].record(stamp_ns(message.header.stamp))
+
+    def _on_gps(self, message: NavSatFix) -> None:
+        self.streams["gps_fix"].record(stamp_ns(message.header.stamp))
 
     def _on_local_odom(self, message: Odometry) -> None:
         self.streams["local_ekf"].record(stamp_ns(message.header.stamp))
@@ -361,6 +387,10 @@ class RuntimeTimingProbe(Node):
             "ros_to_wall_ratio": None if ros_delta_s is None else ros_delta_s / elapsed,
             "publishers": {
                 "/clock": self.count_publishers("/clock"),
+                "/wheel/odometry": self.count_publishers("/wheel/odometry"),
+                "/imu/data": self.count_publishers("/imu/data"),
+                "/gps/fix_raw": self.count_publishers("/gps/fix_raw"),
+                "/gps/fix": self.count_publishers("/gps/fix"),
                 "/odometry/local": self.count_publishers("/odometry/local"),
                 "/odometry/global": self.count_publishers("/odometry/global"),
                 "/tf": self.count_publishers("/tf"),
