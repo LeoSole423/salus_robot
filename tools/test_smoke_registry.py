@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from tools.ci_select_smokes import ALL_SMOKES, PACKAGE_SMOKES
-from tools.smoke_registry import BY_ID, SCENARIOS, ids, nightly_scripts
+from tools.smoke_registry import BY_ID, SCENARIOS, ids, nightly_matrix, nightly_scripts
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,9 +33,12 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertIn('scenario.get("env", {})', runner)
         self.assertIn('scenario["script"]', runner)
 
-    def test_nightly_runner_is_registry_driven(self):
+    def test_nightly_workflow_is_registry_driven(self):
+        workflow = (ROOT / ".github/workflows/nightly-smokes.yml").read_text(encoding="utf-8")
         runner = (ROOT / "tools/smoke_reliability.sh").read_text(encoding="utf-8")
-        self.assertIn("smoke_registry.py --nightly-scripts", runner)
+        self.assertIn("args=(--nightly-matrix)", workflow)
+        self.assertIn('python3 tools/smoke_registry.py "${args[@]}"', workflow)
+        self.assertIn("SMOKE_SCENARIO_ID", runner)
         self.assertNotIn("scenarios=(", runner)
         self.assertGreater(len(nightly_scripts()), 0)
 
@@ -46,6 +49,23 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertFalse(BY_ID["web_cockpit"]["participation"]["nightly"])
         self.assertTrue(BY_ID["sim_operational"]["participation"]["nightly"])
         self.assertTrue(BY_ID["operational_persistence"]["participation"]["nightly"])
+
+    def test_nightly_override_updates_repetitions_and_job_budget(self):
+        default = nightly_matrix()
+        overridden = nightly_matrix(12)
+        self.assertGreater(len(default["include"]), 0)
+        by_id = {entry["id"]: entry for entry in overridden["include"]}
+        for scenario_id, entry in by_id.items():
+            self.assertEqual(entry["repetitions"], 12)
+            timeout_s = BY_ID[scenario_id]["timeouts_s"]["nightly"]
+            self.assertEqual(
+                entry["job_timeout_minutes"],
+                max(20, (12 * timeout_s + 900) // 60 + 1),
+            )
+
+    def test_nightly_override_rejects_non_positive_repetitions(self):
+        with self.assertRaises(ValueError):
+            nightly_matrix(0)
 
 
 if __name__ == "__main__":
