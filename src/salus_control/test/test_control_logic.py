@@ -202,7 +202,7 @@ def test_command_from_cmd_vel_below_deadband_maps_to_zero() -> None:
     assert cmd.speed_mps == 0.0
 
 
-def test_command_from_cmd_vel_between_deadband_and_min_maps_to_min() -> None:
+def test_command_from_cmd_vel_between_deadband_and_min_preserves_request() -> None:
     cmd = command_from_cmd_vel(
         linear_x=0.30,
         angular_z=0.0,
@@ -217,11 +217,11 @@ def test_command_from_cmd_vel_between_deadband_and_min_maps_to_min() -> None:
         auto_drive_enabled=True,
         reverse_brake_pct=25,
     )
-    assert cmd.speed_mps == 0.75
-    assert cmd.min_speed_enforced is True
+    assert cmd.speed_mps == 0.30
+    assert cmd.min_speed_enforced is False
 
 
-def test_command_from_cmd_vel_clamps_to_operational_limit_when_min_is_applied() -> None:
+def test_command_from_cmd_vel_low_speed_preserves_speed_and_clamps_steering() -> None:
     cmd = command_from_cmd_vel(
         linear_x=0.20,
         angular_z=0.10,
@@ -236,7 +236,7 @@ def test_command_from_cmd_vel_clamps_to_operational_limit_when_min_is_applied() 
         auto_drive_enabled=True,
         reverse_brake_pct=25,
     )
-    assert cmd.speed_mps == 0.50
+    assert cmd.speed_mps == 0.20
     assert cmd.steer_pct == 60
     assert cmd.requested_curvature_inv_m == pytest.approx(0.5)
     assert cmd.applied_curvature_inv_m == pytest.approx(
@@ -264,7 +264,7 @@ def test_command_from_cmd_vel_above_min_keeps_value() -> None:
     assert cmd.speed_mps == 1.20
 
 
-def test_command_from_cmd_vel_min_effective_is_clamped_by_max_speed() -> None:
+def test_min_effective_setting_cannot_raise_a_valid_upstream_speed() -> None:
     cmd = command_from_cmd_vel(
         linear_x=0.30,
         angular_z=0.0,
@@ -279,7 +279,8 @@ def test_command_from_cmd_vel_min_effective_is_clamped_by_max_speed() -> None:
         auto_drive_enabled=True,
         reverse_brake_pct=25,
     )
-    assert cmd.speed_mps == 0.60
+    assert cmd.speed_mps == 0.30
+    assert cmd.min_speed_enforced is False
 
 
 def test_command_from_cmd_vel_keeps_legacy_angular_at_patrol_speed_near_18deg() -> None:
@@ -448,3 +449,45 @@ def test_select_effective_command_auto_fresh() -> None:
     )
     assert result.source == "auto"
     assert result.command.speed_mps == 2.0
+
+
+def test_nav2_approach_speed_below_legacy_floor_is_not_raised() -> None:
+    cmd = command_from_cmd_vel(
+        linear_x=0.70,
+        angular_z=0.0,
+        brake_pct=0,
+        max_speed_mps=4.0,
+        max_reverse_mps=1.3,
+        vx_deadband_mps=0.10,
+        vx_min_effective_mps=0.75,
+        max_abs_angular_z=0.8,
+        **ACKERMANN_KWARGS,
+        invert_steer=False,
+        auto_drive_enabled=True,
+        reverse_brake_pct=25,
+        command_source=COMMAND_SOURCE_AUTO,
+    )
+    assert cmd.speed_mps == pytest.approx(0.70)
+    assert cmd.speed_mps <= cmd.requested_linear_x_mps
+    assert cmd.min_speed_enforced is False
+
+
+def test_safety_slowdown_below_legacy_floor_is_not_raised() -> None:
+    cmd = command_from_cmd_vel(
+        linear_x=0.40,
+        angular_z=0.05,
+        brake_pct=0,
+        max_speed_mps=4.0,
+        max_reverse_mps=1.3,
+        vx_deadband_mps=0.10,
+        vx_min_effective_mps=0.75,
+        max_abs_angular_z=0.8,
+        **ACKERMANN_KWARGS,
+        invert_steer=False,
+        auto_drive_enabled=True,
+        reverse_brake_pct=25,
+        command_source=COMMAND_SOURCE_AUTO,
+    )
+    assert cmd.speed_mps == pytest.approx(0.40)
+    assert cmd.speed_mps <= cmd.requested_linear_x_mps
+    assert cmd.min_speed_enforced is False
