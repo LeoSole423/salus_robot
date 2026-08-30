@@ -12,6 +12,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-47}" -e GZ_PART
   obstacle_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/empty.world"
   smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py world:=${obstacle_world} capability_profile:=no_obstacle_detection"
   smoke_start_launch snapshot "ros2 launch salus_navigation navigation_snapshot_sim.launch.py"
+  smoke_start_runtime_timing_probe
   smoke_run snapshot_probe "python3 /ros2_ws/tools/smoke_navigation_snapshot.py"
   smoke_note "snapshot_contract_valid"
 '

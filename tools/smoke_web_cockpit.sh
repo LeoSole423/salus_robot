@@ -12,6 +12,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-52}" -e GZ_PART
   web_port=$((18700 + ${ROS_DOMAIN_ID}))
   world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/empty.world"
   smoke_start_launch operational "ros2 launch salus_bringup sim_operational.launch.py headless:=true world:=${world} web_ws_port:=${web_port} runtime_dir:=${SMOKE_RUNTIME_DIR}/profile"
+  smoke_start_runtime_timing_probe
   smoke_run operational_probe "python3 /ros2_ws/tools/integration_probe.py --operational --timeout 90 --report-path ${SMOKE_ARTIFACT_DIR}/operational_probe.json"
   export SALUS_WEB_SMOKE_PORT="${web_port}"
   smoke_run web_probe "python3 /ros2_ws/tools/smoke_web_cockpit.py"

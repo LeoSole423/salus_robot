@@ -48,6 +48,11 @@ smoke_start_launch() {
   smoke_note "launch_started:${name}"
 }
 
+smoke_start_runtime_timing_probe() {
+  smoke_start_launch runtime_timing \
+    "python3 /ros2_ws/tools/runtime_timing_probe.py --scenario ${SMOKE_SCENARIO} --report-path ${SMOKE_ARTIFACT_DIR}/runtime_timing.json"
+}
+
 # Run a smoke assertion while preserving its stdout/stderr beside the launch
 # log.  This makes failures actionable without relying on CI's truncated
 # terminal output.

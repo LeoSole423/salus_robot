@@ -17,6 +17,7 @@ class CockpitProbe:
         self.socket = None
         self.broadcasts = []
         self.requests = 0
+        self.request_timings = []
 
     async def connect(self, timeout_s: float = 45.0) -> dict:
         deadline = time.monotonic() + timeout_s
@@ -47,16 +48,44 @@ class CockpitProbe:
         message = {"op": operation, "client_req_id": request_id}
         if payload:
             message.update(payload)
-        await self.socket.send(json.dumps(message))
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            incoming = json.loads(
-                await asyncio.wait_for(self.socket.recv(), deadline - time.monotonic())
-            )
-            if incoming.get("client_req_id") == request_id:
-                return incoming
-            self.broadcasts.append(incoming)
-        raise RuntimeError(f"{operation} response timed out")
+        started = time.monotonic()
+        try:
+            await self.socket.send(json.dumps(message))
+            deadline = started + timeout_s
+            while time.monotonic() < deadline:
+                incoming = json.loads(
+                    await asyncio.wait_for(
+                        self.socket.recv(), deadline - time.monotonic()
+                    )
+                )
+                if incoming.get("client_req_id") == request_id:
+                    completed = time.monotonic()
+                    self.request_timings.append({
+                        "operation": operation,
+                        "client_req_id": request_id,
+                        "started_monotonic_s": started,
+                        "completed_monotonic_s": completed,
+                        "duration_s": max(0.0, completed - started),
+                        "outcome": "response",
+                        "response_ok": incoming.get("ok"),
+                        "response_error": incoming.get("error", ""),
+                    })
+                    return incoming
+                self.broadcasts.append(incoming)
+            raise RuntimeError(f"{operation} response timed out")
+        except Exception as exc:
+            completed = time.monotonic()
+            self.request_timings.append({
+                "operation": operation,
+                "client_req_id": request_id,
+                "started_monotonic_s": started,
+                "completed_monotonic_s": completed,
+                "duration_s": max(0.0, completed - started),
+                "outcome": "exception",
+                "response_ok": None,
+                "response_error": f"{type(exc).__name__}: {exc}",
+            })
+            raise
 
     async def receive_until(self, predicate, timeout_s: float = 8.0):
         deadline = time.monotonic() + timeout_s
@@ -94,12 +123,12 @@ def require_ok(response, operation):
         raise RuntimeError(f"{operation} failed: {response}")
 
 
-async def scenario() -> dict:
+async def scenario(evidence: dict) -> dict:
     port = int(os.environ.get("SALUS_WEB_SMOKE_PORT", "18766"))
     first = CockpitProbe(f"ws://127.0.0.1:{port}")
     second = CockpitProbe(f"ws://127.0.0.1:{port}")
     heartbeat_task = None
-    evidence = {"port": port, "operations": [], "broadcast_ops": []}
+    evidence.update({"port": port, "operations": [], "broadcast_ops": []})
     try:
         initial = await first.connect()
         if initial.get("op") != "state" or initial.get("control_locked") is not True:
@@ -271,6 +300,10 @@ async def scenario() -> dict:
         })
         return evidence
     finally:
+        evidence["request_timings"] = {
+            "primary": first.request_timings,
+            "secondary": second.request_timings,
+        }
         if heartbeat_task is not None:
             heartbeat_task.cancel()
             await asyncio.gather(heartbeat_task, return_exceptions=True)
@@ -284,7 +317,7 @@ def main() -> int:
     evidence = {}
     error = None
     try:
-        evidence = asyncio.run(scenario())
+        asyncio.run(scenario(evidence))
         success = True
         print("Cockpit WebSocket simulation smoke test passed")
         return 0

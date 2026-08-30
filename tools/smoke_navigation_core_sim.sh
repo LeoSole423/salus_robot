@@ -10,6 +10,7 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-44}" -e GZ_PART
   trap smoke_cleanup EXIT
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch navigation "ros2 launch salus_bringup integration_sim.launch.py world:=${free_world}"
+  smoke_start_runtime_timing_probe
   smoke_run navigation_core "python3 /ros2_ws/tools/smoke_navigation_core_sim.py"
   smoke_note "navigation_goal_cancel_manual_valid"
 '
