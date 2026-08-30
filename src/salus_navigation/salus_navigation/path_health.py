@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import rclpy
@@ -22,7 +23,9 @@ class CostmapView:
     origin_x: float
     origin_y: float
     stamp_s: float
-    data: tuple[int, ...]
+    # Humble represents Costmap.data as array.array('B'); retain it instead of
+    # materializing a Python tuple for the whole rolling grid on every update.
+    data: Sequence[int]
 
 
 @dataclass(frozen=True)
@@ -172,6 +175,16 @@ class PathHealthPolicy:
         return self._result(PathHealth.KEEP_PATH, "path_healthy", age, maximum, checked, error)
 
 
+def costmap_view_from_message(message: Costmap) -> CostmapView:
+    """Adapt a received Costmap without copying its cell sequence."""
+    meta = message.metadata
+    stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1.0e-9
+    return CostmapView(
+        meta.resolution, meta.size_x, meta.size_y,
+        meta.origin.position.x, meta.origin.position.y, stamp, message.data,
+    )
+
+
 class PathHealthNode(Node):
     """ROS boundary around PathHealthPolicy, consumed by the thin BT plugin."""
 
@@ -195,10 +208,8 @@ class PathHealthNode(Node):
         self.create_service(EvaluatePathHealth, str(self.get_parameter("service_name").value), self._on_evaluate)
 
     def _on_costmap(self, message):
-        stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1.0e-9
-        meta = message.metadata
         self._costmap_frame = message.header.frame_id
-        self._costmap = CostmapView(meta.resolution, meta.size_x, meta.size_y, meta.origin.position.x, meta.origin.position.y, stamp, tuple(message.data))
+        self._costmap = costmap_view_from_message(message)
 
     def _on_evaluate(self, request, response):
         now_s = self.get_clock().now().nanoseconds * 1.0e-9

@@ -1,10 +1,15 @@
 """Characterization tests for stable-path clearance and replanning policy."""
 
+from array import array
+import gc
+from types import SimpleNamespace
+
+from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from salus_interfaces.msg import PathHealth
 
-from salus_navigation.path_health import CostmapView, PathHealthPolicy
+from salus_navigation.path_health import CostmapView, PathHealthNode, PathHealthPolicy, costmap_view_from_message
 
 
 def make_path(points):
@@ -28,6 +33,68 @@ def test_empty_costmap_keeps_path_and_small_error_does_not_replan():
     result = policy.evaluate(make_path([(1, 1), (12, 1)]), robot_x=1, robot_y=1.3, costmap=costmap(), now_s=10.0)
     assert result.state == PathHealth.KEEP_PATH
     assert result.reason == "path_healthy"
+
+
+def test_cell_cost_preserves_cost_values_for_non_tuple_backing_sequence():
+    policy = PathHealthPolicy()
+    view = CostmapView(1.0, 3, 2, 10.0, 20.0, 10.0, array("B", [0, 42, 252, 253, 254, 255]))
+
+    assert [policy._cell_cost(view, x, y) for x, y in (
+        (10.0, 20.0), (11.0, 20.0), (12.0, 20.0),
+        (10.0, 21.0), (11.0, 21.0), (12.0, 21.0),
+    )] == [0, 42, 252, 253, 254, 255]
+
+
+def test_cell_cost_returns_free_for_coordinates_outside_costmap():
+    policy = PathHealthPolicy()
+    view = CostmapView(0.5, 2, 2, 10.0, 20.0, 10.0, [253, 254, 255, 100])
+
+    assert policy._cell_cost(view, 9.99, 20.0) == 0
+    assert policy._cell_cost(view, 10.0, 19.99) == 0
+    assert policy._cell_cost(view, 11.0, 20.0) == 0
+    assert policy._cell_cost(view, 10.0, 21.0) == 0
+
+
+def test_costmap_adapter_keeps_ros_sequence_identity():
+    data = array("B", [0, 253, 254, 255])
+    message = SimpleNamespace(
+        header=SimpleNamespace(stamp=SimpleNamespace(sec=10, nanosec=500_000_000)),
+        metadata=SimpleNamespace(
+            resolution=0.5,
+            size_x=2,
+            size_y=2,
+            origin=SimpleNamespace(position=SimpleNamespace(x=1.0, y=2.0)),
+        ),
+        data=data,
+    )
+
+    view = costmap_view_from_message(message)
+
+    assert view.data is data
+    assert view.stamp_s == 10.5
+    assert PathHealthPolicy._cell_cost(view, 1.5, 2.5) == 255
+
+
+def test_on_costmap_retains_data_after_message_is_collected():
+    message = Costmap()
+    message.header.frame_id = "map"
+    message.metadata.resolution = 1.0
+    message.metadata.size_x = 2
+    message.metadata.size_y = 2
+    message.data = array("B", [0, 253, 254, 255])
+    node = object.__new__(PathHealthNode)
+
+    node._on_costmap(message)
+    view = node._costmap
+    assert view.data is message.data
+
+    del message
+    gc.collect()
+
+    assert view.data[0] == 0
+    assert view.data[1] == 253
+    assert view.data[2] == 254
+    assert view.data[3] == 255
 
 
 def test_lethal_cost_forces_replan():
