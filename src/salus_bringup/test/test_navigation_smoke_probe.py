@@ -18,6 +18,18 @@ def test_rviz_goal_is_published_once_after_discovery_and_uses_fresh_commands():
     assert "node.final.clear()" in section
 
 
+def test_right_turn_rviz_goal_is_published_once_after_discovery() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    section = source.split("right_turn_goal = rviz_goal_from_current_pose(", 1)[1].split(
+        "response = call(", 1
+    )[0]
+
+    assert "get_subscription_count() >= 1" in section
+    assert section.count("node.rviz_goal.publish(right_turn_goal)") == 1
+    assert "stimulate=" not in section
+    assert '"right-turn RViz goal did not produce a plan"' in section
+
+
 def test_cancel_service_is_the_terminal_boundary_before_the_next_goal() -> None:
     source = PROBE.read_text(encoding="utf-8")
     cancellation = source.split(
