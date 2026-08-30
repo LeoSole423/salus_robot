@@ -5,6 +5,7 @@ from collections import deque
 from dataclasses import dataclass
 import json
 import math
+import time
 from typing import Deque, Optional
 
 import rclpy
@@ -95,29 +96,120 @@ class GpsCourseHeading(Node):
             self.declare_parameter(name, value)
         p = lambda n: self.get_parameter(n).value
         self.estimator = CourseHeadingEstimator(min_distance_m=float(p("min_distance_m")), min_speed_mps=float(p("min_speed_mps")), max_abs_steer_deg=float(p("max_abs_steer_deg")), max_abs_yaw_rate_rps=float(p("max_abs_yaw_rate_rps")), max_fix_age_s=float(p("max_fix_age_s")), max_sample_dt_s=float(p("max_sample_dt_s")), invalid_hold_s=float(p("invalid_hold_s")))
-        self.speed = self.yaw_rate = 0.0; self.steer: Optional[float] = None; self.steer_valid = False
-        self.rtk_status, self.rtk_at = "", None
-        self.output = self.create_publisher(Imu, str(p("output_topic")), 10); self.debug = self.create_publisher(String, str(p("debug_topic")), 10)
-        self.create_subscription(NavSatFix, str(p("gps_topic")), self.on_fix, qos_profile_sensor_data)
+        self.speed = self.yaw_rate = 0.0
+        self.steer: Optional[float] = None
+        self.steer_valid = False
+        self.rtk_status = ""
+        self.rtk_at_monotonic: Optional[float] = None
+        self.output = self.create_publisher(Imu, str(p("output_topic")), 10)
+        self.debug = self.create_publisher(String, str(p("debug_topic")), 10)
+        self.create_subscription(
+            NavSatFix, str(p("gps_topic")), self.on_fix, qos_profile_sensor_data
+        )
         self.create_subscription(Odometry, str(p("odom_topic")), self.on_odom, 10)
-        self.create_subscription(DriveTelemetry, str(p("drive_telemetry_topic")), self.on_drive, 10)
+        self.create_subscription(
+            DriveTelemetry, str(p("drive_telemetry_topic")), self.on_drive, 10
+        )
         self.create_subscription(String, str(p("rtk_status_topic")), self.on_rtk, 10)
-        self.create_timer(0.2, self.publish)
+        # Course-over-ground gains new information only when a new GNSS fix
+        # arrives. Evaluate on that causal boundary instead of depending on a
+        # periodic timer that can be starved by high-rate odometry callbacks.
+    
+    def now(self) -> float:
+        return self.get_clock().now().nanoseconds / 1e9
 
-    def now(self) -> float: return self.get_clock().now().nanoseconds / 1e9
     def on_fix(self, msg: NavSatFix) -> None:
-        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
-        self.estimator.add_fix(msg.latitude, msg.longitude, stamp if stamp > 0 else self.now())
-    def on_odom(self, msg: Odometry) -> None: self.speed, self.yaw_rate = msg.twist.twist.linear.x, msg.twist.twist.angular.z
-    def on_drive(self, msg: DriveTelemetry) -> None: self.steer_valid, self.steer = bool(msg.fresh and msg.steer_valid), msg.steer_deg_measured
-    def on_rtk(self, msg: String) -> None: self.rtk_status, self.rtk_at = msg.data, self.now()
-    def publish(self) -> None:
-        now = self.now(); p = lambda n: self.get_parameter(n).value
-        rtk_valid = not bool(p("require_rtk")) or (self.rtk_at is not None and now - self.rtk_at <= float(p("rtk_status_max_age_s")) and normalize_rtk_status_label(self.rtk_status) in ("rtk_fixed", "rtk_fix"))
-        estimate = self.estimator.estimate(now_s=now, speed_mps=self.speed, steer_deg=self.steer, steer_valid=self.steer_valid, yaw_rate_rps=self.yaw_rate) if rtk_valid else HeadingEstimate(False, "rtk_status_rejected_or_stale", None, 0.0, self.speed, None)
-        self.debug.publish(String(data=json.dumps({"valid":estimate.valid, "reason":estimate.reason, "distance_m":estimate.distance_m, "speed_mps":estimate.speed_mps, "sample_dt_s":estimate.sample_dt_s}, sort_keys=True)))
+        stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+        if stamp_s <= 0.0:
+            stamp_s = self.now()
+            output_stamp = self.get_clock().now().to_msg()
+        else:
+            output_stamp = msg.header.stamp
+        self.estimator.add_fix(msg.latitude, msg.longitude, stamp_s)
+        self.publish(now_s=stamp_s, output_stamp=output_stamp)
+
+    def on_odom(self, msg: Odometry) -> None:
+        self.speed = msg.twist.twist.linear.x
+        self.yaw_rate = msg.twist.twist.angular.z
+
+    def on_drive(self, msg: DriveTelemetry) -> None:
+        self.steer_valid = bool(msg.fresh and msg.steer_valid)
+        self.steer = msg.steer_deg_measured
+
+    def on_rtk(self, msg: String) -> None:
+        self.rtk_status = msg.data
+        self.rtk_at_monotonic = time.monotonic()
+
+    def publish(self, *, now_s: Optional[float] = None, output_stamp=None) -> None:
+        now = self.now() if now_s is None else float(now_s)
+        p = lambda n: self.get_parameter(n).value
+        rtk_age_s = (
+            None
+            if self.rtk_at_monotonic is None
+            else max(0.0, time.monotonic() - self.rtk_at_monotonic)
+        )
+        rtk_valid = (
+            not bool(p("require_rtk"))
+            or (
+                rtk_age_s is not None
+                and rtk_age_s <= float(p("rtk_status_max_age_s"))
+                and normalize_rtk_status_label(self.rtk_status)
+                in ("rtk_fixed", "rtk_fix")
+            )
+        )
+        estimate = (
+            self.estimator.estimate(
+                now_s=now,
+                speed_mps=self.speed,
+                steer_deg=self.steer,
+                steer_valid=self.steer_valid,
+                yaw_rate_rps=self.yaw_rate,
+            )
+            if rtk_valid
+            else HeadingEstimate(
+                False,
+                "rtk_status_rejected_or_stale",
+                None,
+                0.0,
+                self.speed,
+                None,
+            )
+        )
+        self.debug.publish(
+            String(
+                data=json.dumps(
+                    {
+                        "valid": estimate.valid,
+                        "reason": estimate.reason,
+                        "distance_m": estimate.distance_m,
+                        "speed_mps": estimate.speed_mps,
+                        "sample_dt_s": estimate.sample_dt_s,
+                        "steer_valid": self.steer_valid,
+                        "steer_deg": self.steer,
+                        "yaw_rate_rps": self.yaw_rate,
+                        "rtk_valid": rtk_valid,
+                        "rtk_age_s": rtk_age_s,
+                    },
+                    sort_keys=True,
+                )
+            )
+        )
         if estimate.valid and estimate.yaw_rad is not None:
-            msg = Imu(); msg.header.stamp = self.get_clock().now().to_msg(); msg.header.frame_id = str(p("base_frame")); msg.orientation.z = math.sin(estimate.yaw_rad / 2); msg.orientation.w = math.cos(estimate.yaw_rad / 2); msg.orientation_covariance[8] = 0.05 if estimate.reason == "ok" else 0.2; self.output.publish(msg)
+            msg = Imu()
+            stamp = (
+                self.get_clock().now().to_msg()
+                if output_stamp is None
+                else output_stamp
+            )
+            msg.header.stamp.sec = int(stamp.sec)
+            msg.header.stamp.nanosec = int(stamp.nanosec)
+            msg.header.frame_id = str(p("base_frame"))
+            msg.orientation.z = math.sin(estimate.yaw_rad / 2)
+            msg.orientation.w = math.cos(estimate.yaw_rad / 2)
+            msg.orientation_covariance[8] = (
+                0.05 if estimate.reason == "ok" else 0.2
+            )
+            self.output.publish(msg)
 
 
 def main(args=None) -> None:
