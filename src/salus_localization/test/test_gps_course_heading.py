@@ -14,11 +14,15 @@ LON = -64.2410570
 
 
 class CapturingPublisher:
-    def __init__(self):
+    def __init__(self, subscription_count=1):
         self.messages = []
+        self.subscription_count = subscription_count
 
     def publish(self, message):
         self.messages.append(message)
+
+    def get_subscription_count(self):
+        return self.subscription_count
 
 
 def fix(stamp_s: int, east_m: float) -> NavSatFix:
@@ -58,6 +62,66 @@ def test_course_heading_evaluates_on_each_new_gps_fix() -> None:
         assert second["reason"] == "ok"
         assert len(output.messages) == 1
         assert output.messages[0].header.stamp.sec == 2
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_valid_heading_waits_for_selector_discovery_without_exceeding_fix_freshness() -> None:
+    rclpy.init()
+    node = GpsCourseHeading()
+    try:
+        output = CapturingPublisher(subscription_count=0)
+        debug = CapturingPublisher()
+        node.output = output
+        node.debug = debug
+        node.speed = 1.2
+        node.yaw_rate = 0.0
+        node.steer = 0.0
+        node.steer_valid = True
+        node.rtk_status = "rtk_fixed"
+        node.rtk_at_monotonic = time.monotonic()
+
+        node.on_fix(fix(1, 0.0))
+        node.on_fix(fix(2, 3.0))
+        assert not output.messages
+        assert node._pending_output is not None
+        payload = json.loads(debug.messages[-1].data)
+        assert payload["valid"] is True
+        assert payload["pending_output"] is True
+        assert payload["output_subscribers"] == 0
+
+        output.subscription_count = 1
+        node.now = lambda: 2.2
+        node._flush_pending_output()
+        assert len(output.messages) == 1
+        assert node._pending_output is None
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_pending_heading_is_dropped_after_existing_fix_freshness_window() -> None:
+    rclpy.init()
+    node = GpsCourseHeading()
+    try:
+        output = CapturingPublisher(subscription_count=0)
+        node.output = output
+        node.debug = CapturingPublisher()
+        node.speed = 1.2
+        node.yaw_rate = 0.0
+        node.steer = 0.0
+        node.steer_valid = True
+        node.rtk_status = "rtk_fixed"
+        node.rtk_at_monotonic = time.monotonic()
+
+        node.on_fix(fix(1, 0.0))
+        node.on_fix(fix(2, 3.0))
+        output.subscription_count = 1
+        node.now = lambda: 3.0
+        node._flush_pending_output()
+        assert not output.messages
+        assert node._pending_output is None
     finally:
         node.destroy_node()
         rclpy.shutdown()
