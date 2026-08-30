@@ -15,3 +15,4 @@ services:
     environment:
       DISPLAY: ${DISPLAY:-}
       RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      FASTDDS_BUILTIN_TRANSPORTS: ${FASTDDS_BUILTIN_TRANSPORTS:-DEFAULT}

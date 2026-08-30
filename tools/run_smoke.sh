@@ -47,11 +47,15 @@ smoke_token="${SMOKE_RUN_TOKEN:-$(date -u +%Y%m%dT%H%M%S)-$$-${RANDOM}}"
 export SMOKE_RUN_TOKEN="${smoke_token}"
 export SMOKE_GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-smoke-${smoke_token}}"
 export SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-${TMPDIR:-/tmp}/salus-smoke-runtime/${smoke_token}}"
+# Smoke/CI processes use UDPv4 only to avoid Fast DDS shared-memory port/lock
+# collisions observed on GitHub runners. Interactive/production compose usage
+# keeps Fast DDS DEFAULT unless explicitly overridden.
+export FASTDDS_BUILTIN_TRANSPORTS="${SMOKE_FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}"
 mkdir -p "${SMOKE_RUNTIME_DIR}"
 cleanup_runner() {
   rm -rf -- "${SMOKE_RUNTIME_DIR}"
 }
 trap cleanup_runner EXIT INT TERM
 
-echo "[smoke-runner] hard timeout: ${timeout_s}s; domain: ${SMOKE_ROS_DOMAIN_ID}; partition: ${SMOKE_GZ_PARTITION}; command: $*"
+echo "[smoke-runner] hard timeout: ${timeout_s}s; domain: ${SMOKE_ROS_DOMAIN_ID}; partition: ${SMOKE_GZ_PARTITION}; fastdds: ${FASTDDS_BUILTIN_TRANSPORTS}; command: $*"
 timeout --foreground --signal=TERM --kill-after=10s "${timeout_s}s" "$@"

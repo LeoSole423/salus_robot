@@ -17,6 +17,7 @@ smoke_init() {
   printf '%s\n' "${ROS_DOMAIN_ID:-}" >"${SMOKE_ARTIFACT_DIR}/ros_domain_id.txt"
   printf '%s\n' "${GZ_PARTITION:-}" >"${SMOKE_ARTIFACT_DIR}/gz_partition.txt"
   printf '%s\n' "${SMOKE_RUNTIME_DIR:-}" >"${SMOKE_ARTIFACT_DIR}/runtime_dir.txt"
+  printf '%s\n' "${FASTDDS_BUILTIN_TRANSPORTS:-}" >"${SMOKE_ARTIFACT_DIR}/fastdds_builtin_transports.txt"
 }
 
 smoke_reserve_artifact_name() {
@@ -174,6 +175,7 @@ with open(path, "w", encoding="utf-8") as report:
             "gz_partition": os.environ.get("GZ_PARTITION", ""),
             "run_token": os.environ.get("SMOKE_RUN_TOKEN", ""),
             "runtime_dir": os.environ.get("SMOKE_RUNTIME_DIR", ""),
+            "fastdds_builtin_transports": os.environ.get("FASTDDS_BUILTIN_TRANSPORTS", ""),
         },
     }, report, indent=2, sort_keys=True)
     report.write("\n")
