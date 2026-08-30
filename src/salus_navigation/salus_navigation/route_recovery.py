@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from math import inf
+from math import hypot, inf
 
 from .route_model import PreparedRoute
 
@@ -185,3 +185,17 @@ def resolve_forward_reanchor(route: PreparedRoute, *, current_index: int,
     return ReanchorResolution(current, nearest, nearest != current,
                               "forward_match" if nearest != current else "already_anchored",
                               distance)
+
+
+def checkpoint_within_tolerance(*, checkpoint_x: float | None,
+                                checkpoint_y: float | None,
+                                robot_x: float | None,
+                                robot_y: float | None,
+                                tolerance_m: float) -> bool:
+    """Return explicit geometric evidence that the pending checkpoint was reached."""
+    if None in (checkpoint_x, checkpoint_y, robot_x, robot_y):
+        return False
+    return hypot(
+        float(checkpoint_x) - float(robot_x),
+        float(checkpoint_y) - float(robot_y),
+    ) <= max(0.0, float(tolerance_m))
