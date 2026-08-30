@@ -12,6 +12,8 @@ def test_zone_contracts_and_launch_are_installed():
     launch = (ROOT / "launch" / "navigation_zones_sim.launch.py").read_text(encoding="utf-8")
     assert '"srv/SetZonesGeoJson.srv"' in cmake
     assert '"srv/GetZonesState.srv"' in cmake
+    assert '"msg/ProjectedKeepoutPolygon.msg"' in cmake
+    assert '"msg/ProjectedKeepoutState.msg"' in cmake
     assert "keepout_filter_mask_server" in launch
     assert "costmap_filter_info_server" in launch
     assert "lifecycle_manager_keepout_filters" in launch
@@ -19,6 +21,23 @@ def test_zone_contracts_and_launch_are_installed():
     assert '"service_timeout_s": 15.0' in launch
     assert '"initial_reload_max_attempts": 20' in launch
     assert "TimerAction" not in launch
+
+
+def test_projected_keepout_state_is_transient_local_and_reliable():
+    manager = (ROOT / "salus_navigation" / "zones_manager.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"/zones_manager/projected_keepouts"' in manager
+    assert "DurabilityPolicy.TRANSIENT_LOCAL" in manager
+    assert "ReliabilityPolicy.RELIABLE" in manager
+    assert "depth=1" in manager
+    accept = manager[
+        manager.index("    def _accept_active_state("):
+        manager.index("    def _reload_map(")
+    ]
+    assert accept.index("self._projected_revision += 1") < accept.index(
+        "self._projected_pub.publish(message)"
+    )
 
 
 def test_costmaps_and_runtime_data_are_separated():
