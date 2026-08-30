@@ -4,19 +4,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_nightly_workflow_has_budget_and_ten_scheduled_suites():
+def test_nightly_workflow_uses_registry_matrix_per_scenario():
     workflow = (ROOT / '.github/workflows/nightly-smokes.yml').read_text()
 
-    assert 'timeout-minutes: 90' in workflow
-    assert 'Repeat isolated smoke scenarios three times' not in workflow
-    assert "inputs.repetitions || '10'" in workflow
+    assert 'python3 tools/smoke_registry.py --nightly-matrix' in workflow
+    assert 'fail-fast: false' in workflow
+    assert 'name: nightly / ${{ matrix.id }}' in workflow
+    assert 'timeout-minutes: ${{ matrix.job_timeout_minutes }}' in workflow
+    assert 'SMOKE_SCENARIO_ID: ${{ matrix.id }}' in workflow
+    assert 'nightly-${{ matrix.id }}-artifacts' in workflow
+    assert 'timeout-minutes: 90' not in workflow
 
 
-def test_reliability_runner_writes_incremental_machine_summary():
+def test_reliability_runner_writes_per_scenario_incremental_summary():
     runner = (ROOT / 'tools/smoke_reliability.sh').read_text()
 
-    assert 'reliability-summary.json' in runner
+    assert 'SMOKE_SCENARIO_ID' in runner
+    assert 'configured_repetitions' in runner
+    assert 'completed_repetitions' in runner
+    assert 'passed_repetitions' in runner
+    assert 'failed_repetitions' in runner
+    assert 'incomplete_repetitions' in runner
     assert 'write_summary running' in runner
-    assert 'completed_suites' in runner
-    assert 'completed_scenarios' in runner
-    assert 'expected_scenarios' in runner
