@@ -2,7 +2,7 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 
-from builtin_interfaces.msg import Time
+from salus_interfaces.msg import ProjectedKeepoutState
 
 from salus_navigation.nav2_startup_coordinator import (
     Nav2StartupCoordinator,
@@ -132,10 +132,13 @@ def test_projected_keepout_message_filters_disabled_and_preserves_holes() -> Non
         },
     ]
 
+    stamp = ProjectedKeepoutState().header.stamp
+    stamp.sec = 12
+    stamp.nanosec = 34
     message = projected_keepout_state_message(
         "map",
         4,
-        Time(sec=12, nanosec=34),
+        stamp,
         polygons,
     )
 
@@ -162,7 +165,9 @@ def test_accept_active_projected_state_advances_revision_and_publishes() -> None
             self.sec = sec
 
         def to_msg(self):
-            return Time(sec=self.sec)
+            stamp = ProjectedKeepoutState().header.stamp
+            stamp.sec = self.sec
+            return stamp
 
     class FakeClock:
         def __init__(self) -> None:
