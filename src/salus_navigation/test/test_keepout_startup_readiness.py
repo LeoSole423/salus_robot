@@ -79,7 +79,7 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
         _require_map_server_active=lambda: (True, ""),
         _document=old_document,
         _document_text="old-json",
-        _write_mask=lambda _document: (False, "outside=zone_new"),
+        _write_mask=lambda _document: (False, "outside=zone_new", []),
         _reload_map=lambda: reload_calls.append(True) or (True, ""),
     )
 
@@ -102,7 +102,8 @@ def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() ->
         source.index("    def _apply(")
     ]
 
-    assert 'self._mask_source = "bootstrap_empty_confirmed"' in initial
+    assert 'mask_source="bootstrap_empty_confirmed"' in initial
+    assert "self._activate_document(" in initial
     assert "if zones_document_is_empty(document):" in initial
     assert "if self._clear_global.service_is_ready():" in reload_map
 
