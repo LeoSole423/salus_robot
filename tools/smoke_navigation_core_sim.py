@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import rclpy
+from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
@@ -21,7 +22,6 @@ from robot_localization.srv import FromLL
 from salus_interfaces.msg import (
     CapabilityState,
     CmdVelFinal,
-    NavEvent,
     NavTelemetry,
     PathHealth,
     SystemCapabilities,
@@ -45,7 +45,6 @@ class NavigationSmoke(Node):
         self.local_odom: list[Odometry] = []
         self.plans: list[NavPath] = []
         self.final: list[CmdVelFinal] = []
-        self.events: list[NavEvent] = []
         self.telemetry: list[NavTelemetry] = []
         self.path_health: list[PathHealth] = []
         self.raw_commands: list[Twist] = []
@@ -93,7 +92,6 @@ class NavigationSmoke(Node):
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
-        self.create_subscription(NavEvent, "/nav_command_server/events", self.events.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
@@ -144,29 +142,6 @@ class NavigationSmoke(Node):
         request.lon = DATUM_LON + x_m / (111_320.0 * math.cos(math.radians(DATUM_LAT)))
         request.yaw_deg = math.degrees(yaw_rad)
         return request
-
-
-def nav_event_detail(message: NavEvent, key: str) -> str | None:
-    for detail in message.details:
-        if detail.key == key:
-            return detail.value
-    return None
-
-
-def has_causal_goal_success(events: list[NavEvent], baseline_event_id: int) -> bool:
-    accepted_generations = {
-        nav_event_detail(message, "goal_generation")
-        for message in events
-        if message.event_id > baseline_event_id
-        and message.code == "GOAL_ACCEPTED"
-    }
-    accepted_generations.discard(None)
-    return any(
-        message.event_id > baseline_event_id
-        and message.code == "GOAL_RESULT_SUCCEEDED"
-        and nav_event_detail(message, "goal_generation") in accepted_generations
-        for message in events
-    )
 
 
 def wait_for(node: NavigationSmoke, predicate, timeout_s: float, error: str) -> None:
@@ -455,10 +430,7 @@ def main() -> int:
             "cancel service returned before the right-turn goal became terminal",
         )
 
-        short_goal_event_baseline = max(
-            (message.event_id for message in node.events),
-            default=0,
-        )
+        short_goal_result_baseline = get_state(node).nav_result_event_id
         start = node.odom[-1]
         rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
         target_x = rviz_goal.pose.position.x
@@ -553,15 +525,21 @@ def main() -> int:
             raise RuntimeError(
                 "global odometry became invalid after Nav2 reported success"
             )
-        wait_for(
-            node,
-            lambda: has_causal_goal_success(
-                node.events,
-                short_goal_event_baseline,
-            ),
-            4.0,
-            "goal did not publish causal terminal success event",
-        )
+        terminal_state = get_state(node)
+        if (
+            terminal_state.goal_active
+            or terminal_state.nav_result_event_id <= short_goal_result_baseline
+            or terminal_state.nav_result_status != GoalStatus.STATUS_SUCCEEDED
+            or terminal_state.nav_result_text != "succeeded"
+        ):
+            raise RuntimeError(
+                "short goal terminal state is not a new success: "
+                f"active={terminal_state.goal_active} "
+                f"status={terminal_state.nav_result_status} "
+                f"text={terminal_state.nav_result_text!r} "
+                f"event_id={terminal_state.nav_result_event_id} "
+                f"baseline={short_goal_result_baseline}"
+            )
 
         node.final.clear()
         send_goal(node, 25.0)
@@ -605,7 +583,7 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "odometry": len(node.odom), "plans": len(node.plans),
             "raw_odometry": len(node.raw_odom), "local_odometry": len(node.local_odom),
-            "final_commands": len(node.final), "nav_events": len(node.events),
+            "final_commands": len(node.final),
             "telemetry": len(node.telemetry), "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
             "vehicle_commands": len(node.vehicle_commands),
