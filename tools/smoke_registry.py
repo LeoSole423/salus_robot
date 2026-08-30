@@ -70,6 +70,33 @@ def nightly_scripts() -> tuple[str, ...]:
     )
 
 
+def nightly_matrix(repetitions_override: int | None = None) -> dict[str, list[dict[str, int | str]]]:
+    if repetitions_override is not None and repetitions_override <= 0:
+        raise ValueError("nightly repetitions override must be positive")
+    include = []
+    for scenario in SCENARIOS:
+        if not scenario["participation"]["nightly"]:
+            continue
+        repetitions = (
+            int(scenario["nightly_repetitions"])
+            if repetitions_override is None
+            else int(repetitions_override)
+        )
+        hard_timeout_s = int(scenario["timeouts_s"]["nightly"])
+        include.append(
+            {
+                "id": scenario["id"],
+                "repetitions": repetitions,
+                "hard_timeout_s": hard_timeout_s,
+                "job_timeout_minutes": max(
+                    20,
+                    (repetitions * hard_timeout_s + 900) // 60 + 1,
+                ),
+            }
+        )
+    return {"include": include}
+
+
 def default_nightly_repetitions() -> int:
     repetitions = {
         scenario["nightly_repetitions"]
@@ -85,10 +112,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nightly-scripts", action="store_true")
     parser.add_argument("--nightly-repetitions", action="store_true")
+    parser.add_argument("--nightly-matrix", action="store_true")
+    parser.add_argument("--nightly-repetitions-override", type=int)
     parser.add_argument("--ids", choices=("pr", "full", "main", "nightly"))
     args = parser.parse_args()
     if args.nightly_scripts:
         print("\n".join(nightly_scripts()))
+    elif args.nightly_matrix:
+        print(json.dumps(nightly_matrix(args.nightly_repetitions_override), separators=(",", ":")))
     elif args.nightly_repetitions:
         print(default_nightly_repetitions())
     elif args.ids:
