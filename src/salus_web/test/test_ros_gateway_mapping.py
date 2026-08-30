@@ -112,6 +112,13 @@ def test_required_camera_round_trip_precedes_websocket_listen() -> None:
 
     assert "async def wait_for_required_service(" in gateway
     assert '"required_service_startup_timeout_s", 20.0' in gateway
+    required = gateway[
+        gateway.index("    async def wait_for_required_service("):
+        gateway.index("    async def _call(")
+    ]
+    assert "discovery_deadline" in required
+    assert "asyncio.wait_for(future, self._service_timeout_s)" in required
+    assert "remaining_s" not in required
     assert '"require_camera_service", False' in gateway
     preflight = bridge.index("await node.wait_for_required_service(")
     listen = bridge.index("await server.start()")
