@@ -21,9 +21,10 @@ Con batalla `L = 0,94 m`, `R = L / tan(delta)`:
 | candidato intermedio a evaluar | 21,38° | 2,40 m |
 | candidato cercano a la frontera | 22,22° | 2,30 m |
 
-25° es un límite seguro provisional validado inicialmente en simulación;
-`hardware_validated: false`. El límite físico de 30° se conserva para el
-modelo y la protección mecánica. Manual mantiene su límite operativo actual.
+25° es un límite autónomo seguro provisional propuesto para evaluación;
+todavía no fue validado suficientemente en simulación ni en hardware real.
+`hardware_validated: false`. El límite físico de 30° se conserva para el modelo
+y la protección mecánica. Manual mantiene su límite operativo actual.
 
 ## Autoridades separadas
 
