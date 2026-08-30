@@ -23,7 +23,7 @@ afirmaciones funcionales.
 | rutas | `free.world` | misión, checkpoints, progreso y cancelación |
 | patrulla/HOME | `free.world` | fases de misión y retorno por batería |
 | snapshots | composición Nav2 | render y servicio PNG determinista |
-| Cockpit/cámara | composición completa | WebSocket, lease, PTZ y contratos web |
+| Cockpit/cámara | composición completa | WebSocket, lease, PTZ y contratos web; stress/reliability manual, no gate PR/main |
 | integración | mundo de composición | procesos, lifecycle y contratos, sin repetir escenarios funcionales |
 
 La tolerancia de arranque solamente controla cuánto se espera por una
@@ -36,8 +36,15 @@ distancia recorrida durante `JOIN_LOOP`, distancia al target, último comando
 seguro/final y el historial de path-health. Estos campos son evidencia de
 fallo; no sustituyen ni suavizan las aserciones de fase y retorno HOME.
 
-En un PR, `build-unit` es obligatorio y `simulation-core` /
-`navigation-missions` ejecutan sólo los escenarios seleccionados por
+En un PR, `build-unit` es obligatorio y la matriz de smokes ejecuta sólo los
+escenarios funcionales seleccionados por
 [`ci-change-aware.md`](ci-change-aware.md). Cambios compartidos o desconocidos
-caen en FULL CI. El workflow nocturno conserva la suite completa, admite
-repeticiones configurables (normalmente diez) y mantiene artefactos de diagnóstico.
+caen en FULL CI funcional.
+
+El full `web_cockpit` no pertenece a esa matriz porque la composición completa
+satura el runner estándar de 4 vCPU y pasa a ser una prueba
+stress/reliability. Se conserva registrada y puede ejecutarse en una máquina
+con margen mediante
+`python3 tools/run_registered_smoke.py web_cockpit --context manual`.
+El nightly mantiene sus repeticiones independientes y artefactos de
+diagnóstico para los escenarios habilitados en el registro.

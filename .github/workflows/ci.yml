@@ -40,7 +40,6 @@ jobs:
       smoke_routes: ${{ steps.scope.outputs.smoke_routes }}
       smoke_patrol_battery: ${{ steps.scope.outputs.smoke_patrol_battery }}
       smoke_snapshot: ${{ steps.scope.outputs.smoke_snapshot }}
-      smoke_web_cockpit: ${{ steps.scope.outputs.smoke_web_cockpit }}
     steps:
       - uses: actions/checkout@v4
         with:
