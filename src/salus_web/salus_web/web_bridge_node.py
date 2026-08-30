@@ -8,6 +8,7 @@ import time
 
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
+from salus_interfaces.srv import CameraPtzState
 
 from .operator_guard import OperatorControlGuard
 from .operator_lease import OperatorLease
@@ -34,6 +35,11 @@ async def _serve(node: CockpitRosGateway) -> None:
         queue_capacity=int(node.get_parameter("client_queue_capacity").value),
     )
     node.set_broadcast_callback(server.broadcast_from_thread)
+    if bool(node.get_parameter("require_camera_service").value):
+        await node.wait_for_required_service(
+            "get_camera_ptz_state",
+            CameraPtzState.Request(),
+        )
     await server.start()
     host = node.get_parameter("ws_host").value
     port = node.get_parameter("ws_port").value
