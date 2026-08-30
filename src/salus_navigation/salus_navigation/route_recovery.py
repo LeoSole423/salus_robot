@@ -164,7 +164,8 @@ class BlockedRecoveryPolicy:
 
 def resolve_forward_reanchor(route: PreparedRoute, *, current_index: int,
                              robot_x: float | None, robot_y: float | None,
-                             tolerance_m: float = 8.0) -> ReanchorResolution:
+                             tolerance_m: float = 8.0,
+                             max_index: int | None = None) -> ReanchorResolution:
     """Choose a nearby point without moving backwards in the active lap."""
     points = route.waypoints
     if not points:
@@ -174,7 +175,10 @@ def resolve_forward_reanchor(route: PreparedRoute, *, current_index: int,
         return ReanchorResolution(current, current, False, "pose_unavailable")
     # Do not wrap here. A loop may wrap only after the executor has crossed
     # its closure and advanced loop_iteration.
-    candidates = range(current, len(points))
+    upper = len(points) - 1 if max_index is None else max(
+        current, min(int(max_index), len(points) - 1)
+    )
+    candidates = range(current, upper + 1)
     nearest = min(candidates, key=lambda index:
                   ((points[index].map_x or 0.0) - robot_x) ** 2
                   + ((points[index].map_y or 0.0) - robot_y) ** 2)
