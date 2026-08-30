@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Smoke the route executor through its public ROS contracts."""
+import json
 import math
 import os
 import sys
@@ -14,6 +15,7 @@ from lifecycle_msgs.srv import GetState
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.time import Time
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
@@ -22,6 +24,7 @@ from salus_interfaces.srv import (
 from smoke_runtime import (
     AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps, stamp_ns,
 )
+from std_msgs.msg import String
 from tf2_ros import Buffer, TransformListener
 
 LAT, LON = -31.4858037, -64.2410570
@@ -47,6 +50,8 @@ class Smoke(Node):
         self.path_health, self.telemetry, self.events = [], [], []
         self.progress_trace = []
         self.next_progress_sample_at = 0.0
+        self.course_heading_debug = []
+        self.orientation_selection_debug = []
         self.global_costmaps, self.local_costmaps = [], []
         self.create_subscription(
             Odometry, "/odometry/global", self.odom.append, 10
@@ -67,6 +72,22 @@ class Smoke(Node):
         )
         self.create_subscription(
             Costmap, "/local_costmap/costmap_raw", self.local_costmaps.append, 10
+        )
+        self.create_subscription(
+            String,
+            "/gps/course_heading/debug",
+            lambda message: self._append_json(
+                self.course_heading_debug, message
+            ),
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/localization/orientation_selection/debug",
+            lambda message: self._append_json(
+                self.orientation_selection_debug, message
+            ),
+            10,
         )
         self.set = self.create_client(SetRouteMissionLL, "/route_executor/set_route_mission_ll")
         self.state = self.create_client(GetRouteMissionState, "/route_executor/get_route_mission_state")
@@ -134,6 +155,38 @@ class Smoke(Node):
         return startup_evidence_is_ready(evidence)
 
     @staticmethod
+    def _append_json(target, message):
+        try:
+            payload = json.loads(message.data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if isinstance(payload, dict):
+            target.append(payload)
+
+    def _map_to_odom(self):
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                "map", "odom", Time()
+            )
+        except Exception:
+            return None
+        translation = transform.transform.translation
+        rotation = transform.transform.rotation
+        yaw = math.atan2(
+            2.0 * (rotation.w * rotation.z + rotation.x * rotation.y),
+            1.0 - 2.0 * (
+                rotation.y * rotation.y + rotation.z * rotation.z
+            ),
+        )
+        return {
+            "translation_xy": [
+                float(translation.x),
+                float(translation.y),
+            ],
+            "yaw_rad": float(yaw),
+        }
+
+    @staticmethod
     def _xy(message):
         position = message.pose.pose.position
         return float(position.x), float(position.y)
@@ -197,6 +250,17 @@ class Smoke(Node):
             "local_displacement_m": (
                 self._displacement(local_start, self.local_odom[-1])
                 if self.local_odom
+                else None
+            ),
+            "map_to_odom": self._map_to_odom(),
+            "course_heading": (
+                self.course_heading_debug[-1]
+                if self.course_heading_debug
+                else None
+            ),
+            "orientation_selection": (
+                self.orientation_selection_debug[-1]
+                if self.orientation_selection_debug
                 else None
             ),
             "command": (
@@ -436,6 +500,16 @@ def main():
             "chunks": len(node.chunks),
             "final_commands": len(node.final),
             "first_checkpoint_progress_trace": node.progress_trace,
+            "last_course_heading": (
+                node.course_heading_debug[-1]
+                if node.course_heading_debug
+                else None
+            ),
+            "last_orientation_selection": (
+                node.orientation_selection_debug[-1]
+                if node.orientation_selection_debug
+                else None
+            ),
             "global_costmaps": len(node.global_costmaps),
             "local_costmaps": len(node.local_costmaps),
             "set_route_acceptance_latency_s": acceptance_latency_s,
