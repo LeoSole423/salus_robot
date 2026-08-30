@@ -37,3 +37,41 @@ La llegada tiene dos referencias deliberadamente separadas:
 
 El error final siempre queda registrado, por lo que estos valores pueden
 endurecerse después usando distribuciones reales y no una impresión visual.
+
+## Matriz Ackermann velocidad × curvatura
+
+`config/matrices/ackermann_speed_curvature.yaml` define la primera matriz
+obstacle-free: velocidades 0,8/1,2/1,6 m/s, recto, llegada corta y arcos de
+radio solicitado 8 m y 4 m en ambos sentidos. El radio es la geometría que
+solicita el caso; el plan y el ángulo de dirección aplicado siguen siendo
+evidencia observada separada en cada bundle. Los valores no modifican Nav2,
+los límites Ackermann ni la seguridad.
+
+La ejecución inicia una simulación limpia por trial para evitar que la pose
+final, costmaps, plan o estado de Nav2 del trial anterior lo contaminen. Antes
+de cada meta aplica y lee `FollowPath.desired_linear_vel` en
+`/controller_server`; el resultado y el readback efectivo quedan en los dos
+JSON del trial. Si Humble rechaza el cambio runtime, el trial se preserva como
+fallido: no se sustituye por un valor supuesto.
+
+Ejecutar la matriz completa y producir el resumen report-only:
+
+```bash
+./tools/nav_eval.sh matrix \
+  src/salus_evaluation/config/matrices/ackermann_speed_curvature.yaml
+```
+
+También puede agregarse una colección ya capturada de bundles, en el orden
+determinista de la matriz:
+
+```bash
+./tools/nav_eval.sh matrix-summary \
+  src/salus_evaluation/config/matrices/ackermann_speed_curvature.yaml \
+  artifacts/evaluations/matrix-baseline \
+  artifacts/evaluations/<trial-01> ... artifacts/evaluations/<trial-54>
+```
+
+Produce `matrix-manifest.json`, `matrix-summary.json`, CSV y HTML. Los
+agregados continuos incluyen mínimo, mediana, máximo y P95 cuando hay al menos
+dos muestras. Los performance gates se mantienen explícitamente en
+`calibrating/report-only`; los gates funcionales de cada bundle no cambian.
