@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 
 LAUNCH = Path(__file__).parents[1] / "launch" / "sim_operational.launch.py"
@@ -79,6 +80,7 @@ def test_persistence_contract_launch_contains_only_state_owners() -> None:
 
 
 def test_persistence_smoke_restarts_minimal_contract_and_not_full_operational() -> None:
+    subprocess.run(["bash", "-n", str(PERSISTENCE_SMOKE)], check=True)
     contents = PERSISTENCE_SMOKE.read_text(encoding="utf-8")
     assert contents.count("persistence_contract.launch.py") == 2
     assert "smoke_operational_persistence.py --mode seed" in contents
