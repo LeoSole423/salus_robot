@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from rcl_interfaces.msg import Parameter, ParameterType, ParameterValue
 from rcl_interfaces.srv import SetParameters
 import rclpy
@@ -25,6 +26,9 @@ class NavigationProfileCoordinator(Node):
     def __init__(self) -> None:
         super().__init__("navigation_profile_coordinator")
         self.declare_parameter("request_timeout_s", 3.0)
+        # Worst case: four apply attempts plus rollback of three components,
+        # each bounded by request_timeout_s.
+        self.declare_parameter("transaction_timeout_s", 21.0)
         group = ReentrantCallbackGroup()
         self._parameter_clients = {
             "ground_filter": self.create_client(
@@ -56,22 +60,46 @@ class NavigationProfileCoordinator(Node):
                     double_parameter("inflation_layer.cost_scaling_factor", value.global_cost_scaling)]
         return [double_parameter("FollowPath.desired_linear_vel", value.desired_linear_vel)]
 
-    def _set_component(self, component: str, profile: str) -> tuple[bool, str]:
+    def _set_component(
+        self,
+        component: str,
+        profile: str,
+        transaction_deadline: float,
+    ) -> tuple[bool, str]:
         client = self._parameter_clients[component]
-        timeout = float(self.get_parameter("request_timeout_s").value)
-        if not client.wait_for_service(timeout_sec=timeout):
+        request_timeout = max(
+            0.1, float(self.get_parameter("request_timeout_s").value)
+        )
+        component_deadline = min(
+            transaction_deadline,
+            time.monotonic() + request_timeout,
+        )
+
+        remaining = component_deadline - time.monotonic()
+        if remaining <= 0.0:
+            return False, f"{component} transaction deadline exhausted"
+        if not client.wait_for_service(timeout_sec=remaining):
             return False, f"{component} parameter service unavailable"
+
         try:
-            future = client.call_async(SetParameters.Request(
-                parameters=self._parameters_for(component, profile)))
+            future = client.call_async(
+                SetParameters.Request(
+                    parameters=self._parameters_for(component, profile)
+                )
+            )
             ready = threading.Event()
             future.add_done_callback(lambda _done: ready.set())
-            if not ready.wait(timeout):
+            remaining = component_deadline - time.monotonic()
+            if remaining <= 0.0 or not ready.wait(remaining):
                 return False, f"{component} update timed out"
             response = future.result()
         except Exception as exc:
             return False, f"{component} update failed: {exc}"
-        failures = [result.reason or "rejected" for result in response.results if not result.successful]
+        failures = [
+            result.reason or "rejected"
+            for result in response.results
+            if not result.successful
+        ]
         return (not failures), "; ".join(failures)
 
     def _apply(self, request, response):
@@ -81,14 +109,23 @@ class NavigationProfileCoordinator(Node):
             response.ok, response.error = False, error
             response.active_profile = self._transaction.active_profile
             return response
+        transaction_deadline = time.monotonic() + max(
+            0.1, float(self.get_parameter("transaction_timeout_s").value)
+        )
         for component in tuple(self._transaction.pending):
-            ok, reason = self._set_component(component, target)
+            ok, reason = self._set_component(
+                component, target, transaction_deadline
+            )
             self._transaction.confirm(component, ok, reason)
             if not ok:
                 break
         if self._transaction.state == TransactionState.ROLLING_BACK:
             for component in tuple(self._transaction.pending):
-                ok, reason = self._set_component(component, self._transaction.previous_profile)
+                ok, reason = self._set_component(
+                    component,
+                    self._transaction.previous_profile,
+                    transaction_deadline,
+                )
                 self._transaction.confirm_rollback(component, ok, reason)
         response.ok = self._transaction.state == TransactionState.SUCCEEDED
         response.error = "" if response.ok else (
