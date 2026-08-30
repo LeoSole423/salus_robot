@@ -220,6 +220,29 @@ def get_state(node: NavigationSmoke):
     return call(node, node.state, GetNavState.Request(), "state service unavailable")
 
 
+def nav2_graph_contract(node: NavigationSmoke) -> bool:
+    names = {
+        f"{namespace.rstrip('/')}/{name}" if namespace != "/" else f"/{name}"
+        for name, namespace in node.get_node_names_and_namespaces()
+    }
+    expected = {
+        "/planner_server",
+        "/controller_server",
+        "/bt_navigator",
+        "/behavior_server",
+    }
+    states = node.startup.values
+    return (
+        expected.issubset(names)
+        and "/smoother_server" not in names
+        and "smoother_server" not in states
+        and all(
+            states.get(name) == "active"
+            for name in (item.lstrip("/") for item in expected)
+        )
+    )
+
+
 def main() -> int:
     rclpy.init()
     node = NavigationSmoke()
@@ -239,6 +262,12 @@ def main() -> int:
         )
         wait_for(
             node,
+            lambda: nav2_graph_contract(node),
+            8.0,
+            "Nav2 lifecycle graph did not match the no-smoother contract",
+        )
+        wait_for(
+            node,
             lambda: node.odom and node.raw_odom and node.local_odom and node.telemetry,
             20.0,
             "raw/local/global odometry or telemetry unavailable",
@@ -248,6 +277,24 @@ def main() -> int:
             lambda: bool(node.capability_profiles),
             10.0,
             "typed capability profile unavailable",
+        )
+        node.runtime.wait(
+            "course heading estimator diagnostics unavailable",
+            lambda: bool(node.course_heading_debug),
+            8.0,
+            observe=lambda: {
+                "course_heading_publishers": node.count_publishers(
+                    "/gps/course_heading/debug"
+                ),
+                "orientation_publishers": node.count_publishers(
+                    "/localization/orientation"
+                ),
+                "last_course_heading": (
+                    node.course_heading_debug[-1]
+                    if node.course_heading_debug
+                    else {}
+                ),
+            },
         )
         if expect_no_obstacles:
             profile = node.capability_profiles[-1]
@@ -417,6 +464,9 @@ def main() -> int:
                     node.orientation_selection_debug[-1]
                     if node.orientation_selection_debug
                     else {}
+                ),
+                "course_heading_publishers": node.count_publishers(
+                    "/gps/course_heading/debug"
                 ),
                 "local_speed_mps": (
                     node.local_odom[-1].twist.twist.linear.x
