@@ -203,7 +203,7 @@ class NavSnapshotServer(Node):
             return None
         return Grid(message.header.frame_id, float(info.resolution),
                     (float(info.origin.position.x), float(info.origin.position.y)),
-                    int(info.width), int(info.height), tuple(int(value) for value in message.data), transform)
+                    int(info.width), int(info.height), message.data, transform)
 
     def _transform(self, target: str, source: str, stamp: TimeMsg) -> Optional[Transform2D]:
         if not target or not source or target == source:
