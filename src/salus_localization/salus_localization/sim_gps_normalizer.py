@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import String
 from .gps_profiles import SimGpsFixProcessor, resolve_gps_profile
@@ -22,7 +23,12 @@ class SimGpsNormalizer(Node):
         self.processor = SimGpsFixProcessor(resolve_gps_profile(str(self.get_parameter("gps_profile").value)), int(self.get_parameter("random_seed").value))
         self.publisher = self.create_publisher(NavSatFix, str(self.get_parameter("output_topic").value), 10)
         self.status_publisher = self.create_publisher(String, str(self.get_parameter("rtk_status_topic").value), 10)
-        self.create_subscription(NavSatFix, str(self.get_parameter("input_topic").value), self.on_fix, 10)
+        self.create_subscription(
+            NavSatFix,
+            str(self.get_parameter("input_topic").value),
+            self.on_fix,
+            qos_profile_sensor_data,
+        )
 
     def on_fix(self, message: NavSatFix) -> None:
         output = self.processor.process(message)
