@@ -42,10 +42,18 @@ def startup_evidence_is_ready(evidence):
 class Smoke(Node):
     def __init__(self):
         super().__init__("route_executor_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
-        self.odom, self.mission_paths, self.chunks, self.final = [], [], [], []
+        self.odom, self.local_odom = [], []
+        self.mission_paths, self.chunks, self.final = [], [], []
         self.path_health, self.telemetry, self.events = [], [], []
+        self.progress_trace = []
+        self.next_progress_sample_at = 0.0
         self.global_costmaps, self.local_costmaps = [], []
-        self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
+        self.create_subscription(
+            Odometry, "/odometry/global", self.odom.append, 10
+        )
+        self.create_subscription(
+            Odometry, "/odometry/local", self.local_odom.append, 10
+        )
         self.create_subscription(NavPath, "/route_executor/mission_path", self.mission_paths.append, 10)
         self.create_subscription(NavPath, "/route_executor/active_chunk_path", self.chunks.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
@@ -124,6 +132,96 @@ class Smoke(Node):
     def startup_ready(self):
         evidence = self.startup_evidence()
         return startup_evidence_is_ready(evidence)
+
+    @staticmethod
+    def _xy(message):
+        position = message.pose.pose.position
+        return float(position.x), float(position.y)
+
+    @staticmethod
+    def _displacement(start, current):
+        start_x, start_y = Smoke._xy(start)
+        current_x, current_y = Smoke._xy(current)
+        return math.hypot(current_x - start_x, current_y - start_y)
+
+    def sample_route_progress(
+        self,
+        poller,
+        global_start,
+        local_start,
+        started_at,
+    ):
+        poller.poll()
+        now = time.monotonic()
+        if now < self.next_progress_sample_at:
+            return
+        self.next_progress_sample_at = now + 0.5
+        state = poller.latest
+        command = self.final[-1] if self.final else None
+        telemetry = self.telemetry[-1] if self.telemetry else None
+        sample = {
+            "elapsed_s": now - started_at,
+            "status": getattr(state, "status", "unavailable"),
+            "reached": getattr(state, "reached_checkpoint_count", -1),
+            "current_target_index": getattr(
+                state, "current_target_index", -1
+            ),
+            "progress_ratio": getattr(
+                state, "current_progress_ratio", None
+            ),
+            "cross_track_error_m": getattr(
+                state, "cross_track_error_m", None
+            ),
+            "distance_to_target_m": getattr(
+                state, "distance_to_target_m", None
+            ),
+            "blocked_state": getattr(
+                state, "blocked_state", "unavailable"
+            ),
+            "blocked_reason": getattr(
+                state, "blocked_reason_text", ""
+            ),
+            "global_pose_xy": (
+                self._xy(self.odom[-1]) if self.odom else None
+            ),
+            "local_pose_xy": (
+                self._xy(self.local_odom[-1])
+                if self.local_odom
+                else None
+            ),
+            "global_displacement_m": (
+                self._displacement(global_start, self.odom[-1])
+                if self.odom
+                else None
+            ),
+            "local_displacement_m": (
+                self._displacement(local_start, self.local_odom[-1])
+                if self.local_odom
+                else None
+            ),
+            "command": (
+                {
+                    "linear_x": float(command.twist.linear.x),
+                    "angular_z": float(command.twist.angular.z),
+                    "brake_pct": int(command.brake_pct),
+                    "source": int(command.source),
+                }
+                if command is not None
+                else None
+            ),
+            "nav": (
+                {
+                    "goal_active": bool(telemetry.goal_active),
+                    "result": str(telemetry.nav_result_text),
+                    "failure_code": str(telemetry.failure_code),
+                }
+                if telemetry is not None
+                else None
+            ),
+        }
+        self.progress_trace.append(sample)
+        if len(self.progress_trace) > 100:
+            del self.progress_trace[0]
 
 
 def wait(node, predicate, timeout, error, **kwargs):
@@ -222,7 +320,18 @@ def main():
             },
         )
         runtime.wait_transform(
-            "map to base_footprint", node.tf_buffer, "map", "base_footprint", timeout_s=15.0
+            "map to base_footprint",
+            node.tf_buffer,
+            "map",
+            "base_footprint",
+            timeout_s=15.0,
+        )
+        wait(
+            node,
+            lambda: bool(node.local_odom)
+            and finite_odometry(node.local_odom[-1]),
+            5,
+            "local odometry unavailable for route progress diagnostics",
         )
         initial_state = call(node, node.state, GetRouteMissionState.Request())
         if not initial_state.ok:
@@ -242,18 +351,45 @@ def main():
                 "status": getattr(state_poller.latest, "status", "unavailable"),
             },
         )
-        wait(node, lambda: node.mission_paths and node.chunks, 10, "route debug paths unavailable")
+        wait(
+            node,
+            lambda: node.mission_paths and node.chunks,
+            10,
+            "route debug paths unavailable",
+        )
+        global_progress_start = node.odom[-1]
+        local_progress_start = node.local_odom[-1]
+        progress_started_at = time.monotonic()
+        node.progress_trace.clear()
+        node.next_progress_sample_at = 0.0
         try:
             wait(
                 node,
                 lambda: mission_reached_checkpoint_or_raise(state_poller),
                 35,
                 "route did not reach first checkpoint",
-                stimulate=state_poller.poll,
+                stimulate=lambda: node.sample_route_progress(
+                    state_poller,
+                    global_progress_start,
+                    local_progress_start,
+                    progress_started_at,
+                ),
                 observe=lambda: {
                     **state_poller.evidence(),
-                    "status": getattr(state_poller.latest, "status", "unavailable"),
-                    "reached": getattr(state_poller.latest, "reached_checkpoint_count", -1),
+                    "status": getattr(
+                        state_poller.latest, "status", "unavailable"
+                    ),
+                    "reached": getattr(
+                        state_poller.latest,
+                        "reached_checkpoint_count",
+                        -1,
+                    ),
+                    "progress_samples": len(node.progress_trace),
+                    "latest_progress": (
+                        node.progress_trace[-1]
+                        if node.progress_trace
+                        else None
+                    ),
                 },
             )
         except RuntimeError as exc:
@@ -294,8 +430,12 @@ def main():
         raise
     finally:
         runtime.finish(success, error=failure, evidence={
-            "odometry": len(node.odom), "mission_paths": len(node.mission_paths),
-            "chunks": len(node.chunks), "final_commands": len(node.final),
+            "odometry": len(node.odom),
+            "local_odometry": len(node.local_odom),
+            "mission_paths": len(node.mission_paths),
+            "chunks": len(node.chunks),
+            "final_commands": len(node.final),
+            "first_checkpoint_progress_trace": node.progress_trace,
             "global_costmaps": len(node.global_costmaps),
             "local_costmaps": len(node.local_costmaps),
             "set_route_acceptance_latency_s": acceptance_latency_s,
