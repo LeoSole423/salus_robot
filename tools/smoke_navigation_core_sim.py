@@ -21,6 +21,7 @@ from robot_localization.srv import FromLL
 from salus_interfaces.msg import (
     CapabilityState,
     CmdVelFinal,
+    NavEvent,
     NavTelemetry,
     PathHealth,
     SystemCapabilities,
@@ -44,6 +45,7 @@ class NavigationSmoke(Node):
         self.local_odom: list[Odometry] = []
         self.plans: list[NavPath] = []
         self.final: list[CmdVelFinal] = []
+        self.events: list[NavEvent] = []
         self.telemetry: list[NavTelemetry] = []
         self.path_health: list[PathHealth] = []
         self.raw_commands: list[Twist] = []
@@ -91,6 +93,7 @@ class NavigationSmoke(Node):
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
+        self.create_subscription(NavEvent, "/nav_command_server/events", self.events.append, 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(Twist, "/cmd_vel", self.raw_commands.append, 10)
@@ -429,6 +432,10 @@ def main() -> int:
             "cancel service returned before the right-turn goal became terminal",
         )
 
+        short_goal_event_baseline = max(
+            (message.event_id for message in node.events),
+            default=0,
+        )
         start = node.odom[-1]
         rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
         target_x = rviz_goal.pose.position.x
@@ -525,9 +532,13 @@ def main() -> int:
             )
         wait_for(
             node,
-            lambda: any(message.nav_result_text == "succeeded" for message in node.telemetry),
+            lambda: any(
+                message.event_id > short_goal_event_baseline
+                and message.code == "GOAL_RESULT_SUCCEEDED"
+                for message in node.events
+            ),
             4.0,
-            "goal did not report success",
+            "goal did not publish terminal success event",
         )
 
         node.final.clear()
@@ -572,8 +583,8 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "odometry": len(node.odom), "plans": len(node.plans),
             "raw_odometry": len(node.raw_odom), "local_odometry": len(node.local_odom),
-            "final_commands": len(node.final), "telemetry": len(node.telemetry),
-            "path_health": len(node.path_health),
+            "final_commands": len(node.final), "nav_events": len(node.events),
+            "telemetry": len(node.telemetry), "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
             "vehicle_commands": len(node.vehicle_commands),
             "controller_status": len(node.controller_status),
