@@ -2,7 +2,8 @@ from pathlib import Path
 
 from geometry_msgs.msg import PoseStamped
 from salus_interfaces.srv import SetNavGoalLL
-from salus_navigation.nav_command_server import NavCommandServer
+from salus_interfaces.msg import ProjectedKeepoutPolygon, ProjectedKeepoutState
+from salus_navigation.nav_command_server import NavCommandServer, projected_keepouts_contain
 
 
 ROOT = Path(__file__).parents[1]
@@ -59,6 +60,18 @@ def test_rviz_goal_contract_rejects_wrong_frame_and_invalid_orientation() -> Non
     assert "orientation" in NavCommandServer._rviz_map_goal(message)[1]
 
 
+def test_vector_goal_rejection_handles_holes_and_long_range_coordinates() -> None:
+    state = ProjectedKeepoutState()
+    state.header.frame_id = "map"
+    polygon = ProjectedKeepoutPolygon()
+    from geometry_msgs.msg import Point32
+    for x, y in ((1049.0, -1.0), (1051.0, -1.0), (1051.0, 1.0), (1049.0, 1.0)):
+        polygon.outer.points.append(Point32(x=x, y=y))
+    state.polygons.append(polygon)
+    assert projected_keepouts_contain(state, 1050.0, 0.0)
+    assert not projected_keepouts_contain(state, 0.0, 0.0)
+
+
 def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     config = (ROOT / "config" / "nav2_core_sim.yaml").read_text(encoding="utf-8")
     no_obstacles_config = (
@@ -76,13 +89,13 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "SmacPlannerHybrid" in config
     assert "RegulatedPurePursuitController" in config
     assert "/scan_clean" in config
-    assert "keepout_filter" in config
+    assert "vector_keepout_layer" in config
     for profile in (config, no_obstacles_config):
         assert "smooth_path: false" in profile
         assert "ConstrainedSmoother" not in profile
         assert "smoother_server" not in profile
     source = (ROOT / "salus_navigation" / "nav_command_server.py").read_text(encoding="utf-8")
-    assert '"/keepout_filter_mask"' in source
+    assert '"/zones_manager/projected_keepouts"' in source
     assert "TRANSIENT_LOCAL" in source
     assert "lifecycle_manager" in launch
     assert '"autostart": False' in launch
@@ -114,7 +127,7 @@ def test_startup_coordinator_keeps_lifecycle_activation_causal() -> None:
     )
     assert '"/odometry/global"' in source
     assert '"/scan_clean"' in source
-    assert '"/keepout_filter_mask"' in source
+    assert '"/keepout_filter_mask"' not in source
     assert 'lookup_transform("map", "base_footprint"' in source
     assert "ManageLifecycleNodes.Request.STARTUP" in source
     assert 'EvaluatePathHealth, "/path_health/evaluate"' in source

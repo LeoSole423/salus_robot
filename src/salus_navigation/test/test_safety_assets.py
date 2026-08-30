@@ -40,4 +40,4 @@ def test_no_obstacle_nav2_profile_disables_both_obstacle_layers() -> None:
     global_map = config.split("global_costmap:", 1)[1]
     assert "obstacle_layer:" in local and "enabled: false" in local
     assert "obstacle_layer:" in global_map and "enabled: false" in global_map
-    assert config.count("keepout_filter:") == 2
+    assert config.count("vector_keepout_layer:") == 2

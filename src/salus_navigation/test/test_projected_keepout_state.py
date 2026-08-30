@@ -82,41 +82,33 @@ def test_activate_document_advances_revision_and_publishes_once() -> None:
     assert publications == [(projected, 5)]
 
 
-def test_failed_legacy_reload_does_not_activate_or_publish_vector_candidate() -> None:
+def test_failed_projection_does_not_activate_or_publish_vector_candidate() -> None:
     old_document = {"type": "FeatureCollection", "features": []}
     new_document = {"type": "FeatureCollection", "features": []}
-    candidate = [_projected("candidate")]
-    write_calls = []
     activations = []
 
-    def write_mask(document):
-        write_calls.append(document)
-        return True, "", candidate if document is new_document else []
-
     manager = SimpleNamespace(
-        _require_map_server_active=lambda: (True, ""),
         _document=old_document,
-        _write_mask=write_mask,
-        _reload_map=lambda: (False, "reload failed"),
+        use_keepout=True,
+        _project=lambda _document: (None, "projection failed"),
         _activate_document=lambda *args, **kwargs: activations.append((args, kwargs)),
     )
 
     result = ZonesManager._apply(manager, new_document, persist=True)
 
-    assert result == (False, "reload failed", 0, 0)
-    assert write_calls == [new_document, old_document]
+    assert result == (False, "projection failed", 0, 0)
     assert not activations
 
 
-def test_successful_legacy_apply_activates_exact_projected_candidate() -> None:
+def test_successful_vector_apply_activates_exact_projected_candidate() -> None:
     document = {"type": "FeatureCollection", "features": []}
     candidate = [_projected("accepted")]
     activations = []
     manager = SimpleNamespace(
-        _require_map_server_active=lambda: (True, ""),
         _document={"type": "FeatureCollection", "features": []},
-        _write_mask=lambda _document: (True, "", candidate),
-        _reload_map=lambda: (True, ""),
+        use_keepout=True,
+        _project=lambda _document: (candidate, ""),
+        _persist_document=lambda _document: (True, ""),
         _activate_document=lambda *args, **kwargs: activations.append((args, kwargs)),
     )
 
@@ -126,7 +118,7 @@ def test_successful_legacy_apply_activates_exact_projected_candidate() -> None:
     assert len(activations) == 1
     args, kwargs = activations[0]
     assert args == (document, candidate)
-    assert kwargs == {"mask_source": "map_server_load_map+global_costmap_clear"}
+    assert kwargs == {"mask_source": "projected_vector_state"}
 
 
 def test_empty_projected_state_is_explicit_and_revisioned() -> None:

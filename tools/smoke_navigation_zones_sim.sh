@@ -12,5 +12,5 @@ docker compose run --rm -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-45}" -e GZ_PART
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch zones "ros2 launch salus_bringup integration_sim.launch.py zones_runtime_dir:=${runtime_dir} world:=${free_world}"
   smoke_run navigation_zones "python3 /ros2_ws/tools/smoke_navigation_zones_sim.py"
-  smoke_note "keepout_mask_runtime_valid"
+  smoke_note "bounded_vector_keepout_runtime_valid"
 '

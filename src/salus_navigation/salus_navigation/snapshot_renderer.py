@@ -67,6 +67,15 @@ class Polyline:
 
 
 @dataclass(frozen=True)
+class KeepoutPolygon:
+    """A map-frame polygon rendered directly; no global keepout raster exists."""
+    frame_id: str
+    outer: Tuple[Point, ...]
+    holes: Tuple[Tuple[Point, ...], ...] = ()
+    transform: Optional[Transform2D] = None
+
+
+@dataclass(frozen=True)
 class SnapshotScene:
     local_costmap: Grid
     center_xy: Point
@@ -75,6 +84,8 @@ class SnapshotScene:
     global_inset_px: int
     keepout: Optional[Grid] = None
     global_keepout: Optional[Grid] = None
+    vector_keepouts: Tuple[KeepoutPolygon, ...] = ()
+    global_vector_keepouts: Tuple[KeepoutPolygon, ...] = ()
     global_costmap: Optional[Grid] = None
     footprint: Optional[Polyline] = None
     stop_zone: Optional[Polyline] = None
@@ -249,6 +260,43 @@ def _overlay_keepout(canvas: np.ndarray, occupancy: np.ndarray) -> bool:
     return True
 
 
+def _overlay_vector_keepouts(
+    canvas: np.ndarray,
+    scene: SnapshotScene,
+    keepouts: Sequence[KeepoutPolygon],
+    target_frame: str,
+    window: Tuple[float, float, float, float],
+) -> bool:
+    """Rasterize only the visible snapshot pixels, preserving polygon holes."""
+    mask = np.zeros(canvas.shape[:2], dtype=np.uint8)
+    for polygon in keepouts:
+        outer = _to_frame(polygon.outer, polygon.frame_id, target_frame, polygon.transform)
+        if outer is None or len(outer) < 3:
+            continue
+        points = np.asarray(
+            [_world_to_px_unbounded(point, window, scene.size_px) for point in outer],
+            dtype=np.int32,
+        )
+        cv2.fillPoly(mask, [points], 255, lineType=cv2.LINE_AA)
+        for hole in polygon.holes:
+            points = _to_frame(hole, polygon.frame_id, target_frame, polygon.transform)
+            if points is not None and len(points) >= 3:
+                cv2.fillPoly(
+                    mask,
+                    [np.asarray([_world_to_px_unbounded(point, window, scene.size_px) for point in points], dtype=np.int32)],
+                    0,
+                    lineType=cv2.LINE_AA,
+                )
+    if not np.any(mask):
+        return False
+    alpha = (mask.astype(np.float32) / 255.0 * 0.55)[:, :, None]
+    overlay = canvas.astype(np.float32).copy()
+    overlay[:, :, 2] = 255.0
+    overlay[:, :, :2] *= 0.2
+    canvas[:, :] = np.clip((1.0 - alpha) * canvas + alpha * overlay, 0, 255).astype(np.uint8)
+    return True
+
+
 def _draw_polyline(canvas: np.ndarray, scene: SnapshotScene, line: Polyline, window: Tuple[float, float, float, float]) -> bool:
     points = _to_frame(line.points, line.frame_id, scene.local_costmap.frame_id, line.transform)
     if points is None or len(points) < 2:
@@ -300,6 +348,15 @@ def _global_inset(canvas: np.ndarray, scene: SnapshotScene) -> bool:
     image = _occupancy_to_color(_sample_grid_to_grid(scene, grid, inset_grid, -1.0))
     if scene.global_keepout is not None:
         _overlay_keepout(image, _sample_grid_to_grid(scene, scene.global_keepout, inset_grid, 0.0))
+    if scene.global_vector_keepouts:
+        _overlay_vector_keepouts(
+            image,
+            SnapshotScene(inset_grid, (0.0, 0.0), 1.0, inset_size, 0),
+            scene.global_vector_keepouts,
+            grid.frame_id,
+            (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
+             grid.origin[1], grid.origin[1] + grid.height * grid.resolution),
+        )
     if scene.global_plan is not None:
         plan = _to_frame(
             scene.global_plan.points,
@@ -336,6 +393,10 @@ def render(scene: SnapshotScene) -> RenderedSnapshot:
     layers["local_costmap"] = True
     if scene.keepout is not None:
         layers["keepout_mask"] = _overlay_keepout(canvas, _sample_grid(scene, scene.keepout, scene.local_costmap.frame_id, window, 0.0))
+    if scene.vector_keepouts:
+        layers["keepout_mask"] = _overlay_vector_keepouts(
+            canvas, scene, scene.vector_keepouts, scene.local_costmap.frame_id, window
+        ) or layers["keepout_mask"]
     if scene.footprint is not None:
         layers["footprint"] = _draw_polyline(canvas, scene, scene.footprint, window)
     if scene.stop_zone is not None:

@@ -13,12 +13,12 @@ from pathlib import Path
 import rclpy
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
-from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
+from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from salus_interfaces.msg import NavTelemetry
+from salus_interfaces.msg import NavTelemetry, ProjectedKeepoutState
 from salus_interfaces.srv import GetZonesState, SetNavGoalLL, SetZonesGeoJson
 from std_srvs.srv import Trigger
 from smoke_runtime import (
@@ -44,9 +44,8 @@ def startup_evidence_is_ready(evidence):
         and evidence["odometry_finite"]
         and evidence["telemetry_messages"] >= 2
         and evidence["bt_state"] == "active"
-        and evidence["mask_messages"] >= 1
-        and evidence["mask_frame"] == "map"
-        and evidence["mask_cells"] > 0
+        and evidence["projected_messages"] >= 1
+        and evidence["projected_frame"] == "map"
     )
 
 
@@ -54,19 +53,18 @@ class ZonesSmoke(Node):
     def __init__(self):
         super().__init__("zones_sim_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom: list[Odometry] = []
-        self.mask: list[OccupancyGrid] = []
+        self.projected: list[ProjectedKeepoutState] = []
         self.plans: list[NavPath] = []
         self.telemetry: list[NavTelemetry] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
-        # map_server keeps this map latched. A late smoke subscriber must use
-        # the matching QoS to receive the currently active empty/full mask.
-        mask_qos = QoSProfile(
+        projected_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
         self.create_subscription(
-            OccupancyGrid, "/keepout_filter_mask", self.mask.append, mask_qos
+            ProjectedKeepoutState, "/zones_manager/projected_keepouts",
+            self.projected.append, projected_qos,
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(
@@ -109,7 +107,7 @@ class ZonesSmoke(Node):
 
     def startup_evidence(self):
         odom_stamps = [stamp_ns(message) for message in self.odom[-2:]]
-        mask = self.mask[-1] if self.mask else None
+        projected = self.projected[-1] if self.projected else None
         return {
             "navigation_active": self.startup.active,
             "navigation_startup": self.startup.snapshot(),
@@ -133,11 +131,9 @@ class ZonesSmoke(Node):
             "bt_state": self.bt_state_label,
             "bt_state_requests": self.bt_state_requests,
             "bt_state_timeouts": self.bt_state_timeouts,
-            "mask_messages": len(self.mask),
-            "mask_frame": mask.header.frame_id if mask is not None else "",
-            "mask_cells": len(mask.data) if mask is not None else 0,
-            "mask_width": int(mask.info.width) if mask is not None else 0,
-            "mask_height": int(mask.info.height) if mask is not None else 0,
+            "projected_messages": len(self.projected),
+            "projected_frame": projected.header.frame_id if projected is not None else "",
+            "projected_polygons": len(projected.polygons) if projected is not None else 0,
         }
 
     def startup_ready(self):
@@ -180,11 +176,15 @@ def goal_request(x, y, heading):
     return request
 
 
-def mask_contains(mask, x, y):
-    resolution = mask.info.resolution
-    col = math.floor((x - mask.info.origin.position.x) / resolution)
-    row = math.floor((y - mask.info.origin.position.y) / resolution)
-    return 0 <= col < mask.info.width and 0 <= row < mask.info.height and mask.data[row * mask.info.width + col] >= 100
+def projected_contains(message, x, y):
+    def contains(ring):
+        inside = False
+        for index, point in enumerate(ring):
+            previous = ring[index - 1]
+            if ((point.y > y) != (previous.y > y)) and x < (previous.x - point.x) * (y - point.y) / (previous.y - point.y) + point.x:
+                inside = not inside
+        return inside
+    return any(contains(polygon.outer.points) and not any(contains(hole.points) for hole in polygon.holes) for polygon in message.polygons)
 
 
 def main():
@@ -221,15 +221,15 @@ def main():
                 ),
             },
         )
-        wait_for(node, lambda: node.odom and node.mask, 20.0, "global odometry or keepout mask unavailable")
+        wait_for(node, lambda: node.odom and node.projected, 20.0, "global odometry or projected keepouts unavailable")
         current = node.odom[-1]
         response = call(node, node.set_zones, SetZonesGeoJson.Request(geojson=json.dumps(polygon_at(current))), "set zones unavailable")
         if not response.ok or response.polygon_count != 1 or not response.map_reloaded: raise RuntimeError(response.error or "zone was not applied")
-        wait_for(node, lambda: any(any(value >= 100 for value in item.data) for item in node.mask), 12.0, "keepout mask has no occupied cells")
+        wait_for(node, lambda: node.projected and node.projected[-1].polygons, 12.0, "projected keepout state has no polygons")
         state = call(node, node.get_zones, GetZonesState.Request(), "get zones unavailable")
         if not state.mask_ready or "smoke_block" not in state.geojson: raise RuntimeError("zone state was not persisted")
         blocked_x, blocked_y = local_to_map(current, 9.0, 0.0)
-        wait_for(node, lambda: node.mask and mask_contains(node.mask[-1], blocked_x, blocked_y), 4.0, "updated keepout mask does not cover the blocked goal")
+        wait_for(node, lambda: node.projected and projected_contains(node.projected[-1], blocked_x, blocked_y), 4.0, "projected keepout state does not cover the blocked goal")
         blocked = call(node, node.goal, goal_request(blocked_x, blocked_y, yaw(current)), "goal service unavailable")
         if blocked.ok: raise RuntimeError("goal inside keepout zone was accepted")
         node.plans.clear()
@@ -256,7 +256,7 @@ def main():
     finally:
         runtime.finish(success, error=failure, evidence={
             "odometry": len(node.odom),
-            "masks": len(node.mask),
+            "projected_keepout_states": len(node.projected),
             "plans": len(node.plans),
             "zones_startup": node.startup_evidence(),
         })

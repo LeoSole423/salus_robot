@@ -6,6 +6,7 @@ import pytest
 
 from salus_navigation.snapshot_renderer import (
     Grid,
+    KeepoutPolygon,
     Polyline,
     SnapshotScene,
     Transform2D,
@@ -72,6 +73,19 @@ def test_renderer_omits_optional_layer_when_transform_is_missing() -> None:
     ))
     assert output.layers["local_costmap"] is True
     assert output.layers["plan"] is False
+
+
+def test_renderer_draws_vector_keepout_with_a_hole_without_global_raster() -> None:
+    output = render(SnapshotScene(
+        local_costmap=_grid(), center_xy=(0.0, 0.0), extent_m=4.0,
+        size_px=128, global_inset_px=64,
+        vector_keepouts=(KeepoutPolygon(
+            "map", ((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)),
+            (((-0.3, -0.3), (0.3, -0.3), (0.3, 0.3), (-0.3, 0.3)),),
+            Transform2D("map", "odom", 0.0, 0.0, 0.0),
+        ),),
+    ))
+    assert output.layers["keepout_mask"] is True
 
 
 def test_transform_inverse_round_trip() -> None:

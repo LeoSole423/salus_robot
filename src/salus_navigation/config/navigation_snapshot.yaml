@@ -5,7 +5,7 @@ nav_snapshot_server:
     local_costmap_updates_topic: /local_costmap/costmap_updates
     global_costmap_topic: /global_costmap/costmap
     global_costmap_updates_topic: /global_costmap/costmap_updates
-    keepout_mask_topic: /keepout_filter_mask
+    projected_keepouts_topic: /zones_manager/projected_keepouts
     local_footprint_topic: /local_costmap/published_footprint
     stop_zone_topic: /stop_zone_raw
     collision_polygons_topic: /collision_monitor/polygons
