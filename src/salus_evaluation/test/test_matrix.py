@@ -98,17 +98,52 @@ def test_numeric_parameter_metadata_uses_radius_names_and_units():
     from salus_evaluation.matrix_executor import _numeric_parameter_metadata
 
     result = _numeric_parameter_metadata(
-        2.5, SimpleNamespace(returncode=0, stdout="set", stderr=""),
-        SimpleNamespace(returncode=0, stdout="Double value is: 2.5", stderr=""),
+        2.5, SimpleNamespace(returncode=0, stdout="Double value is: 2.5", stderr=""),
         quantity="radius_m", unit="m",
     )
     assert result["requested_radius_m"] == 2.5
     assert result["effective_radius_m"] == 2.5
     assert result["unit"] == "m" and result["matches_requested"]
+    assert result["tolerance"] == pytest.approx(1.0e-6)
+    assert "tolerance_mps" not in result
     assert "requested_speed_mps" not in result
 
 
-def test_planner_override_readiness_requires_active_lifecycle_and_parameter_services(monkeypatch):
+def test_candidate_nav2_params_changes_only_smac_radius(tmp_path):
+    from salus_evaluation.matrix_executor import write_candidate_nav2_params
+
+    base = tmp_path / "base.yaml"
+    base.write_text("""planner_server:
+  ros__parameters:
+    expected_planner_frequency: 20.0
+    GridBased:
+      plugin: nav2_smac_planner/SmacPlannerHybrid
+      minimum_turning_radius: 4.0
+controller_server:
+  ros__parameters:
+    controller_frequency: 20.0
+""")
+    candidate = write_candidate_nav2_params(base, tmp_path / "candidate.yaml", 2.5)
+    import yaml
+    original, generated = yaml.safe_load(base.read_text()), yaml.safe_load(candidate.read_text())
+    grid_based = generated["planner_server"]["ros__parameters"]["GridBased"]
+    assert grid_based["minimum_turning_radius"] == 2.5
+    generated["planner_server"]["ros__parameters"]["GridBased"]["minimum_turning_radius"] = 4.0
+    assert generated == original
+
+
+def test_radius_readback_mismatch_is_recorded_as_nonmatching():
+    from salus_evaluation.matrix_executor import _numeric_parameter_metadata
+
+    result = _numeric_parameter_metadata(
+        2.5, SimpleNamespace(returncode=0, stdout="Double value is: 2.4", stderr=""),
+        quantity="radius_m", unit="m",
+    )
+    assert result["effective_radius_m"] == 2.4
+    assert not result["matches_requested"]
+
+
+def test_planner_override_readiness_requires_active_lifecycle_and_get_service(monkeypatch):
     from salus_evaluation import matrix_executor
 
     def response(command, **_kwargs):
@@ -120,24 +155,24 @@ def test_planner_override_readiness_requires_active_lifecycle_and_parameter_serv
         if "service list" in joined:
             return SimpleNamespace(
                 returncode=0,
-                stdout="/planner_server/set_parameters\n/planner_server/get_parameters\n",
+                stdout="/planner_server/get_parameters\n",
                 stderr="",
             )
         raise AssertionError(command)
 
     monkeypatch.setattr(matrix_executor, "_run", response)
     ready, evidence = matrix_executor._readiness_snapshot(require_planner=True)
-    assert ready and evidence["planner_parameter_services"]["set_available"]
+    assert ready and evidence["planner_parameter_services"]["get_available"]
 
-    def missing_set(command, **kwargs):
+    def missing_get(command, **kwargs):
         result = response(command, **kwargs)
         if "service list" in " ".join(command):
-            result.stdout = "/planner_server/get_parameters\n"
+            result.stdout = "/planner_server/set_parameters\n"
         return result
 
-    monkeypatch.setattr(matrix_executor, "_run", missing_set)
+    monkeypatch.setattr(matrix_executor, "_run", missing_get)
     ready, evidence = matrix_executor._readiness_snapshot(require_planner=True)
-    assert not ready and not evidence["planner_parameter_services"]["set_available"]
+    assert not ready and not evidence["planner_parameter_services"]["get_available"]
 
 
 def test_matrix_exit_is_aggregated_after_all_trials_and_ignores_calibration():

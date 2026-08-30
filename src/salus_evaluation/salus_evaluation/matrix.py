@@ -29,13 +29,18 @@ def parse_effective_speed(readback):
     return value if math.isfinite(value) else None
 
 
-def effective_speed_matches(requested_mps, readback, tolerance_mps=EFFECTIVE_SPEED_TOLERANCE_MPS):
-    """Return the parsed effective speed and whether it matches the request."""
-    requested = _finite_positive(requested_mps, "requested_speed_mps")
-    if not math.isfinite(tolerance_mps) or tolerance_mps < 0.0:
-        raise ValueError("speed tolerance must be finite and non-negative")
+def effective_numeric_matches(requested, readback, tolerance=EFFECTIVE_SPEED_TOLERANCE_MPS):
+    """Return one parsed numeric readback and whether it matches the request."""
+    requested = _finite_positive(requested, "requested_value")
+    if not math.isfinite(tolerance) or tolerance < 0.0:
+        raise ValueError("numeric tolerance must be finite and non-negative")
     effective = parse_effective_speed(readback)
-    return effective, effective is not None and abs(effective - requested) <= tolerance_mps
+    return effective, effective is not None and abs(effective - requested) <= tolerance
+
+
+def effective_speed_matches(requested_mps, readback, tolerance_mps=EFFECTIVE_SPEED_TOLERANCE_MPS):
+    """Compatibility wrapper for the speed-specific public helper."""
+    return effective_numeric_matches(requested_mps, readback, tolerance_mps)
 
 
 def matrix_exit_code(trial_outcomes):
