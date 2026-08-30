@@ -232,11 +232,15 @@ Un componente sólo pasa a:
 
 ## 9. CI y diagnóstico de fallos
 
-Cada PR ejecuta:
+Cada PR ejecuta siempre `classify-changes` y `build-unit`. El clasificador
+selecciona los escenarios de `simulation-core` y `navigation-missions` según
+las fronteras modificadas; los jobs no aplicables quedan `skipped`. Cambios
+estructurales/compartidos o rutas desconocidas fuerzan la suite completa.
 
-- `build-unit`;
-- `simulation-core`;
-- `navigation-missions`.
+La matriz y el fallback conservador están documentados en
+[`ci-change-aware.md`](ci-change-aware.md). `push` a `main` y
+`workflow_dispatch` ejecutan siempre la suite completa. El nightly mantiene sus
+repeticiones independientes.
 
 No fusionar con jobs rojos. Ante un fallo, clasificarlo antes de editar:
 
@@ -274,7 +278,7 @@ Un PR está terminado cuando:
 - lógica sensible tiene tests puros;
 - fallos y datos stale degradan de manera explícita;
 - build, tests y smokes relevantes pasan;
-- los tres jobs requeridos están verdes;
+- `classify-changes`, `build-unit` y los jobs de smoke seleccionados están verdes;
 - README, inventario y `migration-status.yaml` están actualizados;
 - no se modificó ningún repositorio fuera del alcance;
 - la evidencia pendiente de hardware queda declarada.
