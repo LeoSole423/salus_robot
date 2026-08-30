@@ -56,6 +56,7 @@ esperar dentro de un presupuesto explícito y acotado.
 | JOIN_LOOP vuelve a quedar inmóvil | fallar y conservar odometría, distancia, comandos, path-health, generación y resultado | `smoke_patrol_battery_sim.py` |
 | el poll de estado tarda detrás de `/goal_pose` | no republicar/preemptar el goal; esperar la aceptación del único mensaje | `test_navigation_smoke_probe.py` |
 | `GetNavState` deja de marcar activo antes de que Nav2 termine una cancelación | mantener la meta activa hasta el resultado terminal y hacer de `CancelNavGoal` la frontera causal antes del siguiente goal | `test_nav_goal_cancellation.py`, `test_navigation_smoke_probe.py` |
+| Nav2 termina una meta pero el subscriber del smoke recibe tarde telemetría/eventos | consultar `GetNavState.nav_result_status/text/event_id`, almacenados bajo el mismo lock que `goal_active`; no crear una segunda autoridad asíncrona | `test_nav_goal_cancellation.py`, `test_navigation_smoke_probe.py` |
 
 ## Decisiones descartadas
 
@@ -85,5 +86,9 @@ esperar dentro de un presupuesto explícito y acotado.
   terminal dentro de un presupuesto acotado y los reemplazos esperan esa misma
   condición. El smoke deja de depender del tópico privado
   `/navigate_to_pose/_action/status`.
+- Issue #140 extiende esa misma frontera al resultado de una meta completada:
+  `GetNavState` expone status/text/event-id terminales estables. El smoke
+  conserva su presupuesto de terminación y deja de depender de que un timer de
+  telemetría o un subscriber de eventos sea planificado a tiempo bajo carga.
 - Pendiente: clasificar con la nueva evidencia cualquier JOIN_LOOP inmóvil que
   no contenga el timeout de acuse `FollowPath`.

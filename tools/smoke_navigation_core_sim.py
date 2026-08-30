@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import rclpy
+from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import Odometry, Path as NavPath
@@ -429,6 +430,7 @@ def main() -> int:
             "cancel service returned before the right-turn goal became terminal",
         )
 
+        short_goal_result_baseline = get_state(node).nav_result_event_id
         start = node.odom[-1]
         rviz_goal = rviz_goal_from_current_pose(node, forward_m=7.0)
         target_x = rviz_goal.pose.position.x
@@ -523,12 +525,21 @@ def main() -> int:
             raise RuntimeError(
                 "global odometry became invalid after Nav2 reported success"
             )
-        wait_for(
-            node,
-            lambda: any(message.nav_result_text == "succeeded" for message in node.telemetry),
-            4.0,
-            "goal did not report success",
-        )
+        terminal_state = get_state(node)
+        if (
+            terminal_state.goal_active
+            or terminal_state.nav_result_event_id <= short_goal_result_baseline
+            or terminal_state.nav_result_status != GoalStatus.STATUS_SUCCEEDED
+            or terminal_state.nav_result_text != "succeeded"
+        ):
+            raise RuntimeError(
+                "short goal terminal state is not a new success: "
+                f"active={terminal_state.goal_active} "
+                f"status={terminal_state.nav_result_status} "
+                f"text={terminal_state.nav_result_text!r} "
+                f"event_id={terminal_state.nav_result_event_id} "
+                f"baseline={short_goal_result_baseline}"
+            )
 
         node.final.clear()
         send_goal(node, 25.0)
@@ -572,8 +583,8 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "odometry": len(node.odom), "plans": len(node.plans),
             "raw_odometry": len(node.raw_odom), "local_odometry": len(node.local_odom),
-            "final_commands": len(node.final), "telemetry": len(node.telemetry),
-            "path_health": len(node.path_health),
+            "final_commands": len(node.final),
+            "telemetry": len(node.telemetry), "path_health": len(node.path_health),
             "raw_commands": len(node.raw_commands), "safe_commands": len(node.safe_commands),
             "vehicle_commands": len(node.vehicle_commands),
             "controller_status": len(node.controller_status),
