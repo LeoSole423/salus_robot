@@ -92,3 +92,16 @@ Reintento posterior a la corrección:
 a publicar una meta ni un bundle terminal. Esa ejecución queda como evidencia
 del problema sistémico #119/#117/#72, pero no es una medición cinemática del
 radio: fue reemplazada por la configuración de arranque descripta arriba.
+
+## Reintento con configuración de arranque
+
+El baseline se repitió con `4,0 m` mediante el nuevo mecanismo en
+`artifacts/evaluations/issue-57-startup-radius-4p0-20260830`. El primer trial
+conserva el YAML candidato y hashes de base/efectivo, pero agotó los 90 s de
+readiness antes de navegación: no había odometría global, controller ni planner
+ACTIVE, ni respuesta/disponibilidad de `planner_server/get_parameters`. Por
+tanto no existe aún readback efectivo ni una medición de trayectoria que pueda
+atribuirse a `minimum_turning_radius`. La ejecución queda clasificada como la
+misma frontera de readiness #119/#117/#72; no se inició `2,5 m`, porque no
+habría aislado una variable distinta. Se conservan los mismos thresholds y no
+se aplicaron sleeps, retries, tuning Nav2, TF ni costmaps.
