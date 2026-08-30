@@ -72,7 +72,6 @@ class ControllerServerNode(Node):
         self.declare_parameter("control_hz", 30.0)
         self.declare_parameter("telemetry_pub_hz", 10.0)
         self.declare_parameter("auto_timeout_s", 0.7)
-        self.declare_parameter("max_abs_angular_z", 0.4)
         self.declare_parameter("vx_deadband_mps", 0.10)
         self.declare_parameter("vx_min_effective_mps", 0.75)
         self.declare_parameter("wheelbase_m", 0.94)
@@ -135,7 +134,6 @@ class ControllerServerNode(Node):
         self._control_hz = max(1.0, float(self.get_parameter("control_hz").value))
         self._telemetry_pub_hz = max(1.0, float(self.get_parameter("telemetry_pub_hz").value))
         self._auto_timeout_s = float(self.get_parameter("auto_timeout_s").value)
-        self._max_abs_angular_z = float(self.get_parameter("max_abs_angular_z").value)
         self._vx_deadband_mps = float(self.get_parameter("vx_deadband_mps").value)
         if self._vx_deadband_mps < 0.0:
             self.get_logger().warn(
@@ -419,7 +417,6 @@ class ControllerServerNode(Node):
             max_reverse_mps=self._max_reverse_mps,
             vx_deadband_mps=self._vx_deadband_mps,
             vx_min_effective_mps=self._vx_min_effective_mps,
-            max_abs_angular_z=self._max_abs_angular_z,
             wheelbase_m=self._wheelbase_m,
             steering_limit_rad=self._steering_limit_rad,
             invert_steer=self._invert_steer_from_cmd_vel,

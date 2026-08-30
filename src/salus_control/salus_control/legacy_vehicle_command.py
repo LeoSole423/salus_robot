@@ -100,7 +100,6 @@ def translate_legacy_command(
         max_reverse_mps=config.max_reverse_mps,
         vx_deadband_mps=config.vx_deadband_mps,
         vx_min_effective_mps=config.vx_min_effective_mps,
-        max_abs_angular_z=math.inf,
         wheelbase_m=config.wheelbase_m,
         steering_limit_rad=config.steering_limit_rad,
         invert_steer=False,

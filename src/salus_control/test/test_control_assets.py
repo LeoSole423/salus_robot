@@ -63,3 +63,12 @@ def test_simulation_selects_one_command_input_and_defaults_to_legacy() -> None:
     assert '"command_input_mode": command_input_mode' in launch
     assert 'if self._command_input_mode == "legacy_cmd_vel"' in source
     assert "canonical_vehicle_command is restricted to the sim_gazebo" in source
+
+
+def test_legacy_cmd_vel_path_has_no_ignored_angular_rate_parameter() -> None:
+    source = (ROOT / "salus_control/controller_server_node.py").read_text(
+        encoding="utf-8"
+    )
+    domain = (ROOT / "salus_control/control_logic.py").read_text(encoding="utf-8")
+    assert "max_abs_angular_z" not in source
+    assert "max_abs_angular_z" not in domain

@@ -38,3 +38,14 @@ completo de simulación incluye localización, LiDAR y navegación fuera de este
 corte. El siguiente paso de paridad será aislar su `sim_v2_base.launch.py` con
 el mismo perfil de control y registrar una baseline antes de cambiar el estado
 a `parity_passed`.
+
+## Autoridad de giro
+
+`max_abs_angular_z` fue eliminado del path legacy en #59: era un parámetro ROS
+configurable que sólo se convertía a `float` y no cambiaba el comando. La
+autoridad Ackermann es la batalla y el mínimo entre límite físico y límite
+operacional por fuente; primero se conserva `angular.z` solicitado para la
+observabilidad, se deriva curvatura, y finalmente se satura el steering
+aplicado. Un cap fijo de yaw-rate sería una curvatura distinta según velocidad
+y no equivale a un límite físico de dirección. La alineación del radio mínimo
+del planner queda reservada para #57.

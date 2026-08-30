@@ -130,7 +130,6 @@ def command_from_cmd_vel(
     max_reverse_mps: float,
     vx_deadband_mps: float,
     vx_min_effective_mps: float,
-    max_abs_angular_z: float,
     wheelbase_m: float,
     steering_limit_rad: float,
     invert_steer: bool,
@@ -147,7 +146,6 @@ def command_from_cmd_vel(
 
     linear = float(linear_x)
     angular = float(angular_z)
-    _ = float(max_abs_angular_z)
     speed = 0.0
     speed_limited = False
     min_speed_enforced = False
