@@ -37,3 +37,11 @@ def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> 
     assert "observe=node.startup.snapshot" in source
     assert startup_wait < poller < snapshot_wait
     assert '"navigation_startup": node.startup.snapshot()' in source
+    assert 'create_publisher(' in source
+    assert 'LaserScan, "/scan_clean"' in source
+    assert 'message.header.stamp = self.local_odom.header.stamp' in source
+
+    wrapper = (REPO_ROOT / "tools/smoke_navigation_snapshot.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "capability_profile:=no_obstacle_detection" in wrapper
