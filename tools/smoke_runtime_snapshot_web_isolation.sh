@@ -26,9 +26,9 @@ run_variant() {
       trap smoke_cleanup EXIT
 
       world=\"\$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world\"
-      mkdir -p \"${SMOKE_RUNTIME_DIR}/zones\" \"${SMOKE_RUNTIME_DIR}/web\"
+      mkdir -p \"\${SMOKE_RUNTIME_DIR}/zones\" \"\${SMOKE_RUNTIME_DIR}/web\"
 
-      python3 - \"${SMOKE_RUNTIME_DIR}/zones/no_go_zones.geojson\" <<'PY'
+      python3 - \"\${SMOKE_RUNTIME_DIR}/zones/no_go_zones.geojson\" <<'PY'
 import json
 import math
 import sys
@@ -60,7 +60,7 @@ with open(path, \"w\", encoding=\"utf-8\") as stream:
     stream.write(\"\\n\")
 PY
 
-      smoke_start_launch navigation \"ros2 launch salus_bringup integration_sim.launch.py world:=\${world} capability_profile:=no_obstacle_detection zones_runtime_dir:=${SMOKE_RUNTIME_DIR}/zones launch_web:=${launch_web} web_ws_port:=${web_port} web_waypoints_file:=${SMOKE_RUNTIME_DIR}/web/waypoints.yaml\"
+      smoke_start_launch navigation \"ros2 launch salus_bringup integration_sim.launch.py world:=\${world} capability_profile:=no_obstacle_detection zones_runtime_dir:=\${SMOKE_RUNTIME_DIR}/zones launch_web:=${launch_web} web_ws_port:=${web_port} web_waypoints_file:=\${SMOKE_RUNTIME_DIR}/web/waypoints.yaml\"
 
       if [[ \"${pressure_mode}\" == \"direct\" ]]; then
         smoke_start_launch snapshot \"ros2 launch salus_navigation navigation_snapshot_sim.launch.py\"
