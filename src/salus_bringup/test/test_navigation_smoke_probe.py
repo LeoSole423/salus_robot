@@ -29,6 +29,15 @@ def test_cancel_service_is_the_terminal_boundary_before_the_next_goal() -> None:
     assert "navigate_action_is_idle" not in source
 
 
+def test_manual_takeover_remains_immediate_but_waits_for_terminal_nav2_state() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    takeover = source.split(
+        'SetManualMode.Request(enabled=True)', 1
+    )[1].split('SetManualMode.Request(enabled=False)', 1)[0]
+    assert '"manual takeover gained command authority but Nav2 cancellation did not reach a terminal state"' in takeover
+    assert "15.0" in takeover
+
+
 def test_canonical_variant_preserves_nav_authority_and_checks_fresh_input() -> None:
     source = PROBE.read_text(encoding="utf-8")
     wrapper = (ROOT / "tools" / "smoke_navigation_canonical_sim.sh").read_text(
