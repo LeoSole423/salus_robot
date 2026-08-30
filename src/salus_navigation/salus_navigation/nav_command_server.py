@@ -650,6 +650,9 @@ class NavCommandServer(Node):
             manual, fix = self._arbiter.manual_command, self._last_fix
             response.ok, response.error = True, ""
             response.goal_active = self._goal_active_locked()
+            response.nav_result_status = self._goal_result_status
+            response.nav_result_text = self._goal_result_text
+            response.nav_result_event_id = self._goal_result_event_id
             response.manual_enabled = self._arbiter.manual_enabled
             response.manual_linear_x_cmd = 0.0 if manual is None else manual.twist.linear.x
             response.manual_angular_z_cmd = 0.0 if manual is None else manual.twist.angular.z

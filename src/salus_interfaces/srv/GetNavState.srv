@@ -2,6 +2,9 @@
 bool ok
 string error
 bool goal_active
+int32 nav_result_status
+string nav_result_text
+uint32 nav_result_event_id
 bool manual_enabled
 float64 manual_linear_x_cmd
 float64 manual_angular_z_cmd
