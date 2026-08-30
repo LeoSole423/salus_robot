@@ -63,7 +63,9 @@ Cualquiera de estas rutas ejecuta todos los smokes:
 
 También se fuerza `FULL` si no hay lista de cambios disponible o aparece una
 ruta que el selector no reconoce. Un path nuevo nunca se interpreta como seguro
-por defecto.
+por defecto. El diff desactiva la detección de renames para clasificar tanto la
+ruta eliminada como la nueva; mover un archivo no puede ocultar su frontera de
+origen.
 
 `push` a `main` y `workflow_dispatch` fuerzan siempre `FULL`, independientemente
 de los paths. El nightly conserva su workflow y repeticiones existentes.
