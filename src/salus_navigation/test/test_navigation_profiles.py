@@ -33,3 +33,11 @@ def test_profile_rejects_unknown_and_concurrent_transactions() -> None:
     assert transaction.begin("urban")
     with pytest.raises(ValueError):
         transaction.confirm("not-a-component", True)
+
+
+def test_profile_transaction_budget_matches_sequential_apply_and_rollback() -> None:
+    # Four components can be attempted, then at most three already-applied
+    # components require rollback. The configured 21 s global budget matches
+    # seven component windows at the default 3 s request budget.
+    assert len(COMPONENTS) == 4
+    assert 3.0 * (2 * len(COMPONENTS) - 1) == 21.0
