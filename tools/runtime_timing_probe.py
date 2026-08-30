@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Low-overhead timing/resource sidecar for runtime reliability smokes."""
+"""Low-overhead timing/resource sidecar for the #119 scheduler-to-costmap chain."""
 
 from __future__ import annotations
 
@@ -25,7 +25,6 @@ from rclpy.qos import (
     ReliabilityPolicy,
     qos_profile_sensor_data,
 )
-from sensor_msgs.msg import Imu, LaserScan, NavSatFix
 from tf2_msgs.msg import TFMessage
 
 
@@ -292,28 +291,13 @@ class RuntimeTimingProbe(Node):
             name: StreamStats(name)
             for name in (
                 "clock",
-                "wheel_odometry",
-                "imu_data",
-                "gps_fix_raw",
-                "gps_fix",
                 "local_ekf",
                 "global_ekf",
                 "tf_map_to_odom",
                 "tf_odom_to_base",
                 "local_costmap",
-                "scan_clean",
             )
         }
-        self.create_subscription(
-            Odometry, "/wheel/odometry", self._on_wheel_odom, qos_profile_sensor_data
-        )
-        self.create_subscription(Imu, "/imu/data", self._on_imu, qos_profile_sensor_data)
-        self.create_subscription(
-            NavSatFix, "/gps/fix_raw", self._on_gps_raw, qos_profile_sensor_data
-        )
-        self.create_subscription(
-            NavSatFix, "/gps/fix", self._on_gps, qos_profile_sensor_data
-        )
         self.create_subscription(Odometry, "/odometry/local", self._on_local_odom, 20)
         self.create_subscription(Odometry, "/odometry/global", self._on_global_odom, 20)
         grid_qos = QoSProfile(
@@ -325,7 +309,6 @@ class RuntimeTimingProbe(Node):
         self.create_subscription(
             OccupancyGrid, "/local_costmap/costmap", self._on_costmap, grid_qos
         )
-        self.create_subscription(LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data)
         self.create_subscription(TFMessage, "/tf", self._on_tf, qos_profile_sensor_data)
         self.create_subscription(Log, "/rosout", self._on_log, 100)
 
@@ -338,18 +321,6 @@ class RuntimeTimingProbe(Node):
         self.streams["clock"].record(self.latest_clock_ns, now)
         self.last_clock_observe_wall_s = now
 
-    def _on_wheel_odom(self, message: Odometry) -> None:
-        self.streams["wheel_odometry"].record(stamp_ns(message.header.stamp))
-
-    def _on_imu(self, message: Imu) -> None:
-        self.streams["imu_data"].record(stamp_ns(message.header.stamp))
-
-    def _on_gps_raw(self, message: NavSatFix) -> None:
-        self.streams["gps_fix_raw"].record(stamp_ns(message.header.stamp))
-
-    def _on_gps(self, message: NavSatFix) -> None:
-        self.streams["gps_fix"].record(stamp_ns(message.header.stamp))
-
     def _on_local_odom(self, message: Odometry) -> None:
         self.streams["local_ekf"].record(stamp_ns(message.header.stamp))
 
@@ -358,9 +329,6 @@ class RuntimeTimingProbe(Node):
 
     def _on_costmap(self, message: OccupancyGrid) -> None:
         self.streams["local_costmap"].record(stamp_ns(message.header.stamp))
-
-    def _on_scan(self, message: LaserScan) -> None:
-        self.streams["scan_clean"].record(stamp_ns(message.header.stamp))
 
     def _on_tf(self, message: TFMessage) -> None:
         now = time.monotonic()
@@ -428,15 +396,10 @@ class RuntimeTimingProbe(Node):
                 topic: self.count_publishers(topic)
                 for topic in (
                     "/clock",
-                    "/wheel/odometry",
-                    "/imu/data",
-                    "/gps/fix_raw",
-                    "/gps/fix",
                     "/odometry/local",
                     "/odometry/global",
                     "/tf",
                     "/local_costmap/costmap",
-                    "/scan_clean",
                 )
             }
             self.last_expensive_sample_wall_s = now
