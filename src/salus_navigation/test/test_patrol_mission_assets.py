@@ -62,3 +62,17 @@ def test_profile_forwarder_outlives_coordinator_transaction_contract():
     assert '"profile_coordinator_discovery_timeout_s", 5.0' in route
     assert "28.0" in smoke
     assert "component_deadline = min(" in coordinator
+
+
+def test_route_goal_results_are_correlated_to_the_current_request_boundary():
+    route = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
+    nav = (ROOT / "salus_navigation" / "nav_command_server.py").read_text()
+    interface = (
+        ROOT.parents[1] / "src" / "salus_interfaces" / "srv" / "SetNavGoalLL.srv"
+    ).read_text()
+
+    assert "uint32 goal_event_id" in interface
+    assert "response.goal_event_id = self._event(" in nav
+    assert "self._goal_request_pending = True" in route
+    assert "self._goal_result_event_floor = int(result.goal_event_id)" in route
+    assert "terminal_nav_result_is_current(" in route
