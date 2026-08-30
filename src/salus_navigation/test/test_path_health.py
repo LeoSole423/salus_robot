@@ -1,13 +1,15 @@
 """Characterization tests for stable-path clearance and replanning policy."""
 
 from array import array
+import gc
 from types import SimpleNamespace
 
+from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from salus_interfaces.msg import PathHealth
 
-from salus_navigation.path_health import CostmapView, PathHealthPolicy, costmap_view_from_message
+from salus_navigation.path_health import CostmapView, PathHealthNode, PathHealthPolicy, costmap_view_from_message
 
 
 def make_path(points):
@@ -71,6 +73,28 @@ def test_costmap_adapter_keeps_ros_sequence_identity():
     assert view.data is data
     assert view.stamp_s == 10.5
     assert PathHealthPolicy._cell_cost(view, 1.5, 2.5) == 255
+
+
+def test_on_costmap_retains_data_after_message_is_collected():
+    message = Costmap()
+    message.header.frame_id = "map"
+    message.metadata.resolution = 1.0
+    message.metadata.size_x = 2
+    message.metadata.size_y = 2
+    message.data = array("B", [0, 253, 254, 255])
+    node = object.__new__(PathHealthNode)
+
+    node._on_costmap(message)
+    view = node._costmap
+    assert view.data is message.data
+
+    del message
+    gc.collect()
+
+    assert view.data[0] == 0
+    assert view.data[1] == 253
+    assert view.data[2] == 254
+    assert view.data[3] == 255
 
 
 def test_lethal_cost_forces_replan():

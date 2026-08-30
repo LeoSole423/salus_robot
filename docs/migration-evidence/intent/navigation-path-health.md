@@ -34,6 +34,11 @@ ese `array.array` directamente cuando ya tiene el tipo de elemento compatible.
 mediante la referencia Python sin depender de un buffer temporal del
 middleware.
 
+El test `test_on_costmap_retains_data_after_message_is_collected` construye un
+`nav2_msgs.msg.Costmap` real, lo pasa por `_on_costmap()`, verifica identidad,
+elimina el mensaje y fuerza GC; los cuatro valores siguen accesibles desde
+`CostmapView.data`.
+
 El adaptador no muta el mensaje ni el array: sólo retiene la referencia. Se
 eliminó la materialización `tuple(message.data)`, que generaba una copia Python
 de todo el global rolling costmap en cada actualización. La política sigue
@@ -44,7 +49,14 @@ En un benchmark local reproducible con Humble, una matriz `1200 × 1200`
 (1.440.000 celdas) tomó 4,46 ms por adaptación con `tuple(message.data)` y
 0,001 ms reteniendo directamente `message.data` (12 iteraciones, luego de una
 iteración de calentamiento). Es una medición del adaptador, no una promesa de
-reducción equivalente del CPU total del sistema.
+reducción equivalente del CPU total del sistema. Con `publish_frequency: 0.5`,
+eso equivale a aproximadamente 2,23 ms de CPU de adaptación ahorrados por
+segundo de tiempo de pared.
+
+Midiendo también `PathHealthPolicy.evaluate()` sobre el mismo costmap y una
+trayectoria de 12 m, el resultado fue 0,1890 ms con tuple frente a 0,1725 ms
+con `array('B')` (500 iteraciones por variante). La representación nueva no
+introdujo una regresión medible en el hot path de indexación.
 
 ## Pruebas
 
