@@ -1,5 +1,8 @@
+import threading
 from pathlib import Path
 from types import SimpleNamespace
+
+from builtin_interfaces.msg import Time
 
 from salus_navigation.nav2_startup_coordinator import (
     Nav2StartupCoordinator,
@@ -7,6 +10,7 @@ from salus_navigation.nav2_startup_coordinator import (
 )
 from salus_navigation.zones_manager import (
     ZonesManager,
+    projected_keepout_state_message,
     unrepresentable_zone_error,
     zones_document_is_empty,
 )
@@ -79,7 +83,9 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
         _require_map_server_active=lambda: (True, ""),
         _document=old_document,
         _document_text="old-json",
-        _write_mask=lambda _document: (False, "outside=zone_new"),
+        _projected_polygons=[],
+        _projected_revision=7,
+        _write_mask=lambda _document: (False, "outside=zone_new", None),
         _reload_map=lambda: reload_calls.append(True) or (True, ""),
     )
 
@@ -88,7 +94,123 @@ def test_unrepresentable_zone_keeps_previous_active_document() -> None:
     assert result == (False, "outside=zone_new", 0, 0)
     assert manager._document is old_document
     assert manager._document_text == "old-json"
+    assert manager._projected_revision == 7
     assert not reload_calls
+
+
+def test_projected_keepout_message_filters_disabled_and_preserves_holes() -> None:
+    polygons = [
+        {
+            "id": "disabled",
+            "enabled": False,
+            "outer_xy": [{"x": 99.0, "y": 99.0}],
+            "holes_xy": [],
+        },
+        {
+            "id": "zone_a",
+            "enabled": True,
+            "outer_xy": [
+                {"x": 1.0, "y": 2.0},
+                {"x": 3.0, "y": 2.0},
+                {"x": 1.0, "y": 2.0},
+            ],
+            "holes_xy": [[
+                {"x": 1.5, "y": 2.1},
+                {"x": 2.0, "y": 2.1},
+                {"x": 1.5, "y": 2.1},
+            ]],
+        },
+        {
+            "id": "zone_a",
+            "enabled": True,
+            "outer_xy": [
+                {"x": 5.0, "y": 6.0},
+                {"x": 6.0, "y": 6.0},
+                {"x": 5.0, "y": 6.0},
+            ],
+            "holes_xy": [],
+        },
+    ]
+
+    message = projected_keepout_state_message(
+        "map",
+        4,
+        Time(sec=12, nanosec=34),
+        polygons,
+    )
+
+    assert message.header.frame_id == "map"
+    assert message.header.stamp.sec == 12
+    assert message.header.stamp.nanosec == 34
+    assert message.revision == 4
+    assert [item.zone_id for item in message.polygons] == ["zone_a", "zone_a"]
+    assert len(message.polygons[0].outer.points) == 3
+    assert len(message.polygons[0].holes) == 1
+    assert len(message.polygons[0].holes[0].points) == 3
+
+
+def test_accept_active_projected_state_advances_revision_and_publishes() -> None:
+    class FakePublisher:
+        def __init__(self) -> None:
+            self.messages = []
+
+        def publish(self, message) -> None:
+            self.messages.append(message)
+
+    class FakeNow:
+        def __init__(self, sec: int) -> None:
+            self.sec = sec
+
+        def to_msg(self):
+            return Time(sec=self.sec)
+
+    class FakeClock:
+        def __init__(self) -> None:
+            self.sec = 100
+
+        def now(self):
+            self.sec += 1
+            return FakeNow(self.sec)
+
+    publisher = FakePublisher()
+    manager = SimpleNamespace(
+        _lock=threading.Lock(),
+        _document={"type": "FeatureCollection", "features": []},
+        _document_text="",
+        _mask_ready=False,
+        _mask_source="none",
+        _projected_revision=0,
+        _projected_polygons=[],
+        _projected_pub=publisher,
+        map_frame="map",
+        get_clock=FakeClock().now,
+    )
+
+    ZonesManager._accept_active_state(
+        manager,
+        {"type": "FeatureCollection", "features": []},
+        [],
+        mask_source="bootstrap_empty_confirmed",
+    )
+    ZonesManager._accept_active_state(
+        manager,
+        {"type": "FeatureCollection", "features": [{"type": "Feature"}]},
+        [{
+            "id": "zone_b",
+            "enabled": True,
+            "outer_xy": [{"x": 1.0, "y": 1.0}],
+            "holes_xy": [],
+        }],
+        mask_source="map_server_load_map+global_costmap_clear",
+    )
+
+    assert manager._projected_revision == 2
+    assert len(publisher.messages) == 2
+    assert publisher.messages[0].revision == 1
+    assert not publisher.messages[0].polygons
+    assert publisher.messages[1].revision == 2
+    assert publisher.messages[1].polygons[0].zone_id == "zone_b"
+    assert manager._mask_ready is True
 
 
 def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() -> None:
@@ -102,7 +224,8 @@ def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() ->
         source.index("    def _apply(")
     ]
 
-    assert 'self._mask_source = "bootstrap_empty_confirmed"' in initial
+    assert 'mask_source="bootstrap_empty_confirmed"' in initial
+    assert "self._accept_active_state(" in initial
     assert "if zones_document_is_empty(document):" in initial
     assert "if self._clear_global.service_is_ready():" in reload_map
 
