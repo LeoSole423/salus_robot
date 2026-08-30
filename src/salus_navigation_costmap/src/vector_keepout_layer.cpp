@@ -10,14 +10,6 @@
 
 namespace salus_navigation_costmap
 {
-namespace {
-Point transform_point(const geometry_msgs::msg::TransformStamped & tf, Point p) {
-  const auto & q = tf.transform.rotation;
-  const double yaw = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-  const double c = std::cos(yaw), s = std::sin(yaw);
-  return {tf.transform.translation.x + c * p.x - s * p.y, tf.transform.translation.y + s * p.x + c * p.y};
-}
-}  // namespace
 void VectorKeepoutLayer::onInitialize() {
   auto node = node_.lock(); if (!node) throw std::runtime_error("costmap lifecycle node expired");
   declareParameter("enabled", rclcpp::ParameterValue(false)); declareParameter("source_topic", rclcpp::ParameterValue(source_topic_));
@@ -38,17 +30,17 @@ void VectorKeepoutLayer::state_callback(const salus_interfaces::msg::ProjectedKe
     for (const auto & hole : in.holes) { std::vector<Point> ring; for (const auto & v : hole.points) ring.push_back({v.x, v.y}); if (ring.size() >= 3) p.holes.push_back(std::move(ring)); }
     if (p.outer.size() >= 3) { p.bounds = bounds_of(p.outer); next.push_back(std::move(p)); }
   }
-  std::lock_guard<std::mutex> lock(mutex_); previous_map_ = polygons_map_; polygons_map_ = std::move(next); current_ = true;
+  std::lock_guard<std::mutex> lock(mutex_); ProjectedState state{polygons_map_, previous_map_, 0}; replace_state(&state, std::move(next), msg->revision); polygons_map_ = std::move(state.current); previous_map_ = std::move(state.previous); current_ = true;
 }
 std::vector<Polygon> VectorKeepoutLayer::transform_polygons(const std::vector<Polygon> & source, const std::string & target) const {
   if (target == map_frame_) return source;
   const auto tf = tf_->lookupTransform(target, map_frame_, tf2::TimePointZero);
-  std::vector<Polygon> result = source;
-  for (auto & p : result) { for (auto & v : p.outer) v = transform_point(tf, v); for (auto & hole : p.holes) for (auto & v : hole) v = transform_point(tf, v); p.bounds = bounds_of(p.outer); }
+  const auto & q = tf.transform.rotation; const double yaw = std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+  std::vector<Polygon> result; result.reserve(source.size()); for (const auto & p : source) result.push_back(transformed(p, tf.transform.translation.x, tf.transform.translation.y, yaw));
   return result;
 }
 void VectorKeepoutLayer::add_bounds(const std::vector<Polygon> & polygons, const Bounds & window, double * min_x, double * min_y, double * max_x, double * max_y) const {
-  for (const auto & p : polygons) { const auto b = p.bounds.expanded(profile_.halo_radius_m); if (b.intersects(window)) { *min_x = std::min(*min_x, b.min_x); *min_y = std::min(*min_y, b.min_y); *max_x = std::max(*max_x, b.max_x); *max_y = std::max(*max_y, b.max_y); } }
+  Bounds dirty{}; if (add_dirty_bounds(polygons, window, profile_.halo_radius_m, &dirty)) { *min_x = std::min(*min_x, dirty.min_x); *min_y = std::min(*min_y, dirty.min_y); *max_x = std::max(*max_x, dirty.max_x); *max_y = std::max(*max_y, dirty.max_y); }
 }
 void VectorKeepoutLayer::updateBounds(double, double, double, double * min_x, double * min_y, double * max_x, double * max_y) {
   if (!enabled_) return; std::vector<Polygon> current, old, rendered;
@@ -68,7 +60,7 @@ void VectorKeepoutLayer::updateCosts(nav2_costmap_2d::Costmap2D & master, int mi
   { std::lock_guard<std::mutex> lock(mutex_); polygons = cycle_polygons_; }
   const double resolution = master.getResolution(); const Bounds window{master.getOriginX() + min_i * resolution, master.getOriginY() + min_j * resolution, master.getOriginX() + max_i * resolution, master.getOriginY() + max_j * resolution};
   const RasterSpec spec{window, resolution, static_cast<unsigned int>(max_i - min_i), static_cast<unsigned int>(max_j - min_j)}; const auto costs = rasterize(polygons, spec, profile_);
-  for (unsigned int y = 0; y < spec.height; ++y) for (unsigned int x = 0; x < spec.width; ++x) { const auto cost = costs[y * spec.width + x]; const auto old = master.getCost(min_i + x, min_j + y); if (cost > 0 && (old == nav2_costmap_2d::NO_INFORMATION || cost > old)) master.setCost(min_i + x, min_j + y, cost); }
+  for (unsigned int y = 0; y < spec.height; ++y) for (unsigned int x = 0; x < spec.width; ++x) { const auto cost = costs[y * spec.width + x]; const auto old = master.getCost(min_i + x, min_j + y); const auto merged = max_keepout_cost(old, cost); if (merged != old) master.setCost(min_i + x, min_j + y, merged); }
 }
 void VectorKeepoutLayer::reset() { std::lock_guard<std::mutex> lock(mutex_); previous_map_ = polygons_map_; current_ = true; }
 }  // namespace salus_navigation_costmap
