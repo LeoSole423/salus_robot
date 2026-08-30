@@ -79,6 +79,13 @@ def _response_record(index: int, started: float, response=None, error: str = "")
     }
 
 
+def run_control(node: PressureProbe, count: int, interval_s: float) -> None:
+    for _ in range(count):
+        _spin_for(node, 0.2)
+        node.publish_fixture_scan()
+        _spin_for(node, 0.1 + interval_s)
+
+
 def run_direct(node: PressureProbe, count: int, interval_s: float) -> list[dict]:
     deadline = time.monotonic() + 20.0
     while not node.snapshot.service_is_ready() and time.monotonic() < deadline:
@@ -221,7 +228,7 @@ def main() -> int:
         )
 
         if args.mode == "none":
-            _spin_for(node, 15.0)
+            run_control(node, args.requests, args.interval_s)
         elif args.mode == "direct":
             records = run_direct(node, args.requests, args.interval_s)
         else:
