@@ -93,3 +93,27 @@ def test_camera_mapping_preserves_optional_axis_contract() -> None:
 
     state = build_ros_request(_request({"op": "get_camera_ptz_state"}))
     assert isinstance(state, CameraPtzState.Request)
+
+
+def test_required_camera_round_trip_precedes_websocket_listen() -> None:
+    root = Path(__file__).parents[2]
+    gateway = (root / "salus_web" / "salus_web" / "ros_gateway.py").read_text(
+        encoding="utf-8"
+    )
+    bridge = (root / "salus_web" / "salus_web" / "web_bridge_node.py").read_text(
+        encoding="utf-8"
+    )
+    web_launch = (root / "salus_web" / "launch" / "web_bridge.launch.py").read_text(
+        encoding="utf-8"
+    )
+    integration = (
+        root / "salus_bringup" / "launch" / "integration_sim.launch.py"
+    ).read_text(encoding="utf-8")
+
+    assert "async def wait_for_required_service(" in gateway
+    assert '"required_service_startup_timeout_s", 20.0' in gateway
+    preflight = bridge.index("await node.wait_for_required_service(")
+    listen = bridge.index("await server.start()")
+    assert preflight < listen
+    assert '"require_camera_service", default_value="false"' in web_launch
+    assert '"require_camera_service": launch_camera' in integration
