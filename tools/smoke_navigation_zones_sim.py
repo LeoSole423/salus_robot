@@ -255,8 +255,10 @@ def main():
         raise
     finally:
         runtime.finish(success, error=failure, evidence={
-            "odometry": len(node.odom), "masks": len(node.mask), "plans": len(node.plans),
-            "navigation_startup": node.startup.snapshot(),
+            "odometry": len(node.odom),
+            "masks": len(node.mask),
+            "plans": len(node.plans),
+            "zones_startup": node.startup_evidence(),
         })
         node.destroy_node(); rclpy.shutdown()
 
