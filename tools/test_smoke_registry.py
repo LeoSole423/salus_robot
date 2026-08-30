@@ -47,6 +47,15 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertTrue(BY_ID["sim_operational"]["participation"]["nightly"])
         self.assertTrue(BY_ID["operational_persistence"]["participation"]["nightly"])
 
+    def test_matrix_restores_exact_sha_workspace_artifact(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("compiled-workspace-${{ github.sha }}", workflow)
+        self.assertIn("package_workspace_artifact.sh", workflow)
+        self.assertIn("restore_workspace_artifact.sh", workflow)
+        smoke_job = workflow.split("\n  smoke:\n", 1)[1]
+        self.assertNotIn("run: ./tools/build.sh", smoke_job)
+        self.assertIn("needs: [classify-changes, build-unit]", smoke_job)
+
 
 if __name__ == "__main__":
     unittest.main()
