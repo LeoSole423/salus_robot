@@ -529,18 +529,26 @@ class CockpitRosGateway(Node):
         operation: str,
         request: Any,
     ) -> Any:
-        """Require one causal service round-trip before exposing a dependent UI."""
+        """Require discovery, then one independently bounded service round-trip."""
         client = self._service_clients[operation]
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + self._required_service_startup_timeout_s
+        discovery_started = loop.time()
+        discovery_deadline = (
+            discovery_started + self._required_service_startup_timeout_s
+        )
         while not client.service_is_ready():
-            if loop.time() >= deadline:
+            if loop.time() >= discovery_deadline:
                 raise RosGatewayError(
                     "SERVICE_UNAVAILABLE",
                     f"{operation} required service unavailable during startup",
                 )
             await asyncio.sleep(0.05)
 
+        # Discovery can legitimately consume most of the startup window on a
+        # contended runner.  Do not give the actual readiness round-trip only
+        # the leftover milliseconds: once discovered it gets the same bounded
+        # response budget as a normal service call.
+        discovered_at = loop.time()
         ros_future = client.call_async(request)
         future: asyncio.Future[Any] = loop.create_future()
 
@@ -556,17 +564,21 @@ class CockpitRosGateway(Node):
             loop.call_soon_threadsafe(resolve)
 
         ros_future.add_done_callback(complete)
-        remaining_s = max(0.0, deadline - loop.time())
         try:
-            result = await asyncio.wait_for(future, remaining_s)
+            result = await asyncio.wait_for(future, self._service_timeout_s)
         except asyncio.TimeoutError as error:
             ros_future.cancel()
             raise RosGatewayError(
                 "SERVICE_TIMEOUT",
-                f"{operation} required service did not respond during startup",
+                (
+                    f"{operation} required service did not respond during startup "
+                    f"within {self._service_timeout_s:.1f}s response budget"
+                ),
             ) from error
         self.get_logger().info(
-            f"required Cockpit service {operation} completed startup round-trip"
+            f"required Cockpit service {operation} discovered in "
+            f"{discovered_at - discovery_started:.3f}s and completed startup "
+            f"round-trip in {loop.time() - discovered_at:.3f}s"
         )
         return result
 
