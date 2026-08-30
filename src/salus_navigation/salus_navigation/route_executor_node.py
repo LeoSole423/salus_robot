@@ -49,6 +49,7 @@ class RouteExecutorNode(Node):
         self.declare_parameter("blocked_retry_max_attempts", 3)
         self.declare_parameter("blocked_retry_reanchor_tolerance_m", 8.0)
         self.declare_parameter("costmap_clear_timeout_s", 3.0)
+        self.declare_parameter("nav_cancel_timeout_s", 15.0)
         self._lock = threading.RLock()
         self._mission = RouteMission()
         self._preparation = None
@@ -72,8 +73,18 @@ class RouteExecutorNode(Node):
         )
         self._recovery_clears = None
         self._event_id = 0
-        self._set_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
-        self._cancel_goal = self.create_client(CancelNavGoal, "/nav_command_server/cancel_goal")
+        self._nav_cancel_timeout_s = max(
+            0.1, float(self.get_parameter("nav_cancel_timeout_s").value)
+        )
+        self._set_goal = self.create_client(
+            SetNavGoalLL, "/nav_command_server/set_goal_ll"
+        )
+        self._nav_cancel_group = ReentrantCallbackGroup()
+        self._cancel_goal = self.create_client(
+            CancelNavGoal,
+            "/nav_command_server/cancel_goal",
+            callback_group=self._nav_cancel_group,
+        )
         self._brake = self.create_client(BrakeNav, "/nav_command_server/brake")
         self._profile_group = ReentrantCallbackGroup()
         self._apply_profile = self.create_client(
@@ -506,8 +517,43 @@ class RouteExecutorNode(Node):
             if self._mission.phase == RoutePhase.ACTIVE:
                 transition(self._mission, RoutePhase.CANCELLED, "cancelled")
             self._goal_epoch += 1
-            self._cancel_goal.call_async(CancelNavGoal.Request()).add_done_callback(self._log_failed_cancel)
-            self._brake.call_async(BrakeNav.Request(duration_s=0.25, brake_pct=100)).add_done_callback(self._log_failed_brake)
+            cancel_future = self._cancel_goal.call_async(CancelNavGoal.Request())
+            self._brake.call_async(
+                BrakeNav.Request(duration_s=0.25, brake_pct=100)
+            ).add_done_callback(self._log_failed_brake)
+
+        terminal = threading.Event()
+        cancel_future.add_done_callback(lambda _done: terminal.set())
+        if not terminal.wait(self._nav_cancel_timeout_s):
+            response.ok = False
+            response.error = (
+                "route cancellation did not reach terminal Nav2 state within "
+                f"{self._nav_cancel_timeout_s:.1f}s"
+            )
+            self._event(
+                DiagnosticStatus.ERROR,
+                "ROUTE_CANCEL_TIMEOUT",
+                response.error,
+            )
+            return response
+        try:
+            result = cancel_future.result()
+            if result is None or not result.ok:
+                raise RuntimeError(
+                    "empty cancellation response"
+                    if result is None
+                    else result.error
+                )
+        except Exception as exc:
+            response.ok = False
+            response.error = f"route Nav2 cancellation failed: {exc}"
+            self._event(
+                DiagnosticStatus.ERROR,
+                "ROUTE_CANCEL_FAILED",
+                response.error,
+            )
+            return response
+
         response.ok, response.error = True, ""
         return response
 

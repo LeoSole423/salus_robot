@@ -37,3 +37,16 @@ def test_patrol_battery_inputs_are_configurable_and_do_not_command_motion():
     callbacks = source[source.index("    def _on_battery_guard"):source.index("    def _set")]
     assert "cmd_vel" not in callbacks
     assert "NavigateToPose" not in callbacks
+
+
+def test_route_cancel_waits_for_terminal_nav2_before_returning_ok():
+    source = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
+    cancel = source[source.index("    def _cancel("):source.index("    def _set_profile")]
+    assert '"nav_cancel_timeout_s", 15.0' in source
+    assert "self._nav_cancel_group = ReentrantCallbackGroup()" in source
+    assert "callback_group=self._nav_cancel_group" in source
+    assert "terminal = threading.Event()" in cancel
+    assert "terminal.wait(self._nav_cancel_timeout_s)" in cancel
+    assert '"ROUTE_CANCEL_TIMEOUT"' in cancel
+    assert '"ROUTE_CANCEL_FAILED"' in cancel
+    assert "response.ok, response.error = True, \"\"" in cancel
