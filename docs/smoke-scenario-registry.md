@@ -18,6 +18,16 @@ The workflow passes only the stable scenario id. `tools/run_registered_smoke.py`
 
 Each matrix entry receives a fresh GitHub runner and uploads `smoke-<id>-artifacts`. A failed scenario is therefore attributable and independently rerunnable without serially re-executing unrelated smokes.
 
+The full `web_cockpit` scenario is intentionally registered but has PR/FULL/main/nightly participation disabled. Evidence from #138 showed that its complete operational composition requires materially more CPU than the standard 4-vCPU GitHub runner can provide while preserving simulation time. It therefore acts as a resource/reliability stress workload rather than a deterministic functional gate.
+
+Registered non-gating scenarios remain runnable without bypassing registry-owned execution metadata:
+
+```bash
+python3 tools/run_registered_smoke.py web_cockpit --context manual
+```
+
+`manual` uses the scenario's CI hard-timeout and environment metadata but does not require PR participation.
+
 This stage intentionally rebuilds the ROS workspace in each matrix runner. Commit-scoped workspace sharing is a separate CI v2 experiment so performance optimization cannot obscure the isolation change.
 
 
@@ -64,7 +74,7 @@ Coverage ownership after decomposition:
 
 - `sim_operational`: owns canonical full-system composition only. It launches `sim_operational.launch.py` and uses the operational integration probe to verify the composed graph, common source/readiness contracts, TF, required services, and key authorities.
 - `routes`: owns route execution and navigation-profile application. `smoke_route_executor_sim.sh` continues to execute both `smoke_route_executor_sim.py` and `smoke_navigation_profiles.py`.
-- `web_cockpit`: owns the full Cockpit WebSocket protocol, control lease, camera operations, scan preview, zones, waypoints, manual-safe-stop, snapshot, and safe-operation acknowledgements.
+- `web_cockpit`: owns the full Cockpit WebSocket protocol, control lease, camera operations, scan preview, zones, waypoints, manual-safe-stop, snapshot, and safe-operation acknowledgements. It is preserved as a manual/provisioned stress-reliability scenario rather than a standard-runner PR/main gate.
 - `operational_persistence`: owns only persistence of Cockpit waypoints and simulated camera presets across owner restart. It launches the minimal `persistence_contract.launch.py` composition containing Web + Camera, seeds state, restarts those owners, and verifies restoration.
 
 The persistence contract intentionally does not require Gazebo, localization, Nav2, keepout, routes, or patrol. Failures in those systems therefore cannot invalidate a persistence assertion.
