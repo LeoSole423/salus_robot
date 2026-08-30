@@ -56,6 +56,12 @@ simulación.
   odometría progresivos, TF global reciente, scan válido y la máscara keepout
   cuando está habilitada. Publica la causa y el estado en
   `/navigation_startup/diagnostics`; no altera parámetros de navegación.
+- `nav_command_server` mantiene una meta como activa mientras Nav2 procesa su
+  cancelación. `CancelNavGoal` espera hasta `cancel_result_timeout_s` (12,0 s
+  por defecto, mínimo 0,1 s) para observar un resultado terminal; un reemplazo
+  no despacha la meta siguiente antes de esa transición. El takeover manual
+  conserva autoridad inmediata de comando y la cancelación termina de forma
+  asíncrona y observable.
 
 Pruebas: `colcon test --packages-select salus_navigation` y
 `./tools/smoke_navigation_zones_sim.sh`, `./tools/smoke_navigation_core_sim.sh`
