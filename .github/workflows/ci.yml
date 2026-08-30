@@ -54,7 +54,7 @@ jobs:
         run: |
           changed_files="${RUNNER_TEMP}/salus-ci-changed-files.txt"
           if [[ "${EVENT_NAME}" == "pull_request" ]]; then
-            git diff --name-only --diff-filter=ACDMRT "${BASE_SHA}...${HEAD_SHA}" > "${changed_files}"
+            git diff --name-only --no-renames --diff-filter=ACDMRT "${BASE_SHA}...${HEAD_SHA}" > "${changed_files}"
             python3 tools/ci_select_smokes.py --files "${changed_files}"
           else
             : > "${changed_files}"
