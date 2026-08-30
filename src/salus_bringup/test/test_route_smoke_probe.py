@@ -57,5 +57,10 @@ def test_first_checkpoint_trace_compares_local_and_global_progress():
     assert '"cross_track_error_m"' in source
     assert '"progress_ratio"' in source
     assert '"failure_code"' in source
+    assert '"map_to_odom"' in source
+    assert '"/gps/course_heading/debug"' in source
+    assert '"/localization/orientation_selection/debug"' in source
+    assert '"course_heading"' in source
+    assert '"orientation_selection"' in source
     assert '"first_checkpoint_progress_trace": node.progress_trace' in source
     assert "node.next_progress_sample_at = now + 0.5" in source
