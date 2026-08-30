@@ -83,6 +83,19 @@ def test_no_obstacle_variant_is_explicit_and_has_no_fake_scan() -> None:
     assert "STATE_DISABLED_BY_PROFILE" in source
 
 
+def test_short_goal_uses_causal_terminal_event_not_periodic_telemetry() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    baseline = source.index("short_goal_event_baseline = max(")
+    publish = source.index("node.rviz_goal.publish(rviz_goal)", baseline)
+
+    assert 'NavEvent, "/nav_command_server/events"' in source
+    assert baseline < publish
+    assert "message.event_id > short_goal_event_baseline" in source
+    assert 'message.code == "GOAL_RESULT_SUCCEEDED"' in source
+    assert '"goal did not publish terminal success event"' in source
+    assert 'message.nav_result_text == "succeeded"' not in source
+
+
 def test_course_heading_timeout_reports_raw_and_normalized_gps_boundaries() -> None:
     source = PROBE.read_text(encoding="utf-8")
     assert '"/gps/fix_raw"' in source
