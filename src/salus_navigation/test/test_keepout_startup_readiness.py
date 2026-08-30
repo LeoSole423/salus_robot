@@ -6,6 +6,7 @@ from salus_navigation.nav2_startup_coordinator import (
     zones_state_mask_ready,
 )
 from salus_navigation.zones_manager import (
+    ZonesManager,
     unrepresentable_zone_error,
     zones_document_is_empty,
 )
