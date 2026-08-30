@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+import json
 import unittest
 
-from tools.ci_select_smokes import ALL_SMOKES, classify
+from tools.ci_select_smokes import ALL_SMOKES, classify, outputs
 
 
 class ChangeAwareCiSelectionTest(unittest.TestCase):
@@ -113,6 +114,21 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
 
     def test_empty_change_set_falls_back_to_full(self):
         self.assertTrue(classify([]).full_ci)
+
+    def test_targeted_selection_emits_only_selected_matrix_ids(self):
+        selection = classify(["src/salus_web/salus_web/bridge.py"])
+        matrix = json.loads(outputs(selection)["smoke_matrix"])
+        self.assertTrue(outputs(selection)["run_smokes"] == "true")
+        self.assertEqual(
+            [entry["id"] for entry in matrix["include"]],
+            ["integration", "web_cockpit"],
+        )
+
+    def test_fast_gate_only_emits_empty_matrix(self):
+        selection = classify(["README.md"])
+        matrix = json.loads(outputs(selection)["smoke_matrix"])
+        self.assertEqual(outputs(selection)["run_smokes"], "false")
+        self.assertEqual(matrix, {"include": []})
 
 
 if __name__ == "__main__":
