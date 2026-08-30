@@ -9,6 +9,7 @@ run_variant() {
   local ros_domain="$2"
   local pressure_mode="$3"
   local launch_web="$4"
+  local launch_snapshot="$5"
   local web_port=$((18800 + ros_domain))
 
   docker compose run --rm \
@@ -74,11 +75,14 @@ PY
 }
 
 # C: Nav2 + real persisted keepout; no Snapshot server and no Web gateway.
-run_variant "C-keepout" "66" "none" "false"
+run_variant "C-keepout" "66" "none" "false" "false"
 
-# D: same composition + Snapshot server; five direct Snapshot requests.
-run_variant "D-snapshot" "67" "direct" "false"
+# D0: same composition + Snapshot server, but no Snapshot requests.
+run_variant "D0-snapshot-idle" "67" "none" "false" "true"
+
+# D1: same composition + Snapshot server; five direct Snapshot requests.
+run_variant "D1-snapshot-requests" "68" "direct" "false" "true"
 
 # E: same composition + Snapshot server + Web gateway; five equivalent
 # Snapshot requests enter through the WebSocket bridge.
-run_variant "E-web" "68" "web" "true"
+run_variant "E-web" "69" "web" "true" "false"
