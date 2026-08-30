@@ -1,23 +1,389 @@
 {
   "schema_version": 1,
   "scenarios": [
-    {"id":"control","script":"tools/smoke_control_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["control"]},
-    {"id":"motion","script":"tools/smoke_motion_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["control","simulation"]},
-    {"id":"localization","script":"tools/smoke_localization_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["localization"]},
-    {"id":"localization_canonical","script":"tools/smoke_localization_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":false},"nightly_repetitions":0,"tags":["localization","canonical"],"env":{"VEHICLE_IO_PROFILE":"canonical"}},
-    {"id":"sensor_selection","script":"tools/smoke_sensor_selection_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":false},"nightly_repetitions":0,"tags":["localization","sensors"]},
-    {"id":"lidar","script":"tools/smoke_lidar_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["perception","lidar"]},
-    {"id":"safety","script":"tools/smoke_safety_sim.sh","family":"core","timeouts_s":{"ci":120,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["control","navigation","safety"]},
-    {"id":"integration","script":"tools/smoke_integration_sim.sh","family":"core","timeouts_s":{"ci":180,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["integration"]},
-    {"id":"navigation","script":"tools/smoke_navigation_core_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["navigation","localization"]},
-    {"id":"navigation_canonical","script":"tools/smoke_navigation_canonical_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":false},"nightly_repetitions":0,"tags":["navigation","canonical"]},
-    {"id":"navigation_no_obstacles","script":"tools/smoke_navigation_no_obstacles_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":false},"nightly_repetitions":0,"tags":["navigation","no-obstacles"]},
-    {"id":"zones","script":"tools/smoke_navigation_zones_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["navigation","zones"]},
-    {"id":"routes","script":"tools/smoke_route_executor_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["navigation","routes"]},
-    {"id":"patrol_battery","script":"tools/smoke_patrol_battery_sim.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["navigation","patrol","battery"]},
-    {"id":"snapshot","script":"tools/smoke_navigation_snapshot.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":true},"nightly_repetitions":10,"tags":["navigation","snapshot"]},
-    {"id":"web_cockpit","script":"tools/smoke_web_cockpit.sh","family":"navigation","timeouts_s":{"ci":240,"nightly":120},"participation":{"pr":true,"full":true,"main":true,"nightly":false},"nightly_repetitions":0,"tags":["navigation","web"]},
-    {"id":"sim_operational","script":"tools/smoke_sim_operational.sh","family":"operational","timeouts_s":{"ci":120,"nightly":180},"participation":{"pr":false,"full":false,"main":false,"nightly":true},"nightly_repetitions":10,"tags":["operational","composition"]},
-    {"id":"operational_persistence","script":"tools/smoke_operational_persistence.sh","family":"operational","timeouts_s":{"ci":120,"nightly":180},"participation":{"pr":false,"full":false,"main":false,"nightly":true},"nightly_repetitions":10,"tags":["operational","persistence"]}
+    {
+      "id": "control",
+      "script": "tools/smoke_control_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "control"
+      ]
+    },
+    {
+      "id": "motion",
+      "script": "tools/smoke_motion_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "control",
+        "simulation"
+      ]
+    },
+    {
+      "id": "localization",
+      "script": "tools/smoke_localization_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "localization"
+      ]
+    },
+    {
+      "id": "localization_canonical",
+      "script": "tools/smoke_localization_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "localization",
+        "canonical"
+      ],
+      "env": {
+        "VEHICLE_IO_PROFILE": "canonical"
+      }
+    },
+    {
+      "id": "sensor_selection",
+      "script": "tools/smoke_sensor_selection_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "localization",
+        "sensors"
+      ]
+    },
+    {
+      "id": "lidar",
+      "script": "tools/smoke_lidar_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "perception",
+        "lidar"
+      ]
+    },
+    {
+      "id": "safety",
+      "script": "tools/smoke_safety_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "control",
+        "navigation",
+        "safety"
+      ]
+    },
+    {
+      "id": "integration",
+      "script": "tools/smoke_integration_sim.sh",
+      "family": "core",
+      "timeouts_s": {
+        "ci": 180,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "integration"
+      ]
+    },
+    {
+      "id": "navigation",
+      "script": "tools/smoke_navigation_core_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "navigation",
+        "localization"
+      ]
+    },
+    {
+      "id": "navigation_canonical",
+      "script": "tools/smoke_navigation_canonical_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "navigation",
+        "canonical"
+      ]
+    },
+    {
+      "id": "navigation_no_obstacles",
+      "script": "tools/smoke_navigation_no_obstacles_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "navigation",
+        "no-obstacles"
+      ]
+    },
+    {
+      "id": "zones",
+      "script": "tools/smoke_navigation_zones_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "navigation",
+        "zones"
+      ]
+    },
+    {
+      "id": "routes",
+      "script": "tools/smoke_route_executor_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "navigation",
+        "routes"
+      ]
+    },
+    {
+      "id": "patrol_battery",
+      "script": "tools/smoke_patrol_battery_sim.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "navigation",
+        "patrol",
+        "battery"
+      ]
+    },
+    {
+      "id": "snapshot",
+      "script": "tools/smoke_navigation_snapshot.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "navigation",
+        "snapshot"
+      ]
+    },
+    {
+      "id": "web_cockpit",
+      "script": "tools/smoke_web_cockpit.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 240,
+        "nightly": 120
+      },
+      "participation": {
+        "pr": true,
+        "full": true,
+        "main": true,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "navigation",
+        "web"
+      ]
+    },
+    {
+      "id": "runtime_keepout_isolation",
+      "script": "tools/smoke_runtime_keepout_isolation.sh",
+      "family": "navigation",
+      "timeouts_s": {
+        "ci": 480,
+        "nightly": 480
+      },
+      "participation": {
+        "pr": true,
+        "full": false,
+        "main": false,
+        "nightly": false
+      },
+      "nightly_repetitions": 0,
+      "tags": [
+        "navigation",
+        "zones",
+        "diagnostic",
+        "phase2"
+      ]
+    },
+    {
+      "id": "sim_operational",
+      "script": "tools/smoke_sim_operational.sh",
+      "family": "operational",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 180
+      },
+      "participation": {
+        "pr": false,
+        "full": false,
+        "main": false,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "operational",
+        "composition"
+      ]
+    },
+    {
+      "id": "operational_persistence",
+      "script": "tools/smoke_operational_persistence.sh",
+      "family": "operational",
+      "timeouts_s": {
+        "ci": 120,
+        "nightly": 180
+      },
+      "participation": {
+        "pr": false,
+        "full": false,
+        "main": false,
+        "nightly": true
+      },
+      "nightly_repetitions": 10,
+      "tags": [
+        "operational",
+        "persistence"
+      ]
+    }
   ]
 }
