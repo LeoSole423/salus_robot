@@ -55,6 +55,22 @@ def test_canonical_variant_preserves_nav_authority_and_checks_fresh_input() -> N
     assert 'status.get("fresh") is True' in source
 
 
+def test_global_orientation_is_checked_while_the_straight_goal_is_active() -> None:
+    source = PROBE.read_text(encoding="utf-8")
+    orientation_wait = source.index(
+        '"course-over-ground selection produced no global orientation"'
+    )
+    distance_wait = source.index(
+        "wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0"
+    )
+    goal_finish = source.index('"short goal did not finish"')
+    assert orientation_wait < distance_wait < goal_finish
+    assert '"/gps/course_heading/debug"' in source
+    assert '"/localization/orientation_selection/debug"' in source
+    assert '"course_heading": (' in source
+    assert '"orientation_selection": (' in source
+
+
 def test_no_obstacle_variant_is_explicit_and_has_no_fake_scan() -> None:
     source = PROBE.read_text(encoding="utf-8")
     wrapper = (ROOT / "tools" / "smoke_navigation_no_obstacles_sim.sh").read_text(
