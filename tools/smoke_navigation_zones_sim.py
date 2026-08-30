@@ -7,25 +7,56 @@ import json
 import math
 import os
 import sys
+import time
 from pathlib import Path
 
 import rclpy
+from lifecycle_msgs.srv import GetState
+from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from salus_interfaces.msg import NavTelemetry
 from salus_interfaces.srv import GetZonesState, SetNavGoalLL, SetZonesGeoJson
 from std_srvs.srv import Trigger
-from smoke_runtime import AsyncServicePoller, SmokeRuntime, subscribe_navigation_startup
+from smoke_runtime import (
+    AsyncServicePoller,
+    SmokeRuntime,
+    finite_odometry,
+    has_increasing_stamps,
+    stamp_ns,
+    subscribe_navigation_startup,
+)
 
 
 DATUM_LAT, DATUM_LON = -31.4858037, -64.2410570
 
 
+def startup_evidence_is_ready(evidence):
+    """Pure causal startup contract used by the zones smoke and its tests."""
+    return (
+        evidence["navigation_active"]
+        and all(evidence["actions"].values())
+        and all(evidence["services"].values())
+        and evidence["odometry_progressive"]
+        and evidence["odometry_finite"]
+        and evidence["telemetry_messages"] >= 2
+        and evidence["bt_state"] == "active"
+        and evidence["mask_messages"] >= 1
+        and evidence["mask_frame"] == "map"
+        and evidence["mask_cells"] > 0
+    )
+
+
 class ZonesSmoke(Node):
     def __init__(self):
         super().__init__("zones_sim_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
-        self.odom: list[Odometry] = []; self.mask: list[OccupancyGrid] = []; self.plans: list[NavPath] = []
+        self.odom: list[Odometry] = []
+        self.mask: list[OccupancyGrid] = []
+        self.plans: list[NavPath] = []
+        self.telemetry: list[NavTelemetry] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         # map_server keeps this map latched. A late smoke subscriber must use
         # the matching QoS to receive the currently active empty/full mask.
@@ -38,11 +69,79 @@ class ZonesSmoke(Node):
             OccupancyGrid, "/keepout_filter_mask", self.mask.append, mask_qos
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
+        self.create_subscription(
+            NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10
+        )
         self.set_zones = self.create_client(SetZonesGeoJson, "/zones_manager/set_geojson")
         self.get_zones = self.create_client(GetZonesState, "/zones_manager/get_state")
         self.reload = self.create_client(Trigger, "/zones_manager/reload_from_disk")
         self.goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
+        self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
+        self.follow_action = ActionClient(self, FollowPath, "/follow_path")
+        self.bt_state = self.create_client(GetState, "/bt_navigator/get_state")
+        self.bt_state_future = None
+        self.bt_state_requested_at = 0.0
+        self.bt_state_label = "unavailable"
+        self.bt_state_requests = 0
+        self.bt_state_timeouts = 0
         self.startup = subscribe_navigation_startup(self)
+
+    def poll_bt_state(self):
+        now = time.monotonic()
+        if self.bt_state_future is not None:
+            if self.bt_state_future.done():
+                response = self.bt_state_future.result()
+                self.bt_state_label = (
+                    response.current_state.label
+                    if response is not None
+                    else "invalid response"
+                )
+                self.bt_state_future = None
+            elif now - self.bt_state_requested_at >= 2.0:
+                self.bt_state_future.cancel()
+                self.bt_state_future = None
+                self.bt_state_timeouts += 1
+        if self.bt_state_future is None and self.bt_state.service_is_ready():
+            self.bt_state_future = self.bt_state.call_async(GetState.Request())
+            self.bt_state_requested_at = now
+            self.bt_state_requests += 1
+
+    def startup_evidence(self):
+        odom_stamps = [stamp_ns(message) for message in self.odom[-2:]]
+        mask = self.mask[-1] if self.mask else None
+        return {
+            "navigation_active": self.startup.active,
+            "navigation_startup": self.startup.snapshot(),
+            "actions": {
+                "navigate_to_pose": self.navigate_action.server_is_ready(),
+                "compute_path_to_pose": self.plan_action.server_is_ready(),
+                "follow_path": self.follow_action.server_is_ready(),
+            },
+            "services": {
+                "zones_set": self.set_zones.service_is_ready(),
+                "zones_state": self.get_zones.service_is_ready(),
+                "zones_reload": self.reload.service_is_ready(),
+                "nav_goal": self.goal.service_is_ready(),
+                "bt_lifecycle": self.bt_state.service_is_ready(),
+            },
+            "odometry_messages": len(self.odom),
+            "odometry_timestamps_ns": odom_stamps,
+            "odometry_progressive": has_increasing_stamps(self.odom),
+            "odometry_finite": bool(self.odom) and finite_odometry(self.odom[-1]),
+            "telemetry_messages": len(self.telemetry),
+            "bt_state": self.bt_state_label,
+            "bt_state_requests": self.bt_state_requests,
+            "bt_state_timeouts": self.bt_state_timeouts,
+            "mask_messages": len(self.mask),
+            "mask_frame": mask.header.frame_id if mask is not None else "",
+            "mask_cells": len(mask.data) if mask is not None else 0,
+            "mask_width": int(mask.info.width) if mask is not None else 0,
+            "mask_height": int(mask.info.height) if mask is not None else 0,
+        }
+
+    def startup_ready(self):
+        return startup_evidence_is_ready(self.startup_evidence())
 
 
 def wait_for(node, predicate, timeout, message):
@@ -98,9 +197,12 @@ def main():
     success = False
     failure = None
     try:
-        wait_for(
-            node, lambda: node.startup.active, 45.0,
-            "navigation startup did not become active",
+        runtime.wait(
+            "zones startup readiness unavailable",
+            node.startup_ready,
+            45.0,
+            stimulate=node.poll_bt_state,
+            observe=node.startup_evidence,
         )
         initial_state = AsyncServicePoller(
             node.get_zones, GetZonesState.Request,
