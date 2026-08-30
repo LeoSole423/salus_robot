@@ -51,6 +51,8 @@ class NavigationSmoke(Node):
         self.controller_status: list[dict] = []
         self.capability_profiles: list[SystemCapabilities] = []
         self.selected_orientations: list[Imu] = []
+        self.course_heading_debug: list[dict] = []
+        self.orientation_selection_debug: list[dict] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         self.create_subscription(Odometry, "/odom_raw", self.raw_odom.append, 10)
         self.create_subscription(Odometry, "/odometry/local", self.local_odom.append, 10)
@@ -58,6 +60,18 @@ class NavigationSmoke(Node):
             Imu,
             "/localization/orientation",
             self.selected_orientations.append,
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/gps/course_heading/debug",
+            self._on_course_heading_debug,
+            10,
+        )
+        self.create_subscription(
+            String,
+            "/localization/orientation_selection/debug",
+            self._on_orientation_selection_debug,
             10,
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
@@ -87,13 +101,23 @@ class NavigationSmoke(Node):
         self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
 
-    def _on_controller_status(self, message: String) -> None:
+    @staticmethod
+    def _append_json(target: list[dict], message: String) -> None:
         try:
             payload = json.loads(message.data)
         except (json.JSONDecodeError, TypeError):
             return
         if isinstance(payload, dict):
-            self.controller_status.append(payload)
+            target.append(payload)
+
+    def _on_controller_status(self, message: String) -> None:
+        self._append_json(self.controller_status, message)
+
+    def _on_course_heading_debug(self, message: String) -> None:
+        self._append_json(self.course_heading_debug, message)
+
+    def _on_orientation_selection_debug(self, message: String) -> None:
+        self._append_json(self.orientation_selection_debug, message)
 
     @staticmethod
     def goal_request(x_m: float, y_m: float, yaw_rad: float) -> SetNavGoalLL.Request:
@@ -379,14 +403,30 @@ def main() -> int:
                 8.0,
                 "Nav2 command did not reach a fresh canonical controller input",
             )
+        node.runtime.wait(
+            "course-over-ground selection produced no global orientation",
+            lambda: bool(node.selected_orientations),
+            12.0,
+            observe=lambda: {
+                "course_heading": (
+                    node.course_heading_debug[-1]
+                    if node.course_heading_debug
+                    else {}
+                ),
+                "orientation_selection": (
+                    node.orientation_selection_debug[-1]
+                    if node.orientation_selection_debug
+                    else {}
+                ),
+                "local_speed_mps": (
+                    node.local_odom[-1].twist.twist.linear.x
+                    if node.local_odom
+                    else None
+                ),
+            },
+        )
         wait_for(node, lambda: distance_from(start, node.odom[-1]) > 1.0, 18.0, "robot did not advance toward the RViz goal")
         wait_for(node, lambda: not get_state(node).goal_active, 30.0, "short goal did not finish")
-        wait_for(
-            node,
-            lambda: bool(node.selected_orientations),
-            4.0,
-            "course-over-ground selection produced no global orientation",
-        )
         # Let the final odometry sample arrive after the action result.  The
         # action result is the authoritative goal-tolerance decision because
         # Nav2 evaluates the map->base_footprint transform, whereas this
@@ -457,6 +497,14 @@ def main() -> int:
             ),
             "capability_profiles": len(node.capability_profiles),
             "selected_orientations": len(node.selected_orientations),
+            "course_heading_debug": (
+                node.course_heading_debug[-1] if node.course_heading_debug else {}
+            ),
+            "orientation_selection_debug": (
+                node.orientation_selection_debug[-1]
+                if node.orientation_selection_debug
+                else {}
+            ),
             "expected_capability_profile": (
                 "no_obstacle_detection" if expect_no_obstacles else "obstacle_detection"
             ),
