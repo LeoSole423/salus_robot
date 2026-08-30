@@ -9,3 +9,4 @@ bool suppress_success_brake
 ---
 bool ok
 string error
+uint32 goal_event_id
