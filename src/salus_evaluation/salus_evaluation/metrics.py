@@ -190,7 +190,7 @@ def latest_prior(samples, stamp_s, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):
         return None, None
     sample = max(eligible, key=lambda item: item.stamp_s)
     gap_s = stamp_s - sample.stamp_s
-    return (sample, gap_s) if gap_s <= max_gap_s else (None, None)
+    return (sample, gap_s) if gap_s <= max_gap_s else (None, gap_s)
 
 
 def command_stage_alignments(input_stage, output_stage, *, epsilon=COMMAND_CHAIN_EPSILON):
@@ -203,7 +203,7 @@ def command_stage_alignments(input_stage, output_stage, *, epsilon=COMMAND_CHAIN
                 "input_stage": input_stage[0].stage if input_stage else "unavailable",
                 "output_stage": output.stage,
                 "output_stamp_s": output.stamp_s,
-                "alignment_gap_s": None,
+                "alignment_gap_s": gap_s,
                 "available": False,
             })
             continue
@@ -227,24 +227,19 @@ def command_stage_alignments(input_stage, output_stage, *, epsilon=COMMAND_CHAIN
 
 def saturation_intervals(statuses, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):
     """Count observed saturation intervals without extrapolating data gaps."""
-    intervals, duration_s, active = 0, 0.0, False
+    intervals, duration_s = 0, 0.0
     previous = None
     for current in sorted(statuses, key=lambda item: item.stamp_s):
-        contiguous = (
-            previous is not None
-            and current.steer_saturated
-            and previous.steer_saturated
-            and 0.0 <= current.stamp_s - previous.stamp_s <= max_gap_s
-        )
-        if current.steer_saturated and not active:
-            intervals += 1
-            active = True
-        if contiguous:
-            duration_s += current.stamp_s - previous.stamp_s
-        if not current.steer_saturated:
-            active = False
-        elif previous is not None and current.stamp_s - previous.stamp_s > max_gap_s:
-            intervals += 1
+        if current.steer_saturated:
+            contiguous = (
+                previous is not None
+                and previous.steer_saturated
+                and 0.0 <= current.stamp_s - previous.stamp_s <= max_gap_s
+            )
+            if contiguous:
+                duration_s += current.stamp_s - previous.stamp_s
+            else:
+                intervals += 1
         previous = current
     return {"interval_count": intervals, "observed_duration_s": duration_s}
 

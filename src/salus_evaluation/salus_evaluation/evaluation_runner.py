@@ -51,15 +51,12 @@ def _now_s(node):
     return node.get_clock().now().nanoseconds / 1e9
 
 
-def _float(value, default=0.0):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _bool(value):
-    return bool(value)
+def _finite_float(value):
+    """Accept only finite JSON numbers; malformed data stays observable as absent."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    result = float(value)
+    return result if math.isfinite(result) else None
 
 
 def _status_snapshot(stamp_s, payload):
@@ -72,22 +69,36 @@ def _status_snapshot(stamp_s, payload):
     }
     if not isinstance(command, dict) or not required.issubset(command):
         return None
+    booleans = (payload.get("fresh"), command.get("drive_enabled"),
+                command.get("estop"), command.get("steer_saturated"),
+                command.get("speed_limited"), command.get("min_speed_enforced"))
+    numeric_keys = required - {
+        "drive_enabled", "estop", "steer_saturated", "speed_limited",
+        "min_speed_enforced",
+    }
+    numeric = {key: _finite_float(command[key]) for key in numeric_keys}
+    if not all(isinstance(value, bool) for value in booleans) or any(
+            value is None for value in numeric.values()):
+        return None
+    source = payload.get("source", "unknown")
+    if not isinstance(source, str) or not (
+            isinstance(command["brake_pct"], int) and
+            not isinstance(command["brake_pct"], bool)):
+        return None
     return TimedControllerStatus(
         stamp_s=stamp_s,
-        source=str(payload.get("source", "unknown")),
-        fresh=_bool(payload.get("fresh")),
-        drive_enabled=_bool(command.get("drive_enabled")),
-        estop=_bool(command.get("estop")),
-        speed_mps=_float(command.get("speed_mps")),
-        brake_pct=int(_float(command.get("brake_pct"))),
-        requested_linear_x_mps=_float(command.get("requested_linear_x_mps")),
-        requested_angular_z_rps=_float(command.get("requested_angular_z_rps")),
-        requested_steer_rad=_float(command.get("requested_steer_rad")),
-        applied_steer_rad=_float(command.get("applied_steer_rad")),
-        steering_limit_used_rad=_float(command.get("steering_limit_used_rad")),
-        steer_saturated=_bool(command.get("steer_saturated")),
-        speed_limited=_bool(command.get("speed_limited")),
-        min_speed_enforced=_bool(command.get("min_speed_enforced")),
+        source=source,
+        fresh=payload["fresh"], drive_enabled=command["drive_enabled"],
+        estop=command["estop"], speed_mps=numeric["speed_mps"],
+        brake_pct=int(numeric["brake_pct"]),
+        requested_linear_x_mps=numeric["requested_linear_x_mps"],
+        requested_angular_z_rps=numeric["requested_angular_z_rps"],
+        requested_steer_rad=numeric["requested_steer_rad"],
+        applied_steer_rad=numeric["applied_steer_rad"],
+        steering_limit_used_rad=numeric["steering_limit_used_rad"],
+        steer_saturated=command["steer_saturated"],
+        speed_limited=command["speed_limited"],
+        min_speed_enforced=command["min_speed_enforced"],
     )
 
 
@@ -106,18 +117,20 @@ def _telemetry_snapshot(stamp_s, payload):
         or not required_limits.issubset(limits)
     ):
         return None
+    numeric = {
+        key: _finite_float(command[key]) for key in required_command
+    }
+    numeric.update({key: _finite_float(limits[key]) for key in required_limits})
+    if any(value is None for value in numeric.values()):
+        return None
     return TimedControllerTelemetry(
         stamp_s=stamp_s,
-        requested_speed_mps=_float(command.get("speed_mps")),
-        requested_steer_rad=_float(command.get("requested_steer_rad")),
-        applied_steer_rad=_float(command.get("applied_steer_rad")),
-        steering_limit_deg=_float(limits.get("steering_limit_deg")),
-        operational_steering_limit_deg=_float(
-            limits.get("operational_steering_limit_deg")
-        ),
-        effective_steering_limit_deg=_float(
-            limits.get("effective_steering_limit_deg")
-        ),
+        requested_speed_mps=numeric["speed_mps"],
+        requested_steer_rad=numeric["requested_steer_rad"],
+        applied_steer_rad=numeric["applied_steer_rad"],
+        steering_limit_deg=numeric["steering_limit_deg"],
+        operational_steering_limit_deg=numeric["operational_steering_limit_deg"],
+        effective_steering_limit_deg=numeric["effective_steering_limit_deg"],
     )
 
 
@@ -127,6 +140,43 @@ def _source_counts(samples):
         key = str(sample.source)
         counts[key] = counts.get(key, 0) + 1
     return counts
+
+
+def _value_summary(rows, key):
+    values = [row[key] for row in rows if row.get(key) is not None]
+    if not values:
+        return {"count": 0, "last": None, "min": None, "max": None}
+    return {"count": len(values), "last": values[-1], "min": min(values), "max": max(values)}
+
+
+def _alignment_summary(rows):
+    available = [row for row in rows if row.get("available")]
+    stale = [row for row in rows if not row.get("available") and
+             row.get("alignment_gap_s") is not None]
+    divergent = [row for row in available if row.get("divergent")]
+    return {
+        "total": len(rows), "correlated": len(available),
+        "unavailable": len(rows) - len(available), "stale": len(stale),
+        "divergent": len(divergent),
+        "linear_delta_mps": _value_summary(available, "linear_delta_mps"),
+        "angular_delta_rps": _value_summary(available, "angular_delta_rps"),
+    }
+
+
+def _histogram(samples, key):
+    counts = {}
+    for item in samples:
+        value = str(getattr(item, key))
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _trial_json_error_counts(errors, goal_stamp_s):
+    return {
+        source: sum(error_source == source and stamp_s >= goal_stamp_s
+                    for error_source, stamp_s in errors)
+        for source in ("status", "telemetry")
+    }
 
 
 def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
@@ -213,6 +263,7 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
             "cmd_vel_final": {
                 "source_counts": _source_counts(final),
                 "brake_sample_count": sum(item.brake_pct > 0 for item in final),
+                "brake_pct_histogram": _histogram(final, "brake_pct"),
             },
             "vehicle_command": {
                 "source_counts": _source_counts(vehicle),
@@ -220,6 +271,57 @@ def _command_chain(raw, safe, final, vehicle, drive, status, telemetry):
                 "emergency_stop_count": sum(item.emergency_stop for item in vehicle),
             },
             "steering_saturation": saturation_intervals(status),
+            "alignment": {
+                "cmd_vel_to_cmd_vel_safe": _alignment_summary(raw_safe),
+                "cmd_vel_safe_to_cmd_vel_final": _alignment_summary(safe_final),
+                "twist_to_ackermann": {
+                    "total": len(translations),
+                    "correlated": sum(row["available"] for row in translations),
+                    "unavailable": sum(not row["available"] for row in translations),
+                },
+                "ackermann_to_measured": {
+                    "total": len(applied_measurements),
+                    "status_unavailable": sum(
+                        row["status_alignment_gap_s"] is None or
+                        row["status_speed_mps"] is None for row in applied_measurements
+                    ),
+                    "telemetry_unavailable": sum(
+                        row["telemetry_alignment_gap_s"] is None or
+                        row["telemetry_requested_speed_mps"] is None
+                        for row in applied_measurements
+                    ),
+                },
+            },
+            "ackermann": {
+                "requested_to_applied_steer_delta_rad": _value_summary(
+                    applied_measurements, "status_requested_to_applied_steer_delta_rad"
+                ),
+                "status_speed_to_measured_delta_mps": _value_summary(
+                    applied_measurements, "status_speed_to_measured_delta_mps"
+                ),
+                "status_applied_to_measured_steer_delta_rad": _value_summary(
+                    applied_measurements, "status_applied_to_measured_steer_delta_rad"
+                ),
+                "telemetry_requested_to_measured_speed_delta_mps": _value_summary(
+                    applied_measurements,
+                    "telemetry_requested_to_measured_speed_delta_mps",
+                ),
+                "telemetry_applied_to_measured_steer_delta_rad": _value_summary(
+                    applied_measurements,
+                    "telemetry_applied_to_measured_steer_delta_rad",
+                ),
+            },
+            "ackermann_limits": {
+                "steering_limit_deg": _value_summary(
+                    [vars(item) for item in telemetry], "steering_limit_deg"
+                ),
+                "operational_steering_limit_deg": _value_summary(
+                    [vars(item) for item in telemetry], "operational_steering_limit_deg"
+                ),
+                "effective_steering_limit_deg": _value_summary(
+                    [vars(item) for item in telemetry], "effective_steering_limit_deg"
+                ),
+            },
         },
     }
 
@@ -253,7 +355,7 @@ class EvaluationRunner(Node):
         self.commands, self.safe_commands, self.final_commands = [], [], []
         self.vehicle_commands, self.drive_telemetry = [], []
         self.controller_status, self.controller_telemetry = [], []
-        self.controller_json_errors = {"status": 0, "telemetry": 0}
+        self.controller_json_errors = []
         self.plans, self.events = [], []
         self.goal = None
         self.start_pose = None
@@ -335,29 +437,31 @@ class EvaluationRunner(Node):
         ))
 
     def _controller_status(self, message):
+        stamp_s = _now_s(self)
         try:
             payload = json.loads(message.data)
         except (TypeError, json.JSONDecodeError):
-            self.controller_json_errors["status"] += 1
+            self.controller_json_errors.append(("status", stamp_s))
             return
-        snapshot = _status_snapshot(_now_s(self), payload) if isinstance(payload, dict) else None
+        snapshot = _status_snapshot(stamp_s, payload) if isinstance(payload, dict) else None
         if snapshot is None:
-            self.controller_json_errors["status"] += 1
+            self.controller_json_errors.append(("status", stamp_s))
         else:
             self.controller_status.append(snapshot)
 
     def _controller_telemetry(self, message):
+        stamp_s = _now_s(self)
         try:
             payload = json.loads(message.data)
         except (TypeError, json.JSONDecodeError):
-            self.controller_json_errors["telemetry"] += 1
+            self.controller_json_errors.append(("telemetry", stamp_s))
             return
         snapshot = (
-            _telemetry_snapshot(_now_s(self), payload)
+            _telemetry_snapshot(stamp_s, payload)
             if isinstance(payload, dict) else None
         )
         if snapshot is None:
-            self.controller_json_errors["telemetry"] += 1
+            self.controller_json_errors.append(("telemetry", stamp_s))
         else:
             self.controller_telemetry.append(snapshot)
 
@@ -500,6 +604,9 @@ class EvaluationRunner(Node):
         controller_telemetry = tuple(
             item for item in self.controller_telemetry if item.stamp_s >= self.goal_sent_s
         )
+        controller_json_errors = _trial_json_error_counts(
+            self.controller_json_errors, self.goal_sent_s
+        )
         plan = self.plans[-1] if self.plans else ()
         finite = trial_data_finite(
             self.goal, (global_poses, raw_poses, local_poses), commands, plan
@@ -550,7 +657,7 @@ class EvaluationRunner(Node):
                    )],
                    "errors": errors, "replans": max(0, len(self.plans) - 1),
                    "command_chain": command_chain["summary"],
-                   "controller_json_errors": self.controller_json_errors}
+                   "controller_json_errors": controller_json_errors}
         manifest = {
             "schema_version": 2, "goal_stamp_s": self.goal_sent_s,
             "mode": self.mode, "scenario": self.scenario_path,

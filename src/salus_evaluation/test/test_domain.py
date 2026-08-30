@@ -9,6 +9,7 @@ from salus_evaluation.metrics import (absolute_goal, arrival_metrics,
                                       command_stage_alignments,
                                       expected_turn_from_path,
                                       first_divergent_stage,
+                                      latest_prior,
                                       localization_metrics, tracking_metrics,
                                       saturation_intervals,
                                       trial_data_finite)
@@ -120,6 +121,8 @@ def test_command_chain_does_not_pair_a_future_or_stale_sample():
     alignments = command_stage_alignments(raw, safe)
     assert not alignments[0]["available"]
     assert not alignments[1]["available"]
+    assert alignments[1]["alignment_gap_s"] == pytest.approx(.3)
+    assert latest_prior(raw, 1.3) == (None, pytest.approx(.3))
 
 
 def test_saturation_duration_does_not_extrapolate_over_a_gap():
@@ -133,6 +136,17 @@ def test_saturation_duration_does_not_extrapolate_over_a_gap():
                                    status(1.5, True), status(1.6, True)))
     assert result["interval_count"] == 2
     assert result["observed_duration_s"] == pytest.approx(.2)
+
+
+def test_saturation_starts_once_after_a_non_saturated_long_gap():
+    def status(stamp, saturated):
+        return TimedControllerStatus(
+            stamp, "auto", True, True, False, 1.0, 0, 1.0, .2,
+            .3, .2, .25, saturated, False, False,
+        )
+
+    result = saturation_intervals((status(1.0, False), status(1.5, True)))
+    assert result == {"interval_count": 1, "observed_duration_s": 0.0}
 
 
 def test_functional_sign_gate_fails_and_performance_starts_calibrating():
