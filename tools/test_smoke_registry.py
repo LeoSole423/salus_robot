@@ -33,9 +33,11 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertIn('scenario.get("env", {})', runner)
         self.assertIn('scenario["script"]', runner)
 
-    def test_nightly_runner_is_registry_driven(self):
+    def test_nightly_workflow_is_registry_driven(self):
+        workflow = (ROOT / ".github/workflows/nightly-smokes.yml").read_text(encoding="utf-8")
         runner = (ROOT / "tools/smoke_reliability.sh").read_text(encoding="utf-8")
-        self.assertIn("smoke_registry.py --nightly-scripts", runner)
+        self.assertIn("smoke_registry.py --nightly-matrix", workflow)
+        self.assertIn("SMOKE_SCENARIO_ID", runner)
         self.assertNotIn("scenarios=(", runner)
         self.assertGreater(len(nightly_scripts()), 0)
 
