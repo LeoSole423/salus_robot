@@ -208,11 +208,12 @@ class NavSnapshotServer(Node):
                     (float(info.origin.position.x), float(info.origin.position.y)),
                     int(info.width), int(info.height), message.data, transform)
 
-    def _transform(self, target: str, source: str, stamp: TimeMsg) -> Optional[Transform2D]:
+    def _transform(self, target: str, source: str, stamp: TimeMsg | Time) -> Optional[Transform2D]:
         if not target or not source or target == source:
             return Transform2D(source, target, 0.0, 0.0, 0.0)
         try:
-            transform = self._tf.lookup_transform(target, source, Time.from_msg(stamp), Duration(seconds=float(self._parameter["tf_timeout_s"])))
+            lookup_time = stamp if isinstance(stamp, Time) else Time.from_msg(stamp)
+            transform = self._tf.lookup_transform(target, source, lookup_time, Duration(seconds=float(self._parameter["tf_timeout_s"])))
         except TransformException:
             return None
         q = transform.transform.rotation
