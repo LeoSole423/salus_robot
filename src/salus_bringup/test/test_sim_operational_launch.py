@@ -3,6 +3,10 @@ from pathlib import Path
 
 LAUNCH = Path(__file__).parents[1] / "launch" / "sim_operational.launch.py"
 INTEGRATION = Path(__file__).parents[1] / "launch" / "integration_sim.launch.py"
+PERSISTENCE = Path(__file__).parents[1] / "launch" / "persistence_contract.launch.py"
+ROOT = Path(__file__).parents[3]
+SIM_OPERATIONAL_SMOKE = ROOT / "tools" / "smoke_sim_operational.sh"
+PERSISTENCE_SMOKE = ROOT / "tools" / "smoke_operational_persistence.sh"
 
 
 def test_operational_profile_wraps_the_checkpoint_without_recomposing_packages() -> None:
@@ -45,3 +49,43 @@ def test_operational_profile_does_not_bind_dds_or_legacy_scan_contracts() -> Non
     contents = LAUNCH.read_text(encoding="utf-8")
     for forbidden in ("CYCLONEDDS", "ROS_LOCALHOST_ONLY", "scan_wifi_debug"):
         assert forbidden not in contents
+
+
+def test_operational_smoke_only_owns_composition_contract() -> None:
+    contents = SIM_OPERATIONAL_SMOKE.read_text(encoding="utf-8")
+    assert "integration_probe.py --operational" in contents
+    assert "sim_operational_composition_valid" in contents
+    for duplicated in (
+        "smoke_route_executor_sim.py",
+        "smoke_navigation_profiles.py",
+        "smoke_web_cockpit.py",
+    ):
+        assert duplicated not in contents
+
+
+def test_persistence_contract_launch_contains_only_state_owners() -> None:
+    contents = PERSISTENCE.read_text(encoding="utf-8")
+    assert "web_bridge.launch.py" in contents
+    assert "camera_sim.launch.py" in contents
+    assert '"require_camera_service": "true"' in contents
+    assert '"scan_preview_enabled": "false"' in contents
+    for unrelated in (
+        "integration_sim.launch.py",
+        "salus_navigation",
+        "salus_simulation",
+        "Gazebo",
+    ):
+        assert unrelated not in contents
+
+
+def test_persistence_smoke_restarts_minimal_contract_and_not_full_operational() -> None:
+    contents = PERSISTENCE_SMOKE.read_text(encoding="utf-8")
+    assert contents.count("persistence_contract.launch.py") == 2
+    assert "smoke_operational_persistence.py --mode seed" in contents
+    assert "smoke_operational_persistence.py --mode verify" in contents
+    for unrelated in (
+        "sim_operational.launch.py",
+        "integration_probe.py",
+        "smoke_web_cockpit.py",
+    ):
+        assert unrelated not in contents
