@@ -17,6 +17,7 @@ import rclpy
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rcl_interfaces.msg import Log
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import (
     DurabilityPolicy,
     HistoryPolicy,
@@ -24,12 +25,12 @@ from rclpy.qos import (
     ReliabilityPolicy,
     qos_profile_sensor_data,
 )
-from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, LaserScan, NavSatFix
 from tf2_msgs.msg import TFMessage
 
 
 SAMPLE_INTERVAL_S = 1.0
+CLOCK_OBSERVE_INTERVAL_S = 0.1
 EXPENSIVE_SAMPLE_INTERVAL_S = 5.0
 REPORT_INTERVAL_S = 5.0
 
@@ -268,7 +269,10 @@ class ResourceSampler:
 
 class RuntimeTimingProbe(Node):
     def __init__(self, scenario: str, report_path: Path) -> None:
-        super().__init__("runtime_timing_probe")
+        super().__init__(
+            "runtime_timing_probe",
+            parameter_overrides=[Parameter("use_sim_time", value=True)],
+        )
         self.scenario = scenario
         self.report_path = report_path
         self.started_wall_s = time.monotonic()
@@ -279,6 +283,7 @@ class RuntimeTimingProbe(Node):
         self.last_report_wall_s = self.started_wall_s
         self.publisher_counts: dict[str, int] = {}
         self.latest_clock_ns = 0
+        self.last_clock_observe_wall_s = 0.0
         self.previous_sample_clock_ns = 0
         self.timeline: list[dict[str, Any]] = []
         self.events: list[dict[str, Any]] = []
@@ -299,7 +304,6 @@ class RuntimeTimingProbe(Node):
                 "scan_clean",
             )
         }
-        self.create_subscription(Clock, "/clock", self._on_clock, qos_profile_sensor_data)
         self.create_subscription(
             Odometry, "/wheel/odometry", self._on_wheel_odom, qos_profile_sensor_data
         )
@@ -325,9 +329,14 @@ class RuntimeTimingProbe(Node):
         self.create_subscription(TFMessage, "/tf", self._on_tf, qos_profile_sensor_data)
         self.create_subscription(Log, "/rosout", self._on_log, 100)
 
-    def _on_clock(self, message: Clock) -> None:
-        self.latest_clock_ns = stamp_ns(message.clock)
-        self.streams["clock"].record(self.latest_clock_ns)
+    def observe_clock(self, now_s: float | None = None) -> None:
+        """Sample ROS time without a Python callback on every /clock message."""
+        now = time.monotonic() if now_s is None else float(now_s)
+        if now - self.last_clock_observe_wall_s < CLOCK_OBSERVE_INTERVAL_S:
+            return
+        self.latest_clock_ns = self.get_clock().now().nanoseconds
+        self.streams["clock"].record(self.latest_clock_ns, now)
+        self.last_clock_observe_wall_s = now
 
     def _on_wheel_odom(self, message: Odometry) -> None:
         self.streams["wheel_odometry"].record(stamp_ns(message.header.stamp))
@@ -506,6 +515,7 @@ def main() -> int:
         while rclpy.ok() and not stop:
             rclpy.spin_once(node, timeout_sec=0.1)
             now = time.monotonic()
+            node.observe_clock(now)
             if now >= next_sample:
                 node.sample()
                 next_sample = now + SAMPLE_INTERVAL_S
