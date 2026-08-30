@@ -15,7 +15,56 @@ env:
   COMPOSE_DOCKER_CLI_BUILD: "1"
 
 jobs:
+  classify-changes:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      classification: ${{ steps.scope.outputs.classification }}
+      full_ci: ${{ steps.scope.outputs.full_ci }}
+      run_simulation_core: ${{ steps.scope.outputs.run_simulation_core }}
+      run_navigation_missions: ${{ steps.scope.outputs.run_navigation_missions }}
+      smoke_control: ${{ steps.scope.outputs.smoke_control }}
+      smoke_motion: ${{ steps.scope.outputs.smoke_motion }}
+      smoke_localization: ${{ steps.scope.outputs.smoke_localization }}
+      smoke_localization_canonical: ${{ steps.scope.outputs.smoke_localization_canonical }}
+      smoke_sensor_selection: ${{ steps.scope.outputs.smoke_sensor_selection }}
+      smoke_lidar: ${{ steps.scope.outputs.smoke_lidar }}
+      smoke_safety: ${{ steps.scope.outputs.smoke_safety }}
+      smoke_integration: ${{ steps.scope.outputs.smoke_integration }}
+      smoke_navigation: ${{ steps.scope.outputs.smoke_navigation }}
+      smoke_navigation_canonical: ${{ steps.scope.outputs.smoke_navigation_canonical }}
+      smoke_navigation_no_obstacles: ${{ steps.scope.outputs.smoke_navigation_no_obstacles }}
+      smoke_zones: ${{ steps.scope.outputs.smoke_zones }}
+      smoke_routes: ${{ steps.scope.outputs.smoke_routes }}
+      smoke_patrol_battery: ${{ steps.scope.outputs.smoke_patrol_battery }}
+      smoke_snapshot: ${{ steps.scope.outputs.smoke_snapshot }}
+      smoke_web_cockpit: ${{ steps.scope.outputs.smoke_web_cockpit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test change classifier
+        run: python3 -m unittest tools/test_ci_smoke_selection.py
+      - name: Classify changed boundaries
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed_files="${RUNNER_TEMP}/salus-ci-changed-files.txt"
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            git diff --name-only --diff-filter=ACDMRT "${BASE_SHA}...${HEAD_SHA}" > "${changed_files}"
+            python3 tools/ci_select_smokes.py --files "${changed_files}"
+          else
+            : > "${changed_files}"
+            python3 tools/ci_select_smokes.py \
+              --files "${changed_files}" \
+              --full-reason "event ${EVENT_NAME} requires the complete CI suite"
+          fi
+
   build-unit:
+    needs: classify-changes
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -40,7 +89,8 @@ jobs:
         run: ./tools/test.sh
 
   simulation-core:
-    needs: build-unit
+    needs: classify-changes
+    if: needs.classify-changes.outputs.run_simulation_core == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -67,44 +117,44 @@ jobs:
         run: ./tools/build.sh
       - name: Smoke — control and battery
         id: smoke_control
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_control == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_control_sim.sh
       - name: Smoke — simulated movement
         id: smoke_motion
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_motion == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_motion_sim.sh
       - name: Smoke — local localization
         id: smoke_localization
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_localization == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_localization_sim.sh
       - name: Smoke — canonical vehicle I/O localization
         id: smoke_localization_canonical
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_localization_canonical == 'true'
         continue-on-error: true
         env:
           VEHICLE_IO_PROFILE: canonical
         run: ./tools/run_smoke.sh ./tools/smoke_localization_sim.sh
       - name: Smoke — explicit IMU and orientation selection
         id: smoke_sensor_selection
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_sensor_selection == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_sensor_selection_sim.sh
       - name: Smoke — LiDAR perception
         id: smoke_lidar
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_lidar == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_lidar_sim.sh
       - name: Smoke — safety arbitration
         id: smoke_safety
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_safety == 'true'
         continue-on-error: true
         run: ./tools/run_smoke.sh ./tools/smoke_safety_sim.sh
       - name: Smoke — integrated structure
         id: smoke_integration
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_integration == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "180"
@@ -117,7 +167,7 @@ jobs:
           path: artifacts/smokes
           if-no-files-found: warn
           retention-days: 7
-      - name: Aggregate core smoke results
+      - name: Aggregate selected core smoke results
         if: always()
         env:
           WORKSPACE: ${{ steps.workspace.outcome }}
@@ -129,10 +179,29 @@ jobs:
           LIDAR: ${{ steps.smoke_lidar.outcome }}
           SAFETY: ${{ steps.smoke_safety.outcome }}
           INTEGRATION: ${{ steps.smoke_integration.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE CONTROL MOTION LOCALIZATION LOCALIZATION_CANONICAL SENSOR_SELECTION LIDAR SAFETY INTEGRATION
+          RUN_CONTROL: ${{ needs.classify-changes.outputs.smoke_control }}
+          RUN_MOTION: ${{ needs.classify-changes.outputs.smoke_motion }}
+          RUN_LOCALIZATION: ${{ needs.classify-changes.outputs.smoke_localization }}
+          RUN_LOCALIZATION_CANONICAL: ${{ needs.classify-changes.outputs.smoke_localization_canonical }}
+          RUN_SENSOR_SELECTION: ${{ needs.classify-changes.outputs.smoke_sensor_selection }}
+          RUN_LIDAR: ${{ needs.classify-changes.outputs.smoke_lidar }}
+          RUN_SAFETY: ${{ needs.classify-changes.outputs.smoke_safety }}
+          RUN_INTEGRATION: ${{ needs.classify-changes.outputs.smoke_integration }}
+        run: |
+          checks=(WORKSPACE)
+          [[ "${RUN_CONTROL}" == "true" ]] && checks+=(CONTROL)
+          [[ "${RUN_MOTION}" == "true" ]] && checks+=(MOTION)
+          [[ "${RUN_LOCALIZATION}" == "true" ]] && checks+=(LOCALIZATION)
+          [[ "${RUN_LOCALIZATION_CANONICAL}" == "true" ]] && checks+=(LOCALIZATION_CANONICAL)
+          [[ "${RUN_SENSOR_SELECTION}" == "true" ]] && checks+=(SENSOR_SELECTION)
+          [[ "${RUN_LIDAR}" == "true" ]] && checks+=(LIDAR)
+          [[ "${RUN_SAFETY}" == "true" ]] && checks+=(SAFETY)
+          [[ "${RUN_INTEGRATION}" == "true" ]] && checks+=(INTEGRATION)
+          ./tools/aggregate_smoke_results.sh "${checks[@]}"
 
   navigation-missions:
-    needs: build-unit
+    needs: classify-changes
+    if: needs.classify-changes.outputs.run_navigation_missions == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -159,56 +228,56 @@ jobs:
         run: ./tools/build.sh
       - name: Smoke — navigation core
         id: smoke_navigation
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_navigation == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_core_sim.sh
       - name: Smoke — canonical navigation command
         id: smoke_navigation_canonical
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_navigation_canonical == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_canonical_sim.sh
       - name: Smoke — navigation without obstacle detection
         id: smoke_navigation_no_obstacles
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_navigation_no_obstacles == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_no_obstacles_sim.sh
       - name: Smoke — navigation zones
         id: smoke_zones
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_zones == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_zones_sim.sh
       - name: Smoke — route executor
         id: smoke_routes
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_routes == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_route_executor_sim.sh
       - name: Smoke — patrol battery return HOME
         id: smoke_patrol_battery
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_patrol_battery == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_patrol_battery_sim.sh
       - name: Smoke — navigation snapshot
         id: smoke_snapshot
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_snapshot == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
         run: ./tools/run_smoke.sh ./tools/smoke_navigation_snapshot.sh
       - name: Smoke — Cockpit WebSocket bridge
         id: smoke_web_cockpit
-        if: always() && steps.workspace.outcome == 'success'
+        if: always() && steps.workspace.outcome == 'success' && needs.classify-changes.outputs.smoke_web_cockpit == 'true'
         continue-on-error: true
         env:
           SMOKE_HARD_TIMEOUT_S: "240"
@@ -221,7 +290,7 @@ jobs:
           path: artifacts/smokes
           if-no-files-found: warn
           retention-days: 7
-      - name: Aggregate navigation smoke results
+      - name: Aggregate selected navigation smoke results
         if: always()
         env:
           WORKSPACE: ${{ steps.workspace.outcome }}
@@ -233,4 +302,22 @@ jobs:
           PATROL_BATTERY: ${{ steps.smoke_patrol_battery.outcome }}
           SNAPSHOT: ${{ steps.smoke_snapshot.outcome }}
           WEB_COCKPIT: ${{ steps.smoke_web_cockpit.outcome }}
-        run: ./tools/aggregate_smoke_results.sh WORKSPACE NAVIGATION NAVIGATION_CANONICAL NAVIGATION_NO_OBSTACLES ZONES ROUTES PATROL_BATTERY SNAPSHOT WEB_COCKPIT
+          RUN_NAVIGATION: ${{ needs.classify-changes.outputs.smoke_navigation }}
+          RUN_NAVIGATION_CANONICAL: ${{ needs.classify-changes.outputs.smoke_navigation_canonical }}
+          RUN_NAVIGATION_NO_OBSTACLES: ${{ needs.classify-changes.outputs.smoke_navigation_no_obstacles }}
+          RUN_ZONES: ${{ needs.classify-changes.outputs.smoke_zones }}
+          RUN_ROUTES: ${{ needs.classify-changes.outputs.smoke_routes }}
+          RUN_PATROL_BATTERY: ${{ needs.classify-changes.outputs.smoke_patrol_battery }}
+          RUN_SNAPSHOT: ${{ needs.classify-changes.outputs.smoke_snapshot }}
+          RUN_WEB_COCKPIT: ${{ needs.classify-changes.outputs.smoke_web_cockpit }}
+        run: |
+          checks=(WORKSPACE)
+          [[ "${RUN_NAVIGATION}" == "true" ]] && checks+=(NAVIGATION)
+          [[ "${RUN_NAVIGATION_CANONICAL}" == "true" ]] && checks+=(NAVIGATION_CANONICAL)
+          [[ "${RUN_NAVIGATION_NO_OBSTACLES}" == "true" ]] && checks+=(NAVIGATION_NO_OBSTACLES)
+          [[ "${RUN_ZONES}" == "true" ]] && checks+=(ZONES)
+          [[ "${RUN_ROUTES}" == "true" ]] && checks+=(ROUTES)
+          [[ "${RUN_PATROL_BATTERY}" == "true" ]] && checks+=(PATROL_BATTERY)
+          [[ "${RUN_SNAPSHOT}" == "true" ]] && checks+=(SNAPSHOT)
+          [[ "${RUN_WEB_COCKPIT}" == "true" ]] && checks+=(WEB_COCKPIT)
+          ./tools/aggregate_smoke_results.sh "${checks[@]}"
