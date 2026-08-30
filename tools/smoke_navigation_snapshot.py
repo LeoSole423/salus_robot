@@ -10,22 +10,34 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from salus_interfaces.srv import GetNavSnapshot
 
-from smoke_runtime import AsyncServicePoller, SmokeRuntime
+from smoke_runtime import AsyncServicePoller, SmokeRuntime, subscribe_navigation_startup
 
 
 class SnapshotSmoke(Node):
     def __init__(self) -> None:
         super().__init__("navigation_snapshot_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.client = self.create_client(GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot")
+        self.startup = subscribe_navigation_startup(self)
 
 
 def main() -> int:
     rclpy.init()
     node = SnapshotSmoke()
-    runtime = SmokeRuntime(node, "navigation-snapshot", Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "snapshot_probe.json")
+    runtime = SmokeRuntime(
+        node,
+        "navigation-snapshot",
+        Path(os.environ.get("SMOKE_ARTIFACT_DIR", ".")) / "snapshot_probe.json",
+        global_timeout_s=120.0,
+    )
     success, failure = False, None
     response = None
     try:
+        runtime.wait(
+            "navigation startup",
+            lambda: node.startup.active,
+            60.0,
+            observe=node.startup.snapshot,
+        )
         poller = AsyncServicePoller(node.client, GetNavSnapshot.Request, interval_s=0.5, response_timeout_s=5.0)
         runtime.wait(
             "snapshot readiness",
@@ -64,6 +76,7 @@ def main() -> int:
         raise
     finally:
         runtime.finish(success, error=failure, evidence={
+            "navigation_startup": node.startup.snapshot(),
             "service_ready": node.client.service_is_ready(),
             "response_ok": bool(response and response.ok),
             "layers": {name: bool(getattr(response.layers, name)) for name in (
