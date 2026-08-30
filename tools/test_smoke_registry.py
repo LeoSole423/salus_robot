@@ -29,7 +29,9 @@ class SmokeRegistryTest(unittest.TestCase):
 
     def test_registered_runner_owns_execution_metadata(self):
         runner = (ROOT / "tools/run_registered_smoke.py").read_text(encoding="utf-8")
-        self.assertIn('scenario["timeouts_s"][args.context]', runner)
+        self.assertIn('choices=("ci", "nightly", "manual")', runner)
+        self.assertIn('timeout_context = "nightly" if args.context == "nightly" else "ci"', runner)
+        self.assertIn('scenario["timeouts_s"][timeout_context]', runner)
         self.assertIn('scenario.get("env", {})', runner)
         self.assertIn('scenario["script"]', runner)
 
@@ -46,7 +48,11 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertFalse(BY_ID["navigation_canonical"]["participation"]["nightly"])
         self.assertFalse(BY_ID["navigation_no_obstacles"]["participation"]["nightly"])
         self.assertFalse(BY_ID["sensor_selection"]["participation"]["nightly"])
+        self.assertFalse(BY_ID["web_cockpit"]["participation"]["pr"])
+        self.assertFalse(BY_ID["web_cockpit"]["participation"]["full"])
+        self.assertFalse(BY_ID["web_cockpit"]["participation"]["main"])
         self.assertFalse(BY_ID["web_cockpit"]["participation"]["nightly"])
+        self.assertIn("stress", BY_ID["web_cockpit"]["tags"])
         self.assertTrue(BY_ID["sim_operational"]["participation"]["nightly"])
         self.assertTrue(BY_ID["operational_persistence"]["participation"]["nightly"])
 

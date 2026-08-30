@@ -12,6 +12,7 @@ from salus_evaluation.metrics import (absolute_goal, arrival_metrics,
                                       latest_prior,
                                       localization_metrics, tracking_metrics,
                                       saturation_intervals,
+                                      steering_margin_summary,
                                       trial_data_finite)
 from salus_evaluation.models import (GoalSpec, ExpectedTurn, Pose2D,
                                      TimedCommand, TimedControllerStatus,
@@ -147,6 +148,19 @@ def test_saturation_starts_once_after_a_non_saturated_long_gap():
 
     result = saturation_intervals((status(1.0, False), status(1.5, True)))
     assert result == {"interval_count": 1, "observed_duration_s": 0.0}
+
+
+def test_steering_margin_reports_remaining_authority_and_near_limit_fraction():
+    def status(applied):
+        return TimedControllerStatus(
+            1.0, "auto", True, True, False, 1.0, 0, 1.0, .2,
+            applied, applied, .5, False, False, False,
+        )
+
+    result = steering_margin_summary((status(.1), status(.48)))
+    assert result["minimum_rad"] == pytest.approx(.02)
+    assert result["p05_rad"] == pytest.approx(.039)
+    assert result["above_90pct_limit_fraction"] == pytest.approx(.5)
 
 
 def test_functional_sign_gate_fails_and_performance_starts_calibrating():

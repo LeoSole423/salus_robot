@@ -49,14 +49,13 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
                 "routes",
                 "patrol_battery",
                 "snapshot",
-                "web_cockpit",
             },
         )
 
     def test_web_only(self):
         self.assert_smokes(
             "src/salus_web/salus_web/bridge.py",
-            {"integration", "web_cockpit"},
+            {"integration"},
         )
 
     def test_interfaces_force_full(self):
@@ -94,7 +93,7 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
         self.assertFalse(selection.full_ci)
         self.assertTrue(selection.run_navigation_missions)
         self.assertIn("navigation", selection.smokes)
-        self.assertIn("web_cockpit", selection.smokes)
+        self.assertNotIn("web_cockpit", selection.smokes)
 
     def test_evaluation_has_no_owned_runtime_smoke(self):
         selection = classify(["src/salus_evaluation/salus_evaluation/report.py"])
@@ -121,7 +120,7 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
         self.assertTrue(outputs(selection)["run_smokes"] == "true")
         self.assertEqual(
             [entry["id"] for entry in matrix["include"]],
-            ["integration", "web_cockpit"],
+            ["integration"],
         )
 
     def test_fast_gate_only_emits_empty_matrix(self):

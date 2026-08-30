@@ -32,10 +32,10 @@ smoke conserva su propio build aislado, por lo que `build-unit`,
 | `docs/**`, `README.md`, `AGENTS.md`, metadatos editoriales conocidos | ninguno; sólo fast gate |
 | `src/salus_control/**` | control, motion, safety, integration |
 | `src/salus_localization/**` | localization, canonical localization, sensor selection, integration, navigation core, canonical navigation |
-| `src/salus_navigation/**` | safety, integration, navigation core, canonical navigation, navigation no-obstacles, zones, routes, patrol/HOME, snapshot, web cockpit |
-| `src/salus_navigation_bt/**` | integration y todos los smokes de `navigation-missions` |
+| `src/salus_navigation/**` | safety, integration, navigation core, canonical navigation, navigation no-obstacles, zones, routes, patrol/HOME, snapshot |
+| `src/salus_navigation_bt/**` | integration y los smokes funcionales de `navigation-missions` |
 | `src/salus_perception/**` | LiDAR, integration, navigation core, canonical navigation |
-| `src/salus_web/**` | integration, web cockpit |
+| `src/salus_web/**` | integration; protocolo/gateway/lease Web quedan además cubiertos por el fast gate unitario |
 | `src/salus_evaluation/**` | ninguno; actualmente no posee un runtime smoke, por lo que queda cubierto por build/lint/unit del fast gate |
 
 La inclusión de navegación para cambios de localización valida que la pose
@@ -43,6 +43,32 @@ producida siga alimentando Nav2. La inclusión de navegación para percepción
 valida la cadena de obstáculos más allá del smoke LiDAR aislado.
 `salus_navigation` incluye el smoke de safety porque ese paquete posee el
 arbitraje de seguridad.
+
+## Full operational Cockpit: stress/reliability, no gate funcional
+
+El escenario registrado `web_cockpit` conserva la composición completa
+(`sim_operational.launch.py`, Nav2, zones, Snapshot y bridge WebSocket), pero
+no participa en PR, FULL ni push a `main` sobre runners estándar.
+
+La decisión está respaldada por #138. El mismo SHA y el mismo entry point
+registrado de CI fallaron en un runner GitHub de 4 vCPU saturado cerca de 400%,
+con ROS:wall degradado, mientras dos ejecuciones con el wrapper exacto
+(`UDPv4`, timeout de 240 s e aislamiento normal) pasaron en un i7-13650HX con
+margen de CPU, ROS:wall cercano a 1 y EKF/TF alrededor de 30 Hz.
+
+Por tanto, un fallo del full operational Cockpit bajo una máquina sin margen no
+se usa como evidencia suficiente de regresión funcional. El escenario no se
+elimina: se ejecuta manualmente, o en infraestructura suficientemente
+dimensionada, mediante:
+
+```bash
+python3 tools/run_registered_smoke.py web_cockpit --context manual
+```
+
+El contexto `manual` conserva script, entorno y hard-timeout del registro sin
+convertir el escenario en gate obligatorio. La cobertura funcional Web
+determinista permanece en `build-unit` (protocol, gateway, lease, state
+projection y WebSocket server) y en el smoke `integration`.
 
 ## Fronteras que fuerzan FULL CI
 
