@@ -22,8 +22,7 @@ from .startup_readiness import ReadinessSnapshot, StartupPolicy, StartupState
 
 
 NAV2_NODES = (
-    "planner_server", "controller_server", "smoother_server",
-    "bt_navigator", "behavior_server",
+    "planner_server", "controller_server", "bt_navigator", "behavior_server",
 )
 
 

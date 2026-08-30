@@ -25,7 +25,6 @@ def generate_launch_description() -> LaunchDescription:
     nodes = [
         ("nav2_planner", "planner_server", "planner_server"),
         ("nav2_controller", "controller_server", "controller_server"),
-        ("nav2_smoother", "smoother_server", "smoother_server"),
         ("nav2_bt_navigator", "bt_navigator", "bt_navigator"),
         ("nav2_behaviors", "behavior_server", "behavior_server"),
     ]

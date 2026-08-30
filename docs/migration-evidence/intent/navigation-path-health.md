@@ -20,6 +20,10 @@ consulta corresponde al path `ACTIVE` o a un `CANDIDATE`; el BT C++ sólo
 coordina estados. Esto impide que el orden o la concurrencia de llamadas ROS
 modifique la histéresis del path activo.
 
+El BT calcula `candidate_path`, lo valida y sólo entonces lo copia al path
+activo que consume `FollowPath`. No usa `SmoothPath` ni un `smoother_server`;
+el planner `SmacPlannerHybrid` mantiene `smooth_path: false`.
+
 ## Pruebas
 
 `test_path_health.py` cubre colisión, inflación, histéresis, stale data,

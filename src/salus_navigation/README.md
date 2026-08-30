@@ -48,7 +48,9 @@ simulación.
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa
   `EvaluatePathHealth` con contexto explícito; ante costmap o TF vencidos
-  produce `STOP_AND_WAIT`.
+  produce `STOP_AND_WAIT`. El BT valida el path candidato antes de copiarlo al
+  path activo que consume `FollowPath`; no ejecuta `SmoothPath` ni inicia un
+  `smoother_server`. `SmacPlannerHybrid` conserva `smooth_path: false`.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
   modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).

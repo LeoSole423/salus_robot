@@ -61,7 +61,7 @@ class NavObserver(Node):
         self.create_subscription(Path, "/plan", self._on_plan, 10)
         self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self._on_collision, 10)
         self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
-        for name in ("planner_server", "controller_server", "smoother_server", "bt_navigator", "behavior_server"):
+        for name in ("planner_server", "controller_server", "bt_navigator", "behavior_server"):
             self.create_subscription(TransitionEvent, f"/{name}/transition_event", lambda message, node_name=name: self._on_transition(node_name, message), 10)
 
     def _emit(self, severity: int, code: str, message: str, **details: object) -> None:
