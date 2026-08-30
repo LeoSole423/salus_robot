@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import re
 import unittest
 from pathlib import Path
 
@@ -22,16 +21,17 @@ class SmokeRegistryTest(unittest.TestCase):
             with self.subTest(prefix=prefix):
                 self.assertLessEqual(set(selected), registered)
 
-    def test_pr_registry_matches_ci_smoke_scripts(self):
+    def test_pr_workflow_is_registry_matrix_driven(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        referenced = set(
-            re.findall(r"run_smoke\.sh \.\/tools\/([^\s]+)", workflow)
-        )
-        expected = {
-            Path(BY_ID[scenario_id]["script"]).name
-            for scenario_id in ids(participation="pr")
-        }
-        self.assertEqual(referenced, expected)
+        self.assertIn("fromJSON(needs.classify-changes.outputs.smoke_matrix)", workflow)
+        self.assertIn('run_registered_smoke.py "${{ matrix.id }}" --context ci', workflow)
+        self.assertNotIn("run_smoke.sh ./tools/smoke_", workflow)
+
+    def test_registered_runner_owns_execution_metadata(self):
+        runner = (ROOT / "tools/run_registered_smoke.py").read_text(encoding="utf-8")
+        self.assertIn('scenario["timeouts_s"][args.context]', runner)
+        self.assertIn('scenario.get("env", {})', runner)
+        self.assertIn('scenario["script"]', runner)
 
     def test_nightly_runner_is_registry_driven(self):
         runner = (ROOT / "tools/smoke_reliability.sh").read_text(encoding="utf-8")

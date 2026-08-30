@@ -227,6 +227,11 @@ def outputs(selection: Selection) -> dict[str, str]:
         "full_ci": str(selection.full_ci).lower(),
         "run_simulation_core": str(selection.run_simulation_core).lower(),
         "run_navigation_missions": str(selection.run_navigation_missions).lower(),
+        "run_smokes": str(bool(selection.smokes)).lower(),
+        "smoke_matrix": json.dumps(
+            {"include": [{"id": smoke} for smoke in ALL_SMOKES if smoke in selection.smokes]},
+            separators=(",", ":"),
+        ),
     }
     for smoke in ALL_SMOKES:
         data[f"smoke_{smoke}"] = str(smoke in selection.smokes).lower()
@@ -249,7 +254,7 @@ def _write_summary(path: str, selection: Selection) -> None:
         handle.write(
             "- Jobs: build-unit always; "
             + ("simulation-core " if selection.run_simulation_core else "simulation-core skipped ")
-            + ("and navigation-missions" if selection.run_navigation_missions else "and navigation-missions skipped")
+            + (f"{len(selection.smokes)} isolated smoke job(s)" if selection.smokes else "smoke matrix skipped")
             + "\n"
         )
         handle.write("- Selected smokes: " + (", ".join(selected) or "_none_") + "\n")
