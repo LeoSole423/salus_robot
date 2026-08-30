@@ -19,3 +19,20 @@ The workflow passes only the stable scenario id. `tools/run_registered_smoke.py`
 Each matrix entry receives a fresh GitHub runner and uploads `smoke-<id>-artifacts`. A failed scenario is therefore attributable and independently rerunnable without serially re-executing unrelated smokes.
 
 This stage intentionally rebuilds the ROS workspace in each matrix runner. Commit-scoped workspace sharing is a separate CI v2 experiment so performance optimization cannot obscure the isolation change.
+
+
+## Compiled workspace artifact experiment
+
+CI v2 evaluated sharing an exact-SHA compiled `build/` + `install/` artifact between matrix runners instead of rebuilding the ROS workspace independently.
+
+The experiment proved the transfer contract was technically viable:
+- artifact size was about 4.36 MB;
+- packaging took about 1 second;
+- upload took about 7 seconds;
+- representative downloads took about 2 seconds;
+- restore was below 1 second;
+- restored `--symlink-install` workspaces executed successfully in isolated smoke runners.
+
+However, the architecture adds a serial producer barrier: every smoke must wait for the build job to finish before it can start. In the measured FULL runs, approximate runner consumption dropped from 51.7 to 36.1 runner-minutes (about 30% lower), but workflow wall-clock increased from about 4.9 to 6.9 minutes (about 42% slower).
+
+Because CI v2 currently prioritizes shorter developer feedback latency, PR/main CI keeps independent per-runner workspace builds. The exact-SHA artifact approach may be reconsidered later if runner cost becomes more important than wall-clock latency.
