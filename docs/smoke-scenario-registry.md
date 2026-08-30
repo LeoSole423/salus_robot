@@ -19,3 +19,22 @@ The workflow passes only the stable scenario id. `tools/run_registered_smoke.py`
 Each matrix entry receives a fresh GitHub runner and uploads `smoke-<id>-artifacts`. A failed scenario is therefore attributable and independently rerunnable without serially re-executing unrelated smokes.
 
 This stage intentionally rebuilds the ROS workspace in each matrix runner. Commit-scoped workspace sharing is a separate CI v2 experiment so performance optimization cannot obscure the isolation change.
+
+
+## Nightly reliability matrix
+
+Nightly reliability is planned from the same registry instead of a hand-maintained shell list. A lightweight plan job emits one matrix entry per nightly-enabled scenario, including its repetition count, hard-timeout metadata, and derived job budget.
+
+Each `nightly / <id>` job:
+- runs on a fresh runner with `fail-fast: false`;
+- builds the workspace once for that scenario;
+- repeats only that registered scenario;
+- writes an incremental per-scenario JSON summary with completed/passed/failed/incomplete repetitions;
+- uploads artifacts under a scenario-specific name.
+
+This removes the former single 90-minute runner that owned all nightly repetitions and makes reliability attributable per scenario.
+
+
+### Nightly hard-timeout budgets
+
+Nightly hard timeouts remain scenario metadata rather than a workflow-wide override. Most current nightly scenarios retain the existing 120-second bound. `sim_operational` and `operational_persistence` use 180 seconds because historical healthy executions can consume roughly 90–130 seconds before cleanup, while the previous 120-second global hard wall produced kills around 133–134 seconds. The larger bound is limited to these heavy compositions and reflects their observed execution envelope; it does not add retries or relax functional assertions.
