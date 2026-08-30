@@ -58,6 +58,15 @@ def _valid_scan(message: LaserScan) -> bool:
     )
 
 
+def zones_state_mask_ready(response) -> bool:
+    """Only zones_manager can confirm the persisted mask is active."""
+    return bool(
+        response is not None
+        and getattr(response, "ok", False)
+        and getattr(response, "mask_ready", False)
+    )
+
+
 class Nav2StartupCoordinator(Node):
     """ROS adapter around the pure startup policy."""
 
@@ -154,9 +163,7 @@ class Nav2StartupCoordinator(Node):
             if self._zones_state_future.done():
                 try:
                     response = self._zones_state_future.result()
-                    self._mask_ready = bool(
-                        response is not None and response.ok and response.mask_ready
-                    )
+                    self._mask_ready = zones_state_mask_ready(response)
                 except Exception:
                     self._mask_ready = False
                 self._zones_state_future = None
