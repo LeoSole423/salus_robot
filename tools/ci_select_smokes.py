@@ -10,7 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-try:\n    from tools.smoke_registry import ids as registry_ids\nexcept ModuleNotFoundError:  # Direct execution: python3 tools/ci_select_smokes.py\n    from smoke_registry import ids as registry_ids\n
+try:
+    from tools.smoke_registry import ids as registry_ids
+except ModuleNotFoundError:  # Direct execution: python3 tools/ci_select_smokes.py
+    from smoke_registry import ids as registry_ids
+
 CORE_SMOKES = registry_ids(family="core", participation="pr")
 NAVIGATION_SMOKES = registry_ids(family="navigation", participation="pr")
 ALL_SMOKES = registry_ids(participation="pr")
