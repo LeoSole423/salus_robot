@@ -273,6 +273,7 @@ class RouteExecutorNode(Node):
             self._last_result_event_id = int(message.nav_result_event_id)
             if message.nav_result_text == "succeeded":
                 self._recovery.reset()
+                self._recovery_checkpoint_reached = False
                 point = self._chunk.waypoints[self._target_offset]
                 # Coordinators (patrol/HOME) consume this typed-by-convention
                 # event instead of inferring a checkpoint from a later state
