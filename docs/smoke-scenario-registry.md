@@ -33,3 +33,8 @@ Each `nightly / <id>` job:
 - uploads artifacts under a scenario-specific name.
 
 This removes the former single 90-minute runner that owned all nightly repetitions and makes reliability attributable per scenario.
+
+
+### Nightly hard-timeout budgets
+
+Nightly hard timeouts remain scenario metadata rather than a workflow-wide override. Most current nightly scenarios retain the existing 120-second bound. `sim_operational` and `operational_persistence` use 180 seconds because historical healthy executions can consume roughly 90–130 seconds before cleanup, while the previous 120-second global hard wall produced kills around 133–134 seconds. The larger bound is limited to these heavy compositions and reflects their observed execution envelope; it does not add retries or relax functional assertions.
