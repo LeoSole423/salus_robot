@@ -70,6 +70,26 @@ def test_zone_mask_rejects_unrepresentable_geometry_before_staging() -> None:
     assert "return False, representation_error" in write_mask
 
 
+def test_unrepresentable_zone_keeps_previous_active_document() -> None:
+    old_document = {"type": "FeatureCollection", "features": [{"id": "old"}]}
+    new_document = {"type": "FeatureCollection", "features": [{"id": "new"}]}
+    reload_calls = []
+    manager = SimpleNamespace(
+        _require_map_server_active=lambda: (True, ""),
+        _document=old_document,
+        _document_text="old-json",
+        _write_mask=lambda _document: (False, "outside=zone_new"),
+        _reload_map=lambda: reload_calls.append(True) or (True, ""),
+    )
+
+    result = ZonesManager._apply(manager, new_document, persist=True)
+
+    assert result == (False, "outside=zone_new", 0, 0)
+    assert manager._document is old_document
+    assert manager._document_text == "old-json"
+    assert not reload_calls
+
+
 def test_initial_empty_state_skips_full_mask_reload_and_optional_clear_wait() -> None:
     source = ZONES_SOURCE.read_text(encoding="utf-8")
     initial = source[
