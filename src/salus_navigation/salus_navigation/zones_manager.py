@@ -29,6 +29,11 @@ from .zones_geojson import (
 EMPTY_GEOJSON = {"type": "FeatureCollection", "features": []}
 
 
+def zones_document_is_empty(document: dict[str, Any]) -> bool:
+    """Return whether a normalized persisted document contains no zones."""
+    return document.get("type") == "FeatureCollection" and not document.get("features")
+
+
 class ZonesManager(Node):
     """GeoJSON API boundary; no partial mask replaces a previously active one."""
 
@@ -134,6 +139,20 @@ class ZonesManager(Node):
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             self.get_logger().warning(f"ignoring invalid persisted zones: {exc}")
             document = EMPTY_GEOJSON
+
+        # The lifecycle-managed map server is already serving the static empty
+        # bootstrap mask. Once zones_manager has inspected persisted state and
+        # confirmed there are no zones, that bootstrap is semantically exact.
+        # Avoid manufacturing and redistributing a 3000x3000 empty grid only
+        # to prove the absence of keepouts.
+        if zones_document_is_empty(document):
+            with self._lock:
+                self._document = document
+                self._document_text = json.dumps(document, separators=(",", ":"))
+                self._mask_ready = True
+                self._mask_source = "bootstrap_empty_confirmed"
+            return
+
         ok, error, _, _ = self._apply(document, persist=not self.geojson_path.exists())
         if ok:
             return
@@ -224,11 +243,16 @@ class ZonesManager(Node):
         response, error = self._await(self._load_map, request)
         if response is None or int(response.result) != LoadMap.Response.RESULT_SUCCESS:
             return False, f"load_map failed: {error or int(response.result)}"
-        response, error = self._await(self._clear_global, ClearEntireCostmap.Request())
-        if response is None:
-            # The map is already active. Clearing is a replanning aid, not a
-            # reason to claim that a successfully loaded mask was rejected.
-            self.get_logger().warning(f"global costmap clear failed after map load: {error}")
+        # Clearing is only a replanning aid. During initial startup Nav2 is
+        # intentionally still stopped until zones readiness is confirmed, so
+        # its clear service cannot exist yet. Never spend the generic service
+        # timeout waiting for an optional service that is absent by design.
+        if self._clear_global.service_is_ready():
+            response, error = self._await(self._clear_global, ClearEntireCostmap.Request())
+            if response is None:
+                self.get_logger().warning(
+                    f"global costmap clear failed after map load: {error}"
+                )
         return True, ""
 
     def _apply(self, document: dict[str, Any], *, persist: bool) -> tuple[bool, str, int, int]:
