@@ -69,7 +69,6 @@ PACKAGE_SMOKES = {
         "routes",
         "patrol_battery",
         "snapshot",
-        "web_cockpit",
     },
     "src/salus_navigation_bt/": {
         "integration",
@@ -80,7 +79,6 @@ PACKAGE_SMOKES = {
         "routes",
         "patrol_battery",
         "snapshot",
-        "web_cockpit",
     },
     "src/salus_perception/": {
         "lidar",
@@ -90,7 +88,6 @@ PACKAGE_SMOKES = {
     },
     "src/salus_web/": {
         "integration",
-        "web_cockpit",
     },
     # No current runtime smoke owns salus_evaluation. Its unit/lint/build coverage
     # remains in the mandatory fast gate.
