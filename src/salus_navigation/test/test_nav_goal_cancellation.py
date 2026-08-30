@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from action_msgs.msg import GoalStatus
 
+from salus_interfaces.srv import GetNavState
 from salus_navigation.nav_command_server import NavCommandServer
 
 
@@ -48,7 +49,12 @@ def make_server(*, handle=None, pending=False, manual=False, timeout_s=0.01):
     server._goal_result_event_id = 10
     server._suppress_success_brake = False
     server._cancel_result_timeout_s = timeout_s
-    server._arbiter = SimpleNamespace(manual_enabled=manual)
+    server._arbiter = SimpleNamespace(
+        manual_enabled=manual,
+        manual_command=None,
+    )
+    server._last_fix = None
+    server._last_safe = None
     server._publish = lambda _message: None
     server._start_brake_hold = lambda _duration, _pct: None
     event_ids = iter(range(14, 1000))
@@ -61,6 +67,23 @@ def make_server(*, handle=None, pending=False, manual=False, timeout_s=0.01):
 
 def terminal_future(status):
     return Future(SimpleNamespace(status=status))
+
+
+def test_get_state_returns_terminal_result_atomically() -> None:
+    server = make_server(handle=FakeHandle())
+    server._on_goal_result(terminal_future(GoalStatus.STATUS_SUCCEEDED), 3)
+
+    response = NavCommandServer._on_get_state(
+        server,
+        GetNavState.Request(),
+        GetNavState.Response(),
+    )
+
+    assert response.ok
+    assert not response.goal_active
+    assert response.nav_result_status == GoalStatus.STATUS_SUCCEEDED
+    assert response.nav_result_text == "succeeded"
+    assert response.nav_result_event_id == 14
 
 
 def test_cancel_keeps_goal_active_until_terminal_result() -> None:
