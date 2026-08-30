@@ -21,6 +21,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/NavSnapshotLayers.msg"
   "msg/NavTelemetry.msg"
   "msg/PathHealth.msg"
+  "msg/ProjectedKeepoutPolygon.msg"
+  "msg/ProjectedKeepoutState.msg"
   "msg/RtcmFrame.msg"
   "msg/SteeringMeasurement.msg"
   "msg/SystemCapabilities.msg"
