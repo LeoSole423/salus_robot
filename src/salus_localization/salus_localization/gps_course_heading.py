@@ -189,8 +189,6 @@ class GpsCourseHeading(Node):
             "yaw_rate_rps": self.yaw_rate,
             "rtk_valid": rtk_valid,
             "rtk_age_s": rtk_age_s,
-            "output_subscribers": self.output.get_subscription_count(),
-            "pending_output": self._pending_output is not None,
         }
         if estimate.valid and estimate.yaw_rad is not None:
             msg = Imu()
@@ -208,6 +206,8 @@ class GpsCourseHeading(Node):
                 0.05 if estimate.reason == "ok" else 0.2
             )
             self._deliver_or_buffer(msg, now_s=now)
+        debug_payload["output_subscribers"] = self.output.get_subscription_count()
+        debug_payload["pending_output"] = self._pending_output is not None
         self.debug.publish(String(data=json.dumps(debug_payload, sort_keys=True)))
 
     def _deliver_or_buffer(self, message: Imu, *, now_s: float) -> None:
