@@ -60,7 +60,7 @@ void VectorKeepoutLayer::updateCosts(nav2_costmap_2d::Costmap2D & master, int mi
   { std::lock_guard<std::mutex> lock(mutex_); polygons = cycle_polygons_; }
   const double resolution = master.getResolution(); const Bounds window{master.getOriginX() + min_i * resolution, master.getOriginY() + min_j * resolution, master.getOriginX() + max_i * resolution, master.getOriginY() + max_j * resolution};
   const RasterSpec spec{window, resolution, static_cast<unsigned int>(max_i - min_i), static_cast<unsigned int>(max_j - min_j)}; const auto costs = rasterize(polygons, spec, profile_);
-  for (unsigned int y = 0; y < spec.height; ++y) for (unsigned int x = 0; x < spec.width; ++x) { const auto cost = costs[y * spec.width + x]; const auto old = master.getCost(min_i + x, min_j + y); const auto merged = max_keepout_cost(old, cost); if (merged != old) master.setCost(min_i + x, min_j + y, merged); }
+  for (unsigned int y = 0; y < spec.height; ++y) for (unsigned int x = 0; x < spec.width; ++x) { const auto legacy_cost = costs[y * spec.width + x]; const auto cost = legacy_mask_cost_to_nav2_cost(legacy_cost); const auto old = master.getCost(min_i + x, min_j + y); const auto merged = max_keepout_cost(old, cost); if (merged != old) master.setCost(min_i + x, min_j + y, merged); }
 }
 void VectorKeepoutLayer::reset() { std::lock_guard<std::mutex> lock(mutex_); previous_map_ = polygons_map_; current_ = true; }
 }  // namespace salus_navigation_costmap
