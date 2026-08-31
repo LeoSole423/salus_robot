@@ -11,9 +11,10 @@ simulación.
 
 - API de zonas: `/zones_manager/set_geojson`, `/zones_manager/get_state` y
   `/zones_manager/reload_from_disk`.
-- Las zonas se convierten con `/fromLL`, recargan `/keepout_filter_mask` y
-  limpian el costmap global. Los datos operativos persisten en `runtime/zones/`
-  y no se versionan.
+- Las zonas se convierten con `/fromLL` y publican
+  `/zones_manager/projected_keepouts` como estado vectorial revisionado,
+  reliable y transient-local. Los datos operativos persisten en `runtime/zones/`
+  y no se versionan; no se genera una máscara global PGM.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
 - Recuperación de rutas bloqueadas mediante una política pura con espera por

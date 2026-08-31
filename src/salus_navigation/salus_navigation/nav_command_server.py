@@ -12,7 +12,6 @@ from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Point, PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.msg import CollisionMonitorState
-from nav_msgs.msg import OccupancyGrid
 from rclpy.action import ActionClient
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -20,7 +19,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from robot_localization.srv import FromLL
 from sensor_msgs.msg import LaserScan, NavSatFix
-from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
+from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth, ProjectedKeepoutState
 from salus_interfaces.srv import (
     BrakeNav,
     CancelNavGoal,
@@ -36,6 +35,31 @@ def clamp_brake_pct(value: int) -> int:
 
 def diagnostic_level(value: int | bytes) -> int:
     return int.from_bytes(value, byteorder="little", signed=False) if isinstance(value, bytes) else int(value)
+
+
+def _ring_contains(points, x_m: float, y_m: float) -> bool:
+    inside = False
+    for index, point in enumerate(points):
+        previous = points[index - 1]
+        if ((point.y > y_m) != (previous.y > y_m)) and (
+            x_m < (previous.x - point.x) * (y_m - point.y) / (previous.y - point.y) + point.x
+        ):
+            inside = not inside
+    return inside
+
+
+def projected_keepouts_contain(message: ProjectedKeepoutState | None, x_m: float, y_m: float) -> bool:
+    """Pure map-frame goal rejection policy shared with the vector layer."""
+    if message is None or message.header.frame_id != "map":
+        return False
+    for polygon in message.polygons:
+        if len(polygon.outer.points) >= 3 and _ring_contains(polygon.outer.points, x_m, y_m):
+            if not any(
+                len(hole.points) >= 3 and _ring_contains(hole.points, x_m, y_m)
+                for hole in polygon.holes
+            ):
+                return True
+    return False
 
 
 class CommandArbiter:
@@ -152,7 +176,7 @@ class NavCommandServer(Node):
         self._last_safe: Twist | None = None
         self._last_safe_stamp_s: float | None = None
         self._last_fix: NavSatFix | None = None
-        self._keepout_mask: OccupancyGrid | None = None
+        self._projected_keepouts: ProjectedKeepoutState | None = None
         self._last_fix_stamp_s: float | None = None
         self._event_id = 0
         self._failure_code = ""
@@ -189,7 +213,12 @@ class NavCommandServer(Node):
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
-        self.create_subscription(OccupancyGrid, "/keepout_filter_mask", self._on_keepout_mask, keepout_qos)
+        self.create_subscription(
+            ProjectedKeepoutState,
+            "/zones_manager/projected_keepouts",
+            self._on_projected_keepouts,
+            keepout_qos,
+        )
         self.create_service(BrakeNav, str(p("brake_service")), self._on_brake, callback_group=self._service_group)
         self.create_service(SetManualMode, str(p("set_manual_mode_service")), self._on_set_manual_mode, callback_group=self._service_group)
         self.create_service(GetNavState, str(p("get_state_service")), self._on_get_state, callback_group=self._service_group)
@@ -241,20 +270,14 @@ class NavCommandServer(Node):
         with self._lock:
             self._arbiter.set_path_health(message)
 
-    def _on_keepout_mask(self, message: OccupancyGrid) -> None:
+    def _on_projected_keepouts(self, message: ProjectedKeepoutState) -> None:
         with self._lock:
-            self._keepout_mask = message
+            self._projected_keepouts = message
 
     def _goal_in_keepout(self, x_m: float, y_m: float) -> bool:
         with self._lock:
-            mask = self._keepout_mask
-        if mask is None or mask.info.resolution <= 0.0:
-            return False
-        col = math.floor((x_m - mask.info.origin.position.x) / mask.info.resolution)
-        row = math.floor((y_m - mask.info.origin.position.y) / mask.info.resolution)
-        if not (0 <= col < mask.info.width and 0 <= row < mask.info.height):
-            return False
-        return mask.data[row * mask.info.width + col] >= 100
+            keepouts = self._projected_keepouts
+        return projected_keepouts_contain(keepouts, x_m, y_m)
 
     def _on_safe(self, message: Twist) -> None:
         with self._lock:

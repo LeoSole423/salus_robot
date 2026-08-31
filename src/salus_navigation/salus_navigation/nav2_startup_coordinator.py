@@ -9,9 +9,9 @@ import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.srv import ManageLifecycleNodes
-from nav_msgs.msg import OccupancyGrid, Odometry, Path
+from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import LaserScan
@@ -59,7 +59,7 @@ def _valid_scan(message: LaserScan) -> bool:
 
 
 def zones_state_mask_ready(response) -> bool:
-    """Only zones_manager can confirm the persisted mask is active."""
+    """Only zones_manager can confirm accepted vector keepouts are available."""
     return bool(
         response is not None
         and getattr(response, "ok", False)
@@ -88,7 +88,6 @@ class Nav2StartupCoordinator(Node):
         self._scan: LaserScan | None = None
         self._scan_received_at = 0.0
         self._mask_ready = not self._use_keepout
-        self._mask_observed_valid = False
         self._zones_state_future = None
         self._zones_state_requested_at = 0.0
         self._manage_future = None
@@ -130,16 +129,6 @@ class Nav2StartupCoordinator(Node):
                     LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data
                 )
             )
-        if self._use_keepout:
-            mask_qos = QoSProfile(
-                depth=1, reliability=ReliabilityPolicy.RELIABLE,
-                durability=DurabilityPolicy.TRANSIENT_LOCAL,
-            )
-            self._readiness_subscriptions.append(
-                self.create_subscription(
-                    OccupancyGrid, "/keepout_filter_mask", self._on_mask, mask_qos
-                )
-            )
         self._diagnostics = self.create_publisher(
             DiagnosticArray, "/navigation_startup/diagnostics", 10
         )
@@ -157,17 +146,6 @@ class Nav2StartupCoordinator(Node):
     def _on_scan(self, message: LaserScan) -> None:
         self._scan = message
         self._scan_received_at = time.monotonic()
-
-    def _on_mask(self, message: OccupancyGrid) -> None:
-        # The map server publishes a structurally valid bootstrap placeholder
-        # before zones_manager applies persisted GeoJSON.  Observing a mask is
-        # useful diagnostics, but only zones_manager can prove the active mask
-        # corresponds to the persisted zone generation.
-        self._mask_observed_valid = (
-            message.header.frame_id == "map"
-            and message.info.width > 0 and message.info.height > 0
-            and len(message.data) == message.info.width * message.info.height
-        )
 
     def _retire_readiness_watchers(self) -> None:
         """Release startup-only callbacks once Nav2 is stably ACTIVE."""
@@ -335,7 +313,9 @@ class Nav2StartupCoordinator(Node):
         values = {**snapshot.__dict__, "state": self._policy.state.value,
                   "reason": self._policy.reason,
                   "path_health_preflight": self._path_health_ready,
-                  "keepout_mask_observed": self._mask_observed_valid,
+                  # The vector state is authoritative through zones_manager;
+                  # there is no legacy OccupancyGrid observation in this path.
+                  "projected_keepouts_ready": self._mask_ready,
                   "zones_state_service_ready": self._zones_state.service_is_ready(),
                   **self._node_states}
         status.values = [KeyValue(key=str(key), value=str(value)) for key, value in values.items()]

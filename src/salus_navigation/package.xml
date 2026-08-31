@@ -26,8 +26,8 @@
   <exec_depend>nav2_bt_navigator</exec_depend>
   <exec_depend>nav2_behaviors</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
-  <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>robot_localization</exec_depend>
+  <exec_depend>salus_navigation_costmap</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
   <test_depend>ament_flake8</test_depend>

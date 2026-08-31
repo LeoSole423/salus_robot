@@ -22,9 +22,9 @@ from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformException, TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
-from salus_interfaces.msg import NavSnapshotLayers
+from salus_interfaces.msg import NavSnapshotLayers, ProjectedKeepoutState
 from salus_interfaces.srv import GetNavSnapshot
-from salus_navigation.snapshot_renderer import Grid, Polyline, SnapshotScene, Transform2D, render
+from salus_navigation.snapshot_renderer import Grid, KeepoutPolygon, Polyline, SnapshotScene, Transform2D, render
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ class NavSnapshotServer(Node):
             "local_costmap_updates_topic": "/local_costmap/costmap_updates",
             "global_costmap_topic": "/global_costmap/costmap",
             "global_costmap_updates_topic": "/global_costmap/costmap_updates",
-            "keepout_mask_topic": "/keepout_filter_mask",
+            "projected_keepouts_topic": "/zones_manager/projected_keepouts",
             "local_footprint_topic": "/local_costmap/published_footprint",
             "stop_zone_topic": "/stop_zone_raw",
             "collision_polygons_topic": "/collision_monitor/polygons",
@@ -130,9 +130,12 @@ class NavSnapshotServer(Node):
         subscribe(
             OccupancyGridUpdate, self._parameter["global_costmap_updates_topic"],
             lambda msg: self._cache_grid_update("global", msg), 10)
+        projected_qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1,
+                                   reliability=ReliabilityPolicy.RELIABLE,
+                                   durability=DurabilityPolicy.TRANSIENT_LOCAL)
         subscribe(
-            OccupancyGrid, self._parameter["keepout_mask_topic"],
-            lambda msg: self._cache_message("keepout", msg), grid_qos)
+            ProjectedKeepoutState, self._parameter["projected_keepouts_topic"],
+            lambda msg: self._cache_message("keepout", msg), projected_qos)
         subscribe(
             PolygonStamped, self._parameter["local_footprint_topic"],
             lambda msg: self._cache_message("footprint", msg), 10)
@@ -205,11 +208,12 @@ class NavSnapshotServer(Node):
                     (float(info.origin.position.x), float(info.origin.position.y)),
                     int(info.width), int(info.height), message.data, transform)
 
-    def _transform(self, target: str, source: str, stamp: TimeMsg) -> Optional[Transform2D]:
+    def _transform(self, target: str, source: str, stamp: TimeMsg | Time) -> Optional[Transform2D]:
         if not target or not source or target == source:
             return Transform2D(source, target, 0.0, 0.0, 0.0)
         try:
-            transform = self._tf.lookup_transform(target, source, Time.from_msg(stamp), Duration(seconds=float(self._parameter["tf_timeout_s"])))
+            lookup_time = stamp if isinstance(stamp, Time) else Time.from_msg(stamp)
+            transform = self._tf.lookup_transform(target, source, lookup_time, Duration(seconds=float(self._parameter["tf_timeout_s"])))
         except TransformException:
             return None
         q = transform.transform.rotation
@@ -271,6 +275,26 @@ class NavSnapshotServer(Node):
                 result.append(Polyline(source, points, marker_color, 2, closed, transform))
         return tuple(result)
 
+    def _keepouts(self, message: ProjectedKeepoutState, target: str) -> Tuple[KeepoutPolygon, ...]:
+        source = message.header.frame_id or "map"
+        # Keepouts are fixed in map.  Their publication stamp identifies the
+        # accepted geometry revision, not a historical map->odom pose.  Use
+        # the current transform so an old transient-local state still follows
+        # the latest localization correction.
+        transform = self._transform(target, source, Time())
+        if transform is None:
+            return ()
+        return tuple(
+            KeepoutPolygon(
+                source,
+                tuple((float(point.x), float(point.y)) for point in polygon.outer.points),
+                tuple(tuple((float(point.x), float(point.y)) for point in hole.points) for hole in polygon.holes),
+                transform,
+            )
+            for polygon in message.polygons
+            if len(polygon.outer.points) >= 3
+        )
+
     def _layers(self, values: Dict[str, bool]) -> NavSnapshotLayers:
         response = NavSnapshotLayers()
         for field, value in values.items():
@@ -306,16 +330,11 @@ class NavSnapshotServer(Node):
         dynamic = lambda key: cache.get(key) if key in cache and self._stamp_age_ok(cache[key], False) else None
         global_cached, keepout_cached = dynamic("global"), cache.get("keepout")
         global_grid = self._grid(global_cached.message) if global_cached else None
-        keepout_grid = None
-        global_keepout = None
+        keepouts, global_keepouts = (), ()
         if keepout_cached is not None:
-            keepout_message = keepout_cached.message
-            keepout_frame = keepout_message.header.frame_id or local.frame_id
-            local_from_keepout = self._transform(keepout_frame, local.frame_id, keepout_message.header.stamp)
-            keepout_grid = self._grid(keepout_message, local_from_keepout)
+            keepouts = self._keepouts(keepout_cached.message, local.frame_id)
             if global_grid is not None:
-                global_from_keepout = self._transform(keepout_frame, global_grid.frame_id, keepout_message.header.stamp)
-                global_keepout = self._grid(keepout_message, global_from_keepout)
+                global_keepouts = self._keepouts(keepout_cached.message, global_grid.frame_id)
         footprint_cached, stop_cached = dynamic("footprint"), dynamic("stop_zone")
         scan_cached, plan_cached, collision_cached = dynamic("scan"), dynamic("plan"), dynamic("collision")
         global_plan = self._path(plan_cached.message, global_grid.frame_id, (96, 255, 96)) if plan_cached and global_grid else None
@@ -326,8 +345,8 @@ class NavSnapshotServer(Node):
             extent_m=self._parameter["snapshot_extent_m"],
             size_px=self._parameter["snapshot_size_px"],
             global_inset_px=self._parameter["snapshot_global_inset_px"],
-            keepout=keepout_grid,
-            global_keepout=global_keepout,
+            vector_keepouts=keepouts,
+            global_vector_keepouts=global_keepouts,
             global_costmap=global_grid,
             footprint=self._polyline(footprint_cached.message, (0, 255, 0), local.frame_id) if footprint_cached else None,
             stop_zone=self._polyline(stop_cached.message, (0, 0, 255), local.frame_id) if stop_cached else None,
