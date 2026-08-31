@@ -79,7 +79,7 @@ def detour(node):
     handle=future.result()
     if handle is None or not handle.accepted: raise RuntimeError("planner goal rejected")
     result=handle.get_result_async(); wait(node,lambda:result.done(),"planner result unavailable",12.)
-    path=result.result.path
+    outcome=result.result(); path=outcome.result.path
     if len(path.poses)<=2: raise RuntimeError("planner did not return avoidance path")
     start=current.pose.pose.position
     deviations=[abs(-(p.pose.position.x-start.x)*math.sin(heading)+(p.pose.position.y-start.y)*math.cos(heading)) for p in path.poses]
