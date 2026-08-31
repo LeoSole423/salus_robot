@@ -34,3 +34,11 @@ def test_long_range_probe_uses_an_explicit_compute_path_start():
     source = PROBE.read_text(encoding="utf-8")
     assert "request.use_start=True" in source
     assert "request.start=pose(*start)" in source
+
+
+def test_remove_restores_the_pre_move_baseline_not_the_active_keepout():
+    source = PROBE.read_text(encoding="utf-8")
+    assert "moved_b_samples_before_remove=samples(n.global_maps[-1],moved_x,0.)" in source
+    assert "same_samples(n.global_maps[-1],moved_x,0.,move_baseline)" in source
+    assert "removed_samples != move_baseline" in source
+    assert "remove_baseline" not in source

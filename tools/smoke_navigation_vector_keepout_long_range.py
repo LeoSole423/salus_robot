@@ -182,16 +182,18 @@ def main():
         moved_revision=n.projected[-1].revision
         move_raster_latency=wait_latency(n,lambda:n.global_maps and samples(n.global_maps[-1],moved_x,0.)["core"] == 254 and same_samples(n.global_maps[-1],*zone_b,move_baseline),"moved zone core/clearing unavailable")
         old_b_after_move=samples(n.global_maps[-1],*zone_b)
-        remove_baseline=samples(n.global_maps[-1],moved_x,0.)
-        if remove_baseline["core"] != 254 or remove_baseline["halo"] in (0,None): raise RuntimeError("moved zone core/halo missing")
+        moved_b_samples_before_remove=samples(n.global_maps[-1],moved_x,0.)
+        if moved_b_samples_before_remove["core"] != 254 or moved_b_samples_before_remove["halo"] in (0,None): raise RuntimeError("moved zone core/halo missing")
         remove_revision=n.projected[-1].revision; remove_started=time.monotonic(); removed=call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps({"type":"FeatureCollection","features":[square("zone_a",*zone_a),square("zone_c",FAR_C_X)]})),"remove zone unavailable"); remove_call_latency=time.monotonic()-remove_started
         if not removed.ok: raise RuntimeError(removed.error)
         remove_revision_latency=wait_latency(n,lambda:n.projected and n.projected[-1].revision>remove_revision and all(p.zone_id!="zone_b" for p in n.projected[-1].polygons),"removed revision/geometry unavailable")
         removed_revision=n.projected[-1].revision
         remove_raster_latency=wait_latency(n,lambda:n.global_maps and same_samples(n.global_maps[-1],moved_x,0.,move_baseline),"removed zone core/halo was not restored to baseline")
-        removed_baseline=samples(n.global_maps[-1],moved_x,0.)
+        removed_samples=samples(n.global_maps[-1],moved_x,0.)
+        if removed_samples != move_baseline: raise RuntimeError("removed zone samples differ from pre-move baseline")
+        post_remove_source=[(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons]
         n.teleport(700.,0.); wait(n,lambda:n.gps and gps_distance_m(initial_gps,n.gps[-1])>650. and n.odom and n.odom[-1].pose.pose.position.x>650.,"GPS/global odometry did not reach third region")
-        if [(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons] != [item for item in source if item[0] != "zone_b"]: raise RuntimeError("map-fixed A/C geometry changed after rolling shifts")
+        if [(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons] != post_remove_source: raise RuntimeError("map-fixed A/C geometry changed after rolling shifts")
         if abs(zone_c[0])<=150. and abs(zone_c[1])<=150.: raise RuntimeError("zone C is not beyond legacy extent")
         wait(n,lambda:n.global_maps and contains(n.global_maps[-1],*zone_c) and has_core(n.global_maps[-1],*zone_c),"zone C core not rasterized")
         c_global=metadata(n.global_maps[-1]); c_local=metadata(n.local_maps[-1])
@@ -203,7 +205,7 @@ def main():
         for name, value in (("~350 local",b_local_before),("~700 local",c_local)):
             if any(initial_local[k]!=value[k] for k in ("size_x","size_y","resolution")): raise RuntimeError(f"rolling {name} dimensions changed")
         if n.count_publishers("/keepout_filter_mask")!=0: raise RuntimeError("legacy keepout mask publisher present")
-        evidence.update({"global_costmaps":{"origin":initial_global,"~350m":b_global,"~700m":c_global},"local_costmaps":{"origin":initial_local,"~350m":b_local_before,"~700m":c_local},"map_odom_before":before_tf,"map_odom_after":new_tf,"map_fixed_coordinates":{"zone_a":zone_a,"zone_b":zone_b,"zone_c":zone_c},"projected_polygons":len(source),"legacy_mask_publishers":0,"revisions":{"initial":n.projected[0].revision,"move_from":move_revision,"move_to":moved_revision,"remove_from":remove_revision,"remove_to":removed_revision},"baseline_and_clearing":{"move_destination_before":move_baseline,"old_b_after_move":old_b_after_move,"moved_b_before_remove":remove_baseline,"moved_b_after_remove":removed_baseline},"latencies_s":{"set_call":set_call_latency,"set_response_to_initial_revision":initial_revision_latency,"set_response_to_initial_raster":initial_raster_latency,"move_call":move_call_latency,"move_revision":move_revision_latency,"move_costmap":move_raster_latency,"remove_call":remove_call_latency,"remove_revision":remove_revision_latency,"remove_costmap":remove_raster_latency},"process_resources":process_resources()}); ok=True; return 0
+        evidence.update({"global_costmaps":{"origin":initial_global,"~350m":b_global,"~700m":c_global},"local_costmaps":{"origin":initial_local,"~350m":b_local_before,"~700m":c_local},"map_odom_before":before_tf,"map_odom_after":new_tf,"map_fixed_coordinates":{"zone_a":zone_a,"zone_b":zone_b,"zone_c":zone_c},"projected_polygons":len(source),"legacy_mask_publishers":0,"revisions":{"initial":n.projected[0].revision,"move_from":move_revision,"move_to":moved_revision,"remove_from":remove_revision,"remove_to":removed_revision},"baseline_and_clearing":{"move_destination_before":move_baseline,"old_b_after_move":old_b_after_move,"moved_b_before_remove":moved_b_samples_before_remove,"moved_b_after_remove":removed_samples},"latencies_s":{"set_call":set_call_latency,"set_response_to_initial_revision":initial_revision_latency,"set_response_to_initial_raster":initial_raster_latency,"move_call":move_call_latency,"move_revision":move_revision_latency,"move_costmap":move_raster_latency,"remove_call":remove_call_latency,"remove_revision":remove_revision_latency,"remove_costmap":remove_raster_latency},"process_resources":process_resources()}); ok=True; return 0
     except Exception as e: err=e; raise
     finally: n.runtime.finish(ok,error=err,evidence=evidence); n.destroy_node(); rclpy.shutdown()
 if __name__=="__main__": sys.exit(main())
