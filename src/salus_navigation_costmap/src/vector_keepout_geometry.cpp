@@ -31,13 +31,12 @@ std::vector<Polygon> intersecting(const std::vector<Polygon> & polygons, const B
 bool add_dirty_bounds(const std::vector<Polygon> & polygons, const Bounds & window, double margin, Bounds * dirty) { bool any = false; for (const auto & p : polygons) { const auto b = p.bounds.expanded(margin); if (!b.intersects(window)) continue; if (!any) { *dirty = b; any = true; } else { dirty->min_x = std::min(dirty->min_x, b.min_x); dirty->min_y = std::min(dirty->min_y, b.min_y); dirty->max_x = std::max(dirty->max_x, b.max_x); dirty->max_y = std::max(dirty->max_y, b.max_y); } } return any; }
 unsigned char max_keepout_cost(unsigned char existing, unsigned char keepout) { return keepout == 0 ? existing : (existing == 255 || keepout > existing ? keepout : existing); }
 unsigned char legacy_mask_cost_to_nav2_cost(unsigned char legacy_cost) {
-  // Matches Nav2 Humble StaticLayer::interpretValue for an OccupancyGrid with
-  // lethal_threshold=100 and trinary_costmap=false.  The cast deliberately
-  // truncates, as the Humble implementation's unsigned-char return does.
+  // Matches the Costmap2D constructor used by Nav2 Humble KeepoutFilter for
+  // its OccupancyGrid mask: conceptual 0..100 is rounded onto 0..254.
   if (legacy_cost == 0) return 0;
   if (legacy_cost >= 100) return 254;
-  return static_cast<unsigned char>(
-    static_cast<double>(legacy_cost) / 100.0 * 254.0);
+  return static_cast<unsigned char>(std::round(
+    static_cast<double>(legacy_cost) * 254.0 / 100.0));
 }
 void replace_state(ProjectedState * state, std::vector<Polygon> next, uint64_t revision) { state->previous = std::move(state->current); state->current = std::move(next); state->revision = revision; }
 static double segment_distance(Point p, Point a, Point b) {
