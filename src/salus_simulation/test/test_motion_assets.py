@@ -21,6 +21,15 @@ def test_empty_world_has_motion_and_navsat_required_systems() -> None:
     }
 
 
+def test_vector_keepout_long_range_world_preserves_systems_and_large_ground() -> None:
+    world_path = SIMULATION_DIR / "worlds" / "vector_keepout_long_range.world"
+    world = world_path.read_text(encoding="utf-8")
+    assert '<world name="salus_empty">' in world
+    assert "ignition::gazebo::systems::UserCommands" in world
+    assert "ignition::gazebo::systems::NavSat" in world
+    assert "<size>1200 1200</size>" in world
+
+
 def test_motion_bridge_preserves_control_and_feedback_endpoints() -> None:
     bridge = (SIMULATION_DIR / "config" / "motion_bridge.yaml").read_text(
         encoding="utf-8"

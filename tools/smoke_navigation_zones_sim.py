@@ -13,6 +13,7 @@ from pathlib import Path
 import rclpy
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
+from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -55,6 +56,7 @@ class ZonesSmoke(Node):
         self.odom: list[Odometry] = []
         self.projected: list[ProjectedKeepoutState] = []
         self.plans: list[NavPath] = []
+        self.global_costmaps: list[Costmap] = []
         self.telemetry: list[NavTelemetry] = []
         self.create_subscription(Odometry, "/odometry/global", self.odom.append, 10)
         projected_qos = QoSProfile(
@@ -67,6 +69,7 @@ class ZonesSmoke(Node):
             self.projected.append, projected_qos,
         )
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
+        self.create_subscription(Costmap, "/global_costmap/costmap_raw", self.global_costmaps.append, 10)
         self.create_subscription(
             NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10
         )
@@ -187,6 +190,12 @@ def projected_contains(message, x, y):
     return any(contains(polygon.outer.points) and not any(contains(hole.points) for hole in polygon.holes) for polygon in message.polygons)
 
 
+def costmap_has_core(costmap, x, y):
+    meta = costmap.metadata
+    i, j = int((x - meta.origin.position.x) / meta.resolution), int((y - meta.origin.position.y) / meta.resolution)
+    return 0 <= i < meta.size_x and 0 <= j < meta.size_y and costmap.data[j * meta.size_x + i] == 254
+
+
 def main():
     rclpy.init(); node = ZonesSmoke()
     runtime = SmokeRuntime(
@@ -232,6 +241,7 @@ def main():
         wait_for(node, lambda: node.projected and projected_contains(node.projected[-1], blocked_x, blocked_y), 4.0, "projected keepout state does not cover the blocked goal")
         blocked = call(node, node.goal, goal_request(blocked_x, blocked_y, yaw(current)), "goal service unavailable")
         if blocked.ok: raise RuntimeError("goal inside keepout zone was accepted")
+        wait_for(node, lambda: node.global_costmaps and costmap_has_core(node.global_costmaps[-1], blocked_x, blocked_y), 12.0, "vector keepout was not rasterized in planner costmap")
         node.plans.clear()
         destination_x, destination_y = local_to_map(current, 22.0, 0.0)
         accepted = call(node, node.goal, goal_request(destination_x, destination_y, yaw(current)), "goal service unavailable")
