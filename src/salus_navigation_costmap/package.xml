@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>salus_navigation_costmap</name>
+  <version>0.1.0</version>
+  <description>Bounded map-fixed vector keepout layer for Nav2 rolling costmaps.</description>
+  <maintainer email="62659135+LeoSole423@users.noreply.github.com">Leonel Sole</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>geometry_msgs</depend><depend>nav2_costmap_2d</depend><depend>pluginlib</depend>
+  <depend>rclcpp</depend><depend>salus_interfaces</depend><depend>tf2</depend><depend>tf2_geometry_msgs</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

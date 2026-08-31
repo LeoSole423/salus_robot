@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
     "salus_interfaces", "salus_description", "salus_hardware",
     "salus_localization", "salus_perception", "salus_control",
-    "salus_navigation", "salus_navigation_bt", "salus_web",
+    "salus_navigation", "salus_navigation_bt", "salus_navigation_costmap", "salus_web",
     "salus_simulation", "salus_bringup",
     "salus_evaluation",
 }

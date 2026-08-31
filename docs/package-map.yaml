@@ -49,6 +49,12 @@ packages:
     language: cpp
     may_depend_on: [salus_interfaces]
     status: ported_thin_path_health_plugin_trace_replan_deferred_by_adr_0002
+  salus_navigation_costmap:
+    owner: autonomy_costmap
+    build_type: ament_cmake
+    language: cpp
+    may_depend_on: [salus_interfaces]
+    status: bounded_vector_keepout_layer_opt_in_pending_nav2_migration
   salus_web:
     owner: operator_bridge
     build_type: ament_python
