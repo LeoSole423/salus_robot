@@ -22,3 +22,15 @@ def test_map_point_to_odom_identity_translation_and_rotation():
 
 def test_costmap_indices_floor_negative_coordinates():
     assert probe.math.floor((-0.01 - 0.0) / 0.1) == -1
+
+
+def test_explicit_detour_distance_is_relative_to_the_requested_segment():
+    start, goal = (341.0, 0.0), (375.0, 0.0)
+    assert probe.perpendicular_distance((355.0, 0.0), start, goal) == 0.0
+    assert probe.perpendicular_distance((355.0, 2.5), start, goal) == 2.5
+
+
+def test_long_range_probe_uses_an_explicit_compute_path_start():
+    source = PROBE.read_text(encoding="utf-8")
+    assert "request.use_start=True" in source
+    assert "request.start=pose(*start)" in source

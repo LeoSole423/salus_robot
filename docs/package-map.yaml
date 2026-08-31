@@ -54,7 +54,7 @@ packages:
     build_type: ament_cmake
     language: cpp
     may_depend_on: [salus_interfaces]
-    status: bounded_vector_keepout_layer_opt_in_pending_nav2_migration
+    status: bounded_vector_keepout_layer_active_in_nav2_runtime
   salus_web:
     owner: operator_bridge
     build_type: ament_python

@@ -42,6 +42,22 @@ means that the accepted vector state is available; `mask_source` reports
   intersecting polygon reaches rasterization. The requested patch allocation is
   exactly `width × height` cells of that rolling update, independent of world
   extent; no global keepout image is allocated.
-- Full deterministic teleport/rolling-window simulation and hardware evidence
-  still require execution in the Humble simulation environment; no hardware
-  launch was run by this migration.
+- `python3 tools/run_registered_smoke.py vector_keepout_long_range --context
+  manual` performs the deterministic Humble/Fortress validation. It creates A,
+  B and C once in `map`, then physically teleports the vehicle from the origin
+  to about 350 m and 700 m. `ComputePathToPose(use_start=true)` uses explicit
+  endpoints across each fixed polygon, so the detour assertion never depends
+  on residual EKF heading or the observed vehicle pose.
+- The probe asserts a 1200 × 1200, 0.25 m global window and a 300 × 300, 0.1 m
+  local window at all three locations, records their origins, and requires no
+  `/keepout_filter_mask` publisher. It samples both a core and halo cell for
+  local map→odom correction, zone move and zone removal; clearing must restore
+  the observed no-keepout baseline, not merely a non-lethal cost.
+- The smoke records process-local revisions and observational service-to-state
+  and state-to-costmap latencies, plus an informational Nav2 process RSS/CPU
+  snapshot. These measurements are evidence, not performance gates.
+- The 2026-08-31 manual run passed in 14.44 s. Its JSON evidence is preserved
+  by the smoke harness under `artifacts/smokes/`; it demonstrated A/B/C goal
+  rejection and detours, fixed map geometry, two rolling shifts, local
+  map→odom clearing, B move/removal clearing, and zero legacy-mask publishers.
+  No hardware launch was run by this migration.
