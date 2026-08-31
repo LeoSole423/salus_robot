@@ -24,8 +24,12 @@ def contains(grid,x,y):
     m=grid.metadata; return m.origin.position.x<=x<m.origin.position.x+m.size_x*m.resolution and m.origin.position.y<=y<m.origin.position.y+m.size_y*m.resolution
 
 def map_point_to_odom(x_map, y_map, transform):
-    tx, ty, theta = transform; dx, dy = x_map-tx, y_map-ty
-    return math.cos(theta)*dx + math.sin(theta)*dy, -math.sin(theta)*dx + math.cos(theta)*dy
+    tx, ty, theta = transform; c, s = math.cos(theta), math.sin(theta)
+    return tx + c*x_map - s*y_map, ty + s*x_map + c*y_map
+
+def cost_at(grid, x, y):
+    m=grid.metadata; i=math.floor((x-m.origin.position.x)/m.resolution); j=math.floor((y-m.origin.position.y)/m.resolution)
+    return grid.data[j*m.size_x+i] if 0<=i<m.size_x and 0<=j<m.size_y else None
 
 def metadata(grid):
     m=grid.metadata; return {"size_x":int(m.size_x),"size_y":int(m.size_y),"resolution":float(m.resolution),"origin_x":float(m.origin.position.x),"origin_y":float(m.origin.position.y)}
@@ -64,7 +68,7 @@ def main():
     rclpy.init(); n=LongRange(); n.runtime=SmokeRuntime(n,"vector-keepout-runtime",FilePath(os.environ.get("SMOKE_ARTIFACT_DIR","."))/"vector_keepout_long_range.json"); ok=False; err=None; evidence={}
     try:
         n.runtime.wait("navigation startup unavailable", n.startup_ready, 45., stimulate=n.poll_bt_state, observe=n.startup_evidence)
-        wait(n,lambda:n.odom and n.global_maps and n.local_maps and n.gps and n.tf.can_transform("map","odom",Time()),"initial odometry/GPS/TF/costmaps unavailable",30.)
+        wait(n,lambda:n.odom and n.global_maps and n.local_maps and n.gps and n.tf.can_transform("odom","map",Time()),"initial odometry/GPS/TF/costmaps unavailable",30.)
         initial=n.odom[-1]; initial_tf=n.map_odom(); initial_gps=n.gps[-1]
         zones={"type":"FeatureCollection","features":[square("zone_a",9.),square("zone_b",FAR_X)]}
         response=call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps(zones)),"set zones unavailable")
@@ -84,13 +88,16 @@ def main():
         if call(n,n.goal,goal_request(FAR_X,0.,0.),"zone B goal unavailable").ok: raise RuntimeError("zone B goal accepted")
         detour(n,350.,375.)
         before_tf=n.map_odom(); before_local=n.local_maps[-1]; old_local=map_point_to_odom(FAR_X,0.,before_tf)
+        wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*old_local),"old local core missing before correction")
+        evidence.update({"zone_b_map":(FAR_X,0.),"t_odom_map_before":before_tf,"old_local":old_local,"old_local_before_cost":cost_at(n.local_maps[-1],*old_local),"local_before":metadata(n.local_maps[-1])})
         # The 5 m physical move changes GPS/global EKF correction while local odom remains wheel-integrated.
         n.teleport(350.,5.)
         wait(n,lambda:math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
         wait(n,lambda:n.tf.can_transform("odom","map",Time()) and math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
         new_tf=n.map_odom(); new_local=map_point_to_odom(FAR_X,0.,new_tf)
-        wait(n,lambda:n.local_maps and not has_core(n.local_maps[-1],*old_local),"former local core was not cleared")
         wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*new_local),"new local core missing")
+        evidence.update({"t_odom_map_after":new_tf,"new_local":new_local,"old_local_after_cost":cost_at(n.local_maps[-1],*old_local),"new_local_after_cost":cost_at(n.local_maps[-1],*new_local),"local_after":metadata(n.local_maps[-1])})
+        wait(n,lambda:not has_core(n.local_maps[-1],*old_local),"former local core was not cleared")
         moved={"type":"FeatureCollection","features":[square("zone_a",9.),square("zone_b",FAR_X+4.)]}; call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps(moved)),"move zone unavailable")
         wait(n,lambda:n.global_maps and has_core(n.global_maps[-1],FAR_X+4.,0.) and not has_core(n.global_maps[-1],FAR_X,0.),"moved zone stale global core")
         call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps({"type":"FeatureCollection","features":[square("zone_a",9.)]})),"remove zone unavailable")

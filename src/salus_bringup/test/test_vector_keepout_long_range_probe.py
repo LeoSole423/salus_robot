@@ -13,11 +13,11 @@ SPEC.loader.exec_module(probe)
 
 def test_map_point_to_odom_identity_translation_and_rotation():
     assert probe.map_point_to_odom(2.0, -3.0, (0.0, 0.0, 0.0)) == (2.0, -3.0)
-    assert probe.map_point_to_odom(7.0, 1.0, (5.0, 4.0, 0.0)) == (2.0, -3.0)
-    x, y = probe.map_point_to_odom(0.0, 2.0, (0.0, 0.0, 1.5707963267948966))
-    assert abs(x - 2.0) < 1e-12 and abs(y) < 1e-12
-    x, y = probe.map_point_to_odom(3.0, 5.0, (1.0, 2.0, 1.5707963267948966))
-    assert abs(x - 3.0) < 1e-12 and abs(y + 2.0) < 1e-12
+    assert probe.map_point_to_odom(2.0, -3.0, (5.0, 4.0, 0.0)) == (7.0, 1.0)
+    x, y = probe.map_point_to_odom(2.0, 0.0, (0.0, 0.0, 1.5707963267948966))
+    assert abs(x) < 1e-12 and abs(y - 2.0) < 1e-12
+    x, y = probe.map_point_to_odom(2.0, 3.0, (1.0, 2.0, 1.5707963267948966))
+    assert abs(x + 2.0) < 1e-12 and abs(y - 4.0) < 1e-12
 
 
 def test_costmap_indices_floor_negative_coordinates():
