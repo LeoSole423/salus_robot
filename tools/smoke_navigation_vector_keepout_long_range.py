@@ -40,6 +40,10 @@ def gps_distance_m(a, b):
     h=math.sin(dlat/2)**2+math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
     return 6371000.0*2.0*math.asin(math.sqrt(h))
 
+def polygon_center(polygon):
+    points=polygon.outer.points; xs=[p.x for p in points]; ys=[p.y for p in points]
+    return (min(xs)+max(xs))/2., (min(ys)+max(ys))/2.
+
 class LongRange(ZonesSmoke):
     def __init__(self):
         super().__init__(); self.global_maps=[]; self.local_maps=[]; self.gps=[]
@@ -56,6 +60,12 @@ class LongRange(ZonesSmoke):
         request=f'name: "salus_ackermann" position {{ x: {x} y: {y} z: 0.30 }} orientation {{ w: 1 }}'
         result=subprocess.run(["ign","service","-s","/world/salus_empty/set_pose","--reqtype","ignition.msgs.Pose","--reptype","ignition.msgs.Boolean","--timeout","5000","--req",request],text=True,capture_output=True,timeout=8)
         if result.returncode or "data: true" not in result.stdout: raise RuntimeError(f"Fortress set_pose failed: {result.stdout} {result.stderr}")
+    def audit_local(self, grid, zone):
+        stamp=Time.from_msg(grid.header.stamp); tf=self.tf.lookup_transform("odom","map",stamp).transform
+        q=tf.rotation; transform=(tf.translation.x,tf.translation.y,math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z)))
+        point=map_point_to_odom(*zone,transform); m=metadata(grid); base=self.tf.lookup_transform("odom","base_footprint",stamp).transform.translation
+        cores=[(m["origin_x"]+(i+.5)*m["resolution"],m["origin_y"]+(j+.5)*m["resolution"]) for j in range(grid.metadata.size_y) for i in range(grid.metadata.size_x) if grid.data[j*grid.metadata.size_x+i]==254]
+        return {"stamp_ns":stamp.nanoseconds,"metadata":m,"t_odom_map":transform,"zone_map":zone,"zone_odom":point,"robot_odom":(base.x,base.y),"inside":contains(grid,*point),"cost":cost_at(grid,*point),"core_count":len(cores),"core_bbox":None if not cores else (min(x for x,y in cores),min(y for x,y in cores),max(x for x,y in cores),max(y for x,y in cores)),"nearest_core":None if not cores else min(math.hypot(x-point[0],y-point[1]) for x,y in cores)}
 
 def wait(node,pred,msg,timeout=30.): node.runtime.wait(msg,pred,timeout)
 def detour(node,start_x,goal_x):
@@ -74,7 +84,7 @@ def main():
         response=call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps(zones)),"set zones unavailable")
         if not response.ok or response.polygon_count!=2: raise RuntimeError(response.error)
         wait(n,lambda:n.projected and len(n.projected[-1].polygons)==2,"projected state missing both zones")
-        source=[(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons]
+        source=[(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons]; zone_b=polygon_center(next(p for p in n.projected[-1].polygons if p.zone_id=="zone_b"))
         wait(n,lambda:n.global_maps and has_core(n.global_maps[-1],9.,0.),"zone A core not rasterized")
         if contains(n.global_maps[-1],FAR_X,0.): raise RuntimeError("far zone unexpectedly inside origin rolling window")
         if call(n,n.goal,goal_request(9.,0.,0.),"zone A goal unavailable").ok: raise RuntimeError("zone A goal accepted")
@@ -87,13 +97,18 @@ def main():
         if [(p.zone_id,[(v.x,v.y) for v in p.outer.points]) for p in n.projected[-1].polygons] != source: raise RuntimeError("map-fixed projected geometry changed")
         if call(n,n.goal,goal_request(FAR_X,0.,0.),"zone B goal unavailable").ok: raise RuntimeError("zone B goal accepted")
         detour(n,350.,375.)
-        before_tf=n.map_odom(); before_local=n.local_maps[-1]; old_local=map_point_to_odom(FAR_X,0.,before_tf)
-        wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*old_local),"old local core missing before correction")
-        evidence.update({"zone_b_map":(FAR_X,0.),"t_odom_map_before":before_tf,"old_local":old_local,"old_local_before_cost":cost_at(n.local_maps[-1],*old_local),"local_before":metadata(n.local_maps[-1])})
+        audits=[]
+        def coherent():
+            if not n.local_maps: return False
+            try: audits.append(n.audit_local(n.local_maps[-1],zone_b))
+            except Exception: return False
+            return audits[-1]["inside"] and audits[-1]["nearest_core"] is not None and audits[-1]["nearest_core"] < 2.
+        wait(n,coherent,"coherent local zone B sample unavailable")
+        before_tf=audits[-1]["t_odom_map"]; before_local=n.local_maps[-1]; old_local=audits[-1]["zone_odom"]; evidence.update({"local_audit_before":audits[-1]})
+        if not has_core(before_local,*old_local): raise RuntimeError("old local core missing before correction")
         # The 5 m physical move changes GPS/global EKF correction while local odom remains wheel-integrated.
         n.teleport(350.,5.)
         wait(n,lambda:math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
-        wait(n,lambda:n.tf.can_transform("odom","map",Time()) and math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
         new_tf=n.map_odom(); new_local=map_point_to_odom(FAR_X,0.,new_tf)
         wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*new_local),"new local core missing")
         evidence.update({"t_odom_map_after":new_tf,"new_local":new_local,"old_local_after_cost":cost_at(n.local_maps[-1],*old_local),"new_local_after_cost":cost_at(n.local_maps[-1],*new_local),"local_after":metadata(n.local_maps[-1])})
