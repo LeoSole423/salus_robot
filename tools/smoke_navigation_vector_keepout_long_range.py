@@ -109,8 +109,16 @@ def main():
         # The 5 m physical move changes GPS/global EKF correction while local odom remains wheel-integrated.
         n.teleport(350.,5.)
         wait(n,lambda:math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
-        new_tf=n.map_odom(); new_local=map_point_to_odom(FAR_X,0.,new_tf)
-        wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*new_local),"new local core missing")
+        new_audits=[]
+        def corrected_local():
+            if not n.local_maps: return False
+            try: new_audits.append(n.audit_local(n.local_maps[-1],zone_b))
+            except Exception: return False
+            evidence["local_audit_after"] = new_audits[-1]
+            return new_audits[-1]["inside"] and new_audits[-1]["nearest_core"] is not None
+        wait(n,corrected_local,"coherent local sample after correction unavailable")
+        new_tf=new_audits[-1]["t_odom_map"]; new_local=new_audits[-1]["zone_odom"]
+        if not has_core(n.local_maps[-1],*new_local): raise RuntimeError("new local core missing")
         evidence.update({"t_odom_map_after":new_tf,"new_local":new_local,"old_local_after_cost":cost_at(n.local_maps[-1],*old_local),"new_local_after_cost":cost_at(n.local_maps[-1],*new_local),"local_after":metadata(n.local_maps[-1])})
         wait(n,lambda:not has_core(n.local_maps[-1],*old_local),"former local core was not cleared")
         moved={"type":"FeatureCollection","features":[square("zone_a",9.),square("zone_b",FAR_X+4.)]}; call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps(moved)),"move zone unavailable")
