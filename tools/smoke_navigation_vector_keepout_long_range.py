@@ -125,7 +125,7 @@ def main():
         wait(n,lambda:n.global_maps and has_core(n.global_maps[-1],FAR_X+4.,0.) and not has_core(n.global_maps[-1],FAR_X,0.),"moved zone stale global core")
         call(n,n.set_zones,SetZonesGeoJson.Request(geojson=json.dumps({"type":"FeatureCollection","features":[square("zone_a",9.)]})),"remove zone unavailable")
         wait(n,lambda:n.global_maps and not has_core(n.global_maps[-1],FAR_X+4.,0.),"removed zone stale global core")
-        evidence={"initial_global":metadata(n.global_maps[0]),"far_global":metadata(n.global_maps[-1]),"initial_local":metadata(before_local),"far_local":metadata(n.local_maps[-1]),"map_odom_before":before_tf,"map_odom_after":new_tf,"projected_polygons":len(source),"legacy_mask_publishers":n.count_publishers("/keepout_filter_mask")}; ok=True; return 0
+        evidence.update({"initial_global":metadata(n.global_maps[0]),"far_global":metadata(n.global_maps[-1]),"initial_local":metadata(before_local),"far_local":metadata(n.local_maps[-1]),"map_odom_before":before_tf,"map_odom_after":new_tf,"projected_polygons":len(source),"legacy_mask_publishers":n.count_publishers("/keepout_filter_mask")}); ok=True; return 0
     except Exception as e: err=e; raise
     finally: n.runtime.finish(ok,error=err,evidence=evidence); n.destroy_node(); rclpy.shutdown()
 if __name__=="__main__": sys.exit(main())
