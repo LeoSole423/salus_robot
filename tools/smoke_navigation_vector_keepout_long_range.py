@@ -45,8 +45,8 @@ class LongRange(ZonesSmoke):
         self.create_subscription(NavSatFix,"/gps/fix_raw",self.gps.append,10)
         self.tf=Buffer(); self.listener=TransformListener(self.tf,self)
     def map_odom(self):
-        if not self.tf.can_transform("map","odom",Time()): raise RuntimeError("map->odom unavailable")
-        t=self.tf.lookup_transform("map","odom",Time()).transform
+        if not self.tf.can_transform("odom","map",Time()): raise RuntimeError("map->odom unavailable")
+        t=self.tf.lookup_transform("odom","map",Time()).transform
         q=t.rotation; return (t.translation.x,t.translation.y,math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z)))
     def teleport(self,x,y):
         request=f'name: "salus_ackermann" position {{ x: {x} y: {y} z: 0.30 }} orientation {{ w: 1 }}'
@@ -87,7 +87,7 @@ def main():
         # The 5 m physical move changes GPS/global EKF correction while local odom remains wheel-integrated.
         n.teleport(350.,5.)
         wait(n,lambda:math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
-        wait(n,lambda:n.tf.can_transform("map","odom",Time()) and math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
+        wait(n,lambda:n.tf.can_transform("odom","map",Time()) and math.hypot(n.map_odom()[0]-before_tf[0],n.map_odom()[1]-before_tf[1])>1.,"map->odom correction did not change")
         new_tf=n.map_odom(); new_local=map_point_to_odom(FAR_X,0.,new_tf)
         wait(n,lambda:n.local_maps and not has_core(n.local_maps[-1],*old_local),"former local core was not cleared")
         wait(n,lambda:n.local_maps and has_core(n.local_maps[-1],*new_local),"new local core missing")
