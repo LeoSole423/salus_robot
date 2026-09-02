@@ -58,8 +58,9 @@ components:
       - RTCM backend boundary
     evidence:
       - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
+      - docs/migration-evidence/intent/jetson-deployment-read-only-refresh-2026-09-02.md
       - tools/observe_hardware_contracts.py
-    note: Passive SSH/ROS graph observation confirmed the live Pixhawk/MAVROS IMU and GNSS, RTK delivery chain, controller telemetry, derived Ackermann odometry, RS16 pipeline and EKF authorities without modifying the running legacy stack. It also found base_link sensor frames, a dual-typed /rtcm topic and stale public status aliases. salus_robot was not deployed or executed, no bag was recorded and hardware_validated remains false.
+    note: Passive SSH/ROS graph observation on 27–28/08 confirmed the live Pixhawk/MAVROS IMU and GNSS, RTK delivery chain, controller telemetry, derived Ackermann odometry, RS16 pipeline and EKF authorities without modifying the running legacy stack. The 02/09 refresh confirmed the clean legacy checkout, active systemd/Docker launch, environment, graph counts and preservable local assets; Pixhawk/GNSS and LiDAR were intentionally disconnected, so no new physical signal validation was claimed. salus_robot was not deployed or executed, no bag was recorded and hardware_validated remains false.
   rtk_gnss_contract_routing:
     source: ROS2_SALUS rtk_source_manager, rtk_bridge and legacy RTK status topics
     target: salus_interfaces, salus_hardware, salus_bringup and salus_web
