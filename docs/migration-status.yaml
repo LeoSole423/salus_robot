@@ -289,6 +289,44 @@ components:
       - tools/smoke_sensor_selection_sim.sh
       - docs/migration-evidence/intent/imu-and-global-orientation-profiles.md
     note: Local and global simulation localization are ported, including deterministic GPS profiles, fixed datum, /fromLL, map-to-odom EKF, RTK/course-heading gates and stationary gates. Simulation explicitly selects one local IMU and one global orientation source without fallback; only imu_primary is produced, while external_heading uses a ground-truth fixture. The global EKF and navsat_transform share the selected heading, and stationary local yaw is diagnostic rather than a second absolute source. Simulation can select legacy or canonical vehicle odometry while preserving one main authority. Physical mounts, Pixhawk/PCB adapters, dual-GNSS semantics, real-bag parity and calibration remain pending.
+  physical_local_localization_shadow:
+    source: ROS2_SALUS /wheel/odometry plus logical /salus/imu/data
+    target: salus_localization real shadow local EKF and salus_bringup wrapper
+    state: ported
+    contracts:
+      - /wheel/odometry
+      - /salus/imu/data
+      - /salus/localization_shadow/odometry/local
+      - /salus/localization_shadow/diagnostics
+    evidence:
+      - src/salus_localization/config/localization_local_real_shadow.yaml
+      - src/salus_localization/launch/localization_real_shadow.launch.py
+      - src/salus_bringup/launch/real_localization_shadow.launch.py
+      - src/salus_localization/test/test_localization_real_shadow_assets.py
+      - src/salus_localization/test/test_localization_real_shadow_runtime.py
+      - src/salus_bringup/test/test_real_localization_shadow_launch.py
+      - tools/observe_localization_shadow.py
+      - docs/migration-evidence/intent/physical-local-localization-shadow.md
+    note: >-
+      First physical local EKF, shadow-only. One robot_localization ekf_node
+      named salus_local_ekf_shadow consumes the legacy wheel odometry and the
+      logical Salus IMU, and publishes only
+      /salus/localization_shadow/odometry/local with publish_tf, use_control
+      and publish_acceleration pinned false in both the parameters file and
+      explicit node overrides; no launch argument can restore authority.
+      ROS2_SALUS keeps /odometry/local, odom->base_footprint, all TF, hardware
+      and control. The estimator model is inherited unchanged from the
+      simulated local profile because canonical physical odometry still awaits
+      mechanical calibration, which deliberately separates the estimator
+      problem from the calibration problem. A live ROS test starts the real
+      ekf_node and asserts continuous finite output, odom/base_footprint
+      frames, monotonic timestamps, an empty /tf payload and no publisher on
+      /odometry/local; robot_localization still advertises a /tf endpoint even
+      with publish_tf=false, so the guarantee is enforced at payload level.
+      Global localization, navsat_transform, external heading, map->odom, TF
+      transfer and canonical physical odometry are out of scope. Stationary
+      Jetson evidence is still pending, so this component is not
+      hardware_validated.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception
