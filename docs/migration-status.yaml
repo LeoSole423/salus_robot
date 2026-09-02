@@ -112,7 +112,9 @@ components:
       - src/salus_bringup/test/test_real_observation_launch.py
       - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
       - docs/migration-evidence/intent/jetson-deployment-read-only-refresh-2026-09-02.md
-    note: Coexistence-only composition. It includes only Pixhawk sensor observation, disabled-delivery RTK observation, legacy DriveTelemetry measurement adaptation, VehicleCommand shadow translation and diagnostics. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains pending and is read-only.
+      - docs/migration-evidence/intent/real-observation-hardware-validation-2026-09-02.md
+    note: >-
+      Coexistence-only composition. The 2026-09-02 stationary Jetson validation confirmed read-only IMU/GNSS adaptation, disabled-delivery RTCM dry-run, no new TF/RTCM/UART authority and intact legacy RS16/TF/service after rollback. It also found that installed legacy `interfaces/msg/DriveTelemetry` and `interfaces/msg/CmdVelFinal` cannot interoperate with their same-shaped `salus_interfaces` types, so measurements and command-shadow traffic remain unvalidated until a compatibility adapter is added. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains partial and read-only.
   capability_profiles:
     source: declared robot composition
     target: salus_interfaces/SystemCapabilities and salus_bringup
