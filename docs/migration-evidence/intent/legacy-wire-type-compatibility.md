@@ -49,9 +49,20 @@ tipos DDS en el mismo tópico ni se rompe el producer canónico de simulación.
 | --- | --- | --- | --- | --- |
 | `input_wire_type` | string | `salus_interfaces` | `salus_interfaces`, `interfaces` | Selecciona al construir el nodo una única suscripción de entrada. El perfil real read-only debe fijar `interfaces`; no existe fallback automático. |
 
-## Límites y validación pendiente
+## Límites y validación
 
 Las pruebas locales publican realmente mensajes `interfaces/msg/...` y validan
-las salidas canónicas. Sigue pendiente una revalidación estacionaria de sólo
-esas dos fronteras en la Jetson. No implica validación de localización, MAVROS,
-NTRIP, RS16, Nav2, UART ni control físico.
+las salidas canónicas. La revalidación estacionaria en la Jetson ya se realizó
+sobre `436b1ef` contra `ROS2_SALUS@f358349` y cerró las dos fronteras con
+tráfico natural del legacy y sin inyectar comandos; ver
+[`legacy-wire-hardware-revalidation-2026-09-02.md`](legacy-wire-hardware-revalidation-2026-09-02.md).
+
+Límites de esa evidencia:
+
+- cubre sólo la identidad wire de entrada y la traducción a salidas canónicas
+  en régimen estacionario; no valida calibración física de tracción/dirección;
+- no implica validación de localización, MAVROS, NTRIP, RS16, Nav2, UART ni
+  control físico;
+- registró un defecto aparte de doble `rclpy.shutdown()` al recibir SIGINT en
+  los tres adapters (salida con código 1 sin afectar el cierre funcional), que
+  se deja para un cambio propio y no se mezcla aquí.
