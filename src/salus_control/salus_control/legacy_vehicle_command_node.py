@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import rclpy
+from interfaces.msg import CmdVelFinal
 from rclpy.node import Node
-from salus_interfaces.msg import CmdVelFinal, VehicleCommand
+from salus_interfaces.msg import VehicleCommand
 
 from .legacy_vehicle_command import (
     LegacyVehicleCommandConfig,

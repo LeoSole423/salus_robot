@@ -1,6 +1,12 @@
 schema_version: 1
 project_status: migrating
 packages:
+  interfaces:
+    owner: legacy_wire_compatibility
+    build_type: ament_cmake
+    language: interface_definition
+    may_depend_on: []
+    status: temporary_read_only_ros2_salus_wire_compatibility_only
   salus_interfaces:
     owner: shared_contracts
     build_type: ament_cmake
@@ -17,7 +23,7 @@ packages:
     owner: hardware_adapters
     build_type: ament_python
     language: python
-    may_depend_on: [salus_interfaces, salus_description]
+    may_depend_on: [interfaces, salus_interfaces, salus_description]
     status: ported_pixhawk_sensor_vehicle_measurement_rtk_observation_and_opt_in_mavros_delivery_adapters_with_delivery_validation_pending
   salus_localization:
     owner: localization
@@ -35,7 +41,7 @@ packages:
     owner: vehicle_control
     build_type: ament_python
     language: python
-    may_depend_on: [salus_interfaces]
+    may_depend_on: [interfaces, salus_interfaces]
     status: parity_passed_sim_with_selectable_canonical_command_backend
   salus_navigation:
     owner: autonomy

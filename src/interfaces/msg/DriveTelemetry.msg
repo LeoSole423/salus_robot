@@ -1,0 +1,12 @@
+builtin_interfaces/Time stamp
+bool ready
+bool fresh
+bool drive_enabled
+bool estop
+bool reverse_requested
+bool speed_valid
+bool steer_valid
+string control_source
+float64 speed_mps_measured
+float64 steer_deg_measured
+uint8 brake_applied_pct

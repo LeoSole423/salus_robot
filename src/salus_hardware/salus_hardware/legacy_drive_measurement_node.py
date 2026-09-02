@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 
+from interfaces.msg import DriveTelemetry
 import rclpy
 from rclpy.node import Node
 
 from salus_interfaces.msg import (
-    DriveTelemetry,
     SteeringMeasurement,
     TractionMeasurement,
 )

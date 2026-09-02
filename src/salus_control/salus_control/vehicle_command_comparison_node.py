@@ -8,8 +8,9 @@ from dataclasses import dataclass
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from interfaces.msg import CmdVelFinal
 from rclpy.node import Node
-from salus_interfaces.msg import CmdVelFinal, VehicleCommand
+from salus_interfaces.msg import VehicleCommand
 
 from .legacy_vehicle_command import LegacyVehicleCommandConfig, translate_legacy_command
 from .vehicle_command_comparison import (

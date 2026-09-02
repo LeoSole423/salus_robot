@@ -26,6 +26,23 @@ components:
       - SetSimBatteryState
     evidence:
       - tools/compare_interfaces.py
+  legacy_wire_type_compatibility:
+    source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53
+    target: interfaces temporary package
+    state: ported
+    contracts:
+      - interfaces/msg/CmdVelFinal
+      - interfaces/msg/DriveTelemetry
+    evidence:
+      - src/interfaces/README.md
+      - src/interfaces/test/test_legacy_wire_contract.py
+      - docs/migration-evidence/intent/legacy-wire-type-compatibility.md
+    note: >-
+      The package name is part of ROS 2 wire type identity. This deliberately
+      minimal package preserves only the two observed legacy input identities
+      for read-only coexistence adapters; it is not canonical, adds no
+      authority and must be removed when ROS2_SALUS retires. Only
+      salus_hardware and salus_control may depend on it.
   control_core:
     source: controller_server
     target: salus_control
@@ -114,7 +131,7 @@ components:
       - docs/migration-evidence/intent/jetson-deployment-read-only-refresh-2026-09-02.md
       - docs/migration-evidence/intent/real-observation-hardware-validation-2026-09-02.md
     note: >-
-      Coexistence-only composition. The 2026-09-02 stationary Jetson validation confirmed read-only IMU/GNSS adaptation, disabled-delivery RTCM dry-run, no new TF/RTCM/UART authority and intact legacy RS16/TF/service after rollback. It also found that installed legacy `interfaces/msg/DriveTelemetry` and `interfaces/msg/CmdVelFinal` cannot interoperate with their same-shaped `salus_interfaces` types, so measurements and command-shadow traffic remain unvalidated until a compatibility adapter is added. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains partial and read-only.
+      Coexistence-only composition. The 2026-09-02 stationary Jetson validation confirmed read-only IMU/GNSS adaptation, disabled-delivery RTCM dry-run, no new TF/RTCM/UART authority and intact legacy RS16/TF/service after rollback. The temporary `interfaces` package now supplies the two real legacy wire identities consumed by the read-only measurement and command-shadow adapters; physical revalidation of those two boundaries remains pending. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains partial and read-only.
   capability_profiles:
     source: declared robot composition
     target: salus_interfaces/SystemCapabilities and salus_bringup

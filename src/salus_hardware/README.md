@@ -24,13 +24,16 @@
   crea el publicador MAVROS. Rechaza CRC, tamaños mayores a 720 bytes,
   duplicados/regresiones y `direct_usb` mientras no exista su driver.
 - `legacy_drive_measurement_node` es un adaptador estrictamente de lectura:
-  consume `DriveTelemetry` (por defecto `/controller/drive_telemetry`) y
+  consume el tipo wire legacy `interfaces/msg/DriveTelemetry` (por defecto
+  `/controller/drive_telemetry`) y
   publica `TractionMeasurement` y `SteeringMeasurement` en
   `/vehicle/measurements/traction` y `/vehicle/measurements/steering`. No
   habilita actuadores, servicios ni un launch real. Sus parámetros de tópico y
   `source_id` son configurables; conserva el timestamp legado y marca la
   velocidad firmada deducida de `reverse_requested` como inferida tanto en
-  avance como en reversa.
+  avance como en reversa. `interfaces` es una excepción transitoria de
+  coexistencia; las salidas siguen siendo contratos canónicos
+  `salus_interfaces`.
 - `vehicle_kinematic_converter` transforma fuentes físicas seleccionadas en
   entradas cinemáticas mediante una escala de tracción y una curva polinómica
   de dirección explícitas. `calibration_validated` es `false` por defecto: sin

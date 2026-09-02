@@ -9,12 +9,24 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
-    "salus_interfaces", "salus_description", "salus_hardware",
+    "interfaces", "salus_interfaces", "salus_description", "salus_hardware",
     "salus_localization", "salus_perception", "salus_control",
     "salus_navigation", "salus_navigation_bt", "salus_navigation_costmap", "salus_web",
     "salus_simulation", "salus_bringup",
     "salus_evaluation",
 }
+LEGACY_WIRE_COMPAT_PACKAGE = "interfaces"
+LEGACY_WIRE_COMPAT_CONSUMERS = {"salus_hardware", "salus_control"}
+LEGACY_WIRE_COMPAT_MESSAGES = {"CmdVelFinal.msg", "DriveTelemetry.msg"}
+
+
+def _dependency_names(manifest: Path) -> set[str]:
+    root = ET.parse(manifest).getroot()
+    return {
+        element.text.strip()
+        for element in root
+        if element.tag.endswith("depend") and element.text and element.text.strip()
+    }
 
 
 def main() -> int:
@@ -29,6 +41,27 @@ def main() -> int:
             errors.append(f"{manifest.parent}: missing README.md")
     if set(packages) != EXPECTED:
         errors.append(f"package set differs: expected={sorted(EXPECTED)}, actual={sorted(packages)}")
+
+    compatibility_path = packages.get(LEGACY_WIRE_COMPAT_PACKAGE)
+    if compatibility_path:
+        messages = {
+            path.name
+            for path in (compatibility_path / "msg").glob("*.msg")
+        }
+        if messages != LEGACY_WIRE_COMPAT_MESSAGES:
+            errors.append(
+                "interfaces: legacy wire package must contain exactly "
+                f"{sorted(LEGACY_WIRE_COMPAT_MESSAGES)}, actual={sorted(messages)}"
+            )
+    for name, manifest_path in packages.items():
+        if name == LEGACY_WIRE_COMPAT_PACKAGE:
+            continue
+        if LEGACY_WIRE_COMPAT_PACKAGE in _dependency_names(manifest_path / "package.xml"):
+            if name not in LEGACY_WIRE_COMPAT_CONSUMERS:
+                errors.append(
+                    f"{name}: only {sorted(LEGACY_WIRE_COMPAT_CONSUMERS)} may depend "
+                    f"on {LEGACY_WIRE_COMPAT_PACKAGE}"
+                )
 
     ignored_trees = {".git", "build", "install", "log"}
     for document in sorted(ROOT.rglob("*.md")):
