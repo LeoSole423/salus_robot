@@ -21,6 +21,8 @@ if(BUILD_TESTING)
     test_pixhawk_sensor_inputs_launch test/test_pixhawk_sensor_inputs_launch.py)
   ament_add_pytest_test(
     test_rtk_gnss_observation_launch test/test_rtk_gnss_observation_launch.py)
+  ament_add_pytest_test(
+    test_real_observation_launch test/test_real_observation_launch.py)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()

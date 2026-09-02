@@ -88,4 +88,4 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
-    status: operational_sim_profiles_and_fail_closed_rtk_pixhawk_profile_pending_delivery_validation
+    status: operational_sim_profiles_and_read_only_real_observation_with_fail_closed_rtk_pixhawk_profile_pending_delivery_validation

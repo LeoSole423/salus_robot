@@ -42,6 +42,28 @@ Mientras `ROS2_SALUS` es propietario del robot, las salidas lógicas usan
 `/gps/fix`. El launch sólo contiene el adaptador y selectores read-only; no
 publica TF, abre UART, llama servicios ni envía comandos.
 
+## Perfil real de observación/coexistencia
+
+`real_observation.launch.py` compone exclusivamente adaptadores que consumen
+los tópicos ya publicados por `ROS2_SALUS`; no inicia ni toma propiedad de
+hardware. Es el primer perfil que se puede ejecutar junto al servicio legacy:
+
+```bash
+ros2 launch salus_bringup real_observation.launch.py
+```
+
+Incluye las entradas Pixhawk read-only, la observación RTK/GNSS, telemetría
+legacy a mediciones canónicas, la traducción `/cmd_vel_final` a
+`/vehicle/command_shadow` y su comparación diagnóstica. La entrega RTCM queda
+fijada internamente en `delivery_backend:=disabled` y
+`delivery_enabled:=false`; el launch no expone argumentos para cambiarlo.
+
+No contiene UART/serial, MAVROS nuevo, NTRIP, RS16, TF, EKF/navsat, Nav2,
+Collision Monitor, arbitraje de comandos, Web/Cockpit ni cámara. Por ello la
+ausencia de Pixhawk/GNSS o LiDAR deja sólo datos ausentes/stale según cada
+adaptador, sin abrir drivers ni cambiar fuentes. La validación física posterior
+será estrictamente read-only y estacionaria.
+
 ## Checkpoint integrado de simulación
 
 El launch actual reúne movimiento Ackermann, controlador simulado, localización
