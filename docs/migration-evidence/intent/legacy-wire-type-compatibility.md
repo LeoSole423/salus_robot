@@ -40,6 +40,15 @@ El paquete no es API canónica, no se permite a código nuevo y se eliminará al
 retirar de forma controlada `ROS2_SALUS`. Todo tipo legacy adicional requiere
 evidencia física y decisión explícita; no se copia el paquete legacy completo.
 
+Los adapters seleccionan una única suscripción mediante `input_wire_type`:
+`salus_interfaces` es el default para simulación y `interfaces` se fija
+explícitamente sólo en `real_observation.launch.py`. Así no se mezclan dos
+tipos DDS en el mismo tópico ni se rompe el producer canónico de simulación.
+
+| Parámetro | Tipo | Default | Valores válidos | Significado operacional |
+| --- | --- | --- | --- | --- |
+| `input_wire_type` | string | `salus_interfaces` | `salus_interfaces`, `interfaces` | Selecciona al construir el nodo una única suscripción de entrada. El perfil real read-only debe fijar `interfaces`; no existe fallback automático. |
+
 ## Límites y validación pendiente
 
 Las pruebas locales publican realmente mensajes `interfaces/msg/...` y validan

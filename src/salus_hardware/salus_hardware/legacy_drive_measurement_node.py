@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import math
 
-from interfaces.msg import DriveTelemetry
+from interfaces.msg import DriveTelemetry as LegacyDriveTelemetry
 import rclpy
 from rclpy.node import Node
 
 from salus_interfaces.msg import (
+    DriveTelemetry as CanonicalDriveTelemetry,
     SteeringMeasurement,
     TractionMeasurement,
 )
@@ -21,18 +22,28 @@ from .legacy_drive_measurement_domain import (
 )
 
 
+_INPUT_WIRE_TYPES = {
+    "salus_interfaces": CanonicalDriveTelemetry,
+    "interfaces": LegacyDriveTelemetry,
+}
+
+
 class LegacyDriveMeasurementNode(Node):
     """Publishes canonical observations without commanding any hardware."""
 
-    def __init__(self) -> None:
-        super().__init__("legacy_drive_measurement_adapter")
+    def __init__(self, *, parameter_overrides=None) -> None:
+        super().__init__(
+            "legacy_drive_measurement_adapter", parameter_overrides=parameter_overrides
+        )
         self.declare_parameter("legacy_telemetry_topic", "/controller/drive_telemetry")
         self.declare_parameter("traction_topic", "/vehicle/measurements/traction")
         self.declare_parameter("steering_topic", "/vehicle/measurements/steering")
         self.declare_parameter("traction_source_id", "rear_traction_motor")
         self.declare_parameter("steering_source_id", "front_steering_linkage")
+        self.declare_parameter("input_wire_type", "salus_interfaces")
         self._traction_source_id = _required_string_parameter(self, "traction_source_id")
         self._steering_source_id = _required_string_parameter(self, "steering_source_id")
+        self._input_wire_type, self._input_message_type = _input_message_type(self)
         self._sequence = 0
         self._traction_publisher = self.create_publisher(
             TractionMeasurement,
@@ -45,13 +56,13 @@ class LegacyDriveMeasurementNode(Node):
             10,
         )
         self._subscription = self.create_subscription(
-            DriveTelemetry,
+            self._input_message_type,
             str(self.get_parameter("legacy_telemetry_topic").value),
             self._on_telemetry,
             10,
         )
 
-    def _on_telemetry(self, message: DriveTelemetry) -> None:
+    def _on_telemetry(self, message: object) -> None:
         traction, steering = adapt_legacy_drive_sample(_sample_from_ros(message))
         self._sequence = (self._sequence + 1) & 0xFFFFFFFF
         self._traction_publisher.publish(_traction_message(
@@ -68,7 +79,7 @@ class LegacyDriveMeasurementNode(Node):
         ))
 
 
-def _sample_from_ros(message: DriveTelemetry) -> LegacyDriveSample:
+def _sample_from_ros(message: object) -> LegacyDriveSample:
     return LegacyDriveSample(
         fresh=bool(message.fresh),
         reverse_requested=bool(message.reverse_requested),
@@ -80,7 +91,7 @@ def _sample_from_ros(message: DriveTelemetry) -> LegacyDriveSample:
 
 
 def _traction_message(
-    legacy: DriveTelemetry,
+    legacy: object,
     source_id: str,
     sequence: int,
     value: TractionMeasurementValue,
@@ -96,7 +107,7 @@ def _traction_message(
 
 
 def _steering_message(
-    legacy: DriveTelemetry,
+    legacy: object,
     source_id: str,
     sequence: int,
     value: SteeringMeasurementValue,
@@ -112,7 +123,7 @@ def _steering_message(
 
 def _fill_metadata(
     metadata: object,
-    legacy: DriveTelemetry,
+    legacy: object,
     source_id: str,
     sequence: int,
     fields: object,
@@ -135,6 +146,17 @@ def _required_string_parameter(node: Node, name: str) -> str:
     if not value:
         raise ValueError(f"{name} must not be empty")
     return value
+
+
+def _input_message_type(node: Node) -> tuple[str, type]:
+    wire_type = str(node.get_parameter("input_wire_type").value).strip()
+    message_type = _INPUT_WIRE_TYPES.get(wire_type)
+    if message_type is None:
+        supported = ", ".join(sorted(_INPUT_WIRE_TYPES))
+        raise ValueError(
+            f"input_wire_type must be one of: {supported}; got {wire_type!r}"
+        )
+    return wire_type, message_type
 
 
 def main(args=None) -> None:

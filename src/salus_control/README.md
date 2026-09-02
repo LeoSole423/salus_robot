@@ -14,6 +14,10 @@
   tiene conexión habilitada hacia UART o hardware.
   Usa timestamp de recepción, vigencia de `0.7 s` y conserva explícitamente la
   semántica histórica `brake_pct > 0 -> emergency_stop`.
+- `input_wire_type=salus_interfaces` es el default para los productores de
+  simulación. La coexistencia con `ROS2_SALUS` fija explícitamente
+  `input_wire_type=interfaces` en el perfil real read-only; cada nodo crea una
+  sola suscripción del tipo elegido y rechaza cualquier otro valor.
 - Comparación shadow: `vehicle_command_shadow_comparison` correlaciona por FIFO
   la entrada legacy `interfaces/msg/CmdVelFinal` y el shadow canónico con
   timeout monotónico, tolerancias explícitas y colas acotadas.

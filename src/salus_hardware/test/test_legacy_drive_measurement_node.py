@@ -4,11 +4,16 @@ import time
 
 import pytest
 import rclpy
-from interfaces.msg import DriveTelemetry
+from interfaces.msg import DriveTelemetry as LegacyDriveTelemetry
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from salus_hardware.legacy_drive_measurement_node import LegacyDriveMeasurementNode
-from salus_interfaces.msg import SteeringMeasurement, TractionMeasurement
+from salus_interfaces.msg import (
+    DriveTelemetry as CanonicalDriveTelemetry,
+    SteeringMeasurement,
+    TractionMeasurement,
+)
 
 
 class CapturingPublisher:
@@ -33,11 +38,13 @@ def node():
 def test_node_defaults_and_callback_copy_stamp_and_field_provenance(node) -> None:
     assert node._traction_publisher.topic_name == "/vehicle/measurements/traction"
     assert node._steering_publisher.topic_name == "/vehicle/measurements/steering"
+    assert node._input_wire_type == "salus_interfaces"
+    assert node._input_message_type is CanonicalDriveTelemetry
     traction_publisher = CapturingPublisher()
     steering_publisher = CapturingPublisher()
     node._traction_publisher = traction_publisher
     node._steering_publisher = steering_publisher
-    legacy = DriveTelemetry()
+    legacy = CanonicalDriveTelemetry()
     legacy.stamp.sec = 12
     legacy.stamp.nanosec = 34
     legacy.fresh = True
@@ -82,7 +89,7 @@ def test_sequence_wraps_without_overflowing_uint32(node) -> None:
     node._traction_publisher = traction_publisher
     node._steering_publisher = steering_publisher
     node._sequence = 0xFFFFFFFF
-    legacy = DriveTelemetry()
+    legacy = CanonicalDriveTelemetry()
     legacy.fresh = True
     legacy.speed_valid = True
     legacy.steer_valid = True
@@ -96,15 +103,19 @@ def test_sequence_wraps_without_overflowing_uint32(node) -> None:
 def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
     """The DDS boundary accepts ``interfaces/msg/DriveTelemetry``, not a mock."""
     rclpy.init()
-    adapter = LegacyDriveMeasurementNode()
+    adapter = LegacyDriveMeasurementNode(parameter_overrides=[
+        Parameter("input_wire_type", value="interfaces"),
+    ])
     publisher_node = Node("legacy_drive_telemetry_wire_publisher")
     observer = Node("canonical_drive_measurement_observer")
     executor = SingleThreadedExecutor()
     traction_messages = []
     steering_messages = []
     try:
+        assert adapter._input_wire_type == "interfaces"
+        assert adapter._input_message_type is LegacyDriveTelemetry
         publisher = publisher_node.create_publisher(
-            DriveTelemetry, "/controller/drive_telemetry", 10
+            LegacyDriveTelemetry, "/controller/drive_telemetry", 10
         )
         observer.create_subscription(
             TractionMeasurement,
@@ -121,7 +132,7 @@ def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
         for ros_node in (adapter, publisher_node, observer):
             executor.add_node(ros_node)
 
-        legacy = DriveTelemetry()
+        legacy = LegacyDriveTelemetry()
         legacy.stamp.sec = 12
         legacy.stamp.nanosec = 34
         legacy.fresh = True
@@ -161,4 +172,15 @@ def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
             executor.remove_node(ros_node)
             ros_node.destroy_node()
         executor.shutdown()
+        rclpy.shutdown()
+
+
+def test_unknown_input_wire_type_is_rejected() -> None:
+    rclpy.init()
+    try:
+        with pytest.raises(ValueError, match="input_wire_type must be one of"):
+            LegacyDriveMeasurementNode(parameter_overrides=[
+                Parameter("input_wire_type", value="unknown"),
+            ])
+    finally:
         rclpy.shutdown()

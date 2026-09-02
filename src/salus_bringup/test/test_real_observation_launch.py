@@ -59,6 +59,12 @@ def test_real_observation_keeps_command_translation_shadow_only() -> None:
     assert '"/cmd_vel_final"' not in contents.split("parameters=[", 1)[1]
 
 
+def test_real_observation_selects_the_legacy_wire_type_explicitly() -> None:
+    contents = LAUNCH.read_text(encoding="utf-8")
+
+    assert contents.count('"input_wire_type": "interfaces"') == 3
+
+
 def test_real_observation_excludes_every_actuating_or_global_authority() -> None:
     contents = LAUNCH.read_text(encoding="utf-8").lower()
 

@@ -33,7 +33,8 @@
   velocidad firmada deducida de `reverse_requested` como inferida tanto en
   avance como en reversa. `interfaces` es una excepción transitoria de
   coexistencia; las salidas siguen siendo contratos canónicos
-  `salus_interfaces`.
+  `salus_interfaces`. `input_wire_type=salus_interfaces` es el default de
+  simulación; la coexistencia real fija explícitamente `interfaces`.
 - `vehicle_kinematic_converter` transforma fuentes físicas seleccionadas en
   entradas cinemáticas mediante una escala de tracción y una curva polinómica
   de dirección explícitas. `calibration_validated` es `false` por defecto: sin

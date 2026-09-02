@@ -42,7 +42,9 @@ components:
       minimal package preserves only the two observed legacy input identities
       for read-only coexistence adapters; it is not canonical, adds no
       authority and must be removed when ROS2_SALUS retires. Only
-      salus_hardware and salus_control may depend on it.
+      salus_hardware and salus_control may depend on it. Their explicit
+      input_wire_type selector defaults to salus_interfaces for simulation;
+      real_observation fixes interfaces with no fallback.
   control_core:
     source: controller_server
     target: salus_control

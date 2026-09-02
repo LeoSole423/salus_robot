@@ -3,11 +3,11 @@ import time
 
 import pytest
 import rclpy
-from interfaces.msg import CmdVelFinal
+from interfaces.msg import CmdVelFinal as LegacyCmdVelFinal
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from salus_interfaces.msg import VehicleCommand
+from salus_interfaces.msg import CmdVelFinal as CanonicalCmdVelFinal, VehicleCommand
 
 from salus_control.control_logic import COMMAND_SOURCE_AUTO, COMMAND_SOURCE_SAFETY
 from salus_control.legacy_vehicle_command_node import LegacyVehicleCommandNode
@@ -38,7 +38,9 @@ def node():
 
 def test_node_stamps_and_publishes_the_canonical_message(node) -> None:
     instance, capture = node
-    incoming = CmdVelFinal()
+    assert instance._input_wire_type == "salus_interfaces"
+    assert instance._input_message_type is CanonicalCmdVelFinal
+    incoming = CanonicalCmdVelFinal()
     incoming.twist.linear.x = 2.0
     incoming.twist.angular.z = 0.4
     incoming.source = COMMAND_SOURCE_AUTO
@@ -61,7 +63,7 @@ def test_node_stamps_and_publishes_the_canonical_message(node) -> None:
 
 def test_node_publishes_safe_message_for_invalid_input(node) -> None:
     instance, capture = node
-    incoming = CmdVelFinal()
+    incoming = CanonicalCmdVelFinal()
     incoming.twist.linear.x = math.nan
     incoming.source = COMMAND_SOURCE_AUTO
 
@@ -95,6 +97,7 @@ def test_real_legacy_wire_publisher_reaches_safe_canonical_shadow(
     output_topic = "/test/vehicle_command_shadow"
     adapter = LegacyVehicleCommandNode(parameter_overrides=[
         Parameter("input_topic", value=input_topic),
+        Parameter("input_wire_type", value="interfaces"),
         Parameter("output_topic", value=output_topic),
     ])
     publisher_node = Node("legacy_cmd_vel_final_wire_publisher")
@@ -102,12 +105,16 @@ def test_real_legacy_wire_publisher_reaches_safe_canonical_shadow(
     executor = SingleThreadedExecutor()
     received = []
     try:
-        publisher = publisher_node.create_publisher(CmdVelFinal, input_topic, 10)
+        assert adapter._input_wire_type == "interfaces"
+        assert adapter._input_message_type is LegacyCmdVelFinal
+        publisher = publisher_node.create_publisher(
+            LegacyCmdVelFinal, input_topic, 10
+        )
         observer.create_subscription(VehicleCommand, output_topic, received.append, 10)
         for ros_node in (adapter, publisher_node, observer):
             executor.add_node(ros_node)
 
-        legacy = CmdVelFinal()
+        legacy = LegacyCmdVelFinal()
         legacy.twist.linear.x = linear_x
         legacy.twist.angular.z = 0.4
         legacy.brake_pct = 0
@@ -139,4 +146,15 @@ def test_real_legacy_wire_publisher_reaches_safe_canonical_shadow(
             executor.remove_node(ros_node)
             ros_node.destroy_node()
         executor.shutdown()
+        rclpy.shutdown()
+
+
+def test_unknown_input_wire_type_is_rejected() -> None:
+    rclpy.init()
+    try:
+        with pytest.raises(ValueError, match="input_wire_type must be one of"):
+            LegacyVehicleCommandNode(parameter_overrides=[
+                Parameter("input_wire_type", value="unknown"),
+            ])
+    finally:
         rclpy.shutdown()

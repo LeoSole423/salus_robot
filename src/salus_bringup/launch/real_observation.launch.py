@@ -88,6 +88,7 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             parameters=[{
                 "legacy_telemetry_topic": legacy_telemetry_topic,
+                "input_wire_type": "interfaces",
                 "traction_topic": "/vehicle/measurements/traction",
                 "steering_topic": "/vehicle/measurements/steering",
                 "traction_source_id": "rear_traction_motor",
@@ -102,6 +103,7 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             parameters=[{
                 "input_topic": legacy_command_topic,
+                "input_wire_type": "interfaces",
                 "output_topic": "/vehicle/command_shadow",
                 "frame_id": "base_footprint",
             }],
@@ -114,6 +116,7 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             parameters=[{
                 "legacy_topic": legacy_command_topic,
+                "input_wire_type": "interfaces",
                 "shadow_topic": "/vehicle/command_shadow",
                 "diagnostics_topic": "/vehicle/command_shadow/diagnostics",
                 "frame_id": "base_footprint",
