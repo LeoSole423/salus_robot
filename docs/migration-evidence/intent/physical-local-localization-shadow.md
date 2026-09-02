@@ -81,7 +81,9 @@ incondicional, por lo que el nodo **anuncia un endpoint `/tf`** incluso con
 `publish_tf=false`. La propiedad que se garantiza es de payload: nunca emite
 transforms. Por eso el test de runtime se suscribe a `/tf` y exige stream vacío
 en lugar de mirar sólo el grafo, y por eso la validación en la Jetson debe
-contar transforms reales, no sólo contar endpoints.
+contar transforms reales, no sólo contar endpoints. **Confirmado en hardware:**
+mientras el shadow corrió, `/tf` pasó de 4 a 5 endpoints publicados y las
+parejas y el conteo de transforms siguieron siendo exactamente los del legacy.
 
 ## Fuera de alcance de este corte
 
@@ -128,13 +130,29 @@ sólo-lectura: sus únicos publishers son los implícitos `/rosout` y
 
 ## Hardware
 
-Pendiente al abrir este corte. La validación física estacionaria debe registrar
-baseline y después/durante: tasa del shadow (~30 Hz esperados), `frame_id`/
-`child_frame_id`, monotonía, finitud, coherencia con robot detenido, deltas
-legacy/shadow sin retune, CPU/RSS del EKF, y que `/odometry/local` y `/tf`
-conservan exactamente la autoridad legacy. La espera de 30 Hz es orientativa:
-si el consumo de las entradas reales cambia la tasa del EKF, se registra como
-hallazgo y no se retunea para disimularlo.
+**Validado en hardware en modo shadow, estacionario** (2026-09-02). La evidencia
+completa, con las ventanas antes/durante/después, el consumo y las cuatro
+anomalías registradas, está en
+[`physical-local-localization-shadow-hardware-2026-09-02.md`](physical-local-localization-shadow-hardware-2026-09-02.md).
 
-No se declaró nada `hardware_validated` en esta ficha hasta ejecutarla.
+En resumen, sobre el robot real y con `ROS2_SALUS` en vivo:
 
+- el shadow publicó de forma continua (620 msgs en 60 s), con `frame_id=odom`,
+  `child_frame_id=base_footprint`, stamps monótonos y 0 valores no finitos;
+- `/odometry/local` conservó su único publicador legacy en las tres ventanas y
+  el shadow nunca apareció ahí;
+- la autoridad TF se verificó por payload: las mismas dos parejas de `/tf` antes,
+  durante y después, con `odom -> base_footprint` coincidiendo uno a uno con la
+  salida del EKF legacy (el shadow aportó 0 transforms), aunque el nodo shadow sí
+  anuncia el endpoint `/tf` mientras corre, tal como anticipa esta ficha;
+- deltas legacy/shadow nulos a 4 decimales sobre 620 pares emparejados
+  temporalmente, sin retuneo;
+- coste del EKF shadow: 2.3 % de un núcleo y 22.9 MiB RSS, frente a 2.9 % y
+  26.3 MiB del estimador legacy equivalente;
+- cierre limpio en ~9 s, `Exited (0)`, sin huérfanos, sin movimiento, y el
+  despliegue legacy intacto (mismo uptime, mismo checkout, 0 cambios).
+
+Esta validación **no** afirma paridad de comportamiento en movimiento, ni
+calibración física, ni localización global. Queda registrada sólo para el
+componente angosto `physical_local_localization_shadow`; el componente amplio
+`localization` permanece `ported`.

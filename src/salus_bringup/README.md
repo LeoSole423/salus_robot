@@ -86,6 +86,13 @@ entrega RTCM, TF, `use_control`, UART, Nav2 ni propiedad de hardware desde él, 
 hereda sin cambios las restricciones demostradas para `real_observation.launch.py`.
 Tampoco mueve el robot ni implementa localización global.
 
+Se ejecutó de forma estacionaria junto al `ROS2_SALUS` en vivo el 2026-09-02:
+los nueve nodos compusieron correctamente, el shadow publicó de forma continua,
+`/odometry/local` y `/tf` conservaron exactamente la autoridad legacy y el
+cierre dejó el contenedor en `Exited (0)` sin procesos huérfanos. La evidencia
+completa está en
+`docs/migration-evidence/intent/physical-local-localization-shadow-hardware-2026-09-02.md`.
+
 ## Checkpoint integrado de simulación
 
 El launch actual reúne movimiento Ackermann, controlador simulado, localización

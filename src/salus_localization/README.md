@@ -91,6 +91,14 @@ python3 tools/observe_localization_shadow.py --duration 60
 suscribe, nunca publica, y reporta tasa, frames, monotonía, valores no finitos,
 antigüedad de la última muestra, deltas legacy/shadow y publishers de `/tf`.
 
+Validado en hardware de forma estacionaria y en shadow el 2026-09-02 junto al
+`ROS2_SALUS` en vivo: salida continua con los frames y stamps esperados, cero
+transforms aportados a `/tf` (medido por payload), cero publishers Salus en
+`/odometry/local`, deltas nulos frente al estimador legacy sin retuneo y 2.3 %
+de un núcleo con 22.9 MiB de RSS. Ver
+`docs/migration-evidence/intent/physical-local-localization-shadow-hardware-2026-09-02.md`.
+Esta validación no afirma paridad en movimiento ni localización global.
+
 ## Prueba
 
 ```bash
@@ -117,6 +125,6 @@ no representa un modelo físico de ruido ni se usa con hardware real.
 - Responsabilidad: odometría Ackermann, EKF local/global, datum y heading.
 - No contiene: drivers, costmaps, planners ni modelo físico.
 - Interfaces previstas: `map -> odom -> base_footprint` y odometrías tipadas.
-- Estado: perfiles de simulación portados; drivers y hardware pendientes.
+- Estado: perfiles de simulación portados; el EKF local físico en shadow quedó validado en hardware de forma estacionaria, sin autoridad TF ni de control; odometría canónica calibrada, localización global y drivers siguen pendientes.
 - Prueba: `colcon test --packages-select salus_localization`.
 - Migración: caracterizar primero TF, datum fijo y gating de heading.

@@ -292,7 +292,7 @@ components:
   physical_local_localization_shadow:
     source: ROS2_SALUS /wheel/odometry plus logical /salus/imu/data
     target: salus_localization real shadow local EKF and salus_bringup wrapper
-    state: ported
+    state: hardware_validated
     contracts:
       - /wheel/odometry
       - /salus/imu/data
@@ -307,6 +307,7 @@ components:
       - src/salus_bringup/test/test_real_localization_shadow_launch.py
       - tools/observe_localization_shadow.py
       - docs/migration-evidence/intent/physical-local-localization-shadow.md
+      - docs/migration-evidence/intent/physical-local-localization-shadow-hardware-2026-09-02.md
     note: >-
       First physical local EKF, shadow-only. One robot_localization ekf_node
       named salus_local_ekf_shadow consumes the legacy wheel odometry and the
@@ -324,9 +325,26 @@ components:
       /odometry/local; robot_localization still advertises a /tf endpoint even
       with publish_tf=false, so the guarantee is enforced at payload level.
       Global localization, navsat_transform, external heading, map->odom, TF
-      transfer and canonical physical odometry are out of scope. Stationary
-      Jetson evidence is still pending, so this component is not
-      hardware_validated.
+      transfer and canonical physical odometry are out of scope. A stationary
+      Jetson run beside the live ROS2_SALUS stack validated the shadow only:
+      620 messages in 60 s with odom/base_footprint frames, monotonic stamps
+      and no non-finite values, /odometry/local keeping its single legacy
+      publisher in all three windows, /tf authority confirmed by payload rather
+      than by the graph (same two pairs, and odom->base_footprint counting one
+      for one with the legacy EKF output, so the shadow contributed zero
+      transforms, even though the node does advertise a /tf endpoint while
+      running), zero legacy-versus-shadow deltas over 620 time-paired samples
+      without any retuning, and 2.3 % of one core with 22.9 MiB RSS against the
+      equivalent legacy estimator at 2.9 % and 26.3 MiB. Shutdown was clean in
+      about 9 s with no orphans, no movement and the legacy deployment
+      untouched. This hardware validation covers a stationary shadow estimate
+      only: it does not claim motion parity, calibration, global localization or
+      any transferred authority, and the broad localization component stays
+      ported. Observed and deferred without acting on them: the legacy
+      /odometry/local rate varying from 19.3 Hz to about 10.3 Hz (also seen
+      after Salus was removed, so not a shadow regression), the shadow tracking
+      its 10 Hz inputs instead of the nominal 30 Hz, and the known double
+      rclpy.shutdown exit-code-1 noise from #158.
   lidar_perception:
     source: navegacion_gps
     target: salus_perception
