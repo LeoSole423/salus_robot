@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import rclpy
+from interfaces.msg import CmdVelFinal as LegacyCmdVelFinal
 from rclpy.node import Node
-from salus_interfaces.msg import CmdVelFinal, VehicleCommand
+from salus_interfaces.msg import CmdVelFinal as CanonicalCmdVelFinal, VehicleCommand
 
 from .legacy_vehicle_command import (
     LegacyVehicleCommandConfig,
     translate_legacy_command,
 )
+
+
+_INPUT_WIRE_TYPES = {
+    "salus_interfaces": CanonicalCmdVelFinal,
+    "interfaces": LegacyCmdVelFinal,
+}
 
 
 class LegacyVehicleCommandNode(Node):
@@ -21,6 +28,7 @@ class LegacyVehicleCommandNode(Node):
         )
         defaults = {
             "input_topic": "/cmd_vel_final",
+            "input_wire_type": "salus_interfaces",
             "output_topic": "/vehicle/command_shadow",
             "frame_id": "base_footprint",
             "max_speed_mps": 4.0,
@@ -36,6 +44,7 @@ class LegacyVehicleCommandNode(Node):
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
+        self._input_wire_type, self._input_message_type = _input_message_type(self)
         self._frame_id = str(self.get_parameter("frame_id").value).strip()
         if not self._frame_id:
             raise ValueError("frame_id must not be empty")
@@ -43,20 +52,25 @@ class LegacyVehicleCommandNode(Node):
             **{
                 name: self.get_parameter(name).value
                 for name in defaults
-                if name not in {"input_topic", "output_topic", "frame_id"}
+                if name not in {
+                    "input_topic",
+                    "input_wire_type",
+                    "output_topic",
+                    "frame_id",
+                }
             }
         )
         self._publisher = self.create_publisher(
             VehicleCommand, str(self.get_parameter("output_topic").value), 10
         )
         self._subscription = self.create_subscription(
-            CmdVelFinal,
+            self._input_message_type,
             str(self.get_parameter("input_topic").value),
             self._on_command,
             10,
         )
 
-    def _on_command(self, incoming: CmdVelFinal) -> None:
+    def _on_command(self, incoming: object) -> None:
         value = translate_legacy_command(
             linear_x_mps=float(incoming.twist.linear.x),
             angular_z_rps=float(incoming.twist.angular.z),
@@ -98,3 +112,14 @@ def main(args=None) -> None:
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
+
+def _input_message_type(node: Node) -> tuple[str, type]:
+    wire_type = str(node.get_parameter("input_wire_type").value).strip()
+    message_type = _INPUT_WIRE_TYPES.get(wire_type)
+    if message_type is None:
+        supported = ", ".join(sorted(_INPUT_WIRE_TYPES))
+        raise ValueError(
+            f"input_wire_type must be one of: {supported}; got {wire_type!r}"
+        )
+    return wire_type, message_type

@@ -6,15 +6,21 @@
   `/controller/telemetry`, `/controller/drive_telemetry`, `/battery_state`,
   `/battery_mission_guard`, la observación `/vehicle/command_shadow` y servicios
   `/sim_battery/*`.
-- Compatibilidad de salida: `legacy_vehicle_command_adapter` traduce cada
-  `/cmd_vel_final` a `VehicleCommand` en unidades Ackermann SI. La salida
+- Compatibilidad de salida: `legacy_vehicle_command_adapter` consume cada
+  `/cmd_vel_final` como `interfaces/msg/CmdVelFinal` y lo traduce a
+  `salus_interfaces/msg/VehicleCommand` en unidades Ackermann SI. La salida
   `*_shadow` es observacional por defecto; sólo adquiere autoridad sobre Gazebo
   cuando se selecciona explícitamente el modo canónico de simulación. Nunca
   tiene conexión habilitada hacia UART o hardware.
   Usa timestamp de recepción, vigencia de `0.7 s` y conserva explícitamente la
   semántica histórica `brake_pct > 0 -> emergency_stop`.
+- `input_wire_type=salus_interfaces` es el default para los productores de
+  simulación. La coexistencia con `ROS2_SALUS` fija explícitamente
+  `input_wire_type=interfaces` en el perfil real read-only; cada nodo crea una
+  sola suscripción del tipo elegido y rechaza cualquier otro valor.
 - Comparación shadow: `vehicle_command_shadow_comparison` correlaciona por FIFO
-  ambos tópicos con timeout monotónico, tolerancias explícitas y colas acotadas.
+  la entrada legacy `interfaces/msg/CmdVelFinal` y el shadow canónico con
+  timeout monotónico, tolerancias explícitas y colas acotadas.
   Publica únicamente `DiagnosticArray` en
   `/vehicle/command_shadow/diagnostics`; sus divergencias quedan latched en
   contadores y no bloquean ni modifican el comando autoritativo.

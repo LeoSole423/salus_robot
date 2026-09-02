@@ -4,6 +4,7 @@
   <description>Hardware adapters for SALUS.</description>
   <maintainer email="leonel.sole423@gmail.com">SALUS maintainers</maintainer><license>MIT</license>
   <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>interfaces</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>salus_interfaces</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>

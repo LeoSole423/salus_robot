@@ -26,6 +26,36 @@ components:
       - SetSimBatteryState
     evidence:
       - tools/compare_interfaces.py
+  legacy_wire_type_compatibility:
+    source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53
+    target: interfaces temporary package
+    state: hardware_validated
+    contracts:
+      - interfaces/msg/CmdVelFinal
+      - interfaces/msg/DriveTelemetry
+    evidence:
+      - src/interfaces/README.md
+      - src/interfaces/test/test_legacy_wire_contract.py
+      - docs/migration-evidence/intent/legacy-wire-type-compatibility.md
+      - docs/migration-evidence/intent/legacy-wire-hardware-revalidation-2026-09-02.md
+    note: >-
+      The package name is part of ROS 2 wire type identity. This deliberately
+      minimal package preserves only the two observed legacy input identities
+      for read-only coexistence adapters; it is not canonical, adds no
+      authority and must be removed when ROS2_SALUS retires. Only
+      salus_hardware and salus_control may depend on it. Their explicit
+      input_wire_type selector defaults to salus_interfaces for simulation;
+      real_observation fixes interfaces with no fallback. Salus built these
+      two types itself on the Jetson (source mounted read-only, no legacy
+      workspace sourced or mounted) and the stationary revalidation at 436b1ef
+      against ROS2_SALUS@f358349 confirmed the real legacy wire identities now
+      reach the adapters, producing canonical TractionMeasurement and
+      SteeringMeasurement at about 10 Hz and an all-matched VehicleCommand
+      shadow (compared=8165, matched=8165, diverged=0, authoritative=false)
+      from natural legacy traffic only. That validation covers exactly these
+      two read-only boundaries; a separate SIGINT double-shutdown defect in
+      the three adapters was recorded but intentionally left out of this
+      change.
   control_core:
     source: controller_server
     target: salus_control
@@ -113,8 +143,9 @@ components:
       - docs/migration-evidence/intent/jetson-hardware-contract-observation.md
       - docs/migration-evidence/intent/jetson-deployment-read-only-refresh-2026-09-02.md
       - docs/migration-evidence/intent/real-observation-hardware-validation-2026-09-02.md
+      - docs/migration-evidence/intent/legacy-wire-hardware-revalidation-2026-09-02.md
     note: >-
-      Coexistence-only composition. The 2026-09-02 stationary Jetson validation confirmed read-only IMU/GNSS adaptation, disabled-delivery RTCM dry-run, no new TF/RTCM/UART authority and intact legacy RS16/TF/service after rollback. It also found that installed legacy `interfaces/msg/DriveTelemetry` and `interfaces/msg/CmdVelFinal` cannot interoperate with their same-shaped `salus_interfaces` types, so measurements and command-shadow traffic remain unvalidated until a compatibility adapter is added. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains partial and read-only.
+      Coexistence-only composition. The 2026-09-02 stationary Jetson validation confirmed read-only IMU/GNSS adaptation, disabled-delivery RTCM dry-run, no new TF/RTCM/UART authority and intact legacy RS16/TF/service after rollback. It initially found that installed legacy `interfaces/msg/DriveTelemetry` and `interfaces/msg/CmdVelFinal` cannot interoperate with the same-shaped `salus_interfaces` types; the temporary `interfaces` package plus the explicit `input_wire_type` selector closed that gap, and a follow-up stationary revalidation confirmed both boundaries end to end on the robot with natural legacy traffic and no injected command. It does not start UART, MAVROS, NTRIP, RS16, TF, localization, Nav2, safety, Web or camera; the wrapper fixes RTCM delivery disabled and exposes no argument to enable it. Hardware validation remains partial and read-only: localization, MAVROS, NTRIP, RS16, Nav2, UART and physical control are not hardware-validated by this profile.
   capability_profiles:
     source: declared robot composition
     target: salus_interfaces/SystemCapabilities and salus_bringup
