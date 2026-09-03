@@ -19,3 +19,7 @@ htmlcov/
 *.mcap
 artifacts/
 runtime/
+# VCS-imported upstream RS16 sources; provenance is versioned in
+# dependencies.repos, not as a vendored copy in this repository.
+src/rslidar_msg/
+src/rslidar_sdk/
