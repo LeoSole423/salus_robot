@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-
-
-_WHITESPACE_OR_CONTROL = re.compile(r"[\x00-\x20\x7f]")
 
 
 @dataclass(frozen=True)
@@ -31,7 +27,15 @@ def _text(value: object, *, default: str = "") -> str:
         return default
     if not isinstance(value, str):
         raise ValueError("invalid_rtk_source")
-    return value.strip()
+    # Configuration values are contracts, not user-facing text.  Preserve the
+    # YAML scalar exactly and let validation reject unsafe values explicitly.
+    return value
+
+
+def _contains_whitespace_or_control(value: str) -> bool:
+    return any(
+        char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value
+    )
 
 
 def validate_source(source: NtripSource) -> None:
@@ -50,11 +54,13 @@ def validate_source(source: NtripSource) -> None:
             ord(char) < 32 or ord(char) == 127 for char in value
         ):
             raise ValueError("invalid_rtk_source")
-    if not isinstance(source.host, str) or _WHITESPACE_OR_CONTROL.search(source.host):
+    if not isinstance(source.host, str) or _contains_whitespace_or_control(
+        source.host
+    ):
         raise ValueError("invalid_rtk_endpoint")
     if any(char in source.host for char in "/\\@?#"):
         raise ValueError("invalid_rtk_endpoint")
-    if not isinstance(source.mountpoint, str) or _WHITESPACE_OR_CONTROL.search(
+    if not isinstance(source.mountpoint, str) or _contains_whitespace_or_control(
         source.mountpoint
     ):
         raise ValueError("invalid_rtk_endpoint")
