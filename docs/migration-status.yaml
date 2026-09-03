@@ -136,7 +136,7 @@ components:
   pixhawk_mavros_real_owner:
     source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 sensores/mavros.launch.py
     target: salus_hardware/pixhawk_real.launch.py
-    state: ported
+    state: hardware_validated
     contracts:
       - /imu/data
       - /global_position/raw/fix
@@ -150,13 +150,19 @@ components:
       - src/salus_hardware/test/test_mavros_real_config.py
       - src/salus_hardware/test/test_pixhawk_real_launch.py
       - docs/migration-evidence/intent/mavros-real-owner.md
+      - docs/migration-evidence/intent/mavros-real-owner-hardware-validation-2026-09-03.md
     note: >-
-      A reproducible MAVROS/extras + GeographicLib image and a single FCU
-      owner launch are available. The allowlist is sensor-only and MAVROS TF
-      publication is disabled. The launch has no NTRIP, RTCM delivery, RS16,
-      UART, control, localization or Nav2 authority. It must not coexist with
-      the legacy MAVROS owner; physical connectivity and data freshness remain
-      pending validation after legacy is stopped.
+      The sensor-only owner was validated stationary on hardware from
+      salus_robot main@c3829dd against ROS2_SALUS@f358349. MAVROS connected to
+      the Pixhawk at /dev/ttyACM0:921600; IMU was about 10 Hz and GNSS/GPSRAW
+      about 2 Hz with fresh samples. MAVROS emitted no TF payloads and opened
+      no ESP32 UART; RTCM delivery had zero publishers. The configured
+      imu_link/gps_link frames were observed as base_link and GPSRAW /wgs84,
+      and GPSRAW appeared under /mavros_node/mavros_node/gps1/raw; these are
+      recorded compatibility observations, not silently corrected here. SIGINT
+      shutdown was clean and the legacy service regained the FCU exclusively.
+      NTRIP, RS16, UART/control, localization, Nav2 and full cutover remain
+      unvalidated.
   real_observation_bringup:
     source: ROS2_SALUS topics during coexistence
     target: salus_bringup real_observation.launch.py

@@ -24,7 +24,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [interfaces, salus_interfaces, salus_description]
-    status: mavros_sensor_only_owner_profile_and_geographiclib_ported_physical_validation_pending
+    status: mavros_sensor_only_owner_profile_and_geographiclib_hardware_validated
   salus_localization:
     owner: localization
     build_type: ament_python
