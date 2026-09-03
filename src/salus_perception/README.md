@@ -17,6 +17,14 @@ display `Raw 3D` queda apagado por defecto. `/scan_3d` normaliza ese frame a
 Ejecutar: `ros2 launch salus_perception lidar_sim.launch.py`.
 Para registrar un bag externo: `python3 tools/replay_lidar_report.py /ruta/al/bag`.
 
+El perfil real aislado se ejecuta con
+`ros2 launch salus_perception perception_real.launch.py`. Consume la nube
+`/scan_3d` del owner RS16 en `lidar_link` y compone exactamente
+`scan_ground_filter -> pointcloud_to_laserscan_node -> scan_noise_filter`,
+produciendo `/obstacles_cloud`, `/scan` y `/scan_clean`. No inicia el driver,
+TF, percepción adicional, safety ni Nav2; el TF debe pertenecer a la
+composición externa.
+
 - Responsabilidad: conversión, filtrado y validación de percepción LiDAR.
 - No contiene: drivers RS16, costmaps, planners ni la UI remota.
 - Interfaces previstas: nube normalizada, scan de navegación y diagnóstico.
