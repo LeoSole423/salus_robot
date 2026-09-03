@@ -7,6 +7,7 @@ REPOSITORY_ROOT = Path(__file__).parents[3]
 REAL_DOCKERFILE = REPOSITORY_ROOT / "Dockerfile.real"
 DEV_DOCKERFILE = REPOSITORY_ROOT / "Dockerfile"
 BUILD_SCRIPT = REPOSITORY_ROOT / "tools/build_real_image.sh"
+RUNTIME_GATE = REPOSITORY_ROOT / "tools/validate_real_runtime_image.sh"
 
 
 def test_real_recipe_contains_physical_runtime_dependencies() -> None:
@@ -63,3 +64,16 @@ def test_real_build_helper_selects_dedicated_image_and_host_ids() -> None:
     assert "--tag salus-robot:humble-real" in contents
     assert 'USER_UID="$(id -u)"' in contents
     assert 'USER_GID="$(id -g)"' in contents
+
+
+def test_real_runtime_gate_is_fail_closed_and_software_only() -> None:
+    contents = RUNTIME_GATE.read_text(encoding="utf-8")
+
+    assert contents.startswith("#!/usr/bin/env bash")
+    assert "colcon build" in contents
+    assert "ldd_output=\"$(ldd \"${target}\")\"" in contents
+    assert 'grep -Fq "not found"' in contents
+    assert "libpcap\\.so\\.0\\.8 => /" in contents
+    assert "--network none" in contents
+    assert "LD_LIBRARY_PATH" not in contents
+    assert "ln -s" not in contents
