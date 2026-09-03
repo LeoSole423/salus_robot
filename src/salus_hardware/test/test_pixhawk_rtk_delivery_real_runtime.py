@@ -106,6 +106,7 @@ def _endpoint_names(infos) -> set[str]:
 
 
 def test_physical_delivery_profile_isolated_and_fail_closed(tmp_path) -> None:
+    os.environ["ROS_DOMAIN_ID"] = str(1 + (os.getpid() % 230))
     rclpy.init()
     harness = DeliveryRuntimeHarness()
     executor = SingleThreadedExecutor()
