@@ -1,0 +1,33 @@
+common:
+  msg_source: 1
+  send_packet_ros: false
+  send_point_cloud_ros: true
+
+lidar:
+  - driver:
+      lidar_type: RS16
+      msop_port: 6699
+      difop_port: 7788
+      host_address: 0.0.0.0
+      group_address: 0.0.0.0
+      imu_port: 0
+      user_layer_bytes: 0
+      tail_layer_bytes: 0
+      min_distance: 0.4
+      max_distance: 20
+      use_lidar_clock: false
+      dense_points: true
+      ts_first_point: true
+      start_angle: 270
+      end_angle: 90
+      pcap_repeat: true
+      pcap_rate: 1.0
+      pcap_path: /home/ros/lidar.pcap
+
+    ros:
+      ros_frame_id: lidar_link
+      ros_recv_packet_topic: /rslidar_packets
+      ros_send_packet_topic: /rslidar_packets
+      ros_send_imu_data_topic: /rslidar_imu_data
+      ros_send_point_cloud_topic: /scan_3d
+      ros_queue_length: 30

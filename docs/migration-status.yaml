@@ -416,6 +416,26 @@ components:
       - tools/replay_lidar_report.py
       - tools/smoke_lidar_sim.py
     note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. The raw Gazebo frame is normalized at /scan_3d; RS16 bag replay and RViz inspection are required for parity.
+  rs16_real_owner:
+    source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 RS16 deployment
+    target: salus_hardware/rslidar_sdk raw owner
+    state: ported
+    contracts:
+      - rslidar_msg/RslidarPacket
+      - sensor_msgs/PointCloud2
+    evidence:
+      - dependencies.repos
+      - src/salus_hardware/config/rs16.yaml
+      - src/salus_hardware/launch/rs16_real.launch.py
+      - src/salus_hardware/test/test_rs16_real_launch.py
+      - docs/migration-evidence/intent/rs16-real-owner-contract-2026-09-03.md
+    note: >-
+      The RoboSense SDK, message package and SDK-pinned rs_driver are imported
+      at exact commits and build in the workspace. The raw-only launch has one
+      SDK node, preserves /scan_3d and lidar_link, and freezes the observed
+      base_link-to-lidar_link mount. This cut deliberately performs no physical
+      RS16 launch or packet validation; perception /scan_clean remains a later
+      cut and hardware_validated is not claimed.
   navigation:
     source: navegacion_gps
     target: salus_navigation

@@ -86,6 +86,8 @@ jobs:
             USER_GID=${{ env.SALUS_GID }}
           cache-from: type=gha,scope=salus-humble
           cache-to: type=gha,mode=max,scope=salus-humble
+      - name: Import pinned RS16 sources and SDK submodule
+        run: ./tools/import_dependencies.sh
       - name: Validate, build, lint and run unit tests
         run: ./tools/test.sh
 
@@ -115,6 +117,8 @@ jobs:
             USER_UID=${{ env.SALUS_UID }}
             USER_GID=${{ env.SALUS_GID }}
           cache-from: type=gha,scope=salus-humble
+      - name: Import pinned RS16 sources and SDK submodule
+        run: ./tools/import_dependencies.sh
       - name: Build workspace for this runner
         run: ./tools/build.sh
       - name: Run registered smoke

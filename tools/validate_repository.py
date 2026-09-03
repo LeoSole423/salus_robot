@@ -15,6 +15,11 @@ EXPECTED = {
     "salus_simulation", "salus_bringup",
     "salus_evaluation",
 }
+# These packages are deliberately fetched by vcs from upstream.  They are not
+# part of the first-party package set, so validation must accept them when the
+# workspace has been imported while remaining strict about unknown packages.
+EXTERNAL_PACKAGES = {"rslidar_msg", "rslidar_sdk"}
+EXTERNAL_SOURCE_ROOTS = {"src/rslidar_msg", "src/rslidar_sdk"}
 LEGACY_WIRE_COMPAT_PACKAGE = "interfaces"
 LEGACY_WIRE_COMPAT_CONSUMERS = {"salus_hardware", "salus_control"}
 LEGACY_WIRE_COMPAT_MESSAGES = {"CmdVelFinal.msg", "DriveTelemetry.msg"}
@@ -39,8 +44,14 @@ def main() -> int:
             errors.append(f"{manifest}: package name does not match directory")
         if not (manifest.parent / "README.md").is_file():
             errors.append(f"{manifest.parent}: missing README.md")
-    if set(packages) != EXPECTED:
-        errors.append(f"package set differs: expected={sorted(EXPECTED)}, actual={sorted(packages)}")
+    unexpected = set(packages) - EXPECTED - EXTERNAL_PACKAGES
+    missing = EXPECTED - set(packages)
+    if unexpected or missing:
+        errors.append(
+            "package set differs: "
+            f"missing={sorted(missing)}, unexpected={sorted(unexpected)}, "
+            f"actual={sorted(packages)}"
+        )
 
     compatibility_path = packages.get(LEGACY_WIRE_COMPAT_PACKAGE)
     if compatibility_path:
@@ -66,6 +77,8 @@ def main() -> int:
     ignored_trees = {".git", "build", "install", "log"}
     for document in sorted(ROOT.rglob("*.md")):
         relative_parts = document.relative_to(ROOT).parts
+        if "/".join(relative_parts[:2]) in EXTERNAL_SOURCE_ROOTS:
+            continue
         if ignored_trees.intersection(relative_parts):
             continue
         text = document.read_text(encoding="utf-8")

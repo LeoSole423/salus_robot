@@ -99,7 +99,11 @@ colcon test
 colcon test-result --verbose
 ```
 
-`dependencies.repos` está vacío en este hito; no se vendoriza ningún driver.
+`dependencies.repos` importa los paquetes upstream fijados para el owner RS16.
+El SDK incluye el submódulo `rs_driver` en el commit fijado por el SDK; para
+repetir la preparación dentro de la imagen de desarrollo usa
+`./tools/import_dependencies.sh`. Las fuentes externas no se versionan bajo
+`src`; sólo se conserva su procedencia en `dependencies.repos`.
 
 ## Launches del esqueleto
 

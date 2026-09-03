@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-numpy \
     python3-opencv \
     python3-serial \
+    libpcap-dev \
+    libyaml-cpp-dev \
     python3-rosdep \
     python3-vcstool \
     ros-humble-ament-cmake \
