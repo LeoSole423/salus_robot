@@ -13,7 +13,7 @@ import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from salus_interfaces.msg import DriveTelemetry
+from salus_interfaces.msg import DriveTelemetry, GnssRtkStatus
 from sensor_msgs.msg import Imu, NavSatFix
 from std_msgs.msg import String
 
@@ -90,17 +90,64 @@ def normalize_rtk_status_label(value: str) -> str:
     return "_".join(str(value).strip().lower().replace("-", "_").split())
 
 
+def rtk_status_allows_heading(
+    *,
+    wire_type: str,
+    require_rtk: bool,
+    legacy_status: str,
+    fix_quality: Optional[int],
+    age_s: Optional[float],
+    max_age_s: float,
+) -> bool:
+    """Return whether the selected RTK wire permits course-over-ground.
+
+    The legacy branch intentionally preserves the simulation contract. The
+    typed branch has one authority: a fresh receiver-reported RTK_FIXED value;
+    correction acquisition and delivery fields are not inputs to this gate.
+    """
+    if wire_type == "legacy_string" and not require_rtk:
+        return True
+    if age_s is None or age_s > max_age_s:
+        return False
+    if wire_type == "legacy_string":
+        return normalize_rtk_status_label(legacy_status) in ("rtk_fixed", "rtk_fix")
+    if wire_type == "gnss_rtk_status":
+        return fix_quality == GnssRtkStatus.RTK_FIXED
+    return False
+
+
+_RTK_STATUS_WIRE_TYPES = {
+    "legacy_string": String,
+    "gnss_rtk_status": GnssRtkStatus,
+}
+
+
+def _rtk_status_wire_type(node: Node) -> tuple[str, type]:
+    wire_type = str(node.get_parameter("rtk_status_wire_type").value).strip()
+    message_type = _RTK_STATUS_WIRE_TYPES.get(wire_type)
+    if message_type is None:
+        supported = ", ".join(sorted(_RTK_STATUS_WIRE_TYPES))
+        raise ValueError(
+            f"rtk_status_wire_type must be one of: {supported}; got {wire_type!r}"
+        )
+    return wire_type, message_type
+
+
 class GpsCourseHeading(Node):
-    def __init__(self) -> None:
-        super().__init__("gps_course_heading")
-        for name, value in {"gps_topic":"/gps/fix", "odom_topic":"/odometry/local", "drive_telemetry_topic":"/controller/drive_telemetry", "rtk_status_topic":"/gps/rtk_status", "output_topic":"/gps/course_heading", "debug_topic":"/gps/course_heading/debug", "base_frame":"base_footprint", "min_distance_m":2.0, "min_speed_mps":0.8, "max_abs_steer_deg":3.0, "max_abs_yaw_rate_rps":0.05, "max_fix_age_s":0.5, "max_sample_dt_s":2.5, "invalid_hold_s":0.8, "require_rtk":True, "rtk_status_max_age_s":2.5}.items():
+    def __init__(self, *, parameter_overrides=None) -> None:
+        super().__init__(
+            "gps_course_heading", parameter_overrides=parameter_overrides
+        )
+        for name, value in {"gps_topic":"/gps/fix", "odom_topic":"/odometry/local", "drive_telemetry_topic":"/controller/drive_telemetry", "rtk_status_topic":"/gps/rtk_status", "rtk_status_wire_type":"legacy_string", "output_topic":"/gps/course_heading", "debug_topic":"/gps/course_heading/debug", "base_frame":"base_footprint", "min_distance_m":2.0, "min_speed_mps":0.8, "max_abs_steer_deg":3.0, "max_abs_yaw_rate_rps":0.05, "max_fix_age_s":0.5, "max_sample_dt_s":2.5, "invalid_hold_s":0.8, "require_rtk":True, "rtk_status_max_age_s":2.5}.items():
             self.declare_parameter(name, value)
         p = lambda n: self.get_parameter(n).value
+        self._rtk_status_wire_type, self._rtk_message_type = _rtk_status_wire_type(self)
         self.estimator = CourseHeadingEstimator(min_distance_m=float(p("min_distance_m")), min_speed_mps=float(p("min_speed_mps")), max_abs_steer_deg=float(p("max_abs_steer_deg")), max_abs_yaw_rate_rps=float(p("max_abs_yaw_rate_rps")), max_fix_age_s=float(p("max_fix_age_s")), max_sample_dt_s=float(p("max_sample_dt_s")), invalid_hold_s=float(p("invalid_hold_s")))
         self.speed = self.yaw_rate = 0.0
         self.steer: Optional[float] = None
         self.steer_valid = False
         self.rtk_status = ""
+        self.rtk_fix_quality: Optional[int] = None
         self.rtk_at_monotonic: Optional[float] = None
         self.output = self.create_publisher(Imu, str(p("output_topic")), 10)
         self.debug = self.create_publisher(String, str(p("debug_topic")), 10)
@@ -114,7 +161,17 @@ class GpsCourseHeading(Node):
         self.create_subscription(
             DriveTelemetry, str(p("drive_telemetry_topic")), self.on_drive, 10
         )
-        self.create_subscription(String, str(p("rtk_status_topic")), self.on_rtk, 10)
+        if self._rtk_status_wire_type == "legacy_string":
+            self._rtk_subscription = self.create_subscription(
+                self._rtk_message_type, str(p("rtk_status_topic")), self.on_rtk, 10
+            )
+        else:
+            self._rtk_subscription = self.create_subscription(
+                self._rtk_message_type,
+                str(p("rtk_status_topic")),
+                self.on_gnss_rtk_status,
+                10,
+            )
         # Course-over-ground gains new information only when a new GNSS fix
         # arrives. Evaluate on that causal boundary instead of depending on a
         # periodic timer that can be starved by high-rate odometry callbacks.
@@ -141,7 +198,15 @@ class GpsCourseHeading(Node):
         self.steer = msg.steer_deg_measured
 
     def on_rtk(self, msg: String) -> None:
+        if self._rtk_status_wire_type != "legacy_string":
+            return
         self.rtk_status = msg.data
+        self.rtk_at_monotonic = time.monotonic()
+
+    def on_gnss_rtk_status(self, msg: GnssRtkStatus) -> None:
+        if self._rtk_status_wire_type != "gnss_rtk_status":
+            return
+        self.rtk_fix_quality = int(msg.fix_quality)
         self.rtk_at_monotonic = time.monotonic()
 
     def publish(self, *, now_s: Optional[float] = None, output_stamp=None) -> None:
@@ -152,14 +217,13 @@ class GpsCourseHeading(Node):
             if self.rtk_at_monotonic is None
             else max(0.0, time.monotonic() - self.rtk_at_monotonic)
         )
-        rtk_valid = (
-            not bool(p("require_rtk"))
-            or (
-                rtk_age_s is not None
-                and rtk_age_s <= float(p("rtk_status_max_age_s"))
-                and normalize_rtk_status_label(self.rtk_status)
-                in ("rtk_fixed", "rtk_fix")
-            )
+        rtk_valid = rtk_status_allows_heading(
+            wire_type=self._rtk_status_wire_type,
+            require_rtk=bool(p("require_rtk")),
+            legacy_status=self.rtk_status,
+            fix_quality=self.rtk_fix_quality,
+            age_s=rtk_age_s,
+            max_age_s=float(p("rtk_status_max_age_s")),
         )
         estimate = (
             self.estimator.estimate(
