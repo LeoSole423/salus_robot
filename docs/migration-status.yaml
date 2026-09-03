@@ -329,8 +329,15 @@ components:
     evidence:
       - src/salus_description/urdf/salus_robot.urdf.xacro
       - src/salus_description/test/test_description.py
+      - src/salus_description/launch/description_real.launch.py
+      - src/salus_description/test/test_description_real_launch.py
+      - docs/migration-evidence/intent/physical-static-tf-owner-2026-09-03.md
       - docs/migration-evidence/motion-ackermann.md
-    note: Physical dimensions originate in cuatri_real_v2 and remain unvalidated on hardware.
+    note: >-
+      Physical dimensions originate in cuatri_real_v2 and remain unvalidated
+      on hardware. The real static TF owner is now isolated in
+      description_real.launch.py; it publishes only URDF-derived fixed TF and
+      does not start sensors, localization, navigation, UART or actuation.
   simulation:
     source: navegacion_gps/worlds
     target: salus_simulation
