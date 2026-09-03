@@ -1,0 +1,11 @@
+# Copy this file to rtk_sources.local.yaml and fill in the private caster
+# values. The runtime reads the copy and never writes it.
+active_source_id: local_fake
+sources:
+  - id: local_fake
+    label: Local fake caster (tests only)
+    host: 127.0.0.1
+    port: 2101
+    mountpoint: RTCM3
+    username: example-user
+    password: example-password
