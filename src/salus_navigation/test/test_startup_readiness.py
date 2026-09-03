@@ -1,6 +1,7 @@
 """Characterize the pure Nav2 startup gate without ROS timing."""
 
 from dataclasses import replace
+from pathlib import Path
 
 from salus_navigation.startup_readiness import (
     ReadinessSnapshot, StartupPolicy, StartupState, missing_requirements,
@@ -44,6 +45,48 @@ def test_each_missing_input_blocks_startup_with_explicit_reason() -> None:
         assert not policy.observe(snapshot)
         assert policy.state is StartupState.WAITING_INPUTS
         assert policy.reason == reason
+
+
+def test_simulation_without_progressive_clock_still_blocks() -> None:
+    snapshot = ready_snapshot(clock_required=True, clock_progressive=False)
+    assert "CLOCK_NOT_PROGRESSIVE" in missing_requirements(snapshot)
+    assert not StartupPolicy().observe(snapshot)
+
+
+def test_real_profile_does_not_require_clock_progress() -> None:
+    snapshot = ready_snapshot(clock_required=False, clock_progressive=False)
+    assert "CLOCK_NOT_PROGRESSIVE" not in missing_requirements(snapshot)
+    assert StartupPolicy().observe(snapshot)
+
+
+def test_real_profile_keeps_each_non_clock_gate_independent() -> None:
+    for field, reason in {
+        "odometry_progressive": "ODOMETRY_NOT_PROGRESSIVE",
+        "transform_available": "TF_UNAVAILABLE",
+        "transform_fresh": "TF_STALE",
+        "scan_valid": "SCAN_INVALID",
+        "scan_fresh": "SCAN_STALE",
+        "keepout_ready": "KEEPOUT_NOT_READY",
+        "lifecycle_manager_ready": "LIFECYCLE_MANAGER_UNAVAILABLE",
+    }.items():
+        snapshot = ready_snapshot(clock_required=False, **{field: False})
+        assert reason in missing_requirements(snapshot)
+        assert not StartupPolicy().observe(snapshot)
+
+
+def test_coordinator_switches_clock_subscription_and_tf_reference_by_profile() -> None:
+    source = (
+        Path(__file__).parents[1]
+        / "salus_navigation"
+        / "nav2_startup_coordinator.py"
+    ).read_text(encoding="utf-8")
+    assert 'declare_parameter("require_clock_progress", True)' in source
+    assert 'if self._require_clock_progress:' in source
+    assert 'Clock, "/clock", self._on_clock' in source
+    assert "self.get_clock().now().nanoseconds" in source
+    assert "time.monotonic()" not in source[
+        source.index("    def _update_tf"):source.index("    def _snapshot")
+    ]
 
 
 def test_keepout_is_optional_only_when_explicitly_disabled() -> None:

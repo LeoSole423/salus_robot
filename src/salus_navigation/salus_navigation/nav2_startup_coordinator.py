@@ -1,4 +1,4 @@
-"""Activate Nav2 only after simulation inputs and TF are causally ready."""
+"""Activate Nav2 only after real or simulation inputs are causally ready."""
 
 from __future__ import annotations
 
@@ -74,11 +74,15 @@ class Nav2StartupCoordinator(Node):
         super().__init__("nav2_startup_coordinator")
         self.declare_parameter("use_keepout", True)
         self.declare_parameter("obstacle_detection_required", True)
+        self.declare_parameter("require_clock_progress", True)
         self.declare_parameter("input_freshness_s", 2.0)
         self.declare_parameter("activation_timeout_s", 30.0)
         self._use_keepout = bool(self.get_parameter("use_keepout").value)
         self._obstacle_detection_required = bool(
             self.get_parameter("obstacle_detection_required").value
+        )
+        self._require_clock_progress = bool(
+            self.get_parameter("require_clock_progress").value
         )
         self._freshness_s = float(self.get_parameter("input_freshness_s").value)
         self._activation_timeout_s = float(self.get_parameter("activation_timeout_s").value)
@@ -117,9 +121,10 @@ class Nav2StartupCoordinator(Node):
         self._state_clients = {
             name: self.create_client(GetState, f"/{name}/get_state") for name in NAV2_NODES
         }
-        self._readiness_subscriptions.append(
-            self.create_subscription(Clock, "/clock", self._on_clock, 10)
-        )
+        if self._require_clock_progress:
+            self._readiness_subscriptions.append(
+                self.create_subscription(Clock, "/clock", self._on_clock, 10)
+            )
         self._readiness_subscriptions.append(
             self.create_subscription(Odometry, "/odometry/global", self._on_odom, 10)
         )
@@ -186,13 +191,19 @@ class Nav2StartupCoordinator(Node):
         try:
             transform = self._tf.lookup_transform("map", "base_footprint", Time())
             self._tf_available = True
-            if self._clock_samples:
-                transform_ns = (
-                    int(transform.header.stamp.sec) * 1_000_000_000
-                    + int(transform.header.stamp.nanosec)
-                )
-                age_s = (self._clock_samples[-1] - transform_ns) / 1.0e9
-                self._tf_fresh = -0.1 <= age_s <= self._freshness_s
+            if self._require_clock_progress and not self._clock_samples:
+                return
+            transform_ns = (
+                int(transform.header.stamp.sec) * 1_000_000_000
+                + int(transform.header.stamp.nanosec)
+            )
+            reference_ns = (
+                self._clock_samples[-1]
+                if self._require_clock_progress
+                else self.get_clock().now().nanoseconds
+            )
+            age_s = (reference_ns - transform_ns) / 1.0e9
+            self._tf_fresh = -0.1 <= age_s <= self._freshness_s
         except TransformException:
             pass
 
@@ -209,6 +220,7 @@ class Nav2StartupCoordinator(Node):
             and time.monotonic() - self._scan_received_at <= self._freshness_s
         )
         return ReadinessSnapshot(
+            clock_required=self._require_clock_progress,
             clock_progressive=clock_progressive,
             odometry_progressive=odometry_progressive,
             odometry_finite=bool(self._odom_samples) and _finite_odometry(self._odom_samples[-1]),
