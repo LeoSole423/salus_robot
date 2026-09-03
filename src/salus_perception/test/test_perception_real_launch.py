@@ -127,12 +127,29 @@ class PerceptionRuntimeHarness(Node):
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = frame_id
-        # At the frozen mount, z=0.60 is ground while z=0.80 is a raised
-        # obstacle after transforming into base_footprint.
-        points = [(2.0, 0.0, 0.60)] + [
-            (2.0, y, 0.80) for y in (-0.04, -0.02, 0.0, 0.02, 0.04)
+        # Build points in lidar_link from their desired post-TF coordinates.
+        # The physical static TF is base_link -> lidar_link; the adapter applies
+        # the lookup result to the cloud, so invert that rigid transform here.
+        ground = [
+            self._lidar_point_for_output(x, y, z)
+            for x, y, z in ((1.5, -0.1, 0.0), (2.0, 0.0, 0.0), (2.5, 0.1, 0.1))
         ]
-        self.cloud_pub.publish(point_cloud2.create_cloud_xyz32(header, points))
+        obstacle = [
+            self._lidar_point_for_output(2.0, y, 0.8)
+            for y in (-0.04, -0.02, 0.0, 0.02, 0.04)
+        ]
+        self.cloud_pub.publish(point_cloud2.create_cloud_xyz32(header, ground + obstacle))
+
+    @staticmethod
+    def _lidar_point_for_output(x: float, y: float, z: float) -> tuple[float, float, float]:
+        """Invert the frozen transform so the node output is (x, y, z)."""
+        pitch = 0.1745
+        dx, dz = x - 0.92, z - 0.65
+        return (
+            math.cos(pitch) * dx - math.sin(pitch) * dz,
+            y,
+            math.sin(pitch) * dx + math.cos(pitch) * dz,
+        )
 
     def wait_for(self, predicate, timeout_s: float = 20.0) -> bool:
         deadline = time.monotonic() + timeout_s
@@ -209,11 +226,18 @@ def test_synthetic_cloud_produces_fresh_plausible_clean_scan(tmp_path: Path) -> 
         )
         assert all(message.header.frame_id == "base_footprint" for message in harness.obstacle_clouds)
         assert all(message.header.frame_id == "base_footprint" for message in harness.clean_scans)
+        output_points = list(
+            point_cloud2.read_points(
+                harness.obstacle_clouds[-1], field_names=("x", "y", "z"), skip_nans=False
+            )
+        )
+        assert output_points
+        assert all(point[2] > 0.20 for point in output_points)
+        assert any(math.isclose(point[0], 2.0, abs_tol=0.15) for point in output_points)
         clean = harness.clean_scans[-1]
         finite = [value for value in clean.ranges if math.isfinite(value)]
         assert finite
-        assert any(0.4 <= value <= 20.0 for value in finite)
-        assert len(finite) >= 1
+        assert min(abs(value - 2.0) for value in finite) <= 0.15
         stamps = [
             message.header.stamp.sec + message.header.stamp.nanosec * 1.0e-9
             for message in harness.clean_scans
