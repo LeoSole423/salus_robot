@@ -321,8 +321,8 @@ def test_sim_gazebo_backend_battery_preset_generates_loaded_voltage() -> None:
     assert battery.fresh is True
     assert battery.suspect is False
     assert battery.calibrated is True
-    assert battery.battery_voltage_v == pytest.approx(59.3)
-    assert battery.adc_pin_voltage_v == pytest.approx(59.3 / 25.0)
+    assert battery.battery_voltage_v == pytest.approx(50.0)
+    assert battery.adc_pin_voltage_v == pytest.approx(50.0 / 25.0)
 
 
 def test_sim_gazebo_backend_battery_state_uses_recovered_voltage_when_traction_disabled() -> None:

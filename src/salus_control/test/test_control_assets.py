@@ -72,3 +72,32 @@ def test_legacy_cmd_vel_path_has_no_ignored_angular_rate_parameter() -> None:
     domain = (ROOT / "salus_control/control_logic.py").read_text(encoding="utf-8")
     assert "max_abs_angular_z" not in source
     assert "max_abs_angular_z" not in domain
+
+
+def test_real_uart_launch_has_one_explicit_legacy_authority() -> None:
+    launch = (ROOT / "launch/control_real_uart.launch.py").read_text(encoding="utf-8")
+
+    assert 'executable="controller_server_node"' in launch
+    assert '"transport_backend": "uart"' in launch
+    assert '"command_input_mode": "legacy_cmd_vel"' in launch
+    assert '"serial_port": serial_port' in launch
+    assert '"serial_baud": 115200' in launch
+    assert '"serial_tx_hz": 50.0' in launch
+    assert '"use_sim_time": False' in launch
+    assert "legacy_vehicle_command_node" not in launch
+    assert "vehicle_command_comparison_node" not in launch
+    assert "canonical_command_dry_run_node" not in launch
+    assert "/vehicle/command_shadow" not in launch
+
+
+def test_read_only_profiles_do_not_include_the_uart_authority() -> None:
+    workspace = ROOT.parent
+    profiles = [
+        workspace / "salus_bringup/launch/real_observation.launch.py",
+        workspace / "salus_bringup/launch/real_localization_shadow.launch.py",
+    ]
+
+    for profile in profiles:
+        source = profile.read_text(encoding="utf-8")
+        assert "control_real_uart.launch.py" not in source
+        assert 'executable="controller_server_node"' not in source

@@ -42,7 +42,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [interfaces, salus_interfaces]
-    status: parity_passed_sim_with_selectable_canonical_command_backend
+    status: 48v_battery_policy_and_explicit_uart_mvp_profile_ported_hardware_cutover_pending
   salus_navigation:
     owner: autonomy
     build_type: ament_python
