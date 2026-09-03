@@ -99,9 +99,31 @@ de un núcleo con 22.9 MiB de RSS. Ver
 `docs/migration-evidence/intent/physical-local-localization-shadow-hardware-2026-09-02.md`.
 Esta validación no afirma paridad en movimiento ni localización global.
 
+## Perfil local real autoritativo
+
+`localization_local_real.launch.py` es el corte software autoritativo de #179.
+Arranca exactamente `ackermann_odometry` y `robot_localization/ekf_node`
+(`salus_local_ekf`):
+
+- `DriveTelemetry` desde `/controller/drive_telemetry` alimenta el adaptador
+  compatible, que publica `/wheel/odometry` y `/vehicle/twist`;
+- el EKF consume `/wheel/odometry` y `/salus/imu/data`, publica
+  `/odometry/local` y es la única autoridad de `odom → base_footprint`;
+- el perfil fija el wheelbase legacy `0.94`, la inversión de signo medida y
+  las covarianzas reales caracterizadas; no usa `kinematic_ackermann_odometry`;
+- no arranca GNSS/NTRIP, heading, perception, Nav2, UART ni owners de
+  hardware. `use_sim_time=false`, `publish_tf=true`, `use_control=false` y
+  `publish_acceleration=false` están fijados en el YAML y en el launch.
+
+El test runtime sintético publica `DriveTelemetry` + IMU y verifica muestras
+frescas, finitas y monótonas en ambas odometrías, además de la autoridad TF y
+el rechazo de datos stale/invalidos. Este perfil es evidencia de software; no
+declara validación física ni habilita movimiento del robot.
+
 ## Prueba
 
 ```bash
+ros2 launch salus_localization localization_local_real.launch.py
 ros2 launch salus_localization localization_sim.launch.py
 ./tools/smoke_localization_sim.sh
 VEHICLE_IO_PROFILE=canonical ./tools/smoke_localization_sim.sh
