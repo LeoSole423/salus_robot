@@ -35,10 +35,21 @@
   iniciar. El ángulo se cuantiza al porcentaje entero del backend existente;
   aceleración, jerk y velocidad de giro de dirección aún no son aplicados por
   el plugin simulado.
-- Estado: primer corte funcional en simulación. El backend UART está preservado
-  como código de compatibilidad, pero no fue conectado ni validado en hardware.
+- Batería 48 V: la ESP32 entrega una muestra calibrada y estabilizada. SALUS no
+  aplica filtros EMA de la batería de plomo anterior: `53.5 V` es referencia
+  superior, `47.0 V` LOW, `45.0 V` CRITICAL y `44.5 V` el mínimo. El porcentaje
+  es sólo orientación de operador; la guardia de misión se enclava tras `30 s`
+  continuos a `<=46.5 V` y se limpia tras `30 s` a `>=48.0 V`.
+- Perfil físico MVP: `control_real_uart.launch.py` contiene un único
+  `controller_server_node`, con `transport_backend=uart` y
+  `command_input_mode=legacy_cmd_vel`. Es una autoridad física deliberada y no
+  debe combinarse con perfiles read-only/shadow ni usarse antes del cutover.
+- Estado: primer corte funcional en simulación. El perfil UART está especificado
+  y probado estructuralmente, pero no fue conectado ni validado en hardware.
 - Prueba: `colcon test --packages-select salus_control`.
-- Launch parcial: `ros2 launch salus_control control_sim.launch.py`.
+- Launches parciales: `ros2 launch salus_control control_sim.launch.py` y,
+  sólo para el cutover físico autorizado, `ros2 launch salus_control
+  control_real_uart.launch.py`.
 - Signo simulado: `sim_invert_actuation_steer_sign` es booleano, default `false`;
   sólo invierte el ángulo enviado al plugin de Gazebo. El perfil canónico lo
   mantiene desactivado para preservar `angular.z > 0 -> yaw > 0`.

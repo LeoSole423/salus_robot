@@ -64,6 +64,15 @@ components:
       - src/salus_control/test/test_control_logic.py
       - src/salus_control/test/test_battery_estimator.py
       - src/salus_control/test/test_sim_gazebo_backend.py
+      - docs/migration-evidence/intent/mvp-48v-battery-and-uart-profile.md
+    note: >-
+      The controller uses the calibrated 48 V ESP32 sample directly: no
+      lead-acid EMA remains. Its operator curve is 44.5/0%, 46.5/15%,
+      48.0/35%, 50.0/60%, 52.0/85% and 53.5/100%; the typed mission guard
+      latches at <=46.5 V for 30 s and clears at >=48.0 V for 30 s. Patrol
+      already gives a valid typed BatteryMissionGuard precedence over the SOC
+      fallback, so the approximate percentage does not drive a mission after a
+      valid guard is observed.
   vehicle_measurement_contracts:
     source: controller_server/rpy_esp32_comms and sensores
     target: salus_interfaces
@@ -257,7 +266,11 @@ components:
     evidence:
       - src/salus_control/test/test_uart_controller.py
       - src/salus_control/test/test_uart_protocol.py
-    note: Preserved and unit-tested, but not connected to hardware in this phase.
+    note: >-
+      The explicit control_real_uart.launch.py profile owns exactly one UART
+      controller and uses the legacy_cmd_vel authority at 115200 baud / 50 Hz.
+      It is structurally tested and deliberately excluded from read-only
+      profiles; physical cutover and hardware validation remain pending.
   robot_description:
     source: navegacion_gps/models
     target: salus_description
