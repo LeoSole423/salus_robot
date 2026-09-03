@@ -129,6 +129,20 @@ ros2 launch salus_localization localization_sim.launch.py
 VEHICLE_IO_PROFILE=canonical ./tools/smoke_localization_sim.sh
 ```
 
+## Perfil global real software-only
+
+`global_localization_real.launch.py` compone exactamente `global_stationary_gates`,
+`gps_course_heading`, `orientation_source_selector`, `navsat_transform_node` y el
+EKF global. Usa el datum seleccionado de `config/datums.yaml`, con el fallback y
+los overrides explícitos compatibles con legacy. El heading sólo acepta un
+`GnssRtkStatus` fresco con `RTK_FIXED` y el selector queda fijado a
+`course_over_ground`.
+
+El EKF global es la única autoridad de `map -> odom` y publica `/odometry/global`;
+`navsat_transform_node` consume esa odometría y publica `/odometry/gps` y
+`/fromLL`. Este perfil no inicia hardware, Nav2 ni el EKF local, y su validación
+es sintética/software-only; no declara validación en Jetson o robot.
+
 `global_localization_sim.launch.py` añade GPS global simulado y el segundo
 EKF. El NavSat raw procede de Gazebo en `/gps/fix_raw`, se normaliza a
 `/gps/fix` con perfiles `ideal`, `f9p_rtk` o `m8n`, y conserva un datum fijo.

@@ -1,0 +1,54 @@
+version: 1
+selected_id: gps-16-6-2026-16-17-09
+datums:
+- id: gps-16-6-2026-16-17-00
+  name: GPS 16/6/2026, 16:17:00
+  lat: -31.4859026607927
+  lon: -64.24097358249034
+  yaw_deg: 0.0
+  created_at: '2026-06-16T19:17:00Z'
+  updated_at: '2026-06-16T19:17:00Z'
+  source: current_gps
+  metadata:
+    captured_at: '2026-06-16T19:17:00Z'
+    gps_status:
+      available: true
+      raw: RTK_FIXED
+      normalized: rtk_fixed
+      label: RTK FIXED
+      level: good
+      source: rtk_status
+- id: gps-16-6-2026-16-17-06
+  name: GPS 16/6/2026, 16:17:06
+  lat: -31.4859026607927
+  lon: -64.24097358249034
+  yaw_deg: 0.0
+  created_at: '2026-06-16T19:17:06Z'
+  updated_at: '2026-06-16T19:17:06Z'
+  source: current_gps
+  metadata:
+    captured_at: '2026-06-16T19:17:06Z'
+    gps_status:
+      available: true
+      raw: RTK_FIXED
+      normalized: rtk_fixed
+      label: RTK FIXED
+      level: good
+      source: rtk_status
+- id: gps-16-6-2026-16-17-09
+  name: GPS 16/6/2026, 16:17:09
+  lat: -31.4859026607927
+  lon: -64.24097358249034
+  yaw_deg: 0.0
+  created_at: '2026-06-16T19:17:09Z'
+  updated_at: '2026-06-16T19:17:09Z'
+  source: current_gps
+  metadata:
+    captured_at: '2026-06-16T19:17:09Z'
+    gps_status:
+      available: true
+      raw: RTK_FIXED
+      normalized: rtk_fixed
+      label: RTK FIXED
+      level: good
+      source: rtk_status
