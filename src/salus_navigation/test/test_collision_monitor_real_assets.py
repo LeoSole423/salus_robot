@@ -72,12 +72,14 @@ def test_real_profile_preserves_all_four_frozen_polygons() -> None:
         },
         "critical_slow_zone": {
             "action_type": "slowdown",
+            "min_points": 3,
             "points": [3.50, 0.98, 3.50, -0.98, -0.30, -0.98, -0.30, 0.98],
             "slowdown_ratio": 0.4375,
             "polygon_pub_topic": "/critical_slow_zone_raw",
         },
         "slow_zone": {
             "action_type": "slowdown",
+            "min_points": 3,
             "points": [5.35, 1.18, 5.35, -1.18, -0.30, -1.18, -0.30, 1.18],
             "slowdown_ratio": 0.75,
             "polygon_pub_topic": "/slow_zone_raw",
