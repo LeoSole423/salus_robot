@@ -20,6 +20,13 @@
   `UInt8MultiArray`. Publica `RtcmFrame` validado y `GnssRtkStatus`, manteniendo
   separadas la frescura de correcciones y la calidad GNSS. No abre NTRIP ni
   entrega correcciones a MAVROS o USB.
+- `ntrip_rtcm_source` es el owner de adquisición real aislado: lee un YAML
+  local read-only, abre el caster seleccionado con HTTP/ICY y Basic auth,
+  valida chunked/RTCM3/CRC24Q y publica únicamente `RtcmFrame` en
+  `/salus/hardware/rtcm/corrections`. Su `GnssRtkStatus` sólo informa
+  adquisición/frescura; deja calidad GNSS y entrega en `UNKNOWN`/`DISABLED`.
+  `ntrip_rtcm_source_real.launch.py` requiere `config_path` y no inicia
+  MAVROS, Pixhawk, RS16, UART, Nav2 ni delivery RTCM.
 - `rtcm_dry_run_sink` valida la frontera canónica y publica únicamente
   contadores/edad JSON para diagnóstico; nunca registra el payload ni actúa
   sobre el receptor.
@@ -62,4 +69,5 @@
 - Prueba: `colcon test --packages-select salus_hardware`.
 - Migración: comenzar por contratos de entrada/salida, no por drivers legacy.
 No debe habilitarse la entrega mientras el `rtk_bridge` legado siga publicando
-`/mavros_node/send_rtcm`. Este paquete no inicia NTRIP, MAVROS, FCU ni control.
+`/mavros_node/send_rtcm`. Este paquete no inicia MAVROS, FCU ni control; la
+adquisición NTRIP sólo se inicia mediante su launch real explícito.

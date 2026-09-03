@@ -11,6 +11,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+src/salus_hardware/config/rtk_sources.local.yaml
 .vscode/
 .idea/
 *.swp

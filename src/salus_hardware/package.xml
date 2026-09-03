@@ -17,6 +17,7 @@
   <exec_depend>mavros_msgs</exec_depend>
   <exec_depend>rslidar_msg</exec_depend>
   <exec_depend>rslidar_sdk</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>python3-pytest</test_depend>
   <export><build_type>ament_python</build_type></export>
