@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-launch \
     ros-humble-launch-ros \
     ros-humble-geometry-msgs \
+    ros-humble-mavros \
+    ros-humble-mavros-extras \
     ros-humble-mavros-msgs \
     ros-humble-nav-msgs \
     ros-humble-sensor-msgs \
@@ -42,8 +44,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-rviz2 \
     ros-humble-ros-gz-sim \
     ros-humble-ros-gz-bridge \
+    geographiclib-tools \
     liburdfdom-tools \
     && rm -rf /var/lib/apt/lists/*
+
+# MAVROS needs the GeographicLib datasets before a physical Pixhawk owner can
+# be started. Use the script shipped by the installed package, not a fetched
+# copy, while the image is still root.
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
+    && ros2 run mavros install_geographiclib_datasets.sh
 
 # Ubuntu 22.04 ships websockets 9.1, whose client still passes the removed
 # ``loop=`` argument on Python 3.10.  Pin a compatible release for both the

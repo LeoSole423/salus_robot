@@ -9,6 +9,12 @@
   `/hardware/gnss_primary/fix`. Es read-only: no inicia MAVROS, NTRIP, puertos,
   TF ni actuadores. Conserva `base_link`, timestamps, covarianzas y `NO_FIX`;
   otro frame requiere calibración física.
+- `pixhawk_real.launch.py` es el owner físico parcial del MVP: inicia una sola
+  instancia sensor-only de `mavros_node` con el FCU configurable (default
+  `/dev/ttyACM0:921600`), remaps históricos de IMU/GNSS/velocidad/odometría y
+  TF de MAVROS deshabilitado. No inicia NTRIP, RS16, UART, localización, Nav2
+  ni actuadores. Debe ejecutarse únicamente tras retirar el owner legacy y
+  validar el preflight físico.
 - `legacy_rtk_observer` normaliza en modo read-only el estado JSON, el estado
   textual del receptor y exactamente un `/rtcm` legado de tipo
   `UInt8MultiArray`. Publica `RtcmFrame` validado y `GnssRtkStatus`, manteniendo
@@ -46,7 +52,10 @@
   `imu_source` y `orientation_source` seleccionadas. Sus salidas lógicas pasan
   por `UNAVAILABLE`, `READY` y `STALE` según recepción/frescura, sin cambiar de
   fuente. El estado de obstáculos continúa siendo sólo declarativo.
-- Estado: cámara PTZ dispone de contratos, políticas puras, backends
+- Estado: MAVROS y GeographicLib quedan disponibles de forma reproducible en
+  la imagen, con configuración sensor-only y tests estructurales; la conexión
+  al Pixhawk sigue pendiente de validación física. La cámara PTZ dispone de
+  contratos, políticas puras, backends
   simulado/ISAPI, persistencia atómica y el ejecutable `camera_node`; pasó
   pruebas unitarias y el smoke WebSocket en simulación. La validación física
   continúa pendiente.

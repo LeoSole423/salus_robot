@@ -1,0 +1,21 @@
+/**:
+  ros__parameters:
+    startup_px4_usb_quirk: false
+
+/**/global_position:
+  ros__parameters:
+    frame_id: gps_link
+    child_frame_id: base_footprint
+    tf.send: false
+
+/**/imu:
+  ros__parameters:
+    frame_id: imu_link
+
+/**/local_position:
+  ros__parameters:
+    frame_id: odom
+    tf.send: false
+    tf.frame_id: odom
+    tf.child_frame_id: base_footprint
+    tf.send_fcu: false

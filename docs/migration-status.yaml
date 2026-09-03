@@ -133,6 +133,30 @@ components:
       - src/salus_localization/test/test_gnss_selection_policy.py
       - src/salus_bringup/test/test_pixhawk_sensor_inputs_launch.py
     note: Read-only Pixhawk/MAVROS adapter preserves the observed base_link frame, timestamps, covariance and honest NO_FIX state. Explicit selectors never fall back. A bounded Jetson run beside ROS2_SALUS confirmed one publisher per namespaced output, approximately 10 Hz IMU and 2 Hz GNSS, preserved frame/status and clean shutdown. This hardware validation covers only sensor inputs; real bringup, localization and actuation remain unvalidated.
+  pixhawk_mavros_real_owner:
+    source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 sensores/mavros.launch.py
+    target: salus_hardware/pixhawk_real.launch.py
+    state: ported
+    contracts:
+      - /imu/data
+      - /global_position/raw/fix
+      - /local_position/velocity_local
+      - /local_position/odom
+      - mavros_msgs/GPSRAW
+    evidence:
+      - src/salus_hardware/config/mavros_sensor_only_pluginlists.yaml
+      - src/salus_hardware/config/mavros_apm_overrides.yaml
+      - src/salus_hardware/launch/pixhawk_real.launch.py
+      - src/salus_hardware/test/test_mavros_real_config.py
+      - src/salus_hardware/test/test_pixhawk_real_launch.py
+      - docs/migration-evidence/intent/mavros-real-owner.md
+    note: >-
+      A reproducible MAVROS/extras + GeographicLib image and a single FCU
+      owner launch are available. The allowlist is sensor-only and MAVROS TF
+      publication is disabled. The launch has no NTRIP, RTCM delivery, RS16,
+      UART, control, localization or Nav2 authority. It must not coexist with
+      the legacy MAVROS owner; physical connectivity and data freshness remain
+      pending validation after legacy is stopped.
   real_observation_bringup:
     source: ROS2_SALUS topics during coexistence
     target: salus_bringup real_observation.launch.py
