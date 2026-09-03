@@ -96,8 +96,10 @@ def test_rs16_real_launch_has_one_raw_owner_and_one_argument() -> None:
     contents = LAUNCH.read_text(encoding="utf-8")
 
     assert contents.count("DeclareLaunchArgument(") == 1
+    assert contents.count("Node(") == 1
     assert contents.count("package=\"rslidar_sdk\"") == 1
     assert contents.count("executable=\"rslidar_sdk_node\"") == 1
+    assert 'name="rslidar_sdk_node"' not in contents
     assert 'parameters=[{"config_path": config_path}]' in contents
     assert "config_path" in contents
 

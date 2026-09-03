@@ -23,7 +23,6 @@ def generate_launch_description():
             Node(
                 package="rslidar_sdk",
                 executable="rslidar_sdk_node",
-                name="rslidar_sdk_node",
                 output="screen",
                 parameters=[{"config_path": config_path}],
             ),
