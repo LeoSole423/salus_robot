@@ -1,0 +1,84 @@
+FROM ros:humble-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=humble
+
+# Runtime/build dependencies for the physical ARM64 deployment. Simulation
+# rendering and transport packages intentionally do not belong to this image.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    python3-colcon-common-extensions \
+    python3-pip \
+    python3-pytest \
+    python3-yaml \
+    python3-websockets \
+    python3-numpy \
+    python3-opencv \
+    python3-serial \
+    python3-rosdep \
+    python3-vcstool \
+    ros-humble-ament-cmake \
+    ros-humble-ament-cmake-pytest \
+    ros-humble-ament-lint-auto \
+    ros-humble-ament-lint-common \
+    ros-humble-ackermann-msgs \
+    ros-humble-launch \
+    ros-humble-launch-ros \
+    ros-humble-geometry-msgs \
+    ros-humble-mavros \
+    ros-humble-mavros-extras \
+    ros-humble-mavros-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-std-msgs \
+    ros-humble-rosgraph-msgs \
+    ros-humble-tf2-ros \
+    ros-humble-xacro \
+    ros-humble-robot-state-publisher \
+    ros-humble-robot-localization \
+    ros-humble-pointcloud-to-laserscan \
+    ros-humble-nav2-collision-monitor \
+    ros-humble-nav2-lifecycle-manager \
+    ros-humble-nav2-msgs \
+    ros-humble-nav2-core \
+    ros-humble-nav2-util \
+    ros-humble-nav2-costmap-2d \
+    ros-humble-nav2-voxel-grid \
+    ros-humble-nav2-behavior-tree \
+    ros-humble-nav2-behaviors \
+    ros-humble-nav2-bt-navigator \
+    ros-humble-nav2-controller \
+    ros-humble-nav2-planner \
+    ros-humble-nav2-regulated-pure-pursuit-controller \
+    ros-humble-nav2-smac-planner \
+    ros-humble-nav2-smoother \
+    ros-humble-rmw-cyclonedds-cpp \
+    geographiclib-tools \
+    liburdfdom-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use the installer shipped by the package while the image is still root.
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
+    && ros2 run mavros install_geographiclib_datasets.sh
+
+# Keep the same websocket compatibility pin as the development image.
+RUN python3 -m pip install --no-cache-dir websockets==10.4
+
+ARG USERNAME=ros
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
+    && usermod --append --groups dialout,tty ${USERNAME} \
+    && mkdir -p /ros2_ws \
+    && chown -R ${USERNAME}:${USERNAME} /ros2_ws
+
+COPY entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
+
+USER ${USERNAME}
+WORKDIR /ros2_ws
+ENTRYPOINT ["/ros_entrypoint.sh"]
+CMD ["bash"]

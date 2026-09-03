@@ -69,6 +69,7 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
     def test_docker_workflow_and_common_tooling_force_full(self):
         for path in (
             "Dockerfile",
+            "Dockerfile.real",
             ".github/workflows/ci.yml",
             "tools/run_smoke.sh",
             "entrypoint.sh",

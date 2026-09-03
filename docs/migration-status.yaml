@@ -14,6 +14,21 @@ components:
       - tools/validate_repository.py
       - tools/test.sh
       - tools/smoke_control_sim.sh
+  real_runtime_image:
+    source: Dockerfile.real and tools/build_real_image.sh
+    target: salus_robot physical ARM64 runtime image
+    state: ported
+    evidence:
+      - Dockerfile.real
+      - tools/build_real_image.sh
+      - src/salus_hardware/test/test_real_image_recipe.py
+    note: >-
+      A dedicated physical image recipe keeps the development Dockerfile and
+      compose simulation flow unchanged. It contains the ROS hardware/runtime
+      dependencies, MAVROS GeographicLib datasets, Nav2 and CycloneDDS, while
+      omitting simulation transport/rendering packages. It does not copy the
+      workspace or start hardware; x86 and native Jetson ARM64 build evidence
+      is recorded when this cut is validated.
   control_interfaces:
     source: interfaces
     target: salus_interfaces
