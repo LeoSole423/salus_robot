@@ -18,9 +18,9 @@ from pathlib import Path
 # This must happen before importing or initializing rclpy.
 _DOMAIN_ID = os.environ.get(
     "SALUS_NAVIGATION_REAL_DOMAIN_ID",
-    os.environ.get("ROS_DOMAIN_ID", str(70 + (os.getpid() % 100))),
+    str(70 + (os.getpid() % 100)),
 )
-os.environ.setdefault("ROS_DOMAIN_ID", _DOMAIN_ID)
+os.environ["ROS_DOMAIN_ID"] = _DOMAIN_ID
 
 import rclpy  # noqa: E402
 from diagnostic_msgs.msg import DiagnosticArray  # noqa: E402
