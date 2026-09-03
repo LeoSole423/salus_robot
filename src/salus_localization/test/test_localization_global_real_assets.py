@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import math
 from pathlib import Path
 import shutil
 import subprocess
@@ -236,3 +237,10 @@ def test_real_launch_exposes_explicit_datum_overrides(argument: str) -> None:
     assert f'DeclareLaunchArgument("{argument}"' in LAUNCH.read_text(
         encoding="utf-8"
     )
+
+
+def test_navsat_datum_converts_api_degrees_to_radians() -> None:
+    source = LAUNCH.read_text(encoding="utf-8")
+    assert "datum_yaw_rad = math.radians(datum_yaw_deg)" in source
+    assert '"datum": [datum_lat, datum_lon, datum_yaw_rad]' in source
+    assert math.radians(90.0) == pytest.approx(math.pi / 2.0)

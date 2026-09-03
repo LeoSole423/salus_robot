@@ -1,5 +1,6 @@
 """Software-only real global localization profile for SALUS."""
 
+import math
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -20,11 +21,12 @@ CONFIG_FILE = "localization_global_real.yaml"
 def _build_nodes(context):
     package_share = get_package_share_directory("salus_localization")
     config_file = str(Path(package_share) / "config" / CONFIG_FILE)
-    datum_lat, datum_lon, datum_yaw = validate_datum_override(
+    datum_lat, datum_lon, datum_yaw_deg = validate_datum_override(
         float(LaunchConfiguration("datum_lat").perform(context)),
         float(LaunchConfiguration("datum_lon").perform(context)),
         float(LaunchConfiguration("datum_yaw_deg").perform(context)),
     )
+    datum_yaw_rad = math.radians(datum_yaw_deg)
 
     return [
         Node(
@@ -91,7 +93,7 @@ def _build_nodes(context):
                 config_file,
                 {
                     "use_sim_time": False,
-                    "datum": [datum_lat, datum_lon, datum_yaw],
+                    "datum": [datum_lat, datum_lon, datum_yaw_rad],
                 },
             ],
             remappings=[
