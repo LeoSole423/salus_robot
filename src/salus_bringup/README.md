@@ -64,6 +64,35 @@ ausencia de Pixhawk/GNSS o LiDAR deja sólo datos ausentes/stale según cada
 adaptador, sin abrir drivers ni cambiar fuentes. La validación física posterior
 será estrictamente read-only y estacionaria.
 
+## Perfil real de shadow de localización
+
+`real_localization_shadow.launch.py` compone el perfil de observación ya
+validado más **un solo** EKF local sin autoridad:
+
+```bash
+ros2 launch salus_bringup real_localization_shadow.launch.py
+python3 tools/observe_localization_shadow.py --duration 60
+```
+
+Equivaldría a lanzar por separado `real_observation.launch.py` y
+`localization_real_shadow.launch.py`; el wrapper no añade nodos propios ni
+capacidad nueva. Su salida es únicamente
+`/salus/localization_shadow/odometry/local`, y `ROS2_SALUS` conserva la
+autoridad de `/odometry/local`, `odom -> base_footprint`, el resto del TF, el
+hardware y el control.
+
+El wrapper **no declara ningún launch argument**: no hay forma de habilitar
+entrega RTCM, TF, `use_control`, UART, Nav2 ni propiedad de hardware desde él, y
+hereda sin cambios las restricciones demostradas para `real_observation.launch.py`.
+Tampoco mueve el robot ni implementa localización global.
+
+Se ejecutó de forma estacionaria junto al `ROS2_SALUS` en vivo el 2026-09-02:
+los nueve nodos compusieron correctamente, el shadow publicó de forma continua,
+`/odometry/local` y `/tf` conservaron exactamente la autoridad legacy y el
+cierre dejó el contenedor en `Exited (0)` sin procesos huérfanos. La evidencia
+completa está en
+`docs/migration-evidence/intent/physical-local-localization-shadow-hardware-2026-09-02.md`.
+
 ## Checkpoint integrado de simulación
 
 El launch actual reúne movimiento Ackermann, controlador simulado, localización
