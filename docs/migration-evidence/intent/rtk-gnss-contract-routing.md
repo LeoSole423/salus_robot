@@ -61,7 +61,12 @@ La convivencia read-only se validó en exterior con el robot estacionario. El
 contrato observó `GPSRAW.fix_type=6` (`RTK_FIXED`), 32 satélites y correcciones
 frescas. El perfil `pixhawk_mavros` con `delivery_enabled=false` mantuvo estado
 de entrega `IDLE`, un único publicador del estado canónico y ningún publicador
-MAVROS adicional; el bridge legado siguió siendo el único. Esto valida
-observación y cierre por defecto, no entrega: habilitar el backend requiere una
-prueba aislada tras detener el bridge legado. El componente aún no está
-`parity_passed` ni tiene entrega `hardware_validated`.
+MAVROS adicional; el bridge legado siguió siendo el único. El perfil real
+aislado `pixhawk_rtk_delivery_real.launch.py` fija los endpoints físicos
+observados y fue probado con un runtime ROS sintético: un frame válido se
+entrega una vez como `mavros_msgs/RTCM`, mientras duplicados, frames inválidos y
+payloads sobredimensionados no se entregan; la calidad sigue dependiendo de
+GPSRAW y se vuelve `UNKNOWN` al quedar stale. Esto valida la composición y la
+política software, no la entrega física: habilitar el backend en el robot
+requiere una prueba aislada tras detener el bridge legado. El componente aún
+no está `parity_passed` ni tiene entrega `hardware_validated`.

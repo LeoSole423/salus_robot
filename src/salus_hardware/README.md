@@ -15,6 +15,10 @@
   TF de MAVROS deshabilitado. No inicia NTRIP, RS16, UART, localización, Nav2
   ni actuadores. Debe ejecutarse únicamente tras retirar el owner legacy y
   validar el preflight físico.
+- `pixhawk_rtk_delivery_real.launch.py` es el perfil físico aislado de entrega:
+  inicia exactamente un `pixhawk_rtk_adapter`, con overrides explícitos para
+  los endpoints dobles de MAVROS y entrega habilitada. No inicia MAVROS, FCU,
+  NTRIP, RS16, UART, localización, heading, TF, Nav2 ni Cockpit.
 - `legacy_rtk_observer` normaliza en modo read-only el estado JSON, el estado
   textual del receptor y exactamente un `/rtcm` legado de tipo
   `UInt8MultiArray`. Publica `RtcmFrame` validado y `GnssRtkStatus`, manteniendo
