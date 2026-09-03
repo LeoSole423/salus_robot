@@ -16,6 +16,9 @@ from salus_interfaces.msg import (
 )
 
 
+LEGACY_TEST_TELEMETRY_TOPIC = "/test/legacy_drive_measurement/drive_telemetry"
+
+
 class CapturingPublisher:
     def __init__(self) -> None:
         self.messages = []
@@ -83,6 +86,12 @@ def test_console_entry_point_is_packaged() -> None:
     assert entry_point in setup
 
 
+def test_legacy_telemetry_topic_default_is_productive(node) -> None:
+    assert node.get_parameter("legacy_telemetry_topic").value == (
+        "/controller/drive_telemetry"
+    )
+
+
 def test_sequence_wraps_without_overflowing_uint32(node) -> None:
     traction_publisher = CapturingPublisher()
     steering_publisher = CapturingPublisher()
@@ -105,6 +114,7 @@ def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
     rclpy.init()
     adapter = LegacyDriveMeasurementNode(parameter_overrides=[
         Parameter("input_wire_type", value="interfaces"),
+        Parameter("legacy_telemetry_topic", value=LEGACY_TEST_TELEMETRY_TOPIC),
     ])
     publisher_node = Node("legacy_drive_telemetry_wire_publisher")
     observer = Node("canonical_drive_measurement_observer")
@@ -115,7 +125,7 @@ def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
         assert adapter._input_wire_type == "interfaces"
         assert adapter._input_message_type is LegacyDriveTelemetry
         publisher = publisher_node.create_publisher(
-            LegacyDriveTelemetry, "/controller/drive_telemetry", 10
+            LegacyDriveTelemetry, LEGACY_TEST_TELEMETRY_TOPIC, 10
         )
         observer.create_subscription(
             TractionMeasurement,
@@ -151,7 +161,7 @@ def test_real_legacy_wire_publisher_reaches_canonical_measurements() -> None:
 
         assert traction_messages and steering_messages
         topic_types = dict(publisher_node.get_topic_names_and_types())
-        assert topic_types["/controller/drive_telemetry"] == [
+        assert topic_types[LEGACY_TEST_TELEMETRY_TOPIC] == [
             "interfaces/msg/DriveTelemetry"
         ]
         traction = traction_messages[-1]
