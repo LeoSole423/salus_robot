@@ -61,6 +61,22 @@ Abrir una shell ROS:
 Los directorios `build/`, `install/` y `log/` se crean localmente y no se
 versionan.
 
+## Imagen física ARM64
+
+El runtime físico de la Jetson usa una receta separada, sin dependencias de
+simulación ni GUI:
+
+```bash
+./tools/build_real_image.sh
+```
+
+El helper construye `salus-robot:humble-real` desde `Dockerfile.real`, pasando
+el UID/GID local al usuario `ros`. La imagen incluye MAVROS/MAVROS extras,
+GeographicLib, CycloneDDS, `robot_localization`, `robot_state_publisher`,
+pointcloud-to-laserscan y Nav2. No copia el workspace ni crea un deployment
+persistente; la composición física, systemd y el cutover se harán en cortes
+posteriores.
+
 Smoke test del primer corte migrado:
 
 ```bash

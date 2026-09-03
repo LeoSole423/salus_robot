@@ -30,6 +30,7 @@ FULL_PREFIXES = (
 )
 FULL_FILES = {
     "Dockerfile",
+    "Dockerfile.real",
     "compose.yaml",
     "dependencies.repos",
     "entrypoint.sh",
