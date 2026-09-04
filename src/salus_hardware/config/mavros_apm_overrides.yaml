@@ -4,13 +4,13 @@
 
 /**/global_position:
   ros__parameters:
-    frame_id: gps_link
+    frame_id: base_link
     child_frame_id: base_footprint
     tf.send: false
 
 /**/imu:
   ros__parameters:
-    frame_id: imu_link
+    frame_id: base_link
 
 /**/local_position:
   ros__parameters:

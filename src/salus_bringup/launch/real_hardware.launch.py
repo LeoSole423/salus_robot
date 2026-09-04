@@ -6,7 +6,8 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 
 
 def _include(package: str, launch_file: str, arguments: dict[str, object]):
@@ -22,6 +23,7 @@ def generate_launch_description() -> LaunchDescription:
     fcu_url = LaunchConfiguration("fcu_url")
     ntrip_config_path = LaunchConfiguration("ntrip_config_path")
     ntrip_active_source_id = LaunchConfiguration("ntrip_active_source_id")
+    rs16_config_path = LaunchConfiguration("rs16_config_path")
 
     return LaunchDescription([
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
@@ -30,6 +32,13 @@ def generate_launch_description() -> LaunchDescription:
             description="Path to the NTRIP sources configuration; no inline credentials",
         ),
         DeclareLaunchArgument("ntrip_active_source_id", default_value=""),
+        DeclareLaunchArgument(
+            "rs16_config_path",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("salus_hardware"), "config", "rs16.yaml"]
+            ),
+            description="Path to the RS16 rslidar_sdk configuration YAML",
+        ),
         _include(
             "salus_hardware",
             "pixhawk_real.launch.py",
@@ -39,8 +48,8 @@ def generate_launch_description() -> LaunchDescription:
             "salus_bringup",
             "pixhawk_sensor_inputs.launch.py",
             {
-                "imu_expected_frame": "imu_link",
-                "gnss_expected_frame": "gps_link",
+                "imu_expected_frame": "base_link",
+                "gnss_expected_frame": "base_link",
             },
         ),
         _include(
@@ -56,5 +65,9 @@ def generate_launch_description() -> LaunchDescription:
             "pixhawk_rtk_delivery_real.launch.py",
             {},
         ),
-        _include("salus_hardware", "rs16_real.launch.py", {}),
+        _include(
+            "salus_hardware",
+            "rs16_real.launch.py",
+            {"config_path": rs16_config_path},
+        ),
     ])

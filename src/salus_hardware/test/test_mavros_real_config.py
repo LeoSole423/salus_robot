@@ -35,11 +35,11 @@ def test_mavros_overrides_keep_all_tf_publication_disabled() -> None:
 
     assert config["/**"]["ros__parameters"]["startup_px4_usb_quirk"] is False
     assert config["/**/global_position"]["ros__parameters"] == {
-        "frame_id": "gps_link",
+        "frame_id": "base_link",
         "child_frame_id": "base_footprint",
         "tf.send": False,
     }
-    assert config["/**/imu"]["ros__parameters"] == {"frame_id": "imu_link"}
+    assert config["/**/imu"]["ros__parameters"] == {"frame_id": "base_link"}
     assert config["/**/local_position"]["ros__parameters"] == {
         "frame_id": "odom",
         "tf.send": False,
