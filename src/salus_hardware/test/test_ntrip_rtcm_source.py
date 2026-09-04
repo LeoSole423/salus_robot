@@ -101,6 +101,7 @@ def test_fake_caster_publishes_one_canonical_frame_and_sanitized_status(tmp_path
         assert _FakeCasterHandler.request_seen.wait(timeout=2.0)
         assert _FakeCasterHandler.last_request.startswith(b"GET /RTCM3 HTTP/1.1")
         assert b"Authorization: Basic " in _FakeCasterHandler.last_request
+        assert b"User-Agent: NTRIP RTKLIB/2.4.3\r\n" in _FakeCasterHandler.last_request
         deadline = time.monotonic() + 2.0
         while len(rtcm_pub.messages) < 1 and time.monotonic() < deadline:
             time.sleep(0.01)
