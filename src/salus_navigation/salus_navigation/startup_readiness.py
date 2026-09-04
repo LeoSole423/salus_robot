@@ -28,12 +28,13 @@ class ReadinessSnapshot:
     keepout_required: bool = True
     keepout_ready: bool = False
     lifecycle_manager_ready: bool = False
+    clock_required: bool = True
 
 
 def missing_requirements(snapshot: ReadinessSnapshot) -> tuple[str, ...]:
     """Return stable, machine-readable reasons that prevent activation."""
     checks = (
-        (snapshot.clock_progressive, "CLOCK_NOT_PROGRESSIVE"),
+        (not snapshot.clock_required or snapshot.clock_progressive, "CLOCK_NOT_PROGRESSIVE"),
         (snapshot.odometry_progressive, "ODOMETRY_NOT_PROGRESSIVE"),
         (snapshot.odometry_finite, "ODOMETRY_INVALID"),
         (snapshot.transform_available, "TF_UNAVAILABLE"),

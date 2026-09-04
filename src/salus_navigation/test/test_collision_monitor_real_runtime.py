@@ -155,7 +155,7 @@ def _stop_launch(process: subprocess.Popen) -> None:
 
 
 def _run_runtime(log_path: Path) -> None:
-    rclpy.init()
+    rclpy.init(domain_id=int(_DOMAIN_ID))
     harness = CollisionMonitorRuntimeHarness()
     executor = SingleThreadedExecutor()
     executor.add_node(harness)
