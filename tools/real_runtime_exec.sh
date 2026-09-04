@@ -71,7 +71,15 @@ source "${workspace_state}"
 [[ "${STATE_RECIPE_HASH:-}" == "${RECIPE_HASH}" ]] || fail_stale workspace-recipe
 [[ "${STATE_DEPS_HASH:-}" == "${DEPS_HASH}" ]] || fail_stale workspace-dependencies
 
-docker_args=(run --rm --network host)
+runtime_rmw_implementation="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
+runtime_ros_domain_id="${ROS_DOMAIN_ID:-0}"
+
+docker_args=(
+  run --rm --network host
+  -e "RMW_IMPLEMENTATION=${runtime_rmw_implementation}"
+  -e "ROS_DOMAIN_ID=${runtime_ros_domain_id}"
+  -e "ROS_LOCALHOST_ONLY=0"
+)
 if ((${#devices[@]})); then
   docker_args+=("${devices[@]}")
 fi
