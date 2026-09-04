@@ -106,6 +106,7 @@ fi
 deps_action=reused
 deps_dir="${SALUS_REAL_CACHE_DIR}/dependencies/${deps_hash}"
 deps_tmp=
+deps_backup_parent=
 cleanup() {
   if [[ -n "${deps_tmp}" && -d "${deps_tmp}" ]]; then
     rm -rf -- "${deps_tmp}"
@@ -128,12 +129,24 @@ if [[ ! -f "${deps_dir}/.salus_complete" ]] \
       cd /output
       vcs import --input /input/dependencies.repos .
       git -C src/rslidar_sdk submodule update --init --recursive
-      test "$(git -C src/rslidar_sdk rev-parse HEAD)" = \
-        "7c4ea25fada93442c3d390aa4ef05e240999b851"
-      test "$(git -C src/rslidar_sdk rev-parse HEAD:src/rs_driver)" = \
-        "cd358851ab65bf57fc7e321837be2a425305b298"
-      test "$(git -C src/rslidar_msg rev-parse HEAD)" = \
-        "fe8a95cb242bd294cc3d5e3422f2093fb49a56ee"
+      manifest_version() {
+        repo_path="$1"
+        repo_pattern="${repo_path//\//\\/}"
+        sed -n "/^  ${repo_pattern}:$/,/^  [^ ]/p" \
+          /input/dependencies.repos \
+          | sed -n "s/^    version: //p" \
+          | head -n 1
+      }
+      verify_manifest_pin() {
+        repo_path="$1"
+        expected="$(manifest_version "$repo_path")"
+        test -n "$expected"
+        test "$(git -C "$repo_path" rev-parse HEAD)" = "$expected"
+      }
+      verify_manifest_pin src/rslidar_sdk
+      verify_manifest_pin src/rslidar_msg
+      test -z "$(git -C src/rslidar_sdk submodule status --recursive \
+        | sed -n '/^[+U-]/p')"
       touch /output/.salus_complete
     '
   if [[ ! -f "${deps_tmp}/.salus_complete" ]] \
@@ -142,8 +155,23 @@ if [[ ! -f "${deps_dir}/.salus_complete" ]] \
     echo "dependency import did not produce a complete cache" >&2
     exit 1
   fi
-  mv -- "${deps_tmp}" "${deps_dir}"
-  deps_tmp=
+  if [[ -e "${deps_dir}" ]]; then
+    deps_backup_parent="$(mktemp -d "${deps_dir}.old.XXXXXX")"
+    mv -- "${deps_dir}" "${deps_backup_parent}/cache"
+  fi
+  if mv -- "${deps_tmp}" "${deps_dir}"; then
+    deps_tmp=
+    if [[ -n "${deps_backup_parent}" ]]; then
+      rm -rf -- "${deps_backup_parent}/cache"
+      rmdir -- "${deps_backup_parent}"
+    fi
+  else
+    if [[ -n "${deps_backup_parent}" ]]; then
+      mv -- "${deps_backup_parent}/cache" "${deps_dir}"
+      rmdir -- "${deps_backup_parent}"
+    fi
+    exit 1
+  fi
 fi
 
 workspace_key="$(salus_workspace_key "${image_id}" "${deps_hash}")"

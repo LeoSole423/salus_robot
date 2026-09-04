@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import subprocess
@@ -78,6 +79,19 @@ class RealRuntimeCacheTest(unittest.TestCase):
         self._git("commit", "-qm", value)
         return self._git_output("rev-parse", "HEAD")
 
+    def _change_dependency_pins(self) -> tuple[str, str]:
+        manifest_path = self.repo / "dependencies.repos"
+        manifest = manifest_path.read_text(encoding="utf-8")
+        old_pins = re.findall(r"^    version: ([0-9a-f]{40})$", manifest, re.MULTILINE)
+        self.assertEqual(len(old_pins), 2)
+        new_pins = ("1" * 40, "2" * 40)
+        for old_pin, new_pin in zip(old_pins, new_pins):
+            manifest = manifest.replace(old_pin, new_pin, 1)
+        manifest_path.write_text(manifest, encoding="utf-8")
+        self._git("add", "dependencies.repos")
+        self._git("commit", "-qm", "dependency pin change")
+        return old_pins[0], old_pins[1]
+
     def _run(self, script: str, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [str(self.repo / "tools" / script), *args],
@@ -102,6 +116,7 @@ class RealRuntimeCacheTest(unittest.TestCase):
             r'''#!/usr/bin/env python3
 import os
 from pathlib import Path
+import re
 import sys
 
 log = Path(os.environ["FAKE_DOCKER_LOG"])
@@ -148,6 +163,10 @@ if args and args[0] == "run":
 
     if network == "bridge":
         output = mounts["/output"]
+        manifest = mounts["/input/dependencies.repos"].read_text(encoding="utf-8")
+        versions = re.findall(r"^    version: ([0-9a-f]{40})$", manifest, re.MULTILINE)
+        record("bridge-versions=" + ",".join(versions))
+        record("bridge-command=" + " ".join(args).replace("\n", " "))
         for package in ("rslidar_sdk", "rslidar_msg"):
             (output / "src" / package / ".git").mkdir(parents=True)
         (output / "src" / ".salus_complete").write_text("ok\n", encoding="utf-8")
@@ -205,13 +224,10 @@ raise SystemExit(2)
         self.assertNotEqual(old_workspace, self._prepared_value("WORKSPACE_KEY"))
         self.assertEqual(sum(line == "build" for line in self._log()), 1)
 
-    def test_t4_dependency_change_imports_without_image_rebuild(self) -> None:
+    def test_t4_dependency_pin_change_imports_without_image_rebuild(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
         old_workspace = self._prepared_value("WORKSPACE_KEY")
-        with (self.repo / "dependencies.repos").open("a", encoding="utf-8") as stream:
-            stream.write("\n# dependency manifest change\n")
-        self._git("add", "dependencies.repos")
-        self._git("commit", "-qm", "dependency change")
+        old_sdk_pin, old_msg_pin = self._change_dependency_pins()
         result = self._run("prepare_real_runtime.sh")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("IMAGE_ACTION=reused", result.stdout)
@@ -219,8 +235,36 @@ raise SystemExit(2)
         self.assertNotEqual(old_workspace, self._prepared_value("WORKSPACE_KEY"))
         self.assertEqual(sum(line == "build" for line in self._log()), 0)
         self.assertEqual(sum("network=bridge" in line for line in self._log()), 2)
+        self.assertIn(
+            "bridge-versions=" + ("1" * 40) + "," + ("2" * 40), self._log()
+        )
+        bridge_command = next(
+            line for line in self._log() if line.startswith("bridge-command=")
+        )
+        self.assertNotIn(old_sdk_pin, bridge_command)
+        self.assertNotIn(old_msg_pin, bridge_command)
 
-    def test_t5_divergent_head_gets_clean_workspace_without_image_rebuild(self) -> None:
+    def test_t5_incomplete_dependency_cache_is_replaced(self) -> None:
+        self.assertEqual(self._prepare_initial().returncode, 0)
+        deps_dir = self.cache / "dependencies" / self._prepared_value("DEPS_HASH")
+        (deps_dir / "stale-cache-marker").write_text("invalid\n", encoding="utf-8")
+        (deps_dir / ".salus_complete").unlink()
+        before = sum("network=bridge" in line for line in self._log())
+
+        result = self._run("prepare_real_runtime.sh")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("DEPS_ACTION=imported", result.stdout)
+        self.assertEqual(
+            sum("network=bridge" in line for line in self._log()), before + 1
+        )
+        self.assertTrue((deps_dir / ".salus_complete").exists())
+        self.assertTrue((deps_dir / "src" / "rslidar_sdk").is_dir())
+        self.assertTrue((deps_dir / "src" / "rslidar_msg").is_dir())
+        self.assertFalse((deps_dir / "stale-cache-marker").exists())
+        self.assertFalse(any(deps_dir.glob(".tmp.*")))
+
+    def test_t6_divergent_head_gets_clean_workspace_without_image_rebuild(self) -> None:
         prepared_sha = self._commit_marker("prepared")
         self.assertEqual(self._run("prepare_real_runtime.sh", "--adopt-validated-image").returncode, 0)
         self._git("checkout", "-q", "--detach", self.initial_sha)
@@ -234,7 +278,7 @@ raise SystemExit(2)
         self.assertEqual(sum("network=none" in line for line in self._log()), 2)
         self.assertNotEqual(prepared_sha, self._git_output("rev-parse", "HEAD"))
 
-    def test_t6_dirty_tree_fails_before_mutating_reusable_state(self) -> None:
+    def test_t7_dirty_tree_fails_before_mutating_reusable_state(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
         prepared = (self.cache / "prepared.env").read_text(encoding="utf-8")
         before = len(self._log())
@@ -245,7 +289,7 @@ raise SystemExit(2)
         self.assertEqual(prepared, (self.cache / "prepared.env").read_text(encoding="utf-8"))
         self.assertEqual(before, len(self._log()))
 
-    def test_t7_exec_rejects_stale_source_before_docker(self) -> None:
+    def test_t8_exec_rejects_stale_source_before_docker(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
         self._commit_marker("stale")
         before = len(self._log())
@@ -257,7 +301,7 @@ raise SystemExit(2)
             [line for line in self._log()[:before] if not line.startswith("inspect")],
         )
 
-    def test_t8_force_flags_have_separate_effects(self) -> None:
+    def test_t9_force_flags_have_separate_effects(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
         workspace_before = self._prepared_value("WORKSPACE_KEY")
         result = self._run("prepare_real_runtime.sh", "--force-workspace-rebuild")
@@ -273,7 +317,7 @@ raise SystemExit(2)
         self.assertEqual(sum(line == "build" for line in self._log()), 1)
         self.assertNotEqual(workspace_before, self._prepared_value("WORKSPACE_KEY"))
 
-    def test_exec_uses_prepared_image_id_and_host_network(self) -> None:
+    def test_t10_exec_uses_prepared_image_id_and_host_network(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
         result = self._run("real_runtime_exec.sh", "--", "ros2", "pkg", "prefix", "salus_description")
         self.assertEqual(result.returncode, 0, result.stderr)
