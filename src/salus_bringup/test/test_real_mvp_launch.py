@@ -5,6 +5,7 @@ import subprocess
 
 
 ROOT = Path(__file__).parents[1]
+PACKAGE_XML = ROOT / "package.xml"
 HARDWARE = ROOT / "launch" / "real_hardware.launch.py"
 MVP = ROOT / "launch" / "real_mvp.launch.py"
 
@@ -82,6 +83,11 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "systemd",
     ):
         assert forbidden not in lower
+
+
+def test_real_mvp_runtime_dependency_is_declared() -> None:
+    package_xml = PACKAGE_XML.read_text(encoding="utf-8")
+    assert "<exec_depend>salus_description</exec_depend>" in package_xml
 
 
 def test_real_hardware_show_args_does_not_start_devices() -> None:
