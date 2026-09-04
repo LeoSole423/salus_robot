@@ -70,10 +70,23 @@ def test_real_runtime_gate_is_fail_closed_and_software_only() -> None:
     contents = RUNTIME_GATE.read_text(encoding="utf-8")
 
     assert contents.startswith("#!/usr/bin/env bash")
+    assert 'mktemp -d /tmp/salus-real-runtime-deps.XXXXXX' in contents
+    assert 'vcs import --input /input/dependencies.repos .' in contents
+    assert 'dependencies.repos:/input/dependencies.repos:ro' in contents
+    assert 'dependency_dir}/src:/input/external-src:ro' in contents
+    assert "--network bridge" in contents
+    assert "cp -a /input/external-src/. /ros2_ws/src/" in contents
     assert "colcon build" in contents
-    assert "ldd_output=\"$(ldd \"${target}\")\"" in contents
+    assert "--packages-up-to rslidar_sdk" in contents
+    assert "--tmpfs /ros2_ws/build:rw,exec" in contents
+    assert "--tmpfs /ros2_ws/install:rw,exec" in contents
+    assert "resolved_target=\"$(readlink -f \"${target}\")\"" in contents
+    assert 'ldd_target=/tmp/rslidar_sdk_node' in contents
+    assert 'cp "${resolved_target}" "${ldd_target}"' in contents
+    assert 'ldd_output="$(ldd "${ldd_target}" 2>&1)"' in contents
     assert 'grep -Fq "not found"' in contents
-    assert "libpcap\\.so\\.0\\.8 => /" in contents
+    assert "libpcap\\\\.so\\\\.0\\\\.8 => /" in contents
     assert "--network none" in contents
+    assert contents.count("--network none") == 1
     assert "LD_LIBRARY_PATH" not in contents
     assert "ln -s" not in contents
