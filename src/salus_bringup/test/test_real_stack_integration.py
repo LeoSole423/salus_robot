@@ -485,6 +485,12 @@ def _run_integration(log_root: Path, runtime_dir: Path) -> None:
         assert "robot_state_publisher" in static_tf_publishers
         assert static_tf_publishers <= {"robot_state_publisher", "navsat_transform"}
 
+        harness.wait_for(
+            lambda: harness.startup_values.get("state") == "ACTIVE",
+            45.0,
+            "navigation startup ACTIVE without /clock",
+        )
+
         zones = harness.create_client(GetZonesState, "/zones_manager/get_state")
         _wait_for_service(harness, zones, 20.0, "zones state")
         _wait_for_service(harness, harness.from_ll, 20.0, "/fromLL")
@@ -493,11 +499,6 @@ def _run_integration(log_root: Path, runtime_dir: Path) -> None:
         zones_state = zones_response.result()
         assert zones_state is not None and zones_state.ok and zones_state.mask_ready
 
-        harness.wait_for(
-            lambda: harness.startup_values.get("state") == "ACTIVE",
-            45.0,
-            "navigation startup ACTIVE without /clock",
-        )
         for node_name in (
             "planner_server", "controller_server", "bt_navigator", "behavior_server"
         ):
