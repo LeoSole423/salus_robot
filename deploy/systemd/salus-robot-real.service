@@ -1,0 +1,23 @@
+[Unit]
+Description=SALUS physical real MVP runtime
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+Environment=HOME=/home/admin
+SupplementaryGroups=dialout docker
+WorkingDirectory=/opt/salus_robot
+EnvironmentFile=-/etc/salus/salus-robot-real.env
+ExecStartPre=/opt/salus_robot/tools/check_real_mvp_authority.py --device /dev/ttyACM0 --device /dev/ttyUSB0
+ExecStart=/opt/salus_robot/tools/start_real_runtime.sh
+ExecStartPost=/opt/salus_robot/tools/check_real_mvp_readiness.sh
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
