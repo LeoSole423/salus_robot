@@ -8,9 +8,12 @@ sí mismo movimiento ni pruebas de hardware.
 ## Preparación
 
 1. Instalar un checkout limpio en `/opt/salus_robot`, propiedad del usuario
-   `salus`, y mantenerlo en `main` o en el SHA aprobado. El usuario debe tener
-   acceso al grupo `docker` y a los devices mediante `dialout`.
-2. Ejecutar como `salus` desde el checkout:
+   operativo validado `admin`, y mantenerlo en `main` o en el SHA aprobado. El
+   usuario debe tener acceso al grupo `docker` y a los devices mediante
+   `dialout`.
+2. Ejecutar como `admin` desde el checkout, conservando su `HOME` y UID/GID
+   para reutilizar el cache existente, sin crear una cuenta ni un cache
+   paralelo:
 
    ```bash
    ./tools/prepare_real_runtime.sh
@@ -42,8 +45,10 @@ sí mismo movimiento ni pruebas de hardware.
    sudo systemctl daemon-reload
    ```
 
-   El servicio requiere `/dev/ttyACM0` para Pixhawk y `/dev/ttyUSB0` para la
-   UART del controlador. Usa devices explícitos y no `--privileged`.
+   El checker del servicio exige explícitamente `/dev/ttyACM0` para Pixhawk y
+   `/dev/ttyUSB0` para la UART del controlador; si falta cualquiera, falla con
+   evidencia en lugar de que systemd salte silenciosamente el servicio. Usa
+   devices explícitos y no `--privileged`.
 
 ## Arranque fail-closed
 

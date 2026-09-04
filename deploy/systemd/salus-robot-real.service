@@ -2,13 +2,11 @@
 Description=SALUS physical real MVP runtime
 After=docker.service network-online.target
 Wants=network-online.target
-ConditionPathExists=/dev/ttyACM0
-ConditionPathExists=/dev/ttyUSB0
 
 [Service]
 Type=simple
-User=salus
-Group=salus
+User=admin
+Environment=HOME=/home/admin
 SupplementaryGroups=dialout docker
 WorkingDirectory=/opt/salus_robot
 EnvironmentFile=-/etc/salus/salus-robot-real.env

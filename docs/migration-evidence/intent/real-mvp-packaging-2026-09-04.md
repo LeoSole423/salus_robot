@@ -25,7 +25,8 @@ movimiento. No recrea el top-level real ni duplica el runtime persistente.
   duplicado produce fallo cerrado.
 - El servicio ejecutará el checker versionado como `ExecStartPre` antes de
   invocar el wrapper que reutiliza `real_runtime_exec.sh`, con `/dev/ttyACM0` y
-  `/dev/ttyUSB0` explícitos.
+  `/dev/ttyUSB0` explícitos. Se ejecutará con el usuario operativo validado
+  `admin` y su `HOME`, UID/GID y cache existentes.
 - La configuración NTRIP será una ruta externa/ignorada referenciada por el
   `EnvironmentFile` del servicio; ningún secreto se versiona ni se imprime.
 - El runbook documentará explícitamente el orden: preparar, detener legacy,

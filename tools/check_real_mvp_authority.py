@@ -12,6 +12,7 @@ import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from typing import Mapping, Sequence
 
 LEGACY_SERVICE = "salus-real-global-v2-wifi.service"
 DEFAULT_DEVICES = ("/dev/ttyACM0", "/dev/ttyUSB0")
+RUNTIME_EXEC = Path(__file__).resolve().with_name("real_runtime_exec.sh")
 CRITICAL_TOPICS = (
     "/mavros_node/send_rtcm",
     "/mavros_node/mavros_node/send_rtcm",
@@ -150,9 +152,20 @@ def parse_topic_publishers(output: str) -> tuple[str, ...]:
 
 
 def _topic_publishers(topic: str) -> tuple[str, ...]:
-    result = _run(("ros2", "topic", "info", "--no-daemon", topic, "-v"))
+    result = _run(
+        (
+            str(RUNTIME_EXEC),
+            "--",
+            "bash",
+            "-lc",
+            f"exec ros2 topic info --no-daemon {shlex.quote(topic)} -v",
+        )
+    )
+    output = f"{result.stdout}\n{result.stderr}"
+    if re.search(r"\bunknown topic\b|topic .* does not exist", output, re.IGNORECASE):
+        return ()
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
+        detail = output.strip()
         raise ProbeError(f"cannot inspect {topic}: {detail}")
     return parse_topic_publishers(result.stdout)
 

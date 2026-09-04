@@ -75,6 +75,27 @@ Subscription count: 0
             ("first_owner", "second_owner"),
         )
 
+    @patch("tools.check_real_mvp_authority._device_owners", return_value=())
+    @patch("tools.check_real_mvp_authority._process_matches", return_value=())
+    @patch("tools.check_real_mvp_authority._service_is_active", return_value=False)
+    @patch("tools.check_real_mvp_authority._run")
+    def test_collect_snapshot_allows_absent_topic_through_full_probe(
+        self, run_mock, _service_mock, _process_mock, _devices_mock
+    ) -> None:
+        run_mock.return_value = authority.subprocess.CompletedProcess(
+            [str(authority.RUNTIME_EXEC)], 1, "", "Unknown topic '/scan_3d'"
+        )
+
+        snapshot = authority.collect_snapshot(
+            devices=(), topics=("/scan_3d",), process_patterns=()
+        )
+
+        self.assertEqual(snapshot.topic_publishers["/scan_3d"], ())
+        self.assertEqual(authority.evaluate_authority(snapshot), ())
+        command = run_mock.call_args.args[0]
+        self.assertEqual(command[:4], (str(authority.RUNTIME_EXEC), "--", "bash", "-lc"))
+        self.assertIn("ros2 topic info", command[4])
+
     @patch("tools.check_real_mvp_authority._run")
     def test_service_probe_is_read_only(self, run_mock) -> None:
         run_mock.return_value = authority.subprocess.CompletedProcess(

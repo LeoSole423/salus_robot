@@ -20,8 +20,11 @@ class DeploymentContractTests(unittest.TestCase):
         self.assertIn("ExecStartPre=/opt/salus_robot/tools/check_real_mvp_authority.py", text)
         self.assertIn("ExecStart=/opt/salus_robot/tools/start_real_runtime.sh", text)
         self.assertIn("ExecStartPost=/opt/salus_robot/tools/check_real_mvp_readiness.sh", text)
-        self.assertIn("ConditionPathExists=/dev/ttyACM0", text)
-        self.assertIn("ConditionPathExists=/dev/ttyUSB0", text)
+        self.assertIn("User=admin", text)
+        self.assertIn("Environment=HOME=/home/admin", text)
+        self.assertNotIn("ConditionPathExists", text)
+        self.assertNotIn("User=salus", text)
+        self.assertNotIn("Group=salus", text)
         self.assertIn("SupplementaryGroups=dialout docker", text)
         self.assertIn("KillMode=control-group", text)
         self.assertIn("KillSignal=SIGINT", text)
@@ -58,6 +61,8 @@ class DeploymentContractTests(unittest.TestCase):
             "/dev/ttyUSB0",
             "0600",
             "rollback",
+            "admin",
+            "HOME",
         ):
             self.assertIn(item, runbook)
         self.assertNotIn("password", env.lower())
