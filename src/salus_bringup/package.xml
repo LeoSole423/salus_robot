@@ -19,6 +19,15 @@
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <test_depend>diagnostic_msgs</test_depend>
+  <test_depend>geometry_msgs</test_depend>
   <test_depend>lifecycle_msgs</test_depend>
+  <test_depend>nav2_msgs</test_depend>
+  <test_depend>nav_msgs</test_depend>
+  <test_depend>rclpy</test_depend>
+  <test_depend>robot_localization</test_depend>
+  <test_depend>salus_interfaces</test_depend>
+  <test_depend>sensor_msgs</test_depend>
+  <test_depend>tf2_ros</test_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>
