@@ -1,13 +1,28 @@
 """Structural tests for the final real hardware and MVP compositions."""
 
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import subprocess
+
+from launch.actions import IncludeLaunchDescription
 
 
 ROOT = Path(__file__).parents[1]
 PACKAGE_XML = ROOT / "package.xml"
 HARDWARE = ROOT / "launch" / "real_hardware.launch.py"
 MVP = ROOT / "launch" / "real_mvp.launch.py"
+
+
+def _real_hardware_module():
+    spec = spec_from_file_location("real_hardware", HARDWARE)
+    module = module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _launch_configuration_name(value) -> str:
+    return "".join(token.text for token in value.variable_name)
 
 
 def test_real_hardware_has_exactly_the_final_physical_owners() -> None:
@@ -23,9 +38,10 @@ def test_real_hardware_has_exactly_the_final_physical_owners() -> None:
         assert source.count(launch_file) == 1
     assert source.count("_include(") == 6  # helper + 5 includes
     assert 'default_value="/dev/ttyACM0:921600"' in source
-    assert '"imu_expected_frame": "imu_link"' in source
-    assert '"gnss_expected_frame": "gps_link"' in source
+    assert '"imu_expected_frame": "base_link"' in source
+    assert '"gnss_expected_frame": "base_link"' in source
     assert "ntrip_config_path" in source
+    assert "rs16_config_path" in source
     assert "active_source_id" in source
 
     lower = source.lower()
@@ -44,6 +60,30 @@ def test_real_hardware_has_exactly_the_final_physical_owners() -> None:
         "web",
     ):
         assert forbidden not in lower
+
+
+def test_real_hardware_keeps_ntrip_and_rs16_configs_independent() -> None:
+    description = _real_hardware_module().generate_launch_description()
+    includes = [
+        entity
+        for entity in description.entities
+        if isinstance(entity, IncludeLaunchDescription)
+    ]
+
+    assert len(includes) == 5
+    ntrip_arguments = dict(includes[2].launch_arguments)
+    rs16_arguments = dict(includes[4].launch_arguments)
+
+    assert _launch_configuration_name(ntrip_arguments["config_path"]) == (
+        "ntrip_config_path"
+    )
+    assert _launch_configuration_name(rs16_arguments["config_path"]) == (
+        "rs16_config_path"
+    )
+
+    sensor_arguments = dict(includes[1].launch_arguments)
+    assert sensor_arguments["imu_expected_frame"] == "base_link"
+    assert sensor_arguments["gnss_expected_frame"] == "base_link"
 
 
 def test_real_mvp_includes_each_final_block_once() -> None:
