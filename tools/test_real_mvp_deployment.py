@@ -11,6 +11,7 @@ UNIT = ROOT / "deploy/systemd/salus-robot-real.service"
 ENV = ROOT / "deploy/systemd/salus-robot-real.env.example"
 START = ROOT / "tools/start_real_runtime.sh"
 READY = ROOT / "tools/check_real_mvp_readiness.sh"
+READY_PROBE = ROOT / "tools/real_mvp_readiness_probe.py"
 RUNBOOK = ROOT / "docs/runbooks/real-mvp.md"
 
 
@@ -44,9 +45,11 @@ class DeploymentContractTests(unittest.TestCase):
 
     def test_readiness_is_minimal_and_causal(self) -> None:
         text = READY.read_text(encoding="utf-8")
+        probe = READY_PROBE.read_text(encoding="utf-8")
         self.assertIn("real_runtime_exec.sh", text)
-        self.assertIn("/navigation_startup/diagnostics", text)
-        self.assertIn("ACTIVE: ALL_NAV2_NODES_ACTIVE", text)
+        self.assertIn("real_mvp_readiness_probe.py", text)
+        self.assertIn("/navigation_startup/diagnostics", probe)
+        self.assertIn("ACTIVE: ALL_NAV2_NODES_ACTIVE", probe)
         self.assertNotIn("sleep ", text)
 
     def test_external_config_and_runbook_are_explicit(self) -> None:
