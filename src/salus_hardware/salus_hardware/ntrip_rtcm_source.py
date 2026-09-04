@@ -176,7 +176,7 @@ class NtripRtcmSourceNode(Node):
         request = (
             f"GET /{source.mountpoint.lstrip('/')} HTTP/1.1\r\n"
             f"Host: {host_header}:{source.port}\r\n"
-            "User-Agent: SALUS-NTRIP/1.0\r\n"
+            "User-Agent: NTRIP RTKLIB/2.4.3\r\n"
             "Accept: */*\r\n"
             "Connection: close\r\n"
             "Ntrip-Version: Ntrip/2.0\r\n"
