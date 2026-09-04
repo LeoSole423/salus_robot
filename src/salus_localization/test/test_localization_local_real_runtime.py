@@ -44,6 +44,8 @@ class RealLocalizationHarness(Node):
         self.local_samples: list[Odometry] = []
         self.tf_messages: list[TFMessage] = []
         self.mode = "valid"
+        self.first_invalid_stamp_s: float | None = None
+        self.invalid_publish_count = 0
         self._speed_mps = 0.8
         self._steer_deg = -10.0  # The real profile inverts this to positive yaw.
         self._drive_publisher = self.create_publisher(
@@ -70,6 +72,12 @@ class RealLocalizationHarness(Node):
         drive.speed_mps_measured = self._speed_mps
         drive.steer_deg_measured = self._steer_deg
         drive.brake_applied_pct = 0
+        if self.mode == "invalid":
+            self.invalid_publish_count += 1
+            if self.first_invalid_stamp_s is None:
+                self.first_invalid_stamp_s = (
+                    float(stamp.sec) + float(stamp.nanosec) * 1.0e-9
+                )
         self._drive_publisher.publish(drive)
 
         imu = Imu()
@@ -258,10 +266,19 @@ def test_stale_or_invalid_drive_telemetry_does_not_invent_wheel_motion(tmp_path)
             for message in stale_samples
         )
 
+        harness.wheel_samples.clear()
         harness.mode = "invalid"
-        count_before_invalid = len(harness.wheel_samples)
-        time.sleep(0.5)
-        assert len(harness.wheel_samples) == count_before_invalid
+        assert harness.wait_for(
+            lambda: harness.first_invalid_stamp_s is not None
+            and harness.invalid_publish_count >= 5,
+            timeout_s=5.0,
+        )
+        invalid_boundary = harness.first_invalid_stamp_s
+        assert invalid_boundary is not None
+        assert all(
+            _stamp_seconds(message) < invalid_boundary
+            for message in harness.wheel_samples
+        )
     finally:
         if process is not None:
             _stop(process)
