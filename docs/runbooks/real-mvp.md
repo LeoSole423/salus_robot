@@ -69,7 +69,9 @@ procesos, publishers ROS o un device ocupado, falla sin matar nada. El unit
 repite el checker como `ExecStartPre` y el runtime se ejecuta exclusivamente
 por `tools/real_runtime_exec.sh` a través de `tools/start_real_runtime.sh`.
 El readiness requiere `navigation_startup` en
-`ACTIVE: ALL_NAV2_NODES_ACTIVE`.
+`ACTIVE: ALL_NAV2_NODES_ACTIVE`; espera causalmente ese diagnóstico aunque el
+tópico todavía no exista al iniciar el post-start. No usa sleeps fijos ni
+considera la mera creación del contenedor como disponibilidad.
 
 ## Parada y rollback
 

@@ -13,6 +13,7 @@ EnvironmentFile=-/etc/salus/salus-robot-real.env
 ExecStartPre=/opt/salus_robot/tools/check_real_mvp_authority.py --device /dev/ttyACM0 --device /dev/ttyUSB0
 ExecStart=/opt/salus_robot/tools/start_real_runtime.sh
 ExecStartPost=/opt/salus_robot/tools/check_real_mvp_readiness.sh
+ExecStopPost=-/usr/bin/docker rm -f salus-robot-real-runtime
 KillMode=control-group
 KillSignal=SIGINT
 TimeoutStopSec=30

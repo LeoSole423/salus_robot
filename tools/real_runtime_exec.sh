@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/real_runtime_common.sh"
 
 devices=()
+container_name=""
 while (($#)); do
   case "$1" in
     --device)
@@ -12,6 +13,14 @@ while (($#)); do
         exit 2
       fi
       devices+=(--device "$2")
+      shift 2
+      ;;
+    --container-name)
+      if (($# < 2)); then
+        echo "--container-name requires a name" >&2
+        exit 2
+      fi
+      container_name="$2"
       shift 2
       ;;
     --)
@@ -26,7 +35,7 @@ while (($#)); do
 done
 
 if (($# == 0)); then
-  echo "usage: real_runtime_exec.sh [--device PATH]... -- COMMAND [ARGS...]" >&2
+  echo "usage: real_runtime_exec.sh [--device PATH]... [--container-name NAME] -- COMMAND [ARGS...]" >&2
   exit 2
 fi
 
@@ -82,6 +91,13 @@ docker_args=(
 )
 if ((${#devices[@]})); then
   docker_args+=("${devices[@]}")
+fi
+if [[ -n "${container_name}" ]]; then
+  if [[ ! "${container_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+    echo "invalid container name: ${container_name}" >&2
+    exit 2
+  fi
+  docker_args+=(--name "${container_name}")
 fi
 docker_args+=(
   -v "${SALUS_REPO_DIR}/src:/ros2_ws/src:ro"
