@@ -21,6 +21,7 @@ components:
     evidence:
       - Dockerfile.real
       - tools/build_real_image.sh
+      - tools/validate_real_runtime_image.sh
       - src/salus_hardware/test/test_real_image_recipe.py
       - docs/migration-evidence/intent/real-runtime-image-arm64-validation-2026-09-03.md
     note: >-
@@ -31,7 +32,10 @@ components:
       workspace or start hardware; x86 and native Jetson ARM64 build evidence
       was built successfully on x86 and natively on the Jetson ARM64 host;
       the clean workspace build also passed inside the ARM64 image. No
-      hardware launch or persistent deployment was started.
+      hardware launch or persistent deployment was started. The image
+      boundary now also has a software-only ARM64 loader gate which builds
+      the workspace inside the image and fails on unresolved rslidar shared
+      libraries, including libpcap.so.0.8.
   control_interfaces:
     source: interfaces
     target: salus_interfaces
