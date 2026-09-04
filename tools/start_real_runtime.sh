@@ -29,6 +29,7 @@ esac
 exec "${runtime_exec}" \
   --device /dev/ttyACM0 \
   --device /dev/ttyUSB0 \
+  --container-name salus-robot-real-runtime \
   -- \
   bash -lc "exec ros2 launch salus_bringup real_mvp.launch.py \
     fcu_url:=${SALUS_FCU_URL} \

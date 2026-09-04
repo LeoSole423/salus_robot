@@ -12,13 +12,17 @@ ACTIVE_MESSAGE = "ACTIVE: ALL_NAV2_NODES_ACTIVE"
 
 
 class DiagnosticStatusLike(Protocol):
+    name: str
     message: str
 
 
 def has_active_startup(statuses: Iterable[DiagnosticStatusLike]) -> bool:
     """Return whether a diagnostics sample reports the required Nav2 state."""
 
-    return any(status.message == ACTIVE_MESSAGE for status in statuses)
+    return any(
+        status.name == "navigation_startup" and status.message == ACTIVE_MESSAGE
+        for status in statuses
+    )
 
 
 def wait_for_active_startup(timeout_s: float) -> bool:

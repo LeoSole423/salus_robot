@@ -8,6 +8,7 @@ python3 -m unittest tools/test_real_runtime_exec_env.py
 python3 -m unittest \
   tools/test_real_mvp_authority.py \
   tools/test_real_mvp_deployment.py \
-  tools/test_real_mvp_readiness_probe.py
+  tools/test_real_mvp_readiness_probe.py \
+  tools/test_real_runtime_container_identity.py
 docker compose run --rm ros2 bash -lc \
   'source /opt/ros/humble/setup.bash && colcon build --symlink-install && source install/setup.bash && colcon test --packages-skip rslidar_msg --event-handlers console_direct+ && colcon test-result --verbose && bash tools/test_smoke_harness.sh'

@@ -24,8 +24,10 @@ class RealMvpReadinessProbeTests(unittest.TestCase):
         self.assertTrue(
             probe.has_active_startup(
                 [
-                    SimpleNamespace(message="WAITING: ODOM_MISSING"),
-                    SimpleNamespace(message=probe.ACTIVE_MESSAGE),
+                    SimpleNamespace(name="other", message=probe.ACTIVE_MESSAGE),
+                    SimpleNamespace(
+                        name="navigation_startup", message=probe.ACTIVE_MESSAGE
+                    ),
                 ]
             )
         )
@@ -34,8 +36,10 @@ class RealMvpReadinessProbeTests(unittest.TestCase):
         self.assertFalse(
             probe.has_active_startup(
                 [
-                    SimpleNamespace(message="ACTIVE: OTHER_COMPONENT"),
-                    SimpleNamespace(message="WAITING: TF_MISSING"),
+                    SimpleNamespace(name="other", message=probe.ACTIVE_MESSAGE),
+                    SimpleNamespace(
+                        name="navigation_startup", message="WAITING: TF_MISSING"
+                    ),
                 ]
             )
         )
@@ -65,7 +69,13 @@ class RealMvpReadinessProbeTests(unittest.TestCase):
             self.assertGreater(timeout_sec, 0.0)
             self.assertIsNotNone(fake_node.callback)
             fake_node.callback(
-                SimpleNamespace(status=[SimpleNamespace(message=probe.ACTIVE_MESSAGE)])
+                SimpleNamespace(
+                    status=[
+                        SimpleNamespace(
+                            name="navigation_startup", message=probe.ACTIVE_MESSAGE
+                        )
+                    ]
+                )
             )
 
         fake_rclpy.spin_once = spin_once
