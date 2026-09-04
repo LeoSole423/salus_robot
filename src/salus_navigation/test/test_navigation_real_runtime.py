@@ -208,7 +208,7 @@ def _assert_lifecycle_active(node: Node, node_name: str) -> None:
 
 
 def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
-    rclpy.init()
+    rclpy.init(domain_id=int(_DOMAIN_ID))
     fixture = SyntheticNavigationInputs()
     launch_process = _launch(
         PACKAGE_LAUNCH
@@ -400,7 +400,7 @@ class ZonesFromLLFixture(Node):
 
 def test_navigation_zones_real_projects_one_small_polygon() -> None:
     """Keepout projection is covered independently from the Nav2 long-range smoke."""
-    rclpy.init()
+    rclpy.init(domain_id=int(_DOMAIN_ID))
     fixture = ZonesFromLLFixture()
     with tempfile.TemporaryDirectory(prefix="salus-zones-real-", dir="/tmp") as temp:
         root = Path(temp)
