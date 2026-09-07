@@ -34,9 +34,10 @@ sí mismo movimiento ni pruebas de hardware.
 4. Copiar `deploy/systemd/salus-robot-real.env.example` a
    `/etc/salus/salus-robot-real.env` y ajustar sólo rutas no secretas si cambia
    la instalación. La ruta NTRIP del ejemplo es la ruta ignorada dentro del
-   checkout que el runtime ya monta como `/ros2_ws/src`. El directorio de zonas
-   del ejemplo queda en el `log` persistente del workspace preparado, montado
-   como `/ros2_ws/log`.
+   checkout que el runtime ya monta como `/ros2_ws/src`. Los directorios de
+   zonas y patrol/HOME del ejemplo quedan en el `log` persistente del workspace
+   preparado, montado como `/ros2_ws/log`; patrol usa
+   `/ros2_ws/log/runtime/patrol`.
 5. Instalar el unit y recargar systemd:
 
    ```bash

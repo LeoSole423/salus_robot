@@ -41,7 +41,12 @@ from rclpy.qos import (  # noqa: E402
 from robot_localization.srv import FromLL  # noqa: E402
 from sensor_msgs.msg import LaserScan  # noqa: E402
 from salus_interfaces.msg import CmdVelFinal, ProjectedKeepoutState  # noqa: E402
-from salus_interfaces.srv import GetZonesState, SetZonesGeoJson  # noqa: E402
+from salus_interfaces.srv import (  # noqa: E402
+    GetPatrolMissionState,
+    GetRouteMissionState,
+    GetZonesState,
+    SetZonesGeoJson,
+)
 from tf2_ros import TransformBroadcaster  # noqa: E402
 
 
@@ -216,6 +221,7 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             "navigation_real.launch.py",
             "use_keepout:=true",
             f"zones_runtime_dir:={runtime_dir}",
+            f"patrol_runtime_dir:={runtime_dir.parent / 'patrol'}",
         ],
         log_path,
     )
@@ -256,6 +262,26 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         assert fixture.count_publishers("/clock") == 0
         assert fixture.count_publishers("/cmd_vel_safe") == 1
         assert fixture.count_publishers("/cmd_vel_final") == 1
+        route_state = _call(
+            fixture,
+            fixture.create_client(
+                GetRouteMissionState, "/route_executor/get_route_mission_state"),
+            GetRouteMissionState.Request(),
+        )
+        patrol_state = _call(
+            fixture,
+            fixture.create_client(
+                GetPatrolMissionState, "/route_executor/get_patrol_mission_state"),
+            GetPatrolMissionState.Request(),
+        )
+        assert route_state.ok and not route_state.active and route_state.status == "IDLE"
+        assert patrol_state.ok and not patrol_state.active
+        assert patrol_state.phase == "idle" and patrol_state.status == "IDLE"
+        assert all(
+            math.isclose(message.twist.linear.x, 0.0, abs_tol=1e-6)
+            and math.isclose(message.twist.angular.z, 0.0, abs_tol=1e-6)
+            for message in fixture.final
+        )
 
         planner = ActionClient(fixture, ComputePathToPose, "/compute_path_to_pose")
         _spin_until(fixture, planner.server_is_ready, 20.0, "ComputePathToPose action")
