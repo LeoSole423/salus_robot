@@ -277,7 +277,11 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         assert route_state.ok and not route_state.active and route_state.status == "IDLE"
         assert patrol_state.ok and not patrol_state.active
         assert patrol_state.phase == "idle" and patrol_state.status == "IDLE"
-        assert not any(message.twist.linear.x > 0.0 for message in fixture.final)
+        assert all(
+            math.isclose(message.twist.linear.x, 0.0, abs_tol=1e-6)
+            and math.isclose(message.twist.angular.z, 0.0, abs_tol=1e-6)
+            for message in fixture.final
+        )
 
         planner = ActionClient(fixture, ComputePathToPose, "/compute_path_to_pose")
         _spin_until(fixture, planner.server_is_ready, 20.0, "ComputePathToPose action")
