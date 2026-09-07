@@ -103,11 +103,11 @@ class IsapiCameraBackend:
     def write_absolute(self, pose: PtzPose) -> PtzPose:
         target = normalize_pose(pose, self._limits)
         body = (
-            '<PTZData version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">'
+            '<PTZAbsoluteEx version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">'
             f"<elevation>{int(round(target.tilt_deg))}</elevation>"
             f"<azimuth>{int(round(target.pan_deg))}</azimuth>"
             f"<absoluteZoom>{int(round(target.zoom_level))}</absoluteZoom>"
-            "</PTZData>"
+            "</PTZAbsoluteEx>"
         ).encode("utf-8")
         self._request("PUT", body)
         return target
