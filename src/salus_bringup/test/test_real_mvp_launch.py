@@ -110,6 +110,7 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "patrol_runtime_dir",
         "patrol_battery_guard_topic",
         "patrol_battery_state_topic",
+        "web_gps_fix_topic",
     ):
         assert argument in source
 
@@ -127,7 +128,9 @@ def test_real_mvp_includes_each_final_block_once() -> None:
     ):
         assert forbidden not in lower
 
-    assert '"salus_web", "web_bridge.launch.py", {}' in source
+    assert '"salus_web",\n            "web_bridge.launch.py",' in source
+    assert '"web_gps_fix_topic", default_value="/salus/gps/fix"' in source
+    assert '"gps_fix_topic": web_gps_fix_topic' in source
     assert "enable_control_lock" not in source
     assert "control_lock_start_locked" not in source
 

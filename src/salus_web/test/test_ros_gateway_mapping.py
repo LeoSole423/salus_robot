@@ -19,6 +19,25 @@ def test_gateway_does_not_shadow_rclpy_node_client_storage() -> None:
     assert "self._clients =" not in source
 
 
+def test_gateway_gps_subscription_uses_compatible_parameter_default() -> None:
+    source = (Path(__file__).parents[1] / "salus_web" / "ros_gateway.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'self.declare_parameter("gps_fix_topic", "/gps/fix")' in source
+    assert 'NavSatFix, "/gps/fix"' not in source
+    subscription = source[source.index("NavSatFix,"):source.index("NavSatFix,") + 180]
+    assert 'self.get_parameter("gps_fix_topic")' in subscription
+
+
+def test_web_bridge_exposes_and_propagates_generic_gps_topic() -> None:
+    root = Path(__file__).parents[2]
+    source = (root / "salus_web" / "launch" / "web_bridge.launch.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'DeclareLaunchArgument("gps_fix_topic", default_value="/gps/fix")' in source
+    assert '"gps_fix_topic": LaunchConfiguration("gps_fix_topic")' in source
+
+
 def test_goal_mapping_preserves_arrays_and_auto_yaw() -> None:
     request = build_ros_request(_request({
         "op": "set_goal_ll",

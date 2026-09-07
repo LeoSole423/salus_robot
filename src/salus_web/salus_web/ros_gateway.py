@@ -198,6 +198,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("telemetry_profile", "compact")
         self.declare_parameter("compact_telemetry_hz", 2.0)
         self.declare_parameter("heading_odometry_topic", "/odometry/local")
+        self.declare_parameter("gps_fix_topic", "/gps/fix")
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
         self._service_timeout_s = max(
@@ -261,7 +262,10 @@ class CockpitRosGateway(Node):
             BatteryState, "/battery_state", self._on_battery_state, 10
         )
         self.create_subscription(
-            NavSatFix, "/gps/fix", self._on_gps, qos_profile_sensor_data
+            NavSatFix,
+            str(self.get_parameter("gps_fix_topic").value),
+            self._on_gps,
+            qos_profile_sensor_data,
         )
         self.create_subscription(
             Odometry,
