@@ -43,6 +43,7 @@ from sensor_msgs.msg import LaserScan  # noqa: E402
 from salus_interfaces.msg import CmdVelFinal, ProjectedKeepoutState  # noqa: E402
 from salus_interfaces.srv import (  # noqa: E402
     GetPatrolMissionState,
+    GetNavSnapshot,
     GetRouteMissionState,
     GetZonesState,
     SetZonesGeoJson,
@@ -259,6 +260,17 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             20.0,
             "local and global costmaps",
         )
+        snapshot = _call(
+            fixture,
+            fixture.create_client(
+                GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"),
+            GetNavSnapshot.Request(),
+        )
+        assert snapshot.ok
+        assert snapshot.mime == "image/png"
+        assert snapshot.width > 0 and snapshot.height > 0
+        assert bytes(snapshot.image_png).startswith(b"\x89PNG\r\n\x1a\n")
+        assert snapshot.layers.local_costmap
         assert fixture.count_publishers("/clock") == 0
         assert fixture.count_publishers("/cmd_vel_safe") == 1
         assert fixture.count_publishers("/cmd_vel_final") == 1

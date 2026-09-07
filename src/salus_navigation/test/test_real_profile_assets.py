@@ -84,7 +84,7 @@ def test_real_core_has_exactly_the_frozen_processes_and_lifecycle_targets():
 
 def test_real_top_level_composes_zones_collision_core_and_one_command_server():
     source = (LAUNCH / "navigation_real.launch.py").read_text(encoding="utf-8")
-    assert source.count("IncludeLaunchDescription(") == 5
+    assert source.count("IncludeLaunchDescription(") == 6
     assert source.count('executable="nav_command_server"') == 1
     assert '"zones_runtime_dir", default_value="runtime/zones"' in source
     assert '"patrol_runtime_dir", default_value="runtime/patrol"' in source
@@ -98,6 +98,7 @@ def test_real_top_level_composes_zones_collision_core_and_one_command_server():
         '"obstacle_detection_required": True',
         '"route_executor_real.launch.py"',
         '"patrol_mission_real.launch.py"',
+        '"navigation_snapshot_real.launch.py"',
         '"use_sim_time": "false"',
         '"battery_guard_topic": patrol_battery_guard_topic',
         '"battery_state_topic": patrol_battery_state_topic',
@@ -136,6 +137,30 @@ def test_real_route_and_patrol_launches_reuse_one_safe_existing_node_each():
     assert '"/battery_state"' in coordinator
     assert "cmd_vel_final" not in executor
     assert "cmd_vel_final" not in coordinator
+
+
+def test_real_snapshot_is_one_auxiliary_service_with_the_existing_contract():
+    navigation = (LAUNCH / "navigation_real.launch.py").read_text(encoding="utf-8")
+    snapshot = (LAUNCH / "navigation_snapshot_real.launch.py").read_text(
+        encoding="utf-8"
+    )
+    config = (CONFIG / "navigation_snapshot.yaml").read_text(encoding="utf-8")
+    core = (LAUNCH / "navigation_core_real.launch.py").read_text(encoding="utf-8")
+    startup = (PACKAGE / "salus_navigation" / "nav2_startup_coordinator.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert navigation.count('"navigation_snapshot_real.launch.py"') == 1
+    assert snapshot.count('executable="nav_snapshot_server"') == 1
+    assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in snapshot
+    assert '"use_sim_time": ParameterValue(use_sim_time, value_type=bool)' in snapshot
+    assert '"navigation_snapshot.yaml"' in snapshot
+    assert "get_snapshot_service: /nav_snapshot_server/get_nav_snapshot" in config
+    assert "cmd_vel" not in snapshot
+    assert "TransformBroadcaster" not in snapshot
+    assert "lifecycle" not in snapshot.lower()
+    assert "nav_snapshot" not in core
+    assert "nav_snapshot" not in startup
 
 
 def test_real_launches_are_software_only_and_have_no_second_authority():

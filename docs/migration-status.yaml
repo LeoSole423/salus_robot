@@ -465,6 +465,8 @@ components:
       - src/salus_navigation/launch/route_executor_real.launch.py
       - src/salus_navigation/launch/patrol_mission_real.launch.py
       - src/salus_navigation/test/test_navigation_real_runtime.py
+      - src/salus_navigation/launch/navigation_snapshot_real.launch.py
+      - src/salus_navigation/test/test_real_profile_assets.py
       - docs/migration-evidence/intent/rviz-goal-control.md
       - docs/migration-evidence/intent/issue-223-real-route-patrol.md
       - docs/migration-evidence/intent/2026-08-30-vector-keepout-costmap-layer.md
@@ -476,6 +478,11 @@ components:
       persistent patrol directory. The PC runtime verifies their idle APIs and
       safe-zero startup; a short Jetson API/safe-zero gate remains pending and
       no physical mission is claimed.
+    snapshot_runtime_note: >-
+      Issue #224 composes the existing navigation snapshot service in the real
+      navigation profile with `use_sim_time=false` and the unchanged ADR 0004
+      YAML. The PC runtime verifies a valid PNG after navigation readiness;
+      snapshot service failure is not a lifecycle or startup-readiness gate.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt

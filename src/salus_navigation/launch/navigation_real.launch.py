@@ -30,6 +30,9 @@ def generate_launch_description() -> LaunchDescription:
     patrol_launch = PathJoinSubstitution([
         package_share, "launch", "patrol_mission_real.launch.py",
     ])
+    snapshot_launch = PathJoinSubstitution([
+        package_share, "launch", "navigation_snapshot_real.launch.py",
+    ])
     return LaunchDescription([
         DeclareLaunchArgument("use_keepout", default_value="true"),
         DeclareLaunchArgument("zones_runtime_dir", default_value="runtime/zones"),
@@ -63,6 +66,10 @@ def generate_launch_description() -> LaunchDescription:
                 "battery_guard_topic": patrol_battery_guard_topic,
                 "battery_state_topic": patrol_battery_state_topic,
             }.items(),
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(snapshot_launch),
+            launch_arguments={"use_sim_time": "false"}.items(),
         ),
         Node(
             package="salus_navigation",
