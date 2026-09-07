@@ -1,3 +1,6 @@
+from io import BytesIO
+from urllib.error import HTTPError
+
 import pytest
 
 from salus_hardware.camera_backend import CameraBackendError, SimCameraBackend, _xml_number
@@ -23,6 +26,17 @@ class _CaptureOpener:
     def open(self, request, timeout):
         self.requests.append((request, timeout))
         return _FakeResponse()
+
+
+class _ErrorOpener:
+    def open(self, request, timeout):
+        raise HTTPError(
+            request.full_url,
+            403,
+            "Forbidden",
+            {"Content-Type": "application/xml"},
+            BytesIO(b"<ResponseStatus><statusString>denied</statusString></ResponseStatus>"),
+        )
 
 
 def test_sim_backend_is_bounded_and_switchable() -> None:
@@ -64,3 +78,18 @@ def test_isapi_absolute_ex_put_uses_hikvision_absolute_ex_document() -> None:
     assert _xml_number(root, "elevation") == 3.0
     assert _xml_number(root, "azimuth") == 12.0
     assert _xml_number(root, "absoluteZoom") == 4.0
+
+
+def test_isapi_http_error_preserves_status_and_compact_body() -> None:
+    from salus_hardware.camera_backend import IsapiCameraBackend, IsapiCameraConfig
+
+    backend = IsapiCameraBackend(
+        IsapiCameraConfig("camera.local", 80, "user", "secret", 1, 1.0),
+        CameraLimits(),
+    )
+    backend._opener = _ErrorOpener()
+
+    with pytest.raises(CameraBackendError, match="ISAPI HTTP 403 Forbidden") as error:
+        backend.write_absolute(PtzPose(12.0, 3.0, 4.0))
+
+    assert "statusString>denied" in str(error.value)

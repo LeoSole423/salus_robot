@@ -120,9 +120,21 @@ class IsapiCameraBackend:
             with self._opener.open(request, timeout=self._config.timeout_s) as response:
                 return response.read()
         except HTTPError as error:
-            raise CameraBackendError(f"ISAPI HTTP {error.code}") from error
+            body = _compact_http_body(error.read())
+            raise CameraBackendError(
+                f"ISAPI HTTP {error.code} {error.reason}; body='{body}'"
+            ) from error
         except (URLError, TimeoutError, OSError) as error:
-            raise CameraBackendError("ISAPI request failed") from error
+            raise CameraBackendError(f"ISAPI request failed: {error}") from error
+
+
+def _compact_http_body(body: bytes, max_len: int = 280) -> str:
+    compact = " ".join(body.decode("utf-8", "replace").split())
+    if not compact:
+        return "<empty>"
+    if len(compact) <= max_len:
+        return compact
+    return compact[: max_len - 3] + "..."
 
 
 def _xml_number(root: ElementTree.Element, name: str) -> float:
