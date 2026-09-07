@@ -97,9 +97,10 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "global_localization_real.launch.py",
         "perception_real.launch.py",
         "navigation_real.launch.py",
+        "web_bridge.launch.py",
     ):
         assert source.count(launch_file) == 1
-    assert source.count("_include(") == 8  # helper + 7 includes
+    assert source.count("_include(") == 9  # helper + 8 includes
     for argument in (
         "ntrip_config_path",
         "fcu_url",
@@ -119,10 +120,13 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "gazebo",
         "sim",
         "camera",
-        "web",
         "systemd",
     ):
         assert forbidden not in lower
+
+    assert '"salus_web", "web_bridge.launch.py", {}' in source
+    assert "enable_control_lock" not in source
+    assert "control_lock_start_locked" not in source
 
 
 def test_real_mvp_runtime_dependency_is_declared() -> None:
