@@ -70,4 +70,5 @@ def generate_launch_description() -> LaunchDescription:
                 "zones_runtime_dir": zones_runtime_dir,
             },
         ),
+        _include("salus_web", "web_bridge.launch.py", {}),
     ])
