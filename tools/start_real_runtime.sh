@@ -10,6 +10,10 @@ SALUS_SERIAL_PORT="${SALUS_SERIAL_PORT:-/dev/ttyUSB0}"
 SALUS_USE_KEEPOUT="${SALUS_USE_KEEPOUT:-true}"
 SALUS_ZONES_RUNTIME_DIR="${SALUS_ZONES_RUNTIME_DIR:-runtime/zones}"
 SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"
+SALUS_CAMERA_HOST="${SALUS_CAMERA_HOST:-${CAMERA_HOST:-}}"
+SALUS_CAMERA_PORT="${SALUS_CAMERA_PORT:-${CAMERA_PORT:-0}}"
+SALUS_CAMERA_CHANNEL="${SALUS_CAMERA_CHANNEL:-${CAMERA_CHANNEL:-0}}"
+SALUS_CAMERA_PRESETS_FILE="${SALUS_CAMERA_PRESETS_FILE:-/ros2_ws/log/runtime/camera/presets.json}"
 
 if [[ ! -r "${SALUS_NTRIP_CONFIG_PATH}" ]]; then
   echo "NTRIP config is not readable: ${SALUS_NTRIP_CONFIG_PATH}" >&2
@@ -27,15 +31,24 @@ case "${SALUS_NTRIP_CONFIG_PATH}" in
     ;;
 esac
 
-exec "${runtime_exec}" \
-  --device /dev/ttyACM0 \
-  --device /dev/ttyUSB0 \
-  --container-name salus-robot-real-runtime \
-  -- \
+runtime_args=(
+  --device /dev/ttyACM0
+  --device /dev/ttyUSB0
+  --container-name salus-robot-real-runtime
+)
+if [[ -n "${SALUS_CAMERA_PASS_FILE:-}" ]]; then
+  runtime_args+=(--camera-pass-file "${SALUS_CAMERA_PASS_FILE}")
+fi
+
+exec "${runtime_exec}" "${runtime_args[@]}" -- \
   bash -lc "exec ros2 launch salus_bringup real_mvp.launch.py \
     fcu_url:=${SALUS_FCU_URL} \
     ntrip_config_path:=${ntrip_config_container} \
     serial_port:=${SALUS_SERIAL_PORT} \
     use_keepout:=${SALUS_USE_KEEPOUT} \
     zones_runtime_dir:=${SALUS_ZONES_RUNTIME_DIR} \
-    patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR}"
+    patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR} \
+    camera_host:=${SALUS_CAMERA_HOST} \
+    camera_port:=${SALUS_CAMERA_PORT} \
+    camera_channel:=${SALUS_CAMERA_CHANNEL} \
+    camera_presets_file:=${SALUS_CAMERA_PRESETS_FILE}"

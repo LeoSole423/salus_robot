@@ -49,6 +49,8 @@ class DeploymentContractTests(unittest.TestCase):
             text,
         )
         self.assertIn("--container-name salus-robot-real-runtime", text)
+        self.assertIn("SALUS_CAMERA_PASS_FILE", text)
+        self.assertIn("camera_presets_file:=${SALUS_CAMERA_PRESETS_FILE}", text)
         self.assertNotIn("password", text.lower())
         self.assertNotIn("--privileged", text)
 
@@ -92,6 +94,10 @@ class DeploymentContractTests(unittest.TestCase):
         runbook = RUNBOOK.read_text(encoding="utf-8")
         self.assertIn("src/salus_hardware/config/rtk_sources.local.yaml", env)
         self.assertIn("SALUS_PATROL_RUNTIME_DIR=/ros2_ws/log/runtime/patrol", env)
+        self.assertIn("CAMERA_HOST=192.168.1.64", env)
+        self.assertIn("CAMERA_USER=admin", env)
+        self.assertIn("SALUS_CAMERA_PASS_FILE=/etc/salus/camera.pass", env)
+        self.assertIn("SALUS_CAMERA_PRESETS_FILE=/ros2_ws/log/runtime/camera/presets.json", env)
         for item in (
             "prepare_real_runtime.sh",
             "real_runtime_exec.sh",

@@ -532,10 +532,13 @@ components:
     evidence:
       - docs/migration-evidence/intent/camera-ptz-presets.md
       - docs/decisions/0006-camera-ptz-control-boundaries.md
+      - docs/migration-evidence/intent/camera-ptz-real-runtime-20260907.md
       - src/salus_hardware/salus_hardware/camera_node.py
+      - src/salus_hardware/launch/camera_real.launch.py
+      - src/salus_hardware/test/test_camera_real_launch.py
       - src/salus_hardware/test/test_camera_domain.py
       - tools/smoke_web_cockpit.py
-    note: Camera PTZ, presets, ISAPI boundary, simulated backend, atomic persistence and Cockpit lease policy pass unit, WebSocket and visual simulation validation. GNSS/MAVROS, RS16, UART and physical camera validation remain pending.
+    note: Camera PTZ, presets, ISAPI boundary, simulated backend, atomic persistence and Cockpit lease policy pass unit, WebSocket and visual simulation validation. The real MVP now composes one degraded-safe ISAPI PTZ owner and keeps MediaMTX host-owned and external; physical camera, credentials, MediaMTX and PTZ validation remain pending.
   system_bringup:
     source: navegacion_gps/launch
     target: salus_bringup

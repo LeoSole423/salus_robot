@@ -5,6 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/real_runtime_common.sh"
 
 devices=()
 container_name=""
+camera_pass_file=""
 while (($#)); do
   case "$1" in
     --device)
@@ -23,6 +24,14 @@ while (($#)); do
       container_name="$2"
       shift 2
       ;;
+    --camera-pass-file)
+      if (($# < 2)); then
+        echo "--camera-pass-file requires a path" >&2
+        exit 2
+      fi
+      camera_pass_file="$2"
+      shift 2
+      ;;
     --)
       shift
       break
@@ -35,7 +44,7 @@ while (($#)); do
 done
 
 if (($# == 0)); then
-  echo "usage: real_runtime_exec.sh [--device PATH]... [--container-name NAME] -- COMMAND [ARGS...]" >&2
+  echo "usage: real_runtime_exec.sh [--device PATH]... [--container-name NAME] [--camera-pass-file PATH] -- COMMAND [ARGS...]" >&2
   exit 2
 fi
 
@@ -91,6 +100,22 @@ docker_args=(
 )
 if ((${#devices[@]})); then
   docker_args+=("${devices[@]}")
+fi
+for camera_variable in CAMERA_HOST CAMERA_USER CAMERA_PORT CAMERA_CHANNEL; do
+  camera_value="${!camera_variable-}"
+  if [[ -n "${camera_value}" ]]; then
+    docker_args+=(-e "${camera_variable}=${camera_value}")
+  fi
+done
+if [[ -n "${camera_pass_file}" ]]; then
+  [[ -r "${camera_pass_file}" ]] || {
+    echo "camera password file is not readable: ${camera_pass_file}" >&2
+    exit 1
+  }
+  docker_args+=(
+    --mount "type=bind,src=${camera_pass_file},dst=/run/secrets/salus-camera-pass,readonly"
+    -e "CAMERA_PASS_FILE=/run/secrets/salus-camera-pass"
+  )
 fi
 if [[ -n "${container_name}" ]]; then
   if [[ ! "${container_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then

@@ -38,6 +38,15 @@ sí mismo movimiento ni pruebas de hardware.
    zonas y patrol/HOME del ejemplo quedan en el `log` persistente del workspace
    preparado, montado como `/ros2_ws/log`; patrol usa
    `/ros2_ws/log/runtime/patrol`.
+   Para PTZ, configurar `CAMERA_HOST`, `CAMERA_PORT`, `CAMERA_USER` y
+   `CAMERA_CHANNEL` en ese EnvironmentFile. Crear el archivo local indicado por
+   `SALUS_CAMERA_PASS_FILE`, propiedad de `admin` y con permisos `0600`; la
+   credencial no debe entrar en el EnvironmentFile, parámetros ROS, argumentos,
+   logs ni commits. Los presets
+   se guardan en `/ros2_ws/log/runtime/camera/presets.json`.
+   MediaMTX permanece como servicio del host, separado del runtime ROS; su path
+   on-demand `cam3` publica el endpoint WHEP en el puerto `8889`. Su caída sólo
+   degrada video, no readiness, navegación, safety ni control.
 5. Instalar el unit y recargar systemd:
 
    ```bash
