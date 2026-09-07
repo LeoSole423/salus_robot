@@ -96,11 +96,12 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "localization_local_real.launch.py",
         "global_localization_real.launch.py",
         "perception_real.launch.py",
+        "camera_real.launch.py",
         "navigation_real.launch.py",
         "web_bridge.launch.py",
     ):
         assert source.count(launch_file) == 1
-    assert source.count("_include(") == 9  # helper + 8 includes
+    assert source.count("_include(") == 10  # helper + 9 includes
     for argument in (
         "ntrip_config_path",
         "fcu_url",
@@ -111,6 +112,10 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "patrol_battery_guard_topic",
         "patrol_battery_state_topic",
         "web_gps_fix_topic",
+        "camera_host",
+        "camera_port",
+        "camera_channel",
+        "camera_presets_file",
     ):
         assert argument in source
 
@@ -123,7 +128,6 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "legacy",
         "gazebo",
         "sim",
-        "camera",
         "systemd",
     ):
         assert forbidden not in lower
@@ -131,6 +135,9 @@ def test_real_mvp_includes_each_final_block_once() -> None:
     assert '"salus_web",\n            "web_bridge.launch.py",' in source
     assert '"web_gps_fix_topic", default_value="/salus/gps/fix"' in source
     assert '"gps_fix_topic": web_gps_fix_topic' in source
+    assert '"salus_hardware",\n            "camera_real.launch.py",' in source
+    assert source.count('"camera_real.launch.py"') == 1
+    assert "use_sim_time" not in source
     assert "enable_control_lock" not in source
     assert "control_lock_start_locked" not in source
 

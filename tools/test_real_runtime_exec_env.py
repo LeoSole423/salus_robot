@@ -47,6 +47,18 @@ class RealRuntimeExecEnvironmentTest(unittest.TestCase):
         self.assertIn('-e "ROS_DOMAIN_ID=${runtime_ros_domain_id}"', self.source)
         self.assertIn('-e "ROS_LOCALHOST_ONLY=0"', self.source)
 
+    def test_camera_configuration_is_forwarded_without_password_environment(self) -> None:
+        self.assertIn(
+            "for camera_variable in CAMERA_HOST CAMERA_USER CAMERA_PORT CAMERA_CHANNEL",
+            self.source,
+        )
+        self.assertIn('camera_value="${!camera_variable-}"', self.source)
+        self.assertIn("--camera-pass-file", self.source)
+        self.assertIn("CAMERA_PASS_FILE=/run/secrets/salus-camera-pass", self.source)
+        self.assertIn("type=bind", self.source)
+        self.assertIn("readonly", self.source)
+        self.assertNotIn('CAMERA_PASS=${', self.source)
+
     def test_operator_ros_domain_id_is_preserved(self) -> None:
         env = os.environ.copy()
         env["ROS_DOMAIN_ID"] = "42"

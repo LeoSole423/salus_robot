@@ -29,6 +29,10 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     web_gps_fix_topic = LaunchConfiguration("web_gps_fix_topic")
+    camera_host = LaunchConfiguration("camera_host")
+    camera_port = LaunchConfiguration("camera_port")
+    camera_channel = LaunchConfiguration("camera_channel")
+    camera_presets_file = LaunchConfiguration("camera_presets_file")
 
     return LaunchDescription([
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
@@ -47,6 +51,13 @@ def generate_launch_description() -> LaunchDescription:
             "patrol_battery_state_topic", default_value="/battery_state"),
         DeclareLaunchArgument(
             "web_gps_fix_topic", default_value="/salus/gps/fix"),
+        DeclareLaunchArgument("camera_host", default_value=""),
+        DeclareLaunchArgument("camera_port", default_value="0"),
+        DeclareLaunchArgument("camera_channel", default_value="0"),
+        DeclareLaunchArgument(
+            "camera_presets_file",
+            default_value="/ros2_ws/log/runtime/camera/presets.json",
+        ),
         _include("salus_description", "description_real.launch.py", {}),
         _include(
             "salus_bringup",
@@ -73,6 +84,16 @@ def generate_launch_description() -> LaunchDescription:
             {},
         ),
         _include("salus_perception", "perception_real.launch.py", {}),
+        _include(
+            "salus_hardware",
+            "camera_real.launch.py",
+            {
+                "camera_host": camera_host,
+                "camera_port": camera_port,
+                "camera_channel": camera_channel,
+                "camera_presets_file": camera_presets_file,
+            },
+        ),
         _include(
             "salus_navigation",
             "navigation_real.launch.py",
