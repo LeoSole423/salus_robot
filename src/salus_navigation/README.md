@@ -6,8 +6,9 @@ keepout, footprint, zonas de colisión, `/scan_clean` y plan, sin ser dueño de
 WebSocket, rosbag ni telemetría compacta.
 
 Responsabilidad: navegación segura, Nav2 y zonas no-go. El corte actual ofrece
-un goal LL único, rutas abiertas/circulares y zonas dinámicas GeoJSON en
-simulación.
+un goal LL único, rutas abiertas/circulares y zonas dinámicas GeoJSON; el
+runtime real también compone las APIs de rutas y patrol/HOME sin crear otra
+autoridad de velocidad.
 
 - API de zonas: `/zones_manager/set_geojson`, `/zones_manager/get_state` y
   `/zones_manager/reload_from_disk`.
@@ -44,7 +45,12 @@ simulación.
   `low_battery_threshold_pct` (25 %, rango 0–100, sólo fallback).
 - `patrol_mission_sim.launch.py` requiere que `route_executor` ya esté activo.
   En el checkpoint integrado se habilitan ambos con
-  `launch_routes:=true launch_patrol:=true`.
+  `launch_routes:=true launch_patrol:=true`. En real,
+  `navigation_real.launch.py` inicia exactamente una instancia de
+  `route_executor_real.launch.py` y `patrol_mission_real.launch.py`, ambas con
+  `use_sim_time=false`. El launch conserva `runtime/patrol/` como contrato; el
+  servicio final lo apunta a `/ros2_ws/log/runtime/patrol`, persistente en el
+  workspace preparado.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa

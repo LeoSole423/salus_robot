@@ -25,6 +25,9 @@ def generate_launch_description() -> LaunchDescription:
     serial_port = LaunchConfiguration("serial_port")
     use_keepout = LaunchConfiguration("use_keepout")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
+    patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
+    patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
+    patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
 
     return LaunchDescription([
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
@@ -36,6 +39,11 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("serial_port", default_value="auto"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
         DeclareLaunchArgument("zones_runtime_dir", default_value="runtime/zones"),
+        DeclareLaunchArgument("patrol_runtime_dir", default_value="runtime/patrol"),
+        DeclareLaunchArgument(
+            "patrol_battery_guard_topic", default_value="/battery_mission_guard"),
+        DeclareLaunchArgument(
+            "patrol_battery_state_topic", default_value="/battery_state"),
         _include("salus_description", "description_real.launch.py", {}),
         _include(
             "salus_bringup",
@@ -68,6 +76,9 @@ def generate_launch_description() -> LaunchDescription:
             {
                 "use_keepout": use_keepout,
                 "zones_runtime_dir": zones_runtime_dir,
+                "patrol_runtime_dir": patrol_runtime_dir,
+                "patrol_battery_guard_topic": patrol_battery_guard_topic,
+                "patrol_battery_state_topic": patrol_battery_state_topic,
             },
         ),
         _include("salus_web", "web_bridge.launch.py", {}),

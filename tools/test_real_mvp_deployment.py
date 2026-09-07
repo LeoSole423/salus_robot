@@ -43,6 +43,11 @@ class DeploymentContractTests(unittest.TestCase):
         self.assertIn("ros2 launch salus_bringup real_mvp.launch.py", text)
         self.assertIn("ntrip_config_path:=${ntrip_config_container}", text)
         self.assertIn("serial_port:=${SALUS_SERIAL_PORT}", text)
+        self.assertIn("patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR}", text)
+        self.assertIn(
+            'SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"',
+            text,
+        )
         self.assertIn("--container-name salus-robot-real-runtime", text)
         self.assertNotIn("password", text.lower())
         self.assertNotIn("--privileged", text)
@@ -86,6 +91,7 @@ class DeploymentContractTests(unittest.TestCase):
         env = ENV.read_text(encoding="utf-8")
         runbook = RUNBOOK.read_text(encoding="utf-8")
         self.assertIn("src/salus_hardware/config/rtk_sources.local.yaml", env)
+        self.assertIn("SALUS_PATROL_RUNTIME_DIR=/ros2_ws/log/runtime/patrol", env)
         for item in (
             "prepare_real_runtime.sh",
             "real_runtime_exec.sh",
@@ -96,6 +102,7 @@ class DeploymentContractTests(unittest.TestCase):
             "rollback",
             "admin",
             "HOME",
+            "/ros2_ws/log/runtime/patrol",
         ):
             self.assertIn(item, runbook)
         self.assertNotIn("password", env.lower())

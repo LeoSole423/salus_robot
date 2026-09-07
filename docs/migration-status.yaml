@@ -462,10 +462,20 @@ components:
       - docs/decisions/0003-latched-battery-return-home.md
       - src/salus_navigation/salus_navigation/nav_snapshot_server.py
       - tools/smoke_navigation_snapshot.sh
+      - src/salus_navigation/launch/route_executor_real.launch.py
+      - src/salus_navigation/launch/patrol_mission_real.launch.py
+      - src/salus_navigation/test/test_navigation_real_runtime.py
       - docs/migration-evidence/intent/rviz-goal-control.md
+      - docs/migration-evidence/intent/issue-223-real-route-patrol.md
       - docs/migration-evidence/intent/2026-08-30-vector-keepout-costmap-layer.md
     note: >-
       Safety arbitration, a single Nav2 LL goal, guarded RViz map goals, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Keepouts use the bounded vector layer in rolling global/local costmaps; fixed PGM/LoadMap/KeepoutFilter runtime and full-mask DDS are removed. Snapshot and goal rejection consume projected vector state directly. The manual `vector_keepout_long_range` smoke passed on 2026-08-31: fixed map A/B/C geometry survived physical origin→~350 m→~700 m teleports; each rolling window kept its configured dimensions; all three zones rejected goals and caused explicit-start planner detours; map→odom correction, B move/removal baseline clearing, revisions, latencies and zero legacy-mask publishers were recorded. This is simulation evidence only; hardware evidence remains pending. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Snapshots are ported as a separate ROS capture, pure renderer and PNG service; Cockpit integration remains pending. Legacy A/B and hardware parity remain pending.
+    real_runtime_note: >-
+      Issue #223 composes the existing route executor and structured
+      patrol/HOME coordinator in the real MVP with `use_sim_time=false` and a
+      persistent patrol directory. The PC runtime verifies their idle APIs and
+      safe-zero startup; a short Jetson API/safe-zero gate remains pending and
+      no physical mission is claimed.
   navigation_bt:
     source: navegacion_gps_bt
     target: salus_navigation_bt

@@ -107,6 +107,9 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "serial_port",
         "use_keepout",
         "zones_runtime_dir",
+        "patrol_runtime_dir",
+        "patrol_battery_guard_topic",
+        "patrol_battery_state_topic",
     ):
         assert argument in source
 
@@ -168,5 +171,7 @@ def test_real_mvp_show_args_does_not_start_devices() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
-    for argument in ("ntrip_config_path", "fcu_url", "serial_port"):
+    for argument in (
+        "ntrip_config_path", "fcu_url", "serial_port", "patrol_runtime_dir",
+    ):
         assert argument in result.stdout

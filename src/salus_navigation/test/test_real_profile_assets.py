@@ -84,9 +84,10 @@ def test_real_core_has_exactly_the_frozen_processes_and_lifecycle_targets():
 
 def test_real_top_level_composes_zones_collision_core_and_one_command_server():
     source = (LAUNCH / "navigation_real.launch.py").read_text(encoding="utf-8")
-    assert source.count("IncludeLaunchDescription(") == 3
+    assert source.count("IncludeLaunchDescription(") == 5
     assert source.count('executable="nav_command_server"') == 1
     assert '"zones_runtime_dir", default_value="runtime/zones"' in source
+    assert '"patrol_runtime_dir", default_value="runtime/patrol"' in source
     assert '"use_keepout", default_value="true"' in source
     for value in (
         '"cmd_vel_safe_topic": "/cmd_vel_safe"',
@@ -95,8 +96,46 @@ def test_real_top_level_composes_zones_collision_core_and_one_command_server():
         '"gps_topic": "/salus/gps/fix"',
         '"fromll_service": "/fromLL"',
         '"obstacle_detection_required": True',
+        '"route_executor_real.launch.py"',
+        '"patrol_mission_real.launch.py"',
+        '"use_sim_time": "false"',
+        '"battery_guard_topic": patrol_battery_guard_topic',
+        '"battery_state_topic": patrol_battery_state_topic',
     ):
         assert value in source
+
+
+def test_real_route_and_patrol_launches_reuse_one_safe_existing_node_each():
+    route = (LAUNCH / "route_executor_real.launch.py").read_text(encoding="utf-8")
+    patrol = (LAUNCH / "patrol_mission_real.launch.py").read_text(encoding="utf-8")
+    coordinator = (PACKAGE / "salus_navigation" / "patrol_mission_coordinator.py").read_text(
+        encoding="utf-8"
+    )
+    executor = (PACKAGE / "salus_navigation" / "route_executor_node.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert route.count('executable="route_executor"') == 1
+    assert patrol.count('executable="patrol_mission_coordinator"') == 1
+    assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in route
+    assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in patrol
+    assert 'DeclareLaunchArgument("runtime_dir", default_value="runtime/patrol")' in patrol
+    assert 'default_value="/battery_mission_guard"' in patrol
+    assert 'default_value="/battery_state"' in patrol
+    for endpoint in (
+        "/route_executor/set_route_mission_ll",
+        "/route_executor/cancel_route_mission",
+        "/route_executor/get_route_mission_state",
+        "/route_executor/set_patrol_mission_ll",
+        "/route_executor/cancel_patrol_mission",
+        "/route_executor/get_patrol_mission_state",
+        "/route_executor/request_return_home",
+    ):
+        assert endpoint in executor or endpoint in coordinator
+    assert '"/battery_mission_guard"' in coordinator
+    assert '"/battery_state"' in coordinator
+    assert "cmd_vel_final" not in executor
+    assert "cmd_vel_final" not in coordinator
 
 
 def test_real_launches_are_software_only_and_have_no_second_authority():
@@ -106,6 +145,8 @@ def test_real_launches_are_software_only_and_have_no_second_authority():
             "navigation_zones_real.launch.py",
             "navigation_core_real.launch.py",
             "navigation_real.launch.py",
+            "route_executor_real.launch.py",
+            "patrol_mission_real.launch.py",
         )
     ).lower()
     assert "gazebo" not in sources
