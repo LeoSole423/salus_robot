@@ -103,11 +103,11 @@ class IsapiCameraBackend:
     def write_absolute(self, pose: PtzPose) -> PtzPose:
         target = normalize_pose(pose, self._limits)
         body = (
-            '<PTZData version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">'
+            '<PTZAbsoluteEx version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">'
             f"<elevation>{int(round(target.tilt_deg))}</elevation>"
             f"<azimuth>{int(round(target.pan_deg))}</azimuth>"
             f"<absoluteZoom>{int(round(target.zoom_level))}</absoluteZoom>"
-            "</PTZData>"
+            "</PTZAbsoluteEx>"
         ).encode("utf-8")
         self._request("PUT", body)
         return target
@@ -120,9 +120,21 @@ class IsapiCameraBackend:
             with self._opener.open(request, timeout=self._config.timeout_s) as response:
                 return response.read()
         except HTTPError as error:
-            raise CameraBackendError(f"ISAPI HTTP {error.code}") from error
+            body = _compact_http_body(error.read())
+            raise CameraBackendError(
+                f"ISAPI HTTP {error.code} {error.reason}; body='{body}'"
+            ) from error
         except (URLError, TimeoutError, OSError) as error:
-            raise CameraBackendError("ISAPI request failed") from error
+            raise CameraBackendError(f"ISAPI request failed: {error}") from error
+
+
+def _compact_http_body(body: bytes, max_len: int = 280) -> str:
+    compact = " ".join(body.decode("utf-8", "replace").split())
+    if not compact:
+        return "<empty>"
+    if len(compact) <= max_len:
+        return compact
+    return compact[: max_len - 3] + "..."
 
 
 def _xml_number(root: ElementTree.Element, name: str) -> float:
