@@ -28,6 +28,7 @@ def generate_launch_description() -> LaunchDescription:
     patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
+    web_gps_fix_topic = LaunchConfiguration("web_gps_fix_topic")
 
     return LaunchDescription([
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
@@ -44,6 +45,8 @@ def generate_launch_description() -> LaunchDescription:
             "patrol_battery_guard_topic", default_value="/battery_mission_guard"),
         DeclareLaunchArgument(
             "patrol_battery_state_topic", default_value="/battery_state"),
+        DeclareLaunchArgument(
+            "web_gps_fix_topic", default_value="/salus/gps/fix"),
         _include("salus_description", "description_real.launch.py", {}),
         _include(
             "salus_bringup",
@@ -81,5 +84,9 @@ def generate_launch_description() -> LaunchDescription:
                 "patrol_battery_state_topic": patrol_battery_state_topic,
             },
         ),
-        _include("salus_web", "web_bridge.launch.py", {}),
+        _include(
+            "salus_web",
+            "web_bridge.launch.py",
+            {"gps_fix_topic": web_gps_fix_topic},
+        ),
     ])
