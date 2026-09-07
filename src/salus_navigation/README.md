@@ -51,6 +51,11 @@ autoridad de velocidad.
   `use_sim_time=false`. El launch conserva `runtime/patrol/` como contrato; el
   servicio final lo apunta a `/ros2_ws/log/runtime/patrol`, persistente en el
   workspace preparado.
+- `navigation_real.launch.py` inicia también exactamente una instancia del
+  `nav_snapshot_server` mediante `navigation_snapshot_real.launch.py`, con
+  `use_sim_time=false` y el mismo `navigation_snapshot.yaml`. Es una capacidad
+  auxiliar: no forma parte del lifecycle ni de los gates de readiness y no
+  publica TF ni comandos.
 - `path_health` conserva el plan mientras siga sano y evalúa hasta 12 m por
   delante con footprint orientado, colisión, inflación sostenida, progreso y
   desviación transversal. Evalúa la pose desde TF en el frame del path y usa

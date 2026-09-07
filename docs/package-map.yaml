@@ -48,7 +48,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
-    status: ported_nav2_routes_recovery_capability_profiles_patrol_and_battery_home_real_composed_pc_validated
+    status: ported_nav2_routes_recovery_capability_profiles_patrol_battery_home_and_snapshot_real_composed_pc_validated
   salus_navigation_bt:
     owner: autonomy_bt
     build_type: ament_cmake
