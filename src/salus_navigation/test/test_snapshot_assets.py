@@ -21,6 +21,8 @@ def test_snapshot_server_keeps_adr_boundaries_and_contract_topics() -> None:
     assert "callback_group=self._service_callbacks" in source
     assert "nav_snapshot_server" in launch
     assert "navigation_snapshot.yaml" in launch
+    assert "snapshot_size_px: 384" in config
+    assert "snapshot_png_compression: 6" in config
     assert "local_costmap_max_age_s: 2.0" in config
     assert "dynamic_layer_max_age_s: 2.0" in config
 

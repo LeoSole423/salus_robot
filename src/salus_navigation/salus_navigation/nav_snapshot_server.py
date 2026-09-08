@@ -24,7 +24,15 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from salus_interfaces.msg import NavSnapshotLayers, ProjectedKeepoutState
 from salus_interfaces.srv import GetNavSnapshot
-from salus_navigation.snapshot_renderer import Grid, KeepoutPolygon, Polyline, SnapshotScene, Transform2D, render
+from salus_navigation.snapshot_renderer import (
+    Grid,
+    KeepoutPolygon,
+    Polyline,
+    SnapshotScene,
+    Transform2D,
+    render,
+    validate_png_compression,
+)
 
 
 @dataclass(frozen=True)
@@ -82,8 +90,9 @@ class NavSnapshotServer(Node):
             "plan_topic": "/plan",
             "base_frame": "base_footprint",
             "snapshot_extent_m": 30.0,
-            "snapshot_size_px": 512,
+            "snapshot_size_px": 384,
             "snapshot_global_inset_px": 160,
+            "snapshot_png_compression": 6,
             "snapshot_timeout_ms": 500,
             "tf_timeout_s": 0.2,
             "local_costmap_max_age_s": 2.0,
@@ -98,6 +107,9 @@ class NavSnapshotServer(Node):
         self._parameter["snapshot_global_inset_px"] = max(
             32,
             min(self._parameter["snapshot_size_px"] // 2, int(self._parameter["snapshot_global_inset_px"])),
+        )
+        self._parameter["snapshot_png_compression"] = validate_png_compression(
+            self._parameter["snapshot_png_compression"]
         )
         self._parameter["snapshot_timeout_ms"] = max(100, int(self._parameter["snapshot_timeout_ms"]))
         self._parameter["tf_timeout_s"] = max(0.05, float(self._parameter["tf_timeout_s"]))
@@ -357,7 +369,10 @@ class NavSnapshotServer(Node):
             robot_global=(robot_global_transform.x, robot_global_transform.y) if robot_global_transform else None,
         )
         try:
-            rendered = render(scene)
+            rendered = render(
+                scene,
+                png_compression=self._parameter["snapshot_png_compression"],
+            )
         except RuntimeError as exc:
             return self._failure(response, str(exc), local.frame_id)
         except Exception as exc:  # diagnostics retain the public stable prefix

@@ -13,8 +13,9 @@ nav_snapshot_server:
     plan_topic: /plan
     base_frame: base_footprint
     snapshot_extent_m: 30.0
-    snapshot_size_px: 512
+    snapshot_size_px: 384
     snapshot_global_inset_px: 160
+    snapshot_png_compression: 6
     snapshot_timeout_ms: 500
     tf_timeout_s: 0.2
     local_costmap_max_age_s: 2.0

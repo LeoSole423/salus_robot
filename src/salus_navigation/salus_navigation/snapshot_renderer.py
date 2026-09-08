@@ -105,6 +105,14 @@ class RenderedSnapshot:
     layers: Dict[str, bool]
 
 
+def validate_png_compression(value: int) -> int:
+    """Validate the OpenCV PNG compression level used by snapshots."""
+    level = int(value)
+    if not 0 <= level <= 9:
+        raise ValueError("snapshot_png_compression must be between 0 and 9")
+    return level
+
+
 def _identity_or(transform: Optional[Transform2D], source: str, target: str) -> Optional[Transform2D]:
     if not source or source == target:
         return Transform2D(source, target, 0.0, 0.0, 0.0)
@@ -383,8 +391,8 @@ def _global_inset(canvas: np.ndarray, scene: SnapshotScene) -> bool:
     return True
 
 
-def render(scene: SnapshotScene) -> RenderedSnapshot:
-    """Render a validated scene; callers map invalid inputs to ROS errors."""
+def _render_canvas(scene: SnapshotScene) -> Tuple[np.ndarray, Dict[str, bool]]:
+    """Rasterize a scene before PNG encoding."""
     window = _window(scene)
     canvas = _occupancy_to_color(_sample_grid(scene, scene.local_costmap, scene.local_costmap.frame_id, window, -1.0))
     layers = {name: False for name in (
@@ -410,7 +418,16 @@ def render(scene: SnapshotScene) -> RenderedSnapshot:
     if scene.global_costmap is not None:
         layers["global_inset"] = _global_inset(canvas, scene)
         layers["global_costmap"] = layers["global_inset"]
-    encoded, png = cv2.imencode(".png", canvas)
+    return canvas, layers
+
+
+def render(scene: SnapshotScene, *, png_compression: int = 3) -> RenderedSnapshot:
+    """Render a validated scene; callers map invalid inputs to ROS errors."""
+    png_compression = validate_png_compression(png_compression)
+    canvas, layers = _render_canvas(scene)
+    encoded, png = cv2.imencode(
+        ".png", canvas, [cv2.IMWRITE_PNG_COMPRESSION, png_compression]
+    )
     if not encoded:
         raise RuntimeError("PNG_ENCODE_FAILED: OpenCV could not encode snapshot")
     return RenderedSnapshot(png.tobytes(), scene.size_px, scene.size_px, scene.local_costmap.frame_id, layers)
