@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StreamingChannelCapabilities xmlns="http://www.hikvision.com/ver20/XMLSchema">
+  <videoCodecType><option>H.264</option><option>H.265</option></videoCodecType>
+  <videoResolutionWidth><option>704</option><option>352</option></videoResolutionWidth>
+  <videoResolutionHeight><option>576</option><option>288</option></videoResolutionHeight>
+  <maxFrameRate unit="centihz"><option>2500</option><option>1500</option></maxFrameRate>
+  <videoQualityControlType><option>CBR</option><option>VBR</option></videoQualityControlType>
+  <constantBitRate min="128" max="2048" />
+  <vbrUpperCap min="128" max="4096" />
+  <GovLength min="1" max="100" />
+  <H264Profile><option>main</option><option>high</option></H264Profile>
+  <audioEnabled><option>false</option><option>true</option></audioEnabled>
+</StreamingChannelCapabilities>

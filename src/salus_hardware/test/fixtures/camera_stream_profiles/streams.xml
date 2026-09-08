@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StreamingChannelList xmlns="http://www.hikvision.com/ver20/XMLSchema">
+  <StreamingChannel><id>101</id><enabled>true</enabled></StreamingChannel>
+  <StreamingChannel><id>102</id><enabled>true</enabled></StreamingChannel>
+</StreamingChannelList>
