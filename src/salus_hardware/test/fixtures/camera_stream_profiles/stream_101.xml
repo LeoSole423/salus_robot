@@ -6,8 +6,10 @@
   <videoResolutionHeight>576</videoResolutionHeight>
   <maxFrameRate unit="centihz">2500</maxFrameRate>
   <videoQualityControlType>VBR</videoQualityControlType>
+  <constantBitRate>4096</constantBitRate>
   <vbrUpperCap>2048</vbrUpperCap>
   <GovLength>50</GovLength>
+  <keyFrameInterval>1000</keyFrameInterval>
   <H264Profile>main</H264Profile>
   <Audio><enabled>false</enabled><futureAudioField>preserve-me</futureAudioField></Audio>
   <futureVendorField><value>preserve-me</value></futureVendorField>

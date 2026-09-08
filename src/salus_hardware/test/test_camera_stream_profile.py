@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 
@@ -14,6 +15,7 @@ from salus_hardware.camera_stream_profile import (
     parse_stream_ids,
     parse_stream_profile,
     validate_capabilities,
+    verify_profile,
 )
 from salus_hardware.camera_stream_profile_tool import _apply, _inspect
 
@@ -22,6 +24,14 @@ FIXTURES = Path(__file__).parent / "fixtures/camera_stream_profiles"
 STREAMS_XML = (FIXTURES / "streams.xml").read_bytes()
 STREAM_XML = (FIXTURES / "stream_101.xml").read_bytes()
 CAPABILITIES_XML = (FIXTURES / "stream_101_capabilities.xml").read_bytes()
+
+
+def _xml_value(xml: bytes, name: str) -> str:
+    root = ElementTree.fromstring(xml)
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] == name:
+            return (element.text or "").strip()
+    raise AssertionError(f"missing XML field {name}")
 
 
 class FakeStreamingClient:
@@ -55,7 +65,7 @@ def _profile_file(tmp_path: Path, *, width=352) -> Path:
         "  fps: 15\n"
         "  rate_control: VBR\n"
         "  bitrate_kbps: 1024\n"
-        "  keyframe_interval: 30\n"
+        "  gop_length_frames: 30\n"
         "  h264_profile: main\n"
         "audio_enabled: false\n",
         encoding="utf-8",
@@ -69,7 +79,7 @@ def test_discovery_and_namespaced_optional_stream_fields() -> None:
     assert profile.as_dict() == {
         "stream_id": "101", "codec": "H.264", "width": 704, "height": 576,
         "fps": 25, "rate_control": "VBR", "bitrate_kbps": 2048,
-        "keyframe_interval": 50, "h264_profile": "main", "audio_enabled": False,
+        "gop_length_frames": 50, "h264_profile": "main", "audio_enabled": False,
     }
     unavailable = parse_stream_profile(STREAMS_XML, "102").as_dict()
     assert unavailable["stream_id"] == "102"
@@ -94,10 +104,12 @@ def test_apply_preserves_unknown_xml_and_changes_only_managed_fields(tmp_path: P
         "height",
         "fps",
         "bitrate_kbps",
-        "keyframe_interval",
+        "gop_length_frames",
     }
     assert b"futureVendorField" in changed
     assert b"preserve-me" in changed
+    assert _xml_value(changed, "constantBitRate") == "4096"
+    assert _xml_value(changed, "keyFrameInterval") == "1000"
     assert parse_stream_profile(changed, "101").width == 352
     assert parse_stream_profile(changed, "101").fps == 15
 
@@ -111,6 +123,49 @@ def test_dry_run_does_not_put_and_reports_semantic_changes(tmp_path: Path) -> No
     assert client.puts == []
 
 
+def test_bitrate_mode_selects_only_the_active_isapi_field() -> None:
+    vbr_xml, _ = apply_profile_xml(
+        STREAM_XML,
+        {"rate_control": "VBR", "bitrate_kbps": 1024},
+        "101",
+    )
+    assert _xml_value(vbr_xml, "vbrUpperCap") == "1024"
+    assert _xml_value(vbr_xml, "constantBitRate") == "4096"
+
+    cbr_xml, _ = apply_profile_xml(
+        STREAM_XML,
+        {"rate_control": "CBR", "bitrate_kbps": 1024},
+        "101",
+    )
+    assert _xml_value(cbr_xml, "constantBitRate") == "1024"
+    assert _xml_value(cbr_xml, "vbrUpperCap") == "2048"
+    verify_profile(
+        parse_stream_profile(cbr_xml, "101"),
+        {"rate_control": "CBR", "bitrate_kbps": 1024},
+    )
+
+
+def test_bitrate_missing_field_fails_closed() -> None:
+    xml = STREAM_XML.replace(b"<constantBitRate>4096</constantBitRate>\n", b"")
+    with pytest.raises(StreamingProfileError, match="does not expose field"):
+        apply_profile_xml(
+            xml,
+            {"rate_control": "CBR", "bitrate_kbps": 1024},
+            "101",
+        )
+
+
+def test_gop_manages_gov_length_and_preserves_keyframe_interval() -> None:
+    changed, changes = apply_profile_xml(
+        STREAM_XML,
+        {"gop_length_frames": 30},
+        "101",
+    )
+    assert set(changes) == {"gop_length_frames"}
+    assert _xml_value(changed, "GovLength") == "30"
+    assert _xml_value(changed, "keyFrameInterval") == "1000"
+
+
 def test_identical_profile_is_idempotent_without_put(tmp_path: Path) -> None:
     profile = tmp_path / "profile.yaml"
     profile.write_text(
@@ -121,7 +176,7 @@ def test_identical_profile_is_idempotent_without_put(tmp_path: Path) -> None:
         "  fps: 25\n"
         "  rate_control: VBR\n"
         "  bitrate_kbps: 2048\n"
-        "  keyframe_interval: 50\n"
+        "  gop_length_frames: 50\n"
         "  h264_profile: main\n"
         "audio_enabled: false\n",
         encoding="utf-8",

@@ -27,13 +27,13 @@ _FIELD_ALIASES = {
     "fps": ("maxFrameRate", "frameRate", "fps"),
     "rate_control": ("videoQualityControlType", "rateControl", "rate_control"),
     "bitrate_kbps": ("vbrUpperCap", "constantBitRate", "bitRate", "bitrate"),
-    "keyframe_interval": ("GovLength", "gop", "keyFrameInterval"),
+    "gop_length_frames": ("GovLength",),
     "h264_profile": ("H264Profile", "h264Profile", "profile"),
     "audio_enabled": ("audioEnabled",),
 }
 _ALLOWED_FIELDS = frozenset(_FIELD_ALIASES)
 _STRING_FIELDS = frozenset({"codec", "rate_control", "h264_profile"})
-_NUMERIC_FIELDS = frozenset({"width", "height", "fps", "bitrate_kbps", "keyframe_interval"})
+_NUMERIC_FIELDS = frozenset({"width", "height", "fps", "bitrate_kbps", "gop_length_frames"})
 
 
 class StreamingProfileError(ValueError):
@@ -78,7 +78,7 @@ class StreamingProfile:
     fps: float | None = None
     rate_control: str | None = None
     bitrate_kbps: int | None = None
-    keyframe_interval: int | None = None
+    gop_length_frames: int | None = None
     h264_profile: str | None = None
     audio_enabled: bool | None = None
 
@@ -91,7 +91,7 @@ class StreamingProfile:
                 "fps": self.fps,
                 "rate_control": self.rate_control,
                 "bitrate_kbps": self.bitrate_kbps,
-                "keyframe_interval": self.keyframe_interval,
+                "gop_length_frames": self.gop_length_frames,
                 "h264_profile": self.h264_profile,
                 "audio_enabled": self.audio_enabled,
         }
@@ -200,6 +200,10 @@ def parse_stream_profile(xml: bytes | str, stream_id: str) -> StreamingProfile:
     stream = _find_stream(root, stream_id)
     values: dict[str, Any] = {"stream_id": stream_id}
     for field, aliases in _FIELD_ALIASES.items():
+        if field == "bitrate_kbps":
+            aliases = _bitrate_aliases(values.get("rate_control"))
+        if not aliases:
+            continue
         element = _field_element(stream, field, aliases)
         if element is None or not (element.text or "").strip():
             continue
@@ -253,12 +257,20 @@ def apply_profile_xml(
     root = _parse_xml(xml)
     stream = _find_stream(root, stream_id)
     before = parse_stream_profile(xml, stream_id)
+    effective_rate_control = normalized.get("rate_control", before.rate_control)
     changes: dict[str, dict[str, Any]] = {}
     for field, value in normalized.items():
-        element = _field_element(stream, field, _FIELD_ALIASES[field])
+        aliases = _FIELD_ALIASES[field]
+        if field == "bitrate_kbps":
+            aliases = _bitrate_aliases(effective_rate_control)
+        if not aliases:
+            raise StreamingProfileError(
+                "bitrate_kbps requires rate_control CBR or VBR"
+            )
+        element = _field_element(stream, field, aliases)
         if element is None:
             raise StreamingProfileError(f"stream {stream_id} does not expose field {field}")
-        old = getattr(before, field)
+        old = _parse_field(field, element) if field == "bitrate_kbps" else getattr(before, field)
         encoded = _encode_field(field, value, element)
         if old != value:
             changes[field] = {"old": old, "new": value}
@@ -358,6 +370,15 @@ def _first_descendant(
             if _local_name(element.tag) == alias:
                 return element
     return None
+
+
+def _bitrate_aliases(rate_control: Any) -> tuple[str, ...]:
+    normalized = str(rate_control or "").strip().upper()
+    if normalized == "CBR":
+        return ("constantBitRate",)
+    if normalized == "VBR":
+        return ("vbrUpperCap",)
+    return ()
 
 
 def _field_element(
