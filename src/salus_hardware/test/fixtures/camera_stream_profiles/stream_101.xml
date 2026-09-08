@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StreamingChannel xmlns="http://www.hikvision.com/ver20/XMLSchema">
+  <id>101</id>
+  <videoCodecType>H.264</videoCodecType>
+  <videoResolutionWidth>704</videoResolutionWidth>
+  <videoResolutionHeight>576</videoResolutionHeight>
+  <maxFrameRate unit="centihz">2500</maxFrameRate>
+  <videoQualityControlType>VBR</videoQualityControlType>
+  <vbrUpperCap>2048</vbrUpperCap>
+  <GovLength>50</GovLength>
+  <H264Profile>main</H264Profile>
+  <Audio><enabled>false</enabled><futureAudioField>preserve-me</futureAudioField></Audio>
+  <futureVendorField><value>preserve-me</value></futureVendorField>
+</StreamingChannel>
