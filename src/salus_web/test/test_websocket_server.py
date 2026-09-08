@@ -174,6 +174,9 @@ async def _nav_live_scenario() -> None:
                 await server.broadcast({"op": "nav_telemetry", "speed_mps": 1.0})
                 with pytest.raises(asyncio.TimeoutError):
                     await asyncio.wait_for(nav_live.recv(), 0.1)
+                first_preview = await _receive_until(normal, lambda item: item.get("op") == "scan_preview")
+                assert first_preview["ranges"] == [1.0]
+                await _receive_until(normal, lambda item: item.get("op") == "nav_telemetry")
 
                 await nav_live.send(json.dumps({
                     "op": "get_nav_snapshot",
