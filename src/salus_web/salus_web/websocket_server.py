@@ -9,12 +9,13 @@ import json
 import logging
 import math
 from typing import Any, Iterable, Mapping, Protocol
+from urllib.parse import parse_qs, urlsplit
 import uuid
 
 import websockets
 
 from .operator_lease import OperatorLease
-from .protocol import ProtocolError, ack, parse_request, validate_request
+from .protocol import ProtocolError, ack, is_controlled_operation, parse_request, validate_request
 
 
 REPLACEABLE_OPS = frozenset(
@@ -97,6 +98,7 @@ class _Client:
     websocket: Any
     outbox: ClientOutbox
     writer: asyncio.Task[Any]
+    nav_live: bool = False
 
 
 class CockpitWebSocketServer:
@@ -165,6 +167,8 @@ class CockpitWebSocketServer:
 
     async def broadcast(self, payload: dict[str, Any]) -> None:
         for client_id, client in list(self._clients.items()):
+            if client.nav_live:
+                continue
             try:
                 await client.outbox.put(self._decorate(payload, client_id))
             except SlowClientError:
@@ -175,7 +179,9 @@ class CockpitWebSocketServer:
         client_id = uuid.uuid4().hex
         outbox = ClientOutbox(self._queue_capacity)
         writer = asyncio.create_task(self._writer(websocket, outbox))
-        self._clients[client_id] = _Client(websocket, outbox, writer)
+        path = _path or str(getattr(websocket, "path", ""))
+        nav_live = parse_qs(urlsplit(path).query).get("client", [""])[0] == "nav-live"
+        self._clients[client_id] = _Client(websocket, outbox, writer, nav_live=nav_live)
         pending: set[asyncio.Task[Any]] = set()
         try:
             await outbox.put(self._decorate(await self._gateway.initial_state(), client_id))
@@ -214,6 +220,14 @@ class CockpitWebSocketServer:
                 error=error.message,
                 error_code=error.code,
             ))
+            return
+
+        client = self._clients.get(client_id)
+        if client is not None and client.nav_live and (
+            request.op in {"set_control_lock", "control_heartbeat"}
+            or is_controlled_operation(request)
+        ):
+            await outbox.put(self._read_only_ack(request, client_id))
             return
 
         if request.op == "set_control_lock":
@@ -305,6 +319,19 @@ class CockpitWebSocketServer:
             ok=decision.allowed,
             error=None if decision.allowed else decision.error_code,
             error_code=decision.error_code,
+            control_locked=state.lock.locked,
+            control_lock_reason=state.lock.reason,
+            control_owner_present=state.owner_present,
+            control_owner=state.requester_is_owner,
+        )
+
+    def _read_only_ack(self, request: Any, client_id: str) -> dict[str, Any]:
+        state = self._lease.state_for(client_id)
+        return ack(
+            request,
+            ok=False,
+            error="NAV_LIVE_READ_ONLY",
+            error_code="NAV_LIVE_READ_ONLY",
             control_locked=state.lock.locked,
             control_lock_reason=state.lock.reason,
             control_owner_present=state.owner_present,

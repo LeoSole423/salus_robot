@@ -32,6 +32,13 @@ class FakeGateway:
                 "control_locked": True,
                 "control_lock_reason": "STARTUP_LOCKED",
             }]
+        if request.op == "get_nav_snapshot":
+            return [{
+                "op": "nav_snapshot",
+                "ok": True,
+                "client_req_id": request.request_id,
+                "image_base64": "snapshot",
+            }]
         return [ack(request, ok=True)]
 
 
@@ -133,3 +140,68 @@ async def _server_scenario() -> None:
 
 def test_real_websocket_transport_correlates_and_enforces_lease() -> None:
     asyncio.run(asyncio.wait_for(_server_scenario(), 8.0))
+
+
+async def _nav_live_scenario() -> None:
+    guard = OperatorControlGuard(
+        enabled=True,
+        heartbeat_timeout_s=2.5,
+        initially_locked=True,
+        clock=asyncio.get_running_loop().time,
+    )
+    lease = OperatorLease(guard)
+    server = CockpitWebSocketServer(
+        FakeGateway(), lease, host="127.0.0.1", port=0
+    )
+    await server.start()
+    port = server._server.sockets[0].getsockname()[1]
+    try:
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as normal:
+            await normal.recv()
+            await normal.send(json.dumps({
+                "op": "set_control_lock",
+                "client_req_id": "normal-unlock",
+                "locked": False,
+            }))
+            await _receive_until(normal, lambda item: item.get("request") == "set_control_lock")
+            await _receive_until(normal, lambda item: item.get("op") == "nav_telemetry")
+
+            async with websockets.connect(f"ws://127.0.0.1:{port}/?client=nav-live") as nav_live:
+                initial = json.loads(await asyncio.wait_for(nav_live.recv(), 2.0))
+                assert initial["op"] == "state"
+
+                await server.broadcast({"op": "scan_preview", "ranges": [1.0]})
+                await server.broadcast({"op": "nav_telemetry", "speed_mps": 1.0})
+                with pytest.raises(asyncio.TimeoutError):
+                    await asyncio.wait_for(nav_live.recv(), 0.1)
+
+                await nav_live.send(json.dumps({
+                    "op": "get_nav_snapshot",
+                    "client_req_id": "snapshot-1",
+                }))
+                snapshot = await _receive_until(
+                    nav_live, lambda item: item.get("client_req_id") == "snapshot-1"
+                )
+                assert snapshot["op"] == "nav_snapshot"
+                assert snapshot["ok"] is True
+
+                await nav_live.send(json.dumps({
+                    "op": "set_control_lock",
+                    "client_req_id": "nav-lock",
+                    "locked": False,
+                }))
+                rejected = await _receive_until(
+                    nav_live, lambda item: item.get("client_req_id") == "nav-lock"
+                )
+                assert rejected["error_code"] == "NAV_LIVE_READ_ONLY"
+                assert lease.state_for("__test__").owner_present is True
+
+                await server.broadcast({"op": "scan_preview", "ranges": [2.0]})
+                preview = await _receive_until(normal, lambda item: item.get("op") == "scan_preview")
+                assert preview["ranges"] == [2.0]
+    finally:
+        await server.stop()
+
+
+def test_nav_live_is_read_only_and_does_not_receive_unsolicited_broadcasts() -> None:
+    asyncio.run(asyncio.wait_for(_nav_live_scenario(), 8.0))
