@@ -15,7 +15,7 @@ import uuid
 import websockets
 
 from .operator_lease import OperatorLease
-from .protocol import ProtocolError, ack, is_controlled_operation, parse_request, validate_request
+from .protocol import ProtocolError, ack, parse_request, validate_request
 
 
 REPLACEABLE_OPS = frozenset(
@@ -223,10 +223,7 @@ class CockpitWebSocketServer:
             return
 
         client = self._clients.get(client_id)
-        if client is not None and client.nav_live and (
-            request.op in {"set_control_lock", "control_heartbeat"}
-            or is_controlled_operation(request)
-        ):
+        if client is not None and client.nav_live and request.op != "get_nav_snapshot":
             await outbox.put(self._read_only_ack(request, client_id))
             return
 

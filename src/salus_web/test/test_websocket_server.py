@@ -16,6 +16,9 @@ from salus_web.websocket_server import (
 
 
 class FakeGateway:
+    def __init__(self):
+        self.dispatched = []
+
     async def initial_state(self):
         return {
             "op": "state", "ok": True, "connected": True,
@@ -23,6 +26,7 @@ class FakeGateway:
         }
 
     async def dispatch(self, request):
+        self.dispatched.append(request)
         if request.op == "get_state":
             return [{
                 "op": "state",
@@ -150,9 +154,8 @@ async def _nav_live_scenario() -> None:
         clock=asyncio.get_running_loop().time,
     )
     lease = OperatorLease(guard)
-    server = CockpitWebSocketServer(
-        FakeGateway(), lease, host="127.0.0.1", port=0
-    )
+    gateway = FakeGateway()
+    server = CockpitWebSocketServer(gateway, lease, host="127.0.0.1", port=0)
     await server.start()
     port = server._server.sockets[0].getsockname()[1]
     try:
@@ -188,16 +191,30 @@ async def _nav_live_scenario() -> None:
                 assert snapshot["op"] == "nav_snapshot"
                 assert snapshot["ok"] is True
 
-                await nav_live.send(json.dumps({
-                    "op": "set_control_lock",
-                    "client_req_id": "nav-lock",
-                    "locked": False,
-                }))
-                rejected = await _receive_until(
-                    nav_live, lambda item: item.get("client_req_id") == "nav-lock"
-                )
-                assert rejected["error_code"] == "NAV_LIVE_READ_ONLY"
+                for operation, request_id in (
+                    ("set_control_lock", "nav-lock"),
+                    ("cancel_goal", "nav-cancel"),
+                    ("brake", "nav-brake"),
+                ):
+                    fields = {"locked": False} if operation == "set_control_lock" else {}
+                    await nav_live.send(json.dumps({
+                        "op": operation,
+                        "client_req_id": request_id,
+                        **fields,
+                    }))
+                    rejected = await _receive_until(
+                        nav_live, lambda item, request_id=request_id:
+                        item.get("client_req_id") == request_id
+                    )
+                    assert rejected["error_code"] == "NAV_LIVE_READ_ONLY"
                 assert lease.state_for("__test__").owner_present is True
+                assert [request.op for request in gateway.dispatched].count(
+                    "get_nav_snapshot"
+                ) == 1
+                assert not any(
+                    request.op in {"set_control_lock", "cancel_goal", "brake"}
+                    for request in gateway.dispatched
+                )
 
                 await server.broadcast({"op": "scan_preview", "ranges": [2.0]})
                 preview = await _receive_until(normal, lambda item: item.get("op") == "scan_preview")
