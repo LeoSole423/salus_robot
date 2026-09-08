@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 import math
 import os
 from pathlib import Path
@@ -105,11 +105,22 @@ class StreamingProfile:
 class StreamingCapabilities:
     allowed: Mapping[str, frozenset[str]]
     ranges: Mapping[str, tuple[float, float]]
+    bitrate_allowed: Mapping[str, frozenset[str]] = dataclass_field(default_factory=dict)
+    bitrate_ranges: Mapping[str, tuple[float, float]] = dataclass_field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "allowed": {key: sorted(values) for key, values in self.allowed.items()},
             "ranges": {key: list(values) for key, values in self.ranges.items()},
+            "bitrate_by_rate_control": {
+                mode: {
+                    "allowed": sorted(self.bitrate_allowed[mode])
+                    if mode in self.bitrate_allowed else [],
+                    "range": list(self.bitrate_ranges[mode])
+                    if mode in self.bitrate_ranges else "unavailable",
+                }
+                for mode in sorted(set(self.bitrate_allowed) | set(self.bitrate_ranges))
+            },
         }
 
 
@@ -220,31 +231,52 @@ def parse_capabilities(xml: bytes | str | None) -> StreamingCapabilities | None:
     root = _parse_xml(xml)
     allowed: dict[str, frozenset[str]] = {}
     ranges: dict[str, tuple[float, float]] = {}
+    bitrate_allowed: dict[str, frozenset[str]] = {}
+    bitrate_ranges: dict[str, tuple[float, float]] = {}
     for field, aliases in _FIELD_ALIASES.items():
+        if field == "bitrate_kbps":
+            continue
         elements = [element for alias in aliases for element in _elements(root, alias)]
-        options: set[str] = set()
-        bounds: list[float] = []
-        for element in elements:
-            text = (element.text or "").strip()
-            if text and not list(element):
-                options.update(_normalize_options(field, text, element))
-            for child in element.iter():
-                if child is element:
-                    continue
-                value = (child.text or "").strip()
-                if value and not list(child):
-                    options.update(_normalize_options(field, value, child))
-            for attribute in ("min", "minimum", "max", "maximum"):
-                if attribute in element.attrib:
-                    try:
-                        bounds.append(float(element.attrib[attribute]))
-                    except ValueError:
-                        pass
+        options, bounds = _parse_capability_elements(field, elements)
         if options:
             allowed[field] = frozenset(options)
         if len(bounds) >= 2:
             ranges[field] = (min(bounds), max(bounds))
-    return StreamingCapabilities(allowed, ranges)
+    for mode, alias in (("CBR", "constantBitRate"), ("VBR", "vbrUpperCap")):
+        options, bounds = _parse_capability_elements(
+            "bitrate_kbps",
+            _elements(root, alias),
+        )
+        if options:
+            bitrate_allowed[mode] = frozenset(options)
+        if len(bounds) >= 2:
+            bitrate_ranges[mode] = (min(bounds), max(bounds))
+    return StreamingCapabilities(allowed, ranges, bitrate_allowed, bitrate_ranges)
+
+
+def _parse_capability_elements(
+    field: str,
+    elements: list[ElementTree.Element],
+) -> tuple[set[str], list[float]]:
+    options: set[str] = set()
+    bounds: list[float] = []
+    for element in elements:
+        text = (element.text or "").strip()
+        if text and not list(element):
+            options.update(_normalize_options(field, text, element))
+        for child in element.iter():
+            if child is element:
+                continue
+            value = (child.text or "").strip()
+            if value and not list(child):
+                options.update(_normalize_options(field, value, child))
+        for attribute in ("min", "minimum", "max", "maximum"):
+            if attribute in element.attrib:
+                try:
+                    bounds.append(float(element.attrib[attribute]))
+                except ValueError:
+                    pass
+    return options, bounds
 
 
 def apply_profile_xml(
@@ -308,15 +340,27 @@ def normalize_profile_fields(values: Mapping[str, Any]) -> dict[str, Any]:
 def validate_capabilities(
     desired: Mapping[str, Any],
     capabilities: StreamingCapabilities | None,
+    current_rate_control: str | None = None,
 ) -> None:
     if capabilities is None:
         return
-    for field, value in normalize_profile_fields(desired).items():
+    normalized = normalize_profile_fields(desired)
+    effective_rate_control = normalized.get("rate_control", current_rate_control)
+    bitrate_mode = str(effective_rate_control or "").strip().upper()
+    if "bitrate_kbps" in normalized and bitrate_mode not in {"CBR", "VBR"}:
+        raise StreamingProfileError(
+            "bitrate_kbps requires effective rate_control CBR or VBR"
+        )
+    for field, value in normalized.items():
+        if field == "bitrate_kbps":
+            allowed = capabilities.bitrate_allowed.get(bitrate_mode, frozenset())
+            bounds = capabilities.bitrate_ranges.get(bitrate_mode)
+        else:
+            allowed = capabilities.allowed.get(field, frozenset())
+            bounds = capabilities.ranges.get(field)
         key = _capability_value(field, value)
-        allowed = capabilities.allowed.get(field, frozenset())
         if allowed and key not in allowed:
             raise StreamingProfileError(f"{field}={value} is outside camera capabilities")
-        bounds = capabilities.ranges.get(field)
         if bounds and not bounds[0] <= float(value) <= bounds[1]:
             raise StreamingProfileError(f"{field}={value} is outside camera capabilities")
 

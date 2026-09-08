@@ -5,7 +5,7 @@
   <videoResolutionHeight><option>576</option><option>288</option></videoResolutionHeight>
   <maxFrameRate unit="centihz"><option>2500</option><option>1500</option></maxFrameRate>
   <videoQualityControlType><option>CBR</option><option>VBR</option></videoQualityControlType>
-  <constantBitRate min="128" max="4096" />
+  <constantBitRate min="128" max="2048" />
   <vbrUpperCap min="128" max="4096" />
   <GovLength min="1" max="100" />
   <H264Profile><option>main</option><option>high</option></H264Profile>

@@ -77,8 +77,9 @@ def _apply(
     desired = load_profile(profile_path)
     path = f"{STREAMS_PATH}/{stream_id}"
     current_xml = client.get(path)
+    current = parse_stream_profile(current_xml, stream_id)
     capabilities = _get_capabilities(client, stream_id)
-    validate_capabilities(desired, capabilities)
+    validate_capabilities(desired, capabilities, current.rate_control)
     changed_xml, changes = apply_profile_xml(current_xml, desired, stream_id)
     result: dict[str, Any] = {
         "stream_id": stream_id,

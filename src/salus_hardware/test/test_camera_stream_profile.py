@@ -92,7 +92,8 @@ def test_capabilities_parse_values_ranges_and_units() -> None:
     assert capabilities is not None
     assert capabilities.allowed["width"] == frozenset({"704", "352"})
     assert capabilities.allowed["fps"] == frozenset({"25", "15"})
-    assert capabilities.ranges["bitrate_kbps"] == (128.0, 4096.0)
+    assert capabilities.bitrate_ranges["CBR"] == (128.0, 2048.0)
+    assert capabilities.bitrate_ranges["VBR"] == (128.0, 4096.0)
     validate_capabilities({"width": 352, "fps": 15}, capabilities)
 
 
@@ -152,6 +153,33 @@ def test_bitrate_missing_field_fails_closed() -> None:
             xml,
             {"rate_control": "CBR", "bitrate_kbps": 1024},
             "101",
+        )
+
+
+def test_bitrate_capability_ranges_are_selected_by_effective_mode() -> None:
+    capabilities = parse_capabilities(CAPABILITIES_XML)
+    assert capabilities is not None
+    with pytest.raises(StreamingProfileError, match="outside camera capabilities"):
+        validate_capabilities(
+            {"bitrate_kbps": 3000},
+            capabilities,
+            current_rate_control="CBR",
+        )
+    validate_capabilities(
+        {"bitrate_kbps": 3000},
+        capabilities,
+        current_rate_control="VBR",
+    )
+
+
+def test_bitrate_capability_range_uses_desired_mode_when_changed() -> None:
+    capabilities = parse_capabilities(CAPABILITIES_XML)
+    assert capabilities is not None
+    with pytest.raises(StreamingProfileError, match="outside camera capabilities"):
+        validate_capabilities(
+            {"rate_control": "CBR", "bitrate_kbps": 3000},
+            capabilities,
+            current_rate_control="VBR",
         )
 
 
