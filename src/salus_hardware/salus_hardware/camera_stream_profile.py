@@ -61,7 +61,7 @@ class ResponseStatus:
 
     def is_success(self) -> bool:
         return (
-            self.status_code == "1"
+            self.status_code in {"0", "1"}
             and self.status_string.casefold() == "ok"
             and self.sub_status_code.casefold() in {"ok", "success"}
         )

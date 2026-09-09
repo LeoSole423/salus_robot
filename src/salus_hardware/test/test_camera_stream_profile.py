@@ -276,6 +276,15 @@ def test_response_status_is_namespace_tolerant() -> None:
     }
 
 
+def test_response_status_zero_ok_is_success() -> None:
+    status = parse_response_status(
+        b"<ResponseStatus><statusCode>0</statusCode>"
+        b"<statusString>OK</statusString><subStatusCode>OK</subStatusCode>"
+        b"</ResponseStatus>"
+    )
+    assert status.is_success()
+
+
 def test_put_response_status_failure_stops_before_get_verification(tmp_path: Path) -> None:
     client = FakeStreamingClient(
         put_response=(
