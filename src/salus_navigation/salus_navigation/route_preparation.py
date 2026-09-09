@@ -20,8 +20,11 @@ def resolve_yaws(points: list[RouteWaypoint], loop: bool) -> list[RouteWaypoint]
     result = list(points)
     for index, point in enumerate(result):
         if isfinite(point.yaw_deg): continue
-        following = result[(index + 1) % len(result)] if loop or index + 1 < len(result) else point
-        yaw = degrees(atan2((following.map_y or 0.0) - (point.map_y or 0.0), (following.map_x or 0.0) - (point.map_x or 0.0)))
+        if index + 1 < len(result) or loop:
+            origin, following = point, result[(index + 1) % len(result)]
+        else:
+            origin, following = result[index - 1] if index else point, point
+        yaw = degrees(atan2((following.map_y or 0.0) - (origin.map_y or 0.0), (following.map_x or 0.0) - (origin.map_x or 0.0)))
         result[index] = RouteWaypoint(**{**point.__dict__, "yaw_deg": yaw})
     return result
 
