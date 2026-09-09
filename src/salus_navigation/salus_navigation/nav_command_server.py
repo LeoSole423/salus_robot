@@ -1,4 +1,4 @@
-"""Safety arbitration and single-goal Nav2 orchestration for SALUS."""
+"""Safety arbitration and finite Nav2 goal/chunk orchestration for SALUS."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import time
 import rclpy
 from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
-from geometry_msgs.msg import Point, PoseStamped, Twist
-from nav2_msgs.action import NavigateToPose
+from geometry_msgs.msg import PoseStamped, Twist
+from nav2_msgs.action import NavigateThroughPoses, NavigateToPose
 from nav2_msgs.msg import CollisionMonitorState
 from rclpy.action import ActionClient
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -163,7 +163,9 @@ class NavCommandServer(Node):
             "get_state_service": "/nav_command_server/get_state", "fromll_service": "/fromLL",
             "fromll_service_fallback": "/navsat_transform/fromLL", "fromll_timeout_s": 2.0,
             "cancel_result_timeout_s": 12.0,
-            "navigate_action": "/navigate_to_pose", "rviz_goal_topic": "/goal_pose",
+            "navigate_action": "/navigate_to_pose",
+            "navigate_through_poses_action": "/navigate_through_poses",
+            "rviz_goal_topic": "/goal_pose",
         }.items():
             self.declare_parameter(name, value)
         p = lambda name: self.get_parameter(name).value
@@ -195,6 +197,7 @@ class NavCommandServer(Node):
         # result. Unrelated events must never advance this value.
         self._goal_result_event_id = 0
         self._suppress_success_brake = False
+        self._active_action = "none"
 
         self._final_pub = self.create_publisher(CmdVelFinal, str(p("cmd_vel_final_topic")), 10)
         self._telemetry_pub = self.create_publisher(NavTelemetry, str(p("telemetry_topic")), 10)
@@ -231,10 +234,16 @@ class NavCommandServer(Node):
         self._fromll_timeout_s = max(0.1, float(p("fromll_timeout_s")))
         self._cancel_result_timeout_s = max(0.1, float(p("cancel_result_timeout_s")))
         self._navigate_client = ActionClient(self, NavigateToPose, str(p("navigate_action")), callback_group=self._client_group)
+        self._navigate_through_poses_client = ActionClient(
+            self,
+            NavigateThroughPoses,
+            str(p("navigate_through_poses_action")),
+            callback_group=self._client_group,
+        )
         self.create_timer(1.0 / max(1.0, float(p("manual_watchdog_hz"))), self._manual_watchdog)
         self.create_timer(1.0 / max(1.0, float(p("nav_telemetry_hz"))), self._publish_telemetry)
         self._brake_hold_hz = max(1.0, float(p("brake_hold_publish_hz")))
-        self.get_logger().info("nav command server ready: safe/manual commands and LL single goals")
+        self.get_logger().info("nav command server ready: safe/manual commands and LL route chunks")
 
     def _now_s(self) -> float:
         return time.monotonic()
@@ -374,29 +383,40 @@ class NavCommandServer(Node):
         return response
 
     @staticmethod
-    def _single_waypoint(request: SetNavGoalLL.Request) -> tuple[tuple[float, float, float] | None, str]:
+    def _waypoints(request: SetNavGoalLL.Request) -> tuple[tuple[tuple[float, float, float], ...] | None, str]:
         arrays = (list(request.lats), list(request.lons), list(request.yaws_deg))
         populated = any(values for values in arrays)
         if request.loop:
-            return None, "loop goals belong to the future missions subsystem"
+            return None, "route chunks must be finite; loop orchestration belongs to route_executor"
         if populated:
             if len(arrays[0]) != len(arrays[1]) or len(arrays[0]) != len(arrays[2]):
                 return None, "waypoint arrays must have equal lengths"
-            if len(arrays[0]) != 1:
-                return None, "multiple waypoints belong to the future missions subsystem"
-            waypoint = arrays[0][0], arrays[1][0], arrays[2][0]
+            if not arrays[0]:
+                return None, "at least one waypoint is required"
+            waypoints = tuple(zip(*arrays))
         else:
-            waypoint = request.lat, request.lon, request.yaw_deg
-        return (tuple(float(value) for value in waypoint), "") if all(math.isfinite(value) for value in waypoint) else (None, "invalid waypoint values")
+            waypoints = ((request.lat, request.lon, request.yaw_deg),)
+        converted = tuple(tuple(float(value) for value in waypoint) for waypoint in waypoints)
+        return (converted, "") if all(math.isfinite(value) for waypoint in converted for value in waypoint) else (None, "invalid waypoint values")
+
+    @staticmethod
+    def _single_waypoint(request: SetNavGoalLL.Request) -> tuple[tuple[float, float, float] | None, str]:
+        """Compatibility helper retained for scalar callers and focused tests."""
+        waypoints, error = NavCommandServer._waypoints(request)
+        if waypoints is None:
+            return None, error
+        if len(waypoints) != 1:
+            return None, "request contains multiple waypoints"
+        return waypoints[0], ""
 
     def _on_set_goal(self, request: SetNavGoalLL.Request, response: SetNavGoalLL.Response) -> SetNavGoalLL.Response:
-        waypoint, error = self._single_waypoint(request)
+        waypoints, error = self._waypoints(request)
         with self._lock:
             manual = self._arbiter.manual_enabled
         if manual:
             response.ok, response.error = False, "manual control enabled; disable manual mode to send goals"
             return response
-        if waypoint is None:
+        if waypoints is None:
             response.ok, response.error = False, error
             self._event(DiagnosticStatus.WARN, "GOAL_REJECTED", error)
             return response
@@ -405,13 +425,16 @@ class NavCommandServer(Node):
             response.ok, response.error = False, "fromLL service unavailable"
             self._event(DiagnosticStatus.ERROR, "FROMLL_FAILED", response.error)
             return response
-        point, error = self._convert_goal_to_map(client, waypoint[0], waypoint[1])
-        if point is None:
-            response.ok, response.error = False, error
-            self._event(DiagnosticStatus.ERROR, "FROMLL_FAILED", error)
-            return response
-        response.error = self._request_map_goal(
-            point.x, point.y, waypoint[2],
+        map_waypoints = []
+        for index, waypoint in enumerate(waypoints):
+            point, error = self._convert_goal_to_map(client, waypoint[0], waypoint[1])
+            if point is None:
+                response.ok, response.error = False, f"waypoint {index}: {error}"
+                self._event(DiagnosticStatus.ERROR, "FROMLL_FAILED", response.error)
+                return response
+            map_waypoints.append((point.x, point.y, waypoint[2]))
+        response.error = self._request_map_goals(
+            map_waypoints,
             suppress_success_brake=bool(request.suppress_success_brake),
         )
         response.ok = not response.error
@@ -422,8 +445,7 @@ class NavCommandServer(Node):
             DiagnosticStatus.OK,
             "GOAL_REQUESTED",
             "geographic goal requested",
-            lat=waypoint[0],
-            lon=waypoint[1],
+            waypoint_count=len(waypoints),
         )
         return response
 
@@ -461,14 +483,27 @@ class NavCommandServer(Node):
     def _request_map_goal(
         self, x_m: float, y_m: float, yaw_deg: float, *, suppress_success_brake: bool,
     ) -> str:
+        return self._request_map_goals(
+            [(x_m, y_m, yaw_deg)], suppress_success_brake=suppress_success_brake
+        )
+
+    def _request_map_goals(
+        self, waypoints, *, suppress_success_brake: bool,
+    ) -> str:
+        if not waypoints:
+            return "at least one map waypoint is required"
         with self._lock:
             if self._arbiter.manual_enabled:
                 return "manual control enabled; disable manual mode to send goals"
             replacing = self._goal_active_locked()
-        if self._goal_in_keepout(x_m, y_m):
-            return "goal lies in keepout zone"
-        if not self._navigate_client.server_is_ready():
-            return "NavigateToPose action server unavailable"
+        for x_m, y_m, _yaw_deg in waypoints:
+            if self._goal_in_keepout(x_m, y_m):
+                return "goal lies in keepout zone"
+        multiple = len(waypoints) > 1
+        client = self._navigate_through_poses_client if multiple else self._navigate_client
+        action_name = "NavigateThroughPoses" if multiple else "NavigateToPose"
+        if not client.server_is_ready():
+            return f"{action_name} action server unavailable"
         if replacing:
             _, completed = self._cancel_goal(
                 "replaced by new goal", apply_brake=False, wait_terminal=True
@@ -490,12 +525,13 @@ class NavCommandServer(Node):
             self._goal_cancel_reason = ""
             self._goal_terminal_event.clear()
             self._suppress_success_brake = suppress_success_brake
+            self._active_action = action_name
             self._goal_result_status, self._goal_result_text = (
                 GoalStatus.STATUS_UNKNOWN,
                 "sending navigation goal",
             )
-        point = Point(x=x_m, y=y_m)
-        self._send_map_goal(point, yaw_deg, epoch)
+        poses = [self._map_pose(x_m, y_m, yaw_deg) for x_m, y_m, yaw_deg in waypoints]
+        self._send_map_goals(poses, epoch, client, action_name)
         return ""
 
     def _convert_goal_to_map(self, primary_client, latitude: float, longitude: float):
@@ -525,6 +561,22 @@ class NavCommandServer(Node):
         return math.sin(half), math.cos(half)
 
     def _send_map_goal(self, point, yaw_deg: float, epoch: int) -> None:
+        self._send_map_goals(
+            [self._map_pose(point.x, point.y, yaw_deg)],
+            epoch,
+            self._navigate_client,
+            "NavigateToPose",
+        )
+
+    def _map_pose(self, x_m: float, y_m: float, yaw_deg: float) -> PoseStamped:
+        pose = PoseStamped()
+        pose.header.frame_id = "map"
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.pose.position.x, pose.pose.position.y = x_m, y_m
+        pose.pose.orientation.z, pose.pose.orientation.w = self._quaternion_from_yaw(yaw_deg)
+        return pose
+
+    def _send_map_goals(self, poses, epoch: int, client, action_name: str) -> None:
         with self._lock:
             if epoch != self._goal_epoch:
                 return
@@ -533,21 +585,27 @@ class NavCommandServer(Node):
                 self._goal_result_text = "manual control enabled before goal dispatch"
                 self._goal_terminal_event.set()
                 return
-        goal = NavigateToPose.Goal()
-        goal.pose.header.frame_id = "map"
-        goal.pose.header.stamp = self.get_clock().now().to_msg()
-        goal.pose.pose.position.x, goal.pose.pose.position.y = point.x, point.y
-        goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = self._quaternion_from_yaw(yaw_deg)
-        self._navigate_client.send_goal_async(goal).add_done_callback(
-            lambda done: self._on_goal_response(done, epoch)
+        goal = self._action_goal(poses)
+        client.send_goal_async(goal).add_done_callback(
+            lambda done: self._on_goal_response(done, epoch, action_name)
         )
 
-    def _on_goal_response(self, future, epoch: int) -> None:
+    @staticmethod
+    def _action_goal(poses):
+        if len(poses) > 1:
+            goal = NavigateThroughPoses.Goal()
+            goal.poses = list(poses)
+            return goal
+        goal = NavigateToPose.Goal()
+        goal.pose = poses[0]
+        return goal
+
+    def _on_goal_response(self, future, epoch: int, action_name: str = "NavigateToPose") -> None:
         try:
             handle = future.result()
         except Exception as exc:
             handle = None
-            self.get_logger().error(f"NavigateToPose request failed: {exc}")
+            self.get_logger().error(f"{action_name} request failed: {exc}")
         with self._lock:
             stale = epoch != self._goal_epoch
             if handle is None or not handle.accepted:
@@ -557,7 +615,7 @@ class NavCommandServer(Node):
                     result_event_id = self._event(
                         DiagnosticStatus.ERROR,
                         "GOAL_REJECTED",
-                        "NavigateToPose goal rejected",
+                        f"{action_name} goal rejected",
                     )
                     self._goal_pending = False
                     self._goal_cancel_requested = False
@@ -591,7 +649,7 @@ class NavCommandServer(Node):
         self._event(
             DiagnosticStatus.OK,
             "GOAL_ACCEPTED",
-            "NavigateToPose goal accepted",
+            f"{action_name} goal accepted",
             goal_generation=epoch,
         )
         if cancel_after_accept:
@@ -619,12 +677,14 @@ class NavCommandServer(Node):
                 else "aborted"
             )
             suppress_brake = self._suppress_success_brake
+            completed_action = getattr(self, "_active_action", "NavigateToPose")
+            self._active_action = "none"
             if status == GoalStatus.STATUS_SUCCEEDED:
                 result_event_id = self._event(
                     DiagnosticStatus.OK,
                     "GOAL_RESULT_SUCCEEDED",
                     "navigation goal succeeded",
-                    goal_generation=epoch,
+                    goal_generation=epoch, action=completed_action,
                 )
             elif status == GoalStatus.STATUS_CANCELED:
                 result_event_id = self._event(
@@ -692,8 +752,8 @@ class NavCommandServer(Node):
             message = NavTelemetry()
             message.goal_active = self._goal_active_locked()
             message.manual_enabled = self._arbiter.manual_enabled
-            message.auto_mode = "manual" if self._arbiter.manual_enabled else "navigate_to_pose" if message.goal_active else "safety_arbitration"
-            message.active_action = "NavigateToPose" if message.goal_active else "none"
+            message.auto_mode = "manual" if self._arbiter.manual_enabled else "navigation" if message.goal_active else "safety_arbitration"
+            message.active_action = self._active_action if message.goal_active else "none"
             message.manual_linear_x_cmd = 0.0 if manual is None else manual.twist.linear.x
             message.manual_angular_z_cmd = 0.0 if manual is None else manual.twist.angular.z
             message.cmd_vel_available = self._last_safe is not None

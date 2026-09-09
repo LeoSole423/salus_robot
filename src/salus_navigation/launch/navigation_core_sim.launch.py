@@ -19,7 +19,7 @@ def generate_launch_description() -> LaunchDescription:
     params = [config, {
         "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
         "default_nav_to_pose_bt_xml": str(config_dir / "navigation_core.xml"),
-        "default_nav_through_poses_bt_xml": str(config_dir / "navigation_through_poses_inactive.xml"),
+        "default_nav_through_poses_bt_xml": str(config_dir / "navigation_through_poses.xml"),
     }]
     remappings = [("/tf", "tf"), ("/tf_static", "tf_static")]
     nodes = [

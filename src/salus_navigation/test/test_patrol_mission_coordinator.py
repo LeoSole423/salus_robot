@@ -8,7 +8,7 @@ from salus_navigation.patrol_mission_coordinator import (
 from salus_navigation.route_model import RouteWaypoint
 
 
-DEFAULTS = (2.0, 20.0, 5)
+DEFAULTS = (35.0, 120.0, 5)
 
 
 def request(**overrides):
@@ -40,8 +40,8 @@ def mapped(route, x_offset=0.0):
 def test_request_keeps_legacy_empty_yaws_and_applies_declared_defaults():
     spec, error = patrol_spec_from_request(request(), DEFAULTS)
     assert error == ""
-    assert spec.leg_spacing_m == 2.0
-    assert spec.chunk_span_m == 20.0
+    assert spec.leg_spacing_m == 35.0
+    assert spec.chunk_span_m == 120.0
     assert spec.chunk_max_waypoints == 5
     assert spec.loop.waypoints[0].yaw_deg != spec.loop.waypoints[0].yaw_deg
 

@@ -1,9 +1,12 @@
 from math import nan
+from types import SimpleNamespace
 from salus_navigation.route_model import RouteWaypoint
 from salus_navigation.route_preparation import expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
 from salus_navigation.route_chunker import build_chunk, next_start
+from salus_navigation.route_progress import project
+from salus_navigation.route_executor_node import RouteExecutorNode, chunk_goal_request
 
 def point(x, index): return RouteWaypoint(0, 0, nan, index, map_x=x, map_y=0)
 
@@ -78,6 +81,116 @@ def test_expanded_loop_chunk_ends_at_checkpoint_without_full_circuit():
     assert chunk.waypoints[-1].key is True
     assert len(chunk.waypoints) < len(route.waypoints)
     assert all(chunk.waypoints[offset].key for offset in chunk.checkpoint_offsets)
+
+
+def test_progress_projects_onto_segment_instead_of_nearest_vertex():
+    route = prepare(
+        [point(0, 0), point(10, 1), point(20, 2)], loop=False,
+        input_count=3, spacing_m=0, chunk_span_m=100, chunk_max_waypoints=3,
+    )
+    chunk = build_chunk(route, 0)
+
+    progress = project(chunk, 5.0, 2.0)
+
+    assert progress.expanded_index == 0
+    assert progress.checkpoint_index == 0
+    assert progress.ratio == 0.25
+    assert progress.cross_track_error_m == 2.0
+    assert progress.distance_to_target_m > 15.0
+
+
+def test_progress_does_not_jump_back_to_an_earlier_segment_at_shared_vertex():
+    from salus_navigation.route_model import RouteChunk
+    points = (
+        RouteWaypoint(0, 0, 0, 0, map_x=0, map_y=0),
+        RouteWaypoint(0, 0, 0, 1, map_x=10, map_y=0),
+        RouteWaypoint(0, 0, 0, 2, map_x=10, map_y=10),
+    )
+
+    progress = project(RouteChunk(points, 0, 2, 0), 10.0, 5.0)
+
+    assert progress.expanded_index == 1
+    assert progress.checkpoint_index == 1
+    assert progress.ratio == 0.75
+    assert progress.cross_track_error_m == 0.0
+
+
+def test_action_checkpoint_is_a_hard_chunk_boundary():
+    points = [point(0, 0), point(10, 1), point(20, 2)]
+    points[1] = RouteWaypoint(
+        **{**points[1].__dict__, "action_json": '[{"type":"brake_hold","duration_s":1}]'}
+    )
+    route = prepare(
+        points, loop=False, input_count=3, spacing_m=2,
+        chunk_span_m=1000, chunk_max_waypoints=100,
+    )
+
+    chunk = build_chunk(route, 0)
+
+    assert chunk.waypoints[-1].key
+    assert chunk.waypoints[-1].input_index == 1
+    assert next_start(route, chunk) < len(route.waypoints)
+
+
+def test_chunk_request_sends_synthetic_geometry_but_counts_only_checkpoint_boundary():
+    route = prepare(
+        [point(0, 0), point(12, 1)], loop=False, input_count=2,
+        spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
+    )
+    chunk = build_chunk(route, 0)
+
+    request = chunk_goal_request(chunk, route)
+
+    assert list(request.lats) == [point.lat for point in chunk.waypoints]
+    assert len(request.lats) > len(chunk.checkpoint_offsets)
+    assert chunk.checkpoint_offsets == (0, len(chunk.waypoints) - 1)
+    assert request.loop is False
+    assert request.suppress_success_brake is False
+
+
+def test_intermediate_chunk_suppresses_success_brake_and_loop_chunk_is_finite():
+    open_route = prepare(
+        [point(0, 0), point(10, 1), point(20, 2)], loop=False,
+        input_count=3, spacing_m=2, chunk_span_m=3, chunk_max_waypoints=2,
+    )
+    open_chunk = build_chunk(open_route, 0)
+    assert chunk_goal_request(open_chunk, open_route).suppress_success_brake
+
+    loop_route = prepare(
+        [point(0, 0), point(10, 1), point(20, 2)], loop=True,
+        input_count=3, spacing_m=2, chunk_span_m=1000, chunk_max_waypoints=100,
+    )
+    loop_chunk = build_chunk(loop_route, 0)
+    request = chunk_goal_request(loop_chunk, loop_route)
+    assert request.loop is False
+    assert request.suppress_success_brake
+    assert len(request.lats) < len(loop_route.waypoints)
+
+
+def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
+    route = prepare(
+        [point(0, 0), point(12, 1)], loop=False, input_count=2,
+        spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
+    )
+    chunk = build_chunk(route, 0)
+    events = []
+    advanced = []
+    fake = SimpleNamespace(
+        _chunk=chunk,
+        _target_offset=chunk.checkpoint_offsets[-1],
+        _mission=SimpleNamespace(reached=0, mission_id="mission", chunk_id=0, loop_iteration=0),
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _start_actions=lambda *_args: None,
+        _advance=lambda: advanced.append(True),
+    )
+
+    RouteExecutorNode._complete_current_chunk(fake, "nav2_succeeded")
+
+    assert fake._mission.reached == 2
+    assert [event[1]["input_index"] for event in events] == [0, 1]
+    assert len(events) == len(chunk.checkpoint_offsets)
+    assert len(events) < len(chunk.waypoints)
+    assert advanced == [True]
 
 
 def test_supported_actions_are_accepted_but_unknown_actions_are_rejected():

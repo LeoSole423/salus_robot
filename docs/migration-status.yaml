@@ -470,8 +470,10 @@ components:
       - docs/migration-evidence/intent/rviz-goal-control.md
       - docs/migration-evidence/intent/issue-223-real-route-patrol.md
       - docs/migration-evidence/intent/2026-08-30-vector-keepout-costmap-layer.md
+      - src/salus_navigation/config/navigation_through_poses.xml
+      - docs/migration-evidence/intent/route-executor.md
     note: >-
-      Safety arbitration, a single Nav2 LL goal, guarded RViz map goals, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported in simulation. Keepouts use the bounded vector layer in rolling global/local costmaps; fixed PGM/LoadMap/KeepoutFilter runtime and full-mask DDS are removed. Snapshot and goal rejection consume projected vector state directly. The manual `vector_keepout_long_range` smoke passed on 2026-08-31: fixed map A/B/C geometry survived physical origin→~350 m→~700 m teleports; each rolling window kept its configured dimensions; all three zones rejected goals and caused explicit-start planner detours; map→odom correction, B move/removal baseline clearing, revisions, latencies and zero legacy-mask publishers were recorded. This is simulation evidence only; hardware evidence remains pending. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Snapshots are ported as a separate ROS capture, pure renderer and PNG service; Cockpit integration remains pending. Legacy A/B and hardware parity remain pending.
+      Safety arbitration, scalar Nav2 LL goals, finite multi-pose route chunks, guarded RViz map goals, dynamic GeoJSON keepout, stable path-health replanning, checkpoint-correct routes, controlled recovery, causal lifecycle startup, waypoint actions and transactional urban/rural profiles are ported. Multi-pose chunks preserve synthetic route geometry while original checkpoints remain the only mission/action boundaries; PC package/runtime validation is available and full motion simulation remains the gate before renewed hardware validation. Keepouts use the bounded vector layer in rolling global/local costmaps; fixed PGM/LoadMap/KeepoutFilter runtime and full-mask DDS are removed. Snapshot and goal rejection consume projected vector state directly. The manual `vector_keepout_long_range` smoke passed on 2026-08-31: fixed map A/B/C geometry survived physical origin→~350 m→~700 m teleports; each rolling window kept its configured dimensions; all three zones rejected goals and caused explicit-start planner detours; map→odom correction, B move/removal baseline clearing, revisions, latencies and zero legacy-mask publishers were recorded. Structured patrol/HOME has atomic LL conversion/persistence and a latched manual/battery return validated in simulation without duplicating Nav2 or velocity ownership. Snapshots are ported as a separate ROS capture, pure renderer and PNG service. Hardware parity for the new multi-pose route flow remains pending.
     real_runtime_note: >-
       Issue #223 composes the existing route executor and structured
       patrol/HOME coordinator in the real MVP with `use_sim_time=false` and a
@@ -492,7 +494,7 @@ components:
       - src/salus_navigation_bt/src/path_health_condition.cpp
       - src/salus_navigation/salus_navigation/path_health.py
       - docs/migration-evidence/intent/navigation-path-health.md
-    note: La política útil de path estable y despeje se migró como PathHealth; TraceReplan queda diferido hasta justificar NavigateThroughPoses.
+    note: La política útil de path estable y despeje se migró como PathHealth y ahora gobierna tanto NavigateToPose como NavigateThroughPoses. El flujo multi-pose conserva poda, validación del candidato y recovery Ackermann sin restaurar TraceReplan; nav_observer mantiene la observabilidad desacoplada.
   operator_web:
     source: map_tools
     target: salus_web

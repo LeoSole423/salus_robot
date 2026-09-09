@@ -59,6 +59,25 @@ def terminal_nav_result_is_current(
     )
 
 
+def chunk_goal_request(chunk, prepared) -> SetNavGoalLL.Request:
+    """Translate one finite route window without changing checkpoint semantics."""
+    if chunk is None or not chunk.waypoints or not chunk.checkpoint_offsets:
+        raise ValueError("route chunk contains no original checkpoint")
+    request = SetNavGoalLL.Request()
+    request.lats = [float(point.lat) for point in chunk.waypoints]
+    request.lons = [float(point.lon) for point in chunk.waypoints]
+    request.yaws_deg = [float(point.yaw_deg) for point in chunk.waypoints]
+    request.lat, request.lon, request.yaw_deg = (
+        request.lats[0], request.lons[0], request.yaws_deg[0]
+    )
+    request.loop = False
+    after_chunk = next_start(prepared, chunk)
+    request.suppress_success_brake = (
+        prepared.loop or after_chunk < len(prepared.waypoints)
+    )
+    return request
+
+
 class RouteExecutorNode(Node):
     """Keep a pending preparation separate from the active mission."""
 
@@ -81,7 +100,6 @@ class RouteExecutorNode(Node):
         self._pose = None
         self._chunk = None
         self._target_offset = 0
-        self._checkpoint_cursor = 0
         self._goal_epoch = 0
         self._goal_request_pending = False
         self._goal_result_event_floor = -1
@@ -279,9 +297,9 @@ class RouteExecutorNode(Node):
                 # event instead of inferring a checkpoint from a later state
                 # poll.  Publish it before actions or dispatching the next
                 # goal so the reached original index is never ambiguous.
-                self._complete_current_checkpoint("nav2_succeeded")
+                self._complete_current_chunk("nav2_succeeded")
             elif message.nav_result_text == "goal rejected":
-                self._pause("NAV_GOAL_REJECTED: NavigateToPose goal rejected")
+                self._pause("NAV_GOAL_REJECTED: Nav2 route chunk rejected")
             else:
                 if (message.nav_result_text == "cancelled"
                         and self._recovery.state != RecoveryState.CLEAR):
@@ -362,7 +380,7 @@ class RouteExecutorNode(Node):
                 self._nav_failure_code = ""
                 self._collision_stop = False
                 self._finish_recovery(True)
-                self._complete_current_checkpoint("recovery_geometry")
+                self._complete_current_chunk("recovery_geometry")
                 return
             route = self._mission.prepared
             pose = self._pose
@@ -439,9 +457,8 @@ class RouteExecutorNode(Node):
             transition(self._mission, RoutePhase.COMPLETED)
             return
         self._target_offset = 0
-        self._checkpoint_cursor = 0
         self._publish_paths()
-        self._send_target()
+        self._send_chunk()
 
     def _start_actions(self, waypoint_index: int, actions) -> None:
         self._action = ActionExecution(waypoint_index, actions)
@@ -498,21 +515,14 @@ class RouteExecutorNode(Node):
                     "route waypoint action failed", error=error,
                     waypoint_index=0 if execution is None else execution.waypoint_index)
 
-    def _send_target(self) -> None:
+    def _send_chunk(self) -> None:
         offsets = self._chunk.checkpoint_offsets
         if not offsets:
             self._pause("route chunk contains no original checkpoint")
             return
-        self._target_offset = offsets[self._checkpoint_cursor]
+        self._target_offset = offsets[-1]
         self._recovery_checkpoint_reached = False
-        point = self._chunk.waypoints[self._target_offset]
-        request = SetNavGoalLL.Request()
-        request.lat, request.lon, request.yaw_deg = point.lat, point.lon, point.yaw_deg
-        has_next = self._checkpoint_cursor + 1 < len(offsets)
-        # The last waypoint of an intermediate chunk is contiguous with the
-        # next chunk.  Only the mission's final waypoint requests Nav2's brake.
-        after_chunk = next_start(self._mission.prepared, self._chunk)
-        request.suppress_success_brake = has_next or self._mission.prepared.loop or after_chunk < len(self._mission.prepared.waypoints)
+        request = chunk_goal_request(self._chunk, self._mission.prepared)
         self._goal_epoch += 1
         epoch = self._goal_epoch
         self._goal_request_pending = True
@@ -540,30 +550,29 @@ class RouteExecutorNode(Node):
                 else:
                     self._pause(f"NAV_GOAL_REJECTED: {exc}")
 
-    def _complete_current_checkpoint(self, completion_source: str) -> None:
-        point = self._chunk.waypoints[self._target_offset]
-        self._event(
-            DiagnosticStatus.OK,
-            "ROUTE_CHECKPOINT_REACHED",
-            "route checkpoint reached",
-            mission_id=self._mission.mission_id,
-            input_index=point.input_index,
-            chunk_id=self._mission.chunk_id,
-            loop_iteration=self._mission.loop_iteration,
-            completion_source=completion_source,
-        )
-        actions = parse_actions(point.action_json, point.input_index)[0]
-        if point.key and actions:
-            self._start_actions(point.input_index, actions)
+    def _complete_current_chunk(self, completion_source: str) -> None:
+        offsets = self._chunk.checkpoint_offsets
+        for offset in offsets:
+            point = self._chunk.waypoints[offset]
+            self._event(
+                DiagnosticStatus.OK,
+                "ROUTE_CHECKPOINT_REACHED",
+                "route checkpoint reached",
+                mission_id=self._mission.mission_id,
+                input_index=point.input_index,
+                chunk_id=self._mission.chunk_id,
+                loop_iteration=self._mission.loop_iteration,
+                completion_source=completion_source,
+            )
+        self._mission.reached += len(offsets)
+        endpoint = self._chunk.waypoints[self._target_offset]
+        actions = parse_actions(endpoint.action_json, endpoint.input_index)[0]
+        if endpoint.key and actions:
+            self._start_actions(endpoint.input_index, actions)
         else:
             self._advance()
 
     def _advance(self) -> None:
-        self._mission.reached += 1
-        self._checkpoint_cursor += 1
-        if self._checkpoint_cursor < len(self._chunk.checkpoint_offsets):
-            self._send_target()
-            return
         self._mission.target_index = next_start(self._mission.prepared, self._chunk)
         self._mission.chunk_id += 1
         if self._mission.prepared.loop and self._mission.target_index == 0:

@@ -15,7 +15,7 @@ def generate_launch_description() -> LaunchDescription:
     config_dir = Path(get_package_share_directory("salus_navigation")) / "config"
     config = str(config_dir / "nav2_core_real.yaml")
     bt_xml = str(config_dir / "navigation_core.xml")
-    through_poses_xml = str(config_dir / "navigation_through_poses_inactive.xml")
+    through_poses_xml = str(config_dir / "navigation_through_poses.xml")
     nodes = [
         ("nav2_planner", "planner_server", "planner_server"),
         ("nav2_controller", "controller_server", "controller_server"),

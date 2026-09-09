@@ -8,7 +8,9 @@ import time
 from pathlib import Path
 
 import rclpy
-from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose
+from nav2_msgs.action import (
+    ComputePathToPose, FollowPath, NavigateThroughPoses, NavigateToPose,
+)
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Odometry, Path as NavPath
 from lifecycle_msgs.srv import GetState
@@ -95,6 +97,9 @@ class Smoke(Node):
         self.nav_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.fromll = self.create_client(FromLL, "/fromLL")
         self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.navigate_through_poses_action = ActionClient(
+            self, NavigateThroughPoses, "/navigate_through_poses"
+        )
         self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
         self.bt_state = self.create_client(GetState, "/bt_navigator/get_state")
@@ -129,6 +134,7 @@ class Smoke(Node):
         return {
             "actions": {
                 "navigate_to_pose": self.navigate_action.server_is_ready(),
+                "navigate_through_poses": self.navigate_through_poses_action.server_is_ready(),
                 "compute_path_to_pose": self.plan_action.server_is_ready(),
                 "follow_path": self.follow_action.server_is_ready(),
             },
@@ -319,14 +325,14 @@ def mission_is_active_or_raise(poller):
     return poller.latest.status == "ACTIVE"
 
 
-def mission_reached_checkpoint_or_raise(poller):
+def mission_crossed_chunk_transition_or_raise(poller):
     if poller.latest is None:
         return False
     if poller.latest.status in ("PAUSED", "ABORTED", "CANCELLED"):
         raise RuntimeError(
             f"route entered {poller.latest.status}: {poller.latest.blocked_reason_text}"
         )
-    return poller.latest.reached_checkpoint_count >= 1
+    return poller.latest.chunk_id >= 1 and poller.latest.reached_checkpoint_count >= 2
 
 
 def main():
@@ -429,9 +435,9 @@ def main():
         try:
             wait(
                 node,
-                lambda: mission_reached_checkpoint_or_raise(state_poller),
-                35,
-                "route did not reach first checkpoint",
+                lambda: mission_crossed_chunk_transition_or_raise(state_poller),
+                50,
+                "route did not cross a real multi-pose chunk transition",
                 stimulate=lambda: node.sample_route_progress(
                     state_poller,
                     global_progress_start,
@@ -472,7 +478,16 @@ def main():
             target = int(state.current_target_index)
             if target >= len(state.mission_key_flags) or not state.mission_key_flags[target]:
                 raise RuntimeError("active chunk ends at a synthetic point")
-        if not any(message.source == CmdVelFinal.SOURCE_AUTO for message in node.final): raise RuntimeError("route did not reach command chain")
+        if not any(
+            message.source == CmdVelFinal.SOURCE_AUTO for message in node.final
+        ):
+            raise RuntimeError("route did not reach command chain")
+        if any(
+            message.source == CmdVelFinal.SOURCE_SAFETY
+            and message.brake_pct > 0
+            for message in node.final
+        ):
+            raise RuntimeError("route braked between contiguous chunks")
         result = call(node, node.cancel, CancelRouteMission.Request())
         if not result.ok: raise RuntimeError(result.error)
         wait(

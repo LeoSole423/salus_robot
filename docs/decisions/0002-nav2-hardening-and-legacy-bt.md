@@ -41,3 +41,12 @@ La navegación mantiene una única autoridad sobre `/cmd_vel_final`, una ruta
 estable y evidencia explícita de cada cambio. `salus_navigation_bt` queda
 portado para esta coordinación mínima; no incorpora la complejidad ni el ABI
 legacy de `TraceReplan`.
+
+## Enmienda #244: rutas multi-pose
+
+La necesidad reproducible apareció durante la validación física de rutas. El
+navigator `NavigateThroughPoses` se habilita reutilizando la misma política
+`PathHealth`: conserva el path sano, poda goals superados, valida el candidato
+antes de reemplazarlo y separa los clears local/global. `nav_observer` resultó
+suficiente para observar replans, por lo que `TraceReplan` continúa fuera del
+runtime. Tampoco se incorporan `Spin`, `BackUp`, smoother ni waypoint follower.

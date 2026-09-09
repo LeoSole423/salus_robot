@@ -15,6 +15,13 @@ def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteCh
             next_distance = selected[-1].distance_to(point)
             distance += next_distance
         selected.append(point)
+        # Programmed actions are hard mission boundaries.  They execute only
+        # after Nav2 has completed the finite chunk ending at that checkpoint.
+        if point.key and point.action_json and len(selected) >= 1:
+            index += 1
+            if route.loop:
+                index %= total
+            break
         limit_reached = len(selected) >= maximum or distance >= limit
         index += 1
         if not route.loop and index >= total: break

@@ -97,14 +97,20 @@ def patrol_request(pose, *, home_at_origin):
             origin_y + forward * math.sin(yaw) + left * math.cos(yaw),
         )
 
-    loop_xy = [world(3.0, 0.0), world(6.0, 0.0), world(9.0, 0.0)]
+    # Use a short rounded diamond rather than a collinear loop.  Its closing
+    # leg changes heading by less than 90 degrees and remains feasible for
+    # the Ackermann/Dubins model.
+    loop_xy = [
+        world(3.0, 0.0), world(6.0, -2.0),
+        world(9.0, 0.0), world(6.0, 2.0),
+    ]
     loop_ll = [ll_from_local(x, y) for x, y in loop_xy]
     home_xy = (origin_x, origin_y) if home_at_origin else loop_xy[-1]
     home_lat, home_lon = ll_from_local(*home_xy)
     request = SetPatrolMissionLL.Request()
     request.loop_lats = [value[0] for value in loop_ll]
     request.loop_lons = [value[1] for value in loop_ll]
-    request.loop_waypoint_action_jsons = ["", "", ""]
+    request.loop_waypoint_action_jsons = ["" for _ in loop_ll]
     request.home_lat, request.home_lon = home_lat, home_lon
     request.home_yaw_deg = math.degrees(yaw)
     request.depart_entry_loop_index = 0

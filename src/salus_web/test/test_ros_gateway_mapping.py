@@ -75,6 +75,17 @@ def test_route_mapping_keeps_roles_actions_and_options() -> None:
     assert request.chunk_max_waypoints == 12
 
 
+def test_route_mapping_uses_physically_characterized_multi_pose_defaults() -> None:
+    request = build_ros_request(_request({
+        "op": "set_route_ll",
+        "waypoints": [{"lat": -31.0, "lon": -64.0}],
+    }))
+
+    assert request.leg_spacing_m == 35.0
+    assert request.chunk_span_m == 120.0
+    assert request.chunk_max_waypoints == 5
+
+
 def test_patrol_mapping_matches_cockpit_nested_shape() -> None:
     request = build_ros_request(_request({
         "op": "set_patrol_ll",
