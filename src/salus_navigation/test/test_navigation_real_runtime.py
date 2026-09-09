@@ -52,6 +52,10 @@ from tf2_ros import TransformBroadcaster  # noqa: E402
 
 
 PACKAGE_LAUNCH = ["ros2", "launch", "salus_navigation"]
+SNAPSHOT_STARTUP_ERRORS = (
+    "MISSING_LOCAL_COSTMAP:",
+    "MISSING_LOCAL_TF:",
+)
 
 
 def _spin_until(node: Node, predicate, timeout_s: float, description: str) -> None:
@@ -97,6 +101,7 @@ class SyntheticNavigationInputs(Node):
         self.startup_values: dict[str, str] = {}
         self.local_costmaps: list[Costmap] = []
         self.global_costmaps: list[Costmap] = []
+        self.input_cycles = 0
         self.monitor_states: list[CollisionMonitorState] = []
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.scan_pub = self.create_publisher(
@@ -184,6 +189,7 @@ class SyntheticNavigationInputs(Node):
             command = Twist()
             command.linear.x = 1.0
             self.cmd_pub.publish(command)
+        self.input_cycles += 1
 
 
 def _launch(command: list[str], log_path: Path) -> subprocess.Popen:
@@ -260,12 +266,74 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             20.0,
             "local and global costmaps",
         )
-        snapshot = _call(
-            fixture,
-            fixture.create_client(
-                GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"),
-            GetNavSnapshot.Request(),
+        snapshot_client = fixture.create_client(
+            GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
         )
+        _spin_until(
+            fixture,
+            snapshot_client.service_is_ready,
+            20.0,
+            "Snapshot service discovery",
+        )
+        snapshot_deadline = time.monotonic() + 5.0
+        snapshot = None
+        last_snapshot_error = ""
+        while time.monotonic() < snapshot_deadline:
+            cycles_before_request = fixture.input_cycles
+            future = snapshot_client.call_async(GetNavSnapshot.Request())
+            remaining = snapshot_deadline - time.monotonic()
+            try:
+                _spin_until(
+                    fixture,
+                    future.done,
+                    remaining,
+                    "Snapshot response",
+                )
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"Snapshot readiness timed out waiting for response; "
+                    f"last_error={last_snapshot_error!r}; "
+                    f"startup_values={fixture.startup_values}; "
+                    f"local_costmaps={len(fixture.local_costmaps)}; "
+                    f"global_costmaps={len(fixture.global_costmaps)}; "
+                    f"launch_log={log_path.read_text(encoding='utf-8')[-12000:]}"
+                ) from exc
+            snapshot = future.result()
+            assert snapshot is not None
+            if snapshot.ok:
+                break
+            last_snapshot_error = str(snapshot.error)
+            if not last_snapshot_error.startswith(SNAPSHOT_STARTUP_ERRORS):
+                raise AssertionError(
+                    f"Snapshot readiness failed: {last_snapshot_error}"
+                )
+            remaining = snapshot_deadline - time.monotonic()
+            if remaining <= 0.0:
+                break
+            try:
+                _spin_until(
+                    fixture,
+                    lambda: fixture.input_cycles > cycles_before_request,
+                    remaining,
+                    "next fresh input cycle for Snapshot readiness",
+                )
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"Snapshot readiness timed out after transient error "
+                    f"{last_snapshot_error}; "
+                    f"startup_values={fixture.startup_values}; "
+                    f"local_costmaps={len(fixture.local_costmaps)}; "
+                    f"global_costmaps={len(fixture.global_costmaps)}; "
+                    f"launch_log={log_path.read_text(encoding='utf-8')[-12000:]}"
+                ) from exc
+        if snapshot is None or not snapshot.ok:
+            raise AssertionError(
+                f"Snapshot readiness timed out; last_error={last_snapshot_error!r}; "
+                f"startup_values={fixture.startup_values}; "
+                f"local_costmaps={len(fixture.local_costmaps)}; "
+                f"global_costmaps={len(fixture.global_costmaps)}; "
+                f"launch_log={log_path.read_text(encoding='utf-8')[-12000:]}"
+            )
         assert snapshot.ok
         assert snapshot.mime == "image/png"
         assert snapshot.width > 0 and snapshot.height > 0
