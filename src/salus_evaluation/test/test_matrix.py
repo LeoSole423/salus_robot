@@ -290,3 +290,15 @@ def test_matrix_executor_rejects_non_positive_jobs(monkeypatch, tmp_path):
     monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: ())
     with pytest.raises(SystemExit):
         matrix_executor.main(["matrix.yaml", str(tmp_path), "--jobs", "0"])
+
+
+def test_matrix_executor_rejects_more_workers_than_domain_pool(monkeypatch, tmp_path):
+    from salus_evaluation import matrix_executor
+
+    monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: ())
+    pool_size = (matrix_executor.EVALUATION_DOMAIN_MAX
+                 - matrix_executor.EVALUATION_DOMAIN_MIN + 1)
+    with pytest.raises(SystemExit):
+        matrix_executor.main([
+            "matrix.yaml", str(tmp_path), "--jobs", str(pool_size + 1)
+        ])

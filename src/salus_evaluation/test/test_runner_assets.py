@@ -31,3 +31,11 @@ def test_tool_exposes_run_observe_and_matrix_modes():
     assert "ros2 run salus_evaluation navigation_evaluation" in contents
     assert "isolation <output-dir>" in contents
     assert "SALUS_NAV_EVAL_RUN_TOKEN" in contents
+    assert "SALUS_NAV_EVAL_LOCK_ROOT" in contents
+
+
+def test_isolation_characterization_uses_shared_domain_allocator():
+    contents = (ROOT.parents[1] / "tools" / "nav_eval_isolation.py").read_text()
+    assert "allocated_trial_isolation" in contents
+    assert "ExitStack" in contents
+    assert "--domain-a" not in contents and "--domain-b" not in contents

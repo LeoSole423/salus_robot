@@ -18,7 +18,8 @@ import yaml
 
 from .matrix import (EFFECTIVE_SPEED_TOLERANCE_MPS, effective_numeric_matches,
                      expand_matrix, matrix_exit_code, write_matrix_artifacts)
-from .isolation import allocated_trial_isolation, build_trial_env
+from .isolation import (EVALUATION_DOMAIN_MAX, EVALUATION_DOMAIN_MIN,
+                        allocated_trial_isolation, build_trial_env)
 
 
 def _run(command, *, check=True, capture=False, env=None):
@@ -377,6 +378,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.jobs < 1:
         parser.error("--jobs must be a positive integer")
+    pool_size = EVALUATION_DOMAIN_MAX - EVALUATION_DOMAIN_MIN + 1
+    if args.jobs > pool_size:
+        parser.error(f"--jobs cannot exceed the evaluation domain pool size ({pool_size})")
     if (args.planner_minimum_turning_radius is not None and
             args.planner_minimum_turning_radius <= 0.0):
         parser.error("--planner-minimum-turning-radius must be positive")

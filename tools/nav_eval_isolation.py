@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 from datetime import datetime, timezone
 import json
 import math
@@ -15,7 +16,7 @@ import subprocess
 import time
 import uuid
 
-from salus_evaluation.isolation import build_trial_env, make_trial_isolation
+from salus_evaluation.isolation import allocated_trial_isolation, build_trial_env
 
 
 def _write_json(path, payload):
@@ -200,12 +201,8 @@ def _group_processes(pgid):
     return processes
 
 
-def _launch_worker(output, worker_id, run_token, domain_id):
+def _launch_worker(output, worker_id, isolation):
     worker_dir = Path(output) / worker_id
-    runtime_root = worker_dir / "runtime"
-    runtime_root.mkdir(parents=True, exist_ok=True)
-    isolation = make_trial_isolation(worker_dir, run_token=run_token,
-                                     trial_id=worker_id, ros_domain_id=domain_id)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
     env = build_trial_env(os.environ, isolation)
@@ -222,13 +219,9 @@ def _launch_worker(output, worker_id, run_token, domain_id):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output_dir")
-    parser.add_argument("--domain-a", type=int, default=64)
-    parser.add_argument("--domain-b", type=int, default=65)
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
     parser.add_argument("--run-token", default=None)
     args = parser.parse_args(argv)
-    if args.domain_a == args.domain_b:
-        parser.error("--domain-a and --domain-b must differ")
     output = Path(args.output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
     run_token = args.run_token or (
@@ -238,12 +231,16 @@ def main(argv=None):
     workers = []
     report = {"schema_version": 1, "status": "failed", "run_token": run_token,
               "workers": {}, "sibling_death": {}, "cleanup": {}}
+    allocations = ExitStack()
     try:
-        for worker_id, domain_id in (("worker-a", args.domain_a), ("worker-b", args.domain_b)):
-            worker = _launch_worker(output, worker_id, run_token, domain_id)
+        for worker_id in ("worker-a", "worker-b"):
+            isolation = allocations.enter_context(allocated_trial_isolation(
+                output / worker_id, run_token=run_token, trial_id=worker_id
+            ))
+            worker = _launch_worker(output, worker_id, isolation)
             workers.append(worker)
             report["workers"][worker_id] = {
-                "ros_domain_id": domain_id,
+                "ros_domain_id": isolation.ros_domain_id,
                 "ign_partition": worker["isolation"].partition,
                 "gz_partition": worker["isolation"].partition,
                 "fastdds_builtin_transports": worker["env"]["FASTDDS_BUILTIN_TRANSPORTS"],
@@ -335,21 +332,24 @@ def main(argv=None):
     except Exception as exc:  # retain diagnostics before returning non-zero
         report["error"] = str(exc)
     finally:
-        for worker in reversed(workers):
-            cleanup = _terminate(worker)
-            worker["log"].close()
-            report["cleanup"][worker["id"]] = cleanup
-            metadata = report["workers"].get(worker["id"], {})
-            _write_json(worker["dir"] / "metadata.json", metadata)
-        report["cleanup_complete"] = all(
-            not item.get("group_alive_after_cleanup", True)
-            for item in report["cleanup"].values()
-        )
-        if report.get("checks"):
-            report["status"] = "passed" if (
-                all(report["checks"].values()) and report["cleanup_complete"]
-            ) else "failed"
-        _write_json(output / "isolation-report.json", report)
+        try:
+            for worker in reversed(workers):
+                cleanup = _terminate(worker)
+                worker["log"].close()
+                report["cleanup"][worker["id"]] = cleanup
+                metadata = report["workers"].get(worker["id"], {})
+                _write_json(worker["dir"] / "metadata.json", metadata)
+            report["cleanup_complete"] = all(
+                not item.get("group_alive_after_cleanup", True)
+                for item in report["cleanup"].values()
+            )
+            if report.get("checks"):
+                report["status"] = "passed" if (
+                    all(report["checks"].values()) and report["cleanup_complete"]
+                ) else "failed"
+            _write_json(output / "isolation-report.json", report)
+        finally:
+            allocations.close()
     return 0 if report["status"] == "passed" and report["cleanup_complete"] else 1
 
 

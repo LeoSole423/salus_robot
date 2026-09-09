@@ -55,7 +55,14 @@ case "${mode}" in
     shift 2 || true
     mkdir -p "${output}"
     output="$(cd "${output}" && pwd)"
-    exec docker compose run --rm -e FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
+    isolation_run_token="salus-nav-isolation-$(date -u +%Y%m%dT%H%M%S)-$$"
+    eval_lock_root="${TMPDIR:-/tmp}/salus-nav-evaluation-domains"
+    mkdir -p "${eval_lock_root}"
+    exec docker compose run --rm \
+      -e "SALUS_NAV_EVAL_RUN_TOKEN=${isolation_run_token}" \
+      -e SALUS_NAV_EVAL_LOCK_ROOT=/salus-nav-evaluation-domains \
+      -e FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
+      -v "${eval_lock_root}:/salus-nav-evaluation-domains" \
       -v "${output}:/isolation-artifacts" ros2 bash -lc "
       source /opt/ros/humble/setup.bash
       source /ros2_ws/install/setup.bash
