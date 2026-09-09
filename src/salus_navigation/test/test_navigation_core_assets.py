@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree import ElementTree
 
 from geometry_msgs.msg import PoseStamped
 from salus_interfaces.srv import SetNavGoalLL
@@ -119,6 +120,21 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert 'input_path="{candidate_path}" output_path="{path}"' in tree
     assert '<FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>' in tree
     assert "Spin" not in tree and "BackUp" not in tree
+
+
+def test_stop_and_wait_cannot_release_a_stale_path_to_controller() -> None:
+    root = ElementTree.parse(ROOT / "config" / "navigation_core.xml").getroot()
+    stop_and_wait = root.find(
+        ".//ReactiveSequence[@name='StopAndWaitForPathData']"
+    )
+
+    assert stop_and_wait is not None
+    assert [child.tag for child in stop_and_wait] == [
+        "IsPathHealthValid",
+        "Wait",
+        "AlwaysFailure",
+    ]
+    assert stop_and_wait[-1].tag == "AlwaysFailure"
 
 
 def test_startup_coordinator_keeps_lifecycle_activation_causal() -> None:
