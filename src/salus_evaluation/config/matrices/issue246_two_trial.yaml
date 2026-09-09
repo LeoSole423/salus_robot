@@ -1,0 +1,14 @@
+schema_version: 1
+id: issue246_two_trial
+repetitions: 1
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+cases:
+  - id: straight_a
+    scenario: scenarios/straight.yaml
+    direction: straight
+    requested_radius_m: null
+  - id: straight_b
+    scenario: scenarios/straight.yaml
+    direction: straight
+    requested_radius_m: null

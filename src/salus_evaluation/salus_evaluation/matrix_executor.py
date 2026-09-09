@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import hashlib
 import json
 import os
@@ -10,16 +11,19 @@ from pathlib import Path
 import signal
 import subprocess
 import time
+import uuid
 
 from ament_index_python.packages import get_package_share_directory
 import yaml
 
 from .matrix import (EFFECTIVE_SPEED_TOLERANCE_MPS, effective_numeric_matches,
                      expand_matrix, matrix_exit_code, write_matrix_artifacts)
+from .isolation import allocated_trial_isolation, build_trial_env
 
 
-def _run(command, *, check=True, capture=False):
-    return subprocess.run(command, check=check, text=True, capture_output=capture)
+def _run(command, *, check=True, capture=False, env=None):
+    return subprocess.run(command, check=check, text=True, capture_output=capture,
+                          env=env)
 
 
 class ReadinessError(RuntimeError):
@@ -31,48 +35,68 @@ class ReadinessError(RuntimeError):
 
 
 def _lifecycle_active(result):
-    return result.returncode == 0 and "active" in result.stdout.lower()
+    if result.returncode != 0:
+        return False
+    try:
+        return json.loads(result.stdout).get("state") == "active"
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 
-def _readiness_snapshot(require_planner=False):
+def _readiness_snapshot(require_planner=False, *, env=None):
     """Probe exactly the graph resources the next evaluation operation needs."""
     odometry = _run(
-        ["timeout", "2", "ros2", "topic", "echo", "/odometry/global", "--once"],
-        check=False, capture=True,
+        ["timeout", "8", "ros2", "topic", "echo", "--spin-time", "5",
+         "--no-daemon", "/odometry/global", "--once"],
+        check=False, capture=True, env=env,
     )
     controller = _run(
-        ["timeout", "2", "ros2", "lifecycle", "get", "/controller_server"],
-        check=False, capture=True,
+        ["timeout", "8", "python3", "/ros2_ws/tools/ros_lifecycle_probe.py",
+         "/controller_server"],
+        check=False, capture=True, env=env,
     )
     evidence = {
-        "odometry_global": {"returncode": odometry.returncode},
+        "odometry_global": {
+            "returncode": odometry.returncode,
+            "stdout": odometry.stdout[-1000:],
+            "stderr": odometry.stderr[-1000:],
+        },
         "controller_lifecycle": {
             "returncode": controller.returncode,
             "active": _lifecycle_active(controller),
+            "stdout": controller.stdout[-1000:],
+            "stderr": controller.stderr[-1000:],
         },
     }
     ready = odometry.returncode == 0 and _lifecycle_active(controller)
     if not require_planner:
         return ready, evidence
     planner = _run(
-        ["timeout", "2", "ros2", "lifecycle", "get", "/planner_server"],
-        check=False, capture=True,
+        ["timeout", "8", "python3", "/ros2_ws/tools/ros_lifecycle_probe.py",
+         "/planner_server"],
+        check=False, capture=True, env=env,
     )
     services = _run(
-        ["timeout", "2", "ros2", "service", "list"], check=False, capture=True
+        ["timeout", "8", "ros2", "service", "list", "--spin-time", "5",
+         "--no-daemon"],
+        check=False, capture=True,
+        env=env,
     )
     planner_get = _run(
-        ["timeout", "2", "ros2", "param", "get", "/planner_server", "use_sim_time"],
-        check=False, capture=True,
+        ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+         "get", "/planner_server", "use_sim_time"],
+        check=False, capture=True, env=env,
     )
     service_names = set(services.stdout.splitlines())
     get_service = "/planner_server/get_parameters" in service_names
     evidence["planner_lifecycle"] = {
         "returncode": planner.returncode, "active": _lifecycle_active(planner),
+        "stdout": planner.stdout[-1000:], "stderr": planner.stderr[-1000:],
     }
     evidence["planner_parameter_services"] = {
         "list_returncode": services.returncode,
         "get_available": get_service, "get_probe_returncode": planner_get.returncode,
+        "list_stderr": services.stderr[-1000:], "get_stderr": planner_get.stderr[-1000:],
     }
     return (
         ready and _lifecycle_active(planner) and get_service
@@ -81,11 +105,11 @@ def _readiness_snapshot(require_planner=False):
     )
 
 
-def _wait_ready(timeout_s, *, require_planner=False):
+def _wait_ready(timeout_s, *, require_planner=False, env=None):
     deadline = time.monotonic() + timeout_s
     evidence = {}
     while time.monotonic() < deadline:
-        ready, evidence = _readiness_snapshot(require_planner)
+        ready, evidence = _readiness_snapshot(require_planner, env=env)
         if ready:
             return
         time.sleep(.25)
@@ -117,6 +141,8 @@ def _numeric_parameter_metadata(requested, get_result, *, quantity, unit,
     effective, matches = effective_numeric_matches(requested, get_result.stdout)
     return {
         "setup_returncode": (None if setup_result is None else setup_result.returncode),
+        "setup_stdout": (None if setup_result is None else setup_result.stdout),
+        "setup_stderr": (None if setup_result is None else setup_result.stderr),
         "get_returncode": get_result.returncode,
         "get_stdout": get_result.stdout,
         "get_stderr": get_result.stderr,
@@ -148,72 +174,120 @@ def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("matrix", help="strict matrix YAML")
-    parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
-    parser.add_argument("--startup-timeout-s", type=float, default=90.0)
-    parser.add_argument("--planner-minimum-turning-radius", type=float)
-    args = parser.parse_args(argv)
-    if (args.planner_minimum_turning_radius is not None and
-            args.planner_minimum_turning_radius <= 0.0):
-        parser.error("--planner-minimum-turning-radius must be positive")
-    cells = expand_matrix(args.matrix)
-    matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
-    root.mkdir(parents=True, exist_ok=True)
-    trial_dirs = []
-    outcomes = []
-    for cell in cells:
-        trial_dir = root / "trials" / cell.trial_id
-        trial_dir.parent.mkdir(parents=True, exist_ok=True)
-        trial_dirs.append(trial_dir)
-        scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
-        metadata = {"matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
-                    "repetition": cell.repetition, "requested_speed_mps": cell.speed_mps,
-                    "direction": cell.case.direction,
-                    "requested_radius_m": cell.case.requested_radius_m,
-                    "scenario": str(scenario), "isolation": "fresh_simulation",
-                    "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
-                    "gz_partition": os.environ.get("GZ_PARTITION", "")}
-        base_params = Path(get_package_share_directory("salus_navigation")) / "config" / (
-            "nav2_core_no_obstacles_sim.yaml"
-        )
-        effective_params = None
-        if args.planner_minimum_turning_radius is not None:
+def _terminate_process_group(process):
+    """Bounded TERM -> KILL cleanup for one owned launch process group."""
+    if process is None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and _live_processes_in_group(process.pid):
+        time.sleep(.1)
+    if _live_processes_in_group(process.pid):
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline and _live_processes_in_group(process.pid):
+            time.sleep(.1)
+
+
+def _live_processes_in_group(pgid):
+    result = subprocess.run(
+        ["ps", "-eo", "pid=,pgid=,stat="], text=True, capture_output=True,
+        check=False,
+    )
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) == 3 and fields[1].isdigit() and int(fields[1]) == pgid:
+            if "Z" not in fields[2]:
+                return True
+    return False
+
+
+def _trial_metadata(cell, scenario, isolation):
+    return {
+        "matrix_id": cell.matrix_id,
+        "trial_id": cell.trial_id,
+        "repetition": cell.repetition,
+        "requested_speed_mps": cell.speed_mps,
+        "direction": cell.case.direction,
+        "requested_radius_m": cell.case.requested_radius_m,
+        "scenario": str(scenario),
+        "isolation": "fresh_simulation",
+        "ros_domain_id": isolation.ros_domain_id,
+        "ign_partition": isolation.partition,
+        "gz_partition": isolation.partition,
+        "fastdds_builtin_transports": "UDPv4",
+        "runtime_root": str(isolation.runtime_root),
+        "ros_log_dir": str(isolation.ros_log_dir),
+    }
+
+
+def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
+                         planner_minimum_turning_radius, isolation):
+    scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
+    metadata = _trial_metadata(cell, scenario, isolation)
+    trial_dir.mkdir(parents=True, exist_ok=True)
+    isolation.runtime_root.mkdir(parents=True, exist_ok=True)
+    isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
+    environment = build_trial_env(os.environ, isolation)
+    base_params = Path(get_package_share_directory("salus_navigation")) / "config" / (
+        "nav2_core_no_obstacles_sim.yaml"
+    )
+    effective_params = None
+    launch = None
+    try:
+        if planner_minimum_turning_radius is not None:
             effective_params = write_candidate_nav2_params(
                 base_params, trial_dir.parent / f"{cell.trial_id}-nav2.yaml",
-                args.planner_minimum_turning_radius,
+                planner_minimum_turning_radius,
             )
             metadata["planner_params"] = {
                 "base_file": str(base_params), "effective_file": str(effective_params),
-                "requested_radius_m": args.planner_minimum_turning_radius,
+                "requested_radius_m": planner_minimum_turning_radius,
                 "base_sha256": _sha256(base_params),
                 "effective_sha256": _sha256(effective_params),
             }
+        launch_args = ["ros2", "launch", "salus_bringup", "integration_sim.launch.py",
+                       "capability_profile:=no_obstacle_detection",
+                       "world:=/ros2_ws/install/salus_simulation/share/salus_simulation/"
+                       "worlds/free.world",
+                       f"zones_runtime_dir:={isolation.runtime_root / 'zones'}"]
+        if effective_params is not None:
+            launch_args.append(f"nav2_no_obstacles_params_file:={effective_params}")
         with (trial_dir.parent / f"{cell.trial_id}-launch.log").open("w") as launch_log:
-            launch_args = ["ros2", "launch", "salus_bringup", "integration_sim.launch.py",
-                           "capability_profile:=no_obstacle_detection",
-                           "world:=/ros2_ws/install/salus_simulation/share/salus_simulation/"
-                           "worlds/free.world"]
-            if effective_params is not None:
-                launch_args.append(f"nav2_no_obstacles_params_file:={effective_params}")
             launch = subprocess.Popen(
-                launch_args, start_new_session=True,
+                launch_args, env=environment, start_new_session=True,
                 stdout=launch_log, stderr=subprocess.STDOUT,
             )
+            metadata["process_group_id"] = launch.pid
             try:
                 _wait_ready(
-                    args.startup_timeout_s,
-                    require_planner=args.planner_minimum_turning_radius is not None,
+                    startup_timeout_s,
+                    require_planner=planner_minimum_turning_radius is not None,
+                    env=environment,
                 )
-                if args.planner_minimum_turning_radius is not None:
+                if planner_minimum_turning_radius is not None:
                     get_radius = _run(
-                        ["ros2", "param", "get", "/planner_server",
-                         "GridBased.minimum_turning_radius"],
-                        check=False, capture=True,
+                        ["timeout", "8", "python3",
+                         "/ros2_ws/tools/ros_parameter_probe.py", "get",
+                         "/planner_server", "GridBased.minimum_turning_radius"],
+                        check=False, capture=True, env=environment,
                     )
                     metadata["planner_minimum_turning_radius"] = _numeric_parameter_metadata(
-                        args.planner_minimum_turning_radius, get_radius,
+                        planner_minimum_turning_radius, get_radius,
                         quantity="radius_m", unit="m",
                     )
                     if get_radius.returncode != 0:
@@ -222,11 +296,17 @@ def main(argv=None):
                         raise RuntimeError(
                             "Smac effective minimum_turning_radius does not match request"
                         )
-                set_result = _run(["ros2", "param", "set", "/controller_server",
-                                   "FollowPath.desired_linear_vel", str(cell.speed_mps)],
-                                  check=False, capture=True)
-                get_result = _run(["ros2", "param", "get", "/controller_server",
-                                   "FollowPath.desired_linear_vel"], check=False, capture=True)
+                set_result = _run(
+                    ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+                     "set", "/controller_server", "FollowPath.desired_linear_vel",
+                     str(cell.speed_mps)],
+                    check=False, capture=True, env=environment,
+                )
+                get_result = _run(
+                    ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+                     "get", "/controller_server", "FollowPath.desired_linear_vel"],
+                    check=False, capture=True, env=environment,
+                )
                 metadata["speed_parameter"] = _numeric_parameter_metadata(
                     cell.speed_mps, get_result, setup_result=set_result,
                     quantity="speed_mps", unit="m/s",
@@ -238,27 +318,101 @@ def main(argv=None):
                         "FollowPath.desired_linear_vel effective readback does not match request"
                     )
                 evaluation = _run(
-                    ["ros2", "run", "salus_evaluation", "navigation_evaluation", "--ros-args",
+                    ["ros2", "run", "salus_evaluation", "navigation_evaluation",
+                     "--ros-args",
                      "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
                      f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}"],
-                    check=False,
+                    check=False, env=environment,
                 )
-                _record_metadata(trial_dir, metadata)
-                outcomes.append(
-                    "passed" if evaluation.returncode == 0 else "functional_failure"
-                )
-            except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+                if (trial_dir / "summary.json").exists():
+                    _record_metadata(trial_dir, metadata)
+                else:
+                    _failure_bundle(trial_dir, "navigation evaluation produced no summary",
+                                    metadata)
+                    return "setup_failure"
+                return "passed" if evaluation.returncode == 0 else "functional_failure"
+            except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
                 if isinstance(exc, ReadinessError):
                     metadata["readiness"] = exc.evidence
                 _failure_bundle(trial_dir, str(exc), metadata)
-                outcomes.append("setup_failure")
+                return "setup_failure"
             finally:
-                os.killpg(launch.pid, signal.SIGTERM)
+                _terminate_process_group(launch)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+        _failure_bundle(trial_dir, str(exc), metadata)
+        return "setup_failure"
+
+
+def run_trial(cell, *, matrix_path, root, startup_timeout_s,
+              planner_minimum_turning_radius, run_token):
+    """Run exactly one trial, including identity allocation and cleanup."""
+    trial_dir = Path(root) / "trials" / cell.trial_id
+    trial_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with allocated_trial_isolation(
+            trial_dir, run_token=run_token, trial_id=cell.trial_id
+        ) as isolation:
+            return _run_trial_lifecycle(
+                cell, matrix_path=Path(matrix_path), trial_dir=trial_dir,
+                startup_timeout_s=startup_timeout_s,
+                planner_minimum_turning_radius=planner_minimum_turning_radius,
+                isolation=isolation,
+            )
+    except Exception as exc:  # preserve the matrix result for allocator/worker errors
+        _failure_bundle(trial_dir, str(exc), {
+            "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
+            "repetition": cell.repetition, "isolation": "allocation_failure",
+        })
+        return "setup_failure"
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("matrix", help="strict matrix YAML")
+    parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
+    parser.add_argument("--startup-timeout-s", type=float, default=90.0)
+    parser.add_argument("--planner-minimum-turning-radius", type=float)
+    parser.add_argument("--jobs", type=int, default=1,
+                        help="maximum number of concurrent trials (default: 1)")
+    args = parser.parse_args(argv)
+    if args.jobs < 1:
+        parser.error("--jobs must be a positive integer")
+    if (args.planner_minimum_turning_radius is not None and
+            args.planner_minimum_turning_radius <= 0.0):
+        parser.error("--planner-minimum-turning-radius must be positive")
+    cells = expand_matrix(args.matrix)
+    matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    run_token = os.environ.get(
+        "SALUS_NAV_EVAL_RUN_TOKEN",
+        f"matrix-{os.getpid()}-{uuid.uuid4().hex[:8]}",
+    )
+    arguments = {
+        "matrix_path": matrix_path,
+        "root": root,
+        "startup_timeout_s": args.startup_timeout_s,
+        "planner_minimum_turning_radius": args.planner_minimum_turning_radius,
+        "run_token": run_token,
+    }
+    if args.jobs == 1:
+        outcomes = [run_trial(cell, **arguments) for cell in cells]
+    else:
+        futures = []
+        outcomes = []
+        with ProcessPoolExecutor(max_workers=args.jobs) as executor:
+            for cell in cells:
+                futures.append(executor.submit(run_trial, cell, **arguments))
+            for cell, future in zip(cells, futures):
                 try:
-                    launch.wait(timeout=8)
-                except subprocess.TimeoutExpired:
-                    os.killpg(launch.pid, signal.SIGKILL)
-                    launch.wait()
+                    outcomes.append(future.result())
+                except Exception as exc:
+                    trial_dir = root / "trials" / cell.trial_id
+                    _failure_bundle(trial_dir, str(exc), {
+                        "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
+                        "repetition": cell.repetition, "isolation": "worker_exception",
+                    })
+                    outcomes.append("setup_failure")
+    trial_dirs = [root / "trials" / cell.trial_id for cell in cells]
     write_matrix_artifacts(root / "summary", matrix_path, cells, trial_dirs)
     return matrix_exit_code(outcomes)
 

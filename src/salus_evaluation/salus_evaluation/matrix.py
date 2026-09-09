@@ -233,8 +233,11 @@ def write_matrix_artifacts(output_dir, matrix_path, cells, trial_dirs):
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     manifest = {"schema_version": SCHEMA_VERSION, "matrix": str(matrix_path),
-                "trials": [{"trial_id": cell.trial_id, "artifact_dir": str(directory)}
-                           for cell, directory in zip(cells, trial_dirs)],
+                "trials": [{
+                    "trial_id": cell.trial_id,
+                    "artifact_dir": str(directory),
+                    "matrix_trial": summaries[cell.trial_id].get("matrix_trial", {}),
+                } for cell, directory in zip(cells, trial_dirs)],
                 "performance_gates": "calibrating/report-only"}
     (root / "matrix-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"

@@ -165,10 +165,12 @@ def test_planner_override_readiness_requires_active_lifecycle_and_get_service(mo
 
     def response(command, **_kwargs):
         joined = " ".join(command)
-        if "topic echo" in joined or "param get" in joined:
+        if "topic echo" in joined or "ros_parameter_probe.py" in joined:
             return SimpleNamespace(returncode=0, stdout="true\n", stderr="")
-        if "lifecycle get" in joined:
-            return SimpleNamespace(returncode=0, stdout="active [3]\n", stderr="")
+        if "lifecycle get" in joined or "ros_lifecycle_probe" in joined:
+            return SimpleNamespace(
+                returncode=0, stdout='{"state": "active", "state_id": 3}\n', stderr=""
+            )
         if "service list" in joined:
             return SimpleNamespace(
                 returncode=0,
@@ -190,6 +192,42 @@ def test_planner_override_readiness_requires_active_lifecycle_and_get_service(mo
     monkeypatch.setattr(matrix_executor, "_run", missing_get)
     ready, evidence = matrix_executor._readiness_snapshot(require_planner=True)
     assert not ready and not evidence["planner_parameter_services"]["get_available"]
+
+
+def test_readiness_probes_receive_the_worker_environment(monkeypatch):
+    from salus_evaluation import matrix_executor
+
+    environment = {"ROS_DOMAIN_ID": "180"}
+    seen = []
+
+    def response(command, **kwargs):
+        seen.append(kwargs["env"])
+        joined = " ".join(command)
+        if "service list" in joined:
+            return SimpleNamespace(returncode=0, stdout="/planner_server/get_parameters\n",
+                                   stderr="")
+        if "lifecycle get" in joined or "ros_lifecycle_probe" in joined:
+            return SimpleNamespace(
+                returncode=0, stdout='{"state": "active", "state_id": 3}\n', stderr=""
+            )
+        return SimpleNamespace(returncode=0, stdout="true\n", stderr="")
+
+    monkeypatch.setattr(matrix_executor, "_run", response)
+    ready, _evidence = matrix_executor._readiness_snapshot(
+        require_planner=True, env=environment
+    )
+    assert ready and seen and all(item is environment for item in seen)
+
+
+def test_lifecycle_readiness_does_not_treat_inactive_as_active():
+    from salus_evaluation import matrix_executor
+
+    assert not matrix_executor._lifecycle_active(
+        SimpleNamespace(returncode=0, stdout='{"state": "inactive", "state_id": 2}\n')
+    )
+    assert matrix_executor._lifecycle_active(
+        SimpleNamespace(returncode=0, stdout='{"state": "active", "state_id": 3}\n')
+    )
 
 
 def test_matrix_exit_is_aggregated_after_all_trials_and_ignores_calibration():
@@ -228,3 +266,27 @@ def test_matrix_artifact_is_reproducible_and_links_each_trial(tmp_path):
     assert [item["trial_id"] for item in manifest["trials"]] == [cell.trial_id for cell in cells]
     assert summary[0]["trial_ids"] == [cell.trial_id for cell in cells]
     assert (root / "matrix-summary.csv").exists()
+
+
+def test_matrix_executor_defaults_to_one_job_and_accepts_positive_jobs(monkeypatch, tmp_path):
+    from salus_evaluation import matrix_executor
+
+    cell = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")[0]
+    calls = []
+    monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: (cell,))
+    monkeypatch.setattr(
+        matrix_executor, "run_trial", lambda item, **kwargs: calls.append((item, kwargs))
+        or "passed",
+    )
+    monkeypatch.setattr(matrix_executor, "write_matrix_artifacts", lambda *args: None)
+    assert matrix_executor.main(["matrix.yaml", str(tmp_path)]) == 0
+    assert len(calls) == 1
+    assert calls[0][1]["run_token"]
+
+
+def test_matrix_executor_rejects_non_positive_jobs(monkeypatch, tmp_path):
+    from salus_evaluation import matrix_executor
+
+    monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: ())
+    with pytest.raises(SystemExit):
+        matrix_executor.main(["matrix.yaml", str(tmp_path), "--jobs", "0"])

@@ -29,3 +29,5 @@ def test_tool_exposes_run_observe_and_matrix_modes():
     assert "matrix <matrix.yaml>" in contents
     assert "navigation_matrix_execute" in contents
     assert "ros2 run salus_evaluation navigation_evaluation" in contents
+    assert "isolation <output-dir>" in contents
+    assert "SALUS_NAV_EVAL_RUN_TOKEN" in contents
