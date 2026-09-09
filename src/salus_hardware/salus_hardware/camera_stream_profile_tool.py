@@ -12,6 +12,7 @@ from .camera_stream_profile import (
     StreamingProfileError,
     config_from_environment,
     load_profile,
+    parse_response_status,
     parse_capabilities,
     parse_stream_ids,
     parse_stream_profile,
@@ -89,10 +90,17 @@ def _apply(
     }
     if dry_run or not changes:
         return result
-    client.put(path, changed_xml)
+    put_status = parse_response_status(client.put(path, changed_xml))
+    redact = getattr(client, "redact_text", None)
+    if not put_status.is_success():
+        raise StreamingProfileError(
+            "ISAPI PUT ResponseStatus rejected: "
+            f"{put_status.diagnostic(redact)}"
+        )
     verified = parse_stream_profile(client.get(path), stream_id)
     verify_profile(verified, desired)
     result["put"] = True
+    result["put_status"] = put_status.as_dict(redact)
     result["verified"] = verified.as_dict()
     return result
 

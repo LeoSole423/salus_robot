@@ -11,6 +11,7 @@ from salus_hardware.camera_stream_profile import (
     compact_http_body,
     config_from_environment,
     load_profile,
+    parse_response_status,
     parse_capabilities,
     parse_stream_ids,
     parse_stream_profile,
@@ -36,12 +37,25 @@ def _xml_value(xml: bytes, name: str) -> str:
 
 
 class FakeStreamingClient:
-    def __init__(self, *, stream_xml=STREAM_XML, capabilities=CAPABILITIES_XML):
+    def __init__(
+        self,
+        *,
+        stream_xml=STREAM_XML,
+        capabilities=CAPABILITIES_XML,
+        put_response=(
+            b"<ResponseStatus><statusCode>1</statusCode>"
+            b"<statusString>OK</statusString><subStatusCode>ok</subStatusCode>"
+            b"</ResponseStatus>"
+        ),
+    ):
         self.stream_xml = stream_xml
         self.capabilities = capabilities
+        self.put_response = put_response
         self.puts = []
+        self.get_paths = []
 
     def get(self, path):
+        self.get_paths.append(path)
         if path == STREAMS_PATH:
             return STREAMS_XML
         if path.endswith("/capabilities"):
@@ -53,7 +67,7 @@ class FakeStreamingClient:
     def put(self, path, body):
         self.puts.append((path, body))
         self.stream_xml = body
-        return b"<ResponseStatus><statusCode>1</statusCode></ResponseStatus>"
+        return self.put_response
 
 
 def _profile_file(tmp_path: Path, *, width=352) -> Path:
@@ -240,9 +254,81 @@ def test_apply_puts_full_xml_and_verifies_with_get(tmp_path: Path) -> None:
     client = FakeStreamingClient()
     result = _apply(client, "101", str(_profile_file(tmp_path)), dry_run=False)
     assert result["put"] is True
+    assert result["put_status"] == {
+        "statusCode": "1", "statusString": "OK", "subStatusCode": "ok",
+    }
     assert result["verified"]["width"] == 352
     assert len(client.puts) == 1
     assert client.puts[0][0] == f"{STREAMS_PATH}/101"
+
+
+def test_response_status_is_namespace_tolerant() -> None:
+    status = parse_response_status(
+        b"<h:ResponseStatus xmlns:h='urn:h'>"
+        b"<h:statusCode>1</h:statusCode><h:statusString>OK</h:statusString>"
+        b"<h:subStatusCode>ok</h:subStatusCode><h:MErrCode>0</h:MErrCode>"
+        b"</h:ResponseStatus>"
+    )
+    assert status.is_success()
+    assert status.as_dict() == {
+        "statusCode": "1", "statusString": "OK", "subStatusCode": "ok",
+        "MErrCode": "0",
+    }
+
+
+def test_response_status_zero_ok_is_success() -> None:
+    status = parse_response_status(
+        b"<ResponseStatus><statusCode>0</statusCode>"
+        b"<statusString>OK</statusString><subStatusCode>OK</subStatusCode>"
+        b"</ResponseStatus>"
+    )
+    assert status.is_success()
+
+
+def test_put_response_status_failure_stops_before_get_verification(tmp_path: Path) -> None:
+    client = FakeStreamingClient(
+        put_response=(
+            b"<ResponseStatus><statusCode>4</statusCode>"
+            b"<statusString>Invalid XML Content</statusString>"
+            b"<subStatusCode>badXmlContent</subStatusCode><MErrCode>badXml</MErrCode>"
+            b"</ResponseStatus>"
+        )
+    )
+    with pytest.raises(
+        StreamingProfileError,
+        match=r"statusCode=4; statusString=Invalid XML Content; "
+        r"subStatusCode=badXmlContent; MErrCode=badXml",
+    ):
+        _apply(client, "101", str(_profile_file(tmp_path)), dry_run=False)
+    assert client.get_paths.count(f"{STREAMS_PATH}/101") == 1
+
+
+@pytest.mark.parametrize("body", [b"", b"<ResponseStatus>", b"<Unexpected />"])
+def test_put_response_status_is_fail_closed_for_empty_or_unusable_body(
+    tmp_path: Path, body: bytes
+) -> None:
+    client = FakeStreamingClient(put_response=body)
+    with pytest.raises(StreamingProfileError, match="PUT"):
+        _apply(client, "101", str(_profile_file(tmp_path)), dry_run=False)
+    assert client.get_paths.count(f"{STREAMS_PATH}/101") == 1
+
+
+def test_put_response_status_diagnostic_redacts_credentials(tmp_path: Path) -> None:
+    class CredentialSafeFake(FakeStreamingClient):
+        def redact_text(self, value: str) -> str:
+            return compact_http_body(value.encode(), "operator", "secret-value")
+
+    client = CredentialSafeFake(
+        put_response=(
+            b"<ResponseStatus><statusCode>4</statusCode>"
+            b"<statusString>secret-value denied</statusString>"
+            b"<subStatusCode>operator</subStatusCode></ResponseStatus>"
+        )
+    )
+    with pytest.raises(StreamingProfileError) as error:
+        _apply(client, "101", str(_profile_file(tmp_path)), dry_run=False)
+    assert "secret-value" not in str(error.value)
+    assert "operator" not in str(error.value)
 
 
 def test_capability_contradiction_fails_closed() -> None:
