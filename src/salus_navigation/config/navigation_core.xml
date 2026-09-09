@@ -13,6 +13,8 @@
               <ReactiveSequence name="StopAndWaitForPathData">
                 <IsPathHealthValid path="{path}" context="0" expected_state="2" service_name="/path_health/evaluate" server_timeout="500"/>
                 <Wait wait_duration="1"/>
+                <!-- Waiting must never release the previous blackboard path to FollowPath. -->
+                <AlwaysFailure/>
               </ReactiveSequence>
               <Sequence name="ComputeHealthyPath">
                 <ComputePathToPose goal="{goal}" path="{candidate_path}" planner_id="GridBased"/>

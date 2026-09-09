@@ -29,6 +29,7 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     web_gps_fix_topic = LaunchConfiguration("web_gps_fix_topic")
+    web_heading_odometry_topic = LaunchConfiguration("web_heading_odometry_topic")
     camera_host = LaunchConfiguration("camera_host")
     camera_port = LaunchConfiguration("camera_port")
     camera_channel = LaunchConfiguration("camera_channel")
@@ -51,6 +52,11 @@ def generate_launch_description() -> LaunchDescription:
             "patrol_battery_state_topic", default_value="/battery_state"),
         DeclareLaunchArgument(
             "web_gps_fix_topic", default_value="/salus/gps/fix"),
+        DeclareLaunchArgument(
+            "web_heading_odometry_topic",
+            default_value="/odometry/global",
+            description="Map-aligned odometry heading used for the GPS-backed Cockpit pose",
+        ),
         DeclareLaunchArgument("camera_host", default_value=""),
         DeclareLaunchArgument("camera_port", default_value="0"),
         DeclareLaunchArgument("camera_channel", default_value="0"),
@@ -108,6 +114,9 @@ def generate_launch_description() -> LaunchDescription:
         _include(
             "salus_web",
             "web_bridge.launch.py",
-            {"gps_fix_topic": web_gps_fix_topic},
+            {
+                "gps_fix_topic": web_gps_fix_topic,
+                "heading_odometry_topic": web_heading_odometry_topic,
+            },
         ),
     ])
