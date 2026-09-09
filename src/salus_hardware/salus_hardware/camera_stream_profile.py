@@ -261,15 +261,14 @@ def _parse_capability_elements(
     options: set[str] = set()
     bounds: list[float] = []
     for element in elements:
-        text = (element.text or "").strip()
-        if text and not list(element):
-            options.update(_normalize_options(field, text, element))
         for child in element.iter():
-            if child is element:
-                continue
-            value = (child.text or "").strip()
-            if value and not list(child):
-                options.update(_normalize_options(field, value, child))
+            opt = (child.attrib.get("opt") or "").strip()
+            if opt:
+                options.update(_normalize_options(field, opt, child))
+            if child is not element and _local_name(child.tag).lower() == "option":
+                value = (child.text or "").strip()
+                if value:
+                    options.update(_normalize_options(field, value, child))
         for attribute in ("min", "minimum", "max", "maximum"):
             if attribute in element.attrib:
                 try:
