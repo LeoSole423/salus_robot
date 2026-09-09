@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StreamingChannelCapabilities xmlns="http://www.hikvision.com/ver20/XMLSchema">
+  <videoQualityControlType opt="CBR,VBR" def="CBR">CBR</videoQualityControlType>
+  <constantBitRate min="32" max="16384">1024</constantBitRate>
+  <vbrUpperCap min="32" max="16384" def="1024">1024</vbrUpperCap>
+  <maxFrameRate unit="centihz" opt="2500,1500,1000">2500</maxFrameRate>
+  <GovLength min="1" max="400">50</GovLength>
+</StreamingChannelCapabilities>

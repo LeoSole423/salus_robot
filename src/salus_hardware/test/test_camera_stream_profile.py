@@ -24,6 +24,7 @@ FIXTURES = Path(__file__).parent / "fixtures/camera_stream_profiles"
 STREAMS_XML = (FIXTURES / "streams.xml").read_bytes()
 STREAM_XML = (FIXTURES / "stream_101.xml").read_bytes()
 CAPABILITIES_XML = (FIXTURES / "stream_101_capabilities.xml").read_bytes()
+REAL_CAPABILITIES_XML = (FIXTURES / "stream_103_capabilities_real.xml").read_bytes()
 
 
 def _xml_value(xml: bytes, name: str) -> str:
@@ -95,6 +96,25 @@ def test_capabilities_parse_values_ranges_and_units() -> None:
     assert capabilities.bitrate_ranges["CBR"] == (128.0, 2048.0)
     assert capabilities.bitrate_ranges["VBR"] == (128.0, 4096.0)
     validate_capabilities({"width": 352, "fps": 15}, capabilities)
+
+
+def test_hikvision_current_values_do_not_become_discrete_capabilities() -> None:
+    capabilities = parse_capabilities(REAL_CAPABILITIES_XML)
+    assert capabilities is not None
+    assert capabilities.allowed["rate_control"] == frozenset({"cbr", "vbr"})
+    assert capabilities.allowed["fps"] == frozenset({"25", "15", "10"})
+    assert "CBR" not in capabilities.bitrate_allowed
+    assert "VBR" not in capabilities.bitrate_allowed
+    assert capabilities.bitrate_ranges["CBR"] == (32.0, 16384.0)
+    assert capabilities.bitrate_ranges["VBR"] == (32.0, 16384.0)
+    assert "gop_length_frames" not in capabilities.allowed
+    assert capabilities.ranges["gop_length_frames"] == (1.0, 400.0)
+
+    validate_capabilities({"bitrate_kbps": 768}, capabilities, "CBR")
+    validate_capabilities({"bitrate_kbps": 768}, capabilities, "VBR")
+    validate_capabilities({"fps": 15, "gop_length_frames": 30}, capabilities)
+    with pytest.raises(StreamingProfileError, match="outside camera capabilities"):
+        validate_capabilities({"bitrate_kbps": 16385}, capabilities, "CBR")
 
 
 def test_apply_preserves_unknown_xml_and_changes_only_managed_fields(tmp_path: Path) -> None:
