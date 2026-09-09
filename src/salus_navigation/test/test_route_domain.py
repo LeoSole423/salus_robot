@@ -12,6 +12,15 @@ def test_expansion_marks_synthetic_points_and_resolves_yaw():
     assert len(route) == 6 and route[1].key is False and route[0].yaw_deg == 0.0
     assert route[-1].key is True and route[-1].input_index == 1
 
+
+def test_open_route_final_automatic_yaw_follows_its_incoming_leg():
+    route = resolve_yaws([
+        RouteWaypoint(0, 0, nan, 0, map_x=0, map_y=0),
+        RouteWaypoint(0, 0, nan, 1, map_x=0, map_y=10),
+    ], False)
+
+    assert [point.yaw_deg for point in route] == [90.0, 90.0]
+
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)
     assert select_anchor(route, 9.0, 0.2) >= 1
