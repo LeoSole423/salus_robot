@@ -279,7 +279,6 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         snapshot = None
         last_snapshot_error = ""
         while time.monotonic() < snapshot_deadline:
-            cycles_before_request = fixture.input_cycles
             future = snapshot_client.call_async(GetNavSnapshot.Request())
             remaining = snapshot_deadline - time.monotonic()
             try:
@@ -307,13 +306,14 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
                 raise AssertionError(
                     f"Snapshot readiness failed: {last_snapshot_error}"
                 )
+            cycles_after_error = fixture.input_cycles
             remaining = snapshot_deadline - time.monotonic()
             if remaining <= 0.0:
                 break
             try:
                 _spin_until(
                     fixture,
-                    lambda: fixture.input_cycles > cycles_before_request,
+                    lambda: fixture.input_cycles > cycles_after_error,
                     remaining,
                     "next fresh input cycle for Snapshot readiness",
                 )
