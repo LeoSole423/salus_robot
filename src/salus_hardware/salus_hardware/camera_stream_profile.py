@@ -6,7 +6,7 @@ from dataclasses import dataclass, field as dataclass_field
 import math
 import os
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import (
     HTTPDigestAuthHandler,
@@ -48,6 +48,38 @@ class StreamingHttpError(RuntimeError):
         self.reason = reason
         self.body = body
         super().__init__(f"ISAPI HTTP {status} {reason}; body='{body}'")
+
+
+@dataclass(frozen=True)
+class ResponseStatus:
+    """Application-level status returned by a successful ISAPI HTTP PUT."""
+
+    status_code: str
+    status_string: str
+    sub_status_code: str
+    m_err_code: str | None = None
+
+    def is_success(self) -> bool:
+        return (
+            self.status_code == "1"
+            and self.status_string.casefold() == "ok"
+            and self.sub_status_code.casefold() in {"ok", "success"}
+        )
+
+    def as_dict(self, redact: Callable[[str], str] | None = None) -> dict[str, str]:
+        clean = redact or (lambda value: value)
+        result = {
+            "statusCode": clean(self.status_code),
+            "statusString": clean(self.status_string),
+            "subStatusCode": clean(self.sub_status_code),
+        }
+        if self.m_err_code is not None:
+            result["MErrCode"] = clean(self.m_err_code)
+        return result
+
+    def diagnostic(self, redact: Callable[[str], str] | None = None) -> str:
+        fields = self.as_dict(redact)
+        return "; ".join(f"{key}={value}" for key, value in fields.items())
 
 
 @dataclass(frozen=True)
@@ -160,6 +192,14 @@ class HikvisionStreamingClient:
     def put(self, path: str, body: bytes) -> bytes:
         return self._request("PUT", path, body)
 
+    def redact_text(self, value: str) -> str:
+        return compact_http_body(
+            value.encode("utf-8"),
+            self._config.username,
+            self._config.password,
+            max_len=160,
+        )
+
     def _request(self, method: str, path: str, body: bytes | None = None) -> bytes:
         if not path.startswith("/"):
             raise StreamingProfileError("ISAPI path must be absolute")
@@ -194,6 +234,45 @@ def compact_http_body(
     if not compact:
         return "<empty>"
     return compact if len(compact) <= max_len else compact[:max_len - 3] + "..."
+
+
+def parse_response_status(xml: bytes | str | None) -> ResponseStatus:
+    """Parse the application result returned by a Hikvision ISAPI PUT."""
+    if xml is None:
+        raise StreamingProfileError("PUT ResponseStatus is empty")
+    text = xml.decode("utf-8", "replace") if isinstance(xml, bytes) else xml
+    if not text.strip():
+        raise StreamingProfileError("PUT ResponseStatus is empty")
+    try:
+        root = _parse_xml(xml)
+    except StreamingProfileError as error:
+        raise StreamingProfileError("PUT ResponseStatus is malformed") from error
+    response = root if _local_name(root.tag) == "ResponseStatus" else next(
+        iter(_elements(root, "ResponseStatus")), None
+    )
+    if response is None:
+        raise StreamingProfileError("PUT response is not a ResponseStatus")
+
+    def required(name: str) -> str:
+        element = next(
+            (item for item in response.iter() if _local_name(item.tag) == name),
+            None,
+        )
+        value = (element.text or "").strip() if element is not None else ""
+        if not value:
+            raise StreamingProfileError(f"PUT ResponseStatus missing {name}")
+        return value
+
+    m_err = next(
+        (item for item in response.iter() if _local_name(item.tag) == "MErrCode"),
+        None,
+    )
+    return ResponseStatus(
+        status_code=required("statusCode"),
+        status_string=required("statusString"),
+        sub_status_code=required("subStatusCode"),
+        m_err_code=(m_err.text or "").strip() if m_err is not None else None,
+    )
 
 
 def parse_stream_ids(xml: bytes | str) -> tuple[str, ...]:
