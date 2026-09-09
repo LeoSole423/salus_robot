@@ -121,8 +121,9 @@ def test_replacement_dispatches_only_after_previous_goal_is_terminal() -> None:
     server._goal_handle = handle
     server._goal_terminal_event.clear()
     dispatched = []
-    server._send_map_goal = lambda point, yaw, epoch: dispatched.append(
-        (point.x, point.y, yaw, epoch)
+    server._map_pose = lambda x, y, yaw: (x, y, yaw)
+    server._send_map_goals = lambda poses, epoch, _client, action: dispatched.append(
+        (poses, epoch, action)
     )
 
     error = server._request_map_goal(
@@ -131,7 +132,7 @@ def test_replacement_dispatches_only_after_previous_goal_is_terminal() -> None:
 
     assert error == ""
     assert handle.cancel_calls == 1
-    assert dispatched == [(4.0, -2.0, 15.0, 4)]
+    assert dispatched == [([(4.0, -2.0, 15.0)], 4, "NavigateToPose")]
     assert server._goal_pending
     assert server._goal_epoch == 4
     assert not server._goal_terminal_event.is_set()

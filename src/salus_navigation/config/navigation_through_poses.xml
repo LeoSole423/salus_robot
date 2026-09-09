@@ -1,0 +1,45 @@
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="3" name="NavigateThroughPosesRecovery">
+      <PipelineSequence name="NavigateThroughPosesWithStablePath">
+        <RateController hz="0.333">
+          <RecoveryNode number_of_retries="1" name="StablePathThroughPosesPlanning">
+            <Fallback name="KeepOrReplanPathThroughPoses">
+              <ReactiveSequence name="KeepHealthyPathThroughPoses">
+                <Inverter><GlobalUpdatedGoal/></Inverter>
+                <IsPathValid path="{path}"/>
+                <IsPathHealthValid path="{path}" context="0" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
+              </ReactiveSequence>
+              <ReactiveSequence name="StopAndWaitForPathData">
+                <IsPathHealthValid path="{path}" context="0" expected_state="2" service_name="/path_health/evaluate" server_timeout="500"/>
+                <Wait wait_duration="1"/>
+                <AlwaysFailure/>
+              </ReactiveSequence>
+              <Sequence name="ComputeHealthyPathThroughPoses">
+                <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5"/>
+                <ComputePathThroughPoses goals="{goals}" path="{candidate_path}" planner_id="GridBased"/>
+                <IsPathHealthValid path="{candidate_path}" context="1" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
+                <CopyPath input_path="{candidate_path}" output_path="{path}"/>
+              </Sequence>
+            </Fallback>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" server_timeout="5000"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPathThroughPoses">
+          <FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap" server_timeout="5000"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearCostmaps">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap" server_timeout="5000"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap" server_timeout="5000"/>
+          </Sequence>
+          <Wait wait_duration="2"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

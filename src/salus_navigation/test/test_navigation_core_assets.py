@@ -2,6 +2,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from geometry_msgs.msg import PoseStamped
+from nav2_msgs.action import NavigateThroughPoses, NavigateToPose
 from salus_interfaces.srv import SetNavGoalLL
 from salus_interfaces.msg import ProjectedKeepoutPolygon, ProjectedKeepoutState
 from salus_navigation.nav_command_server import NavCommandServer, projected_keepouts_contain
@@ -27,15 +28,40 @@ def test_single_goal_contract_accepts_scalar_or_one_element_arrays() -> None:
     assert NavCommandServer._single_waypoint(request) == ((1.0, 2.0, 3.0), "")
 
 
-def test_single_goal_contract_rejects_missions_and_invalid_values() -> None:
+def test_goal_contract_accepts_finite_multi_pose_chunks() -> None:
+    request = _request()
+    request.lats = [1.0, 2.0]
+    request.lons = [3.0, 4.0]
+    request.yaws_deg = [5.0, 6.0]
+
+    assert NavCommandServer._waypoints(request) == (
+        ((1.0, 3.0, 5.0), (2.0, 4.0, 6.0)),
+        "",
+    )
+    assert "multiple" in NavCommandServer._single_waypoint(request)[1]
+
+    poses = [PoseStamped(), PoseStamped()]
+    multi_goal = NavCommandServer._action_goal(poses)
+    assert isinstance(multi_goal, NavigateThroughPoses.Goal)
+    assert len(multi_goal.poses) == 2
+
+
+def test_single_pose_still_uses_navigate_to_pose() -> None:
+    pose = PoseStamped()
+    goal = NavCommandServer._action_goal([pose])
+    assert isinstance(goal, NavigateToPose.Goal)
+    assert goal.pose is pose
+
+
+def test_goal_contract_rejects_loops_and_invalid_values() -> None:
     request = _request()
     request.loop = True
-    assert "missions" in NavCommandServer._single_waypoint(request)[1]
+    assert "finite" in NavCommandServer._waypoints(request)[1]
     request.loop = False
     request.lats, request.lons, request.yaws_deg = [1.0, 2.0], [3.0, 4.0], [0.0, 0.0]
-    assert "multiple" in NavCommandServer._single_waypoint(request)[1]
+    assert NavCommandServer._waypoints(request)[1] == ""
     request.lats, request.lons, request.yaws_deg = [1.0], [], [0.0]
-    assert "equal" in NavCommandServer._single_waypoint(request)[1]
+    assert "equal" in NavCommandServer._waypoints(request)[1]
 
 
 def test_rviz_goal_contract_accepts_a_finite_map_pose() -> None:
@@ -120,6 +146,36 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert 'input_path="{candidate_path}" output_path="{path}"' in tree
     assert '<FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>' in tree
     assert "Spin" not in tree and "BackUp" not in tree
+
+
+def test_multi_pose_navigator_uses_stable_candidate_validation_and_ackermann_recovery() -> None:
+    for profile_name in (
+        "nav2_core_sim.yaml",
+        "nav2_core_no_obstacles_sim.yaml",
+        "nav2_core_real.yaml",
+    ):
+        profile = (ROOT / "config" / profile_name).read_text(encoding="utf-8")
+        assert "navigators: [navigate_to_pose, navigate_through_poses]" in profile
+        assert "nav2_bt_navigator::NavigateThroughPosesNavigator" in profile
+        assert "nav2_remove_passed_goals_action_bt_node" in profile
+
+    tree = (ROOT / "config" / "navigation_through_poses.xml").read_text(
+        encoding="utf-8"
+    )
+    assert '<RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5"/>' in tree
+    assert '<ComputePathThroughPoses goals="{goals}" path="{candidate_path}" planner_id="GridBased"/>' in tree
+    assert '<CopyPath input_path="{candidate_path}" output_path="{path}"/>' in tree
+    assert 'context="0" expected_state="2"' in tree
+    assert "global_costmap/clear_entirely_global_costmap" in tree
+    assert "local_costmap/clear_entirely_local_costmap" in tree
+    assert "Spin" not in tree and "BackUp" not in tree and "SmoothPath" not in tree
+
+
+def test_navigation_launches_select_the_production_multi_pose_tree() -> None:
+    for launch_name in ("navigation_core_sim.launch.py", "navigation_core_real.launch.py"):
+        source = (ROOT / "launch" / launch_name).read_text(encoding="utf-8")
+        assert "navigation_through_poses.xml" in source
+        assert "navigation_through_poses_inactive.xml" not in source
 
 
 def test_stop_and_wait_cannot_release_a_stale_path_to_controller() -> None:

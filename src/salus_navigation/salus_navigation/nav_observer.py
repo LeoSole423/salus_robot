@@ -29,7 +29,7 @@ def plan_signature(path: Path) -> tuple[object, ...]:
 
 @dataclass
 class PlanReplanTracker:
-    """Identify material plan changes while a NavigateToPose goal is active."""
+    """Identify material plan changes while a Nav2 navigation goal is active."""
 
     active_signature: tuple[object, ...] | None = None
 

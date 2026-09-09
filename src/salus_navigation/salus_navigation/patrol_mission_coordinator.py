@@ -169,8 +169,8 @@ class PatrolMissionCoordinator(Node):
         self.declare_parameter("fromll_timeout_s", 2.0)
         self.declare_parameter("state_poll_s", 0.2)
         self.declare_parameter("at_home_tolerance_m", 1.2)
-        self.declare_parameter("default_leg_spacing_m", 2.0)
-        self.declare_parameter("default_chunk_span_m", 20.0)
+        self.declare_parameter("default_leg_spacing_m", 35.0)
+        self.declare_parameter("default_chunk_span_m", 120.0)
         self.declare_parameter("default_chunk_max_waypoints", 5)
         self.declare_parameter("runtime_dir", "runtime/patrol")
         # Inputs only in this cut.  A later mission-state cut consumes the

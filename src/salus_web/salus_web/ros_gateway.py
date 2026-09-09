@@ -956,9 +956,11 @@ def _waypoint_arrays(result: Any, prefix: str, waypoints: list[dict[str, Any]]) 
 
 
 def _route_options(result: Any, fields: Mapping[str, Any]) -> None:
-    result.leg_spacing_m = float(fields.get("leg_spacing_m", 2.0))
-    result.chunk_span_m = float(fields.get("chunk_span_m", 25.0))
-    result.chunk_max_waypoints = int(fields.get("chunk_max_waypoints", 20))
+    # Physically characterized ROS2_SALUS defaults.  These bound a finite
+    # NavigateThroughPoses chunk without over-densifying the plan.
+    result.leg_spacing_m = float(fields.get("leg_spacing_m", 35.0))
+    result.chunk_span_m = float(fields.get("chunk_span_m", 120.0))
+    result.chunk_max_waypoints = int(fields.get("chunk_max_waypoints", 5))
 
 
 def _required_finite(value: Any, name: str) -> float:

@@ -6,7 +6,7 @@ keepout, footprint, zonas de colisión, `/scan_clean` y plan, sin ser dueño de
 WebSocket, rosbag ni telemetría compacta.
 
 Responsabilidad: navegación segura, Nav2 y zonas no-go. El corte actual ofrece
-un goal LL único, rutas abiertas/circulares y zonas dinámicas GeoJSON; el
+goals LL escalares, chunks LL multi-pose, rutas abiertas/circulares y zonas dinámicas GeoJSON; el
 runtime real también compone las APIs de rutas y patrol/HOME sin crear otra
 autoridad de velocidad.
 
@@ -22,7 +22,10 @@ autoridad de velocidad.
   datos, cooldown, limpieza de costmaps, reanclaje hacia delante y límite de
   intentos observable en los campos `blocked_*`.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
-  ni invoca Nav2 directamente.
+  ni invoca Nav2 directamente. Cada chunk conserva su geometría sintética y se
+  despacha por `nav_command_server`: una pose usa `NavigateToPose` y varias
+  usan `NavigateThroughPoses`. Sólo los checkpoints originales incrementan el
+  progreso de misión o ejecutan acciones.
 - Las acciones `brake_hold` y `set_navigation_profile` se ejecutan sólo en
   checkpoints originales. Tienen estado explícito y se cancelan ante takeover,
   collision stop o cancelación de misión.
@@ -63,6 +66,9 @@ autoridad de velocidad.
   produce `STOP_AND_WAIT`. El BT valida el path candidato antes de copiarlo al
   path activo que consume `FollowPath`; no ejecuta `SmoothPath` ni inicia un
   `smoother_server`. `SmacPlannerHybrid` conserva `smooth_path: false`.
+  El BT multi-pose añade poda de goals superados y recuperaciones separadas de
+  costmaps local/global, sin maniobras `Spin`/`BackUp` incompatibles con
+  Ackermann.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
   modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).
