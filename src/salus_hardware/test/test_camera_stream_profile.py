@@ -149,6 +149,37 @@ def test_apply_preserves_unknown_xml_and_changes_only_managed_fields(tmp_path: P
     assert parse_stream_profile(changed, "101").fps == 15
 
 
+def test_apply_preserves_hikvision_xml_envelope() -> None:
+    changed, changes = apply_profile_xml(
+        STREAM_XML,
+        {"bitrate_kbps": 1024},
+        "101",
+    )
+    assert changes == {"bitrate_kbps": {"old": 2048, "new": 1024}}
+    assert changed.startswith(b'<?xml version="1.0" encoding="UTF-8"?>')
+    assert b'<StreamingChannel xmlns="http://www.hikvision.com/ver20/XMLSchema">' in changed
+    assert b"ns0:" not in changed
+    assert b"<vbrUpperCap>1024</vbrUpperCap>" in changed
+    assert b"<constantBitRate>4096</constantBitRate>" in changed
+    assert b"<futureVendorField><value>preserve-me</value></futureVendorField>" in changed
+
+    cbr_source = STREAM_XML.replace(
+        b"<videoQualityControlType>VBR</videoQualityControlType>",
+        b"<videoQualityControlType>CBR</videoQualityControlType>",
+    )
+    cbr_changed, cbr_changes = apply_profile_xml(
+        cbr_source,
+        {"bitrate_kbps": 1024},
+        "101",
+    )
+    assert cbr_changes == {"bitrate_kbps": {"old": 4096, "new": 1024}}
+    assert cbr_changed.startswith(b'<?xml version="1.0" encoding="UTF-8"?>')
+    assert b'<StreamingChannel xmlns="http://www.hikvision.com/ver20/XMLSchema">' in cbr_changed
+    assert b"ns0:" not in cbr_changed
+    assert b"<constantBitRate>1024</constantBitRate>" in cbr_changed
+    assert b"<vbrUpperCap>2048</vbrUpperCap>" in cbr_changed
+
+
 def test_dry_run_does_not_put_and_reports_semantic_changes(tmp_path: Path) -> None:
     client = FakeStreamingClient()
     result = _apply(client, "101", str(_profile_file(tmp_path)), dry_run=True)

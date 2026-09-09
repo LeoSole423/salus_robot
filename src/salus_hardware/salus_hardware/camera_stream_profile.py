@@ -6,6 +6,7 @@ from dataclasses import dataclass, field as dataclass_field
 import math
 import os
 from pathlib import Path
+import re
 from typing import Any, Callable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import (
@@ -369,6 +370,7 @@ def apply_profile_xml(
     before = parse_stream_profile(xml, stream_id)
     effective_rate_control = normalized.get("rate_control", before.rate_control)
     changes: dict[str, dict[str, Any]] = {}
+    replacements: list[tuple[ElementTree.Element, str]] = []
     for field, value in normalized.items():
         aliases = _FIELD_ALIASES[field]
         if field == "bitrate_kbps":
@@ -384,8 +386,8 @@ def apply_profile_xml(
         encoded = _encode_field(field, value, element)
         if old != value:
             changes[field] = {"old": old, "new": value}
-            element.text = encoded
-    body = ElementTree.tostring(root, encoding="utf-8")
+            replacements.append((element, encoded))
+    body = _replace_xml_element_text(xml, root, replacements)
     return body, changes
 
 
@@ -586,3 +588,50 @@ def _encode_field(field: str, value: Any, element: ElementTree.Element) -> str:
     if field in _NUMERIC_FIELDS:
         return str(int(value)) if float(value).is_integer() else str(value)
     return str(value)
+
+
+def _replace_xml_element_text(
+    xml: bytes | str,
+    root: ElementTree.Element,
+    replacements: list[tuple[ElementTree.Element, str]],
+) -> bytes:
+    """Replace managed scalar texts without reserializing the Hikvision envelope."""
+    body = xml.encode("utf-8") if isinstance(xml, str) else xml
+    if not replacements:
+        return body
+
+    target_positions: dict[int, tuple[str, int, bytes]] = {}
+    occurrences: dict[str, int] = {}
+    replacement_values = {id(element): value for element, value in replacements}
+    for element in root.iter():
+        tag = element.tag
+        occurrence = occurrences.get(tag, 0)
+        occurrences[tag] = occurrence + 1
+        if id(element) in replacement_values:
+            target_positions[id(element)] = (
+                _local_name(tag), occurrence, replacement_values[id(element)].encode("utf-8"),
+            )
+
+    spans: list[tuple[int, int, bytes]] = []
+    matches_by_name: dict[str, list[re.Match[bytes]]] = {}
+    for name, occurrence, value in target_positions.values():
+        matches = matches_by_name.get(name)
+        if matches is None:
+            local_name = re.escape(name.encode("ascii"))
+            pattern = re.compile(
+                rb"<(?P<tag>(?:[A-Za-z_][A-Za-z0-9_.-]*:)?" + local_name
+                + rb")(?:\s[^>]*)?>(?P<text>.*?)</(?P=tag)\s*>",
+                re.DOTALL,
+            )
+            matches = list(pattern.finditer(body))
+            matches_by_name[name] = matches
+        if occurrence >= len(matches):
+            raise StreamingProfileError(
+                f"streaming XML cannot preserve managed field {name}"
+            )
+        match = matches[occurrence]
+        spans.append((match.start("text"), match.end("text"), value))
+
+    for start, end, value in sorted(spans, reverse=True):
+        body = body[:start] + value + body[end:]
+    return body
