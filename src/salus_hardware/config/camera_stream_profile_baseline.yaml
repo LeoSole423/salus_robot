@@ -1,0 +1,9 @@
+video:
+  codec: H.264
+  width: 704
+  height: 576
+  fps: 25
+  rate_control: CBR
+  bitrate_kbps: 1024
+  gop_length_frames: 50
+audio_enabled: false

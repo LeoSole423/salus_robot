@@ -22,6 +22,7 @@ from salus_hardware.camera_stream_profile_tool import _apply, _inspect
 
 
 FIXTURES = Path(__file__).parent / "fixtures/camera_stream_profiles"
+CONFIG = Path(__file__).parent.parent / "config"
 STREAMS_XML = (FIXTURES / "streams.xml").read_bytes()
 STREAM_XML = (FIXTURES / "stream_101.xml").read_bytes()
 CAPABILITIES_XML = (FIXTURES / "stream_101_capabilities.xml").read_bytes()
@@ -257,6 +258,29 @@ def test_gop_manages_gov_length_and_preserves_keyframe_interval() -> None:
     assert set(changes) == {"gop_length_frames"}
     assert _xml_value(changed, "GovLength") == "30"
     assert _xml_value(changed, "keyFrameInterval") == "1000"
+
+
+def test_production_4g_and_baseline_profiles_are_reproducible() -> None:
+    assert load_profile(CONFIG / "camera_stream_profile_4g.yaml") == {
+        "codec": "H.264",
+        "width": 704,
+        "height": 576,
+        "fps": 15,
+        "rate_control": "VBR",
+        "bitrate_kbps": 512,
+        "gop_length_frames": 30,
+        "audio_enabled": False,
+    }
+    assert load_profile(CONFIG / "camera_stream_profile_baseline.yaml") == {
+        "codec": "H.264",
+        "width": 704,
+        "height": 576,
+        "fps": 25,
+        "rate_control": "CBR",
+        "bitrate_kbps": 1024,
+        "gop_length_frames": 50,
+        "audio_enabled": False,
+    }
 
 
 def test_identical_profile_is_idempotent_without_put(tmp_path: Path) -> None:
