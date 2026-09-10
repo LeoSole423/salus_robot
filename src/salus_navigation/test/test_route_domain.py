@@ -30,7 +30,21 @@ def test_open_anchor_never_moves_backwards():
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():
     route = prepare([point(0,0),point(2,1),point(4,2),point(6,3)], loop=True,input_count=4,spacing_m=0,chunk_span_m=100,chunk_max_waypoints=10)
-    chunk=build_chunk(route,0); assert len(chunk.waypoints)==3 and next_start(route,chunk)==3
+    chunk=build_chunk(route,0); assert len(chunk.waypoints)==2 and next_start(route,chunk)==2
+
+
+def test_chunk_ends_at_next_original_checkpoint_like_legacy():
+    route = prepare(
+        [point(0, 0), point(3, 1), point(6, 2), point(9, 3), point(12, 4)],
+        loop=False, input_count=5, spacing_m=35,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+
+    chunk = build_chunk(route, 0)
+
+    assert [waypoint.input_index for waypoint in chunk.waypoints] == [0, 1]
+    assert chunk.checkpoint_offsets == (0, 1)
+    assert next_start(route, chunk) == 2
 
 
 def test_chunk_soft_limits_never_promote_synthetic_point_to_boundary():
@@ -94,9 +108,9 @@ def test_progress_projects_onto_segment_instead_of_nearest_vertex():
 
     assert progress.expanded_index == 0
     assert progress.checkpoint_index == 0
-    assert progress.ratio == 0.25
+    assert progress.ratio == 0.5
     assert progress.cross_track_error_m == 2.0
-    assert progress.distance_to_target_m > 15.0
+    assert progress.distance_to_target_m > 5.0
 
 
 def test_progress_does_not_jump_back_to_an_earlier_segment_at_shared_vertex():

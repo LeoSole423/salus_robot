@@ -12,6 +12,7 @@ from salus_navigation.snapshot_renderer import (
     Transform2D,
     _grid_array,
     _nearest_sample,
+    _render_canvas,
     render,
 )
 
@@ -73,6 +74,54 @@ def test_renderer_omits_optional_layer_when_transform_is_missing() -> None:
     ))
     assert output.layers["local_costmap"] is True
     assert output.layers["plan"] is False
+
+
+def test_retained_route_geometry_remains_visible_when_nav2_plan_is_absent() -> None:
+    scene = SnapshotScene(
+        local_costmap=_grid(),
+        center_xy=(0.0, 0.0),
+        extent_m=4.0,
+        size_px=128,
+        global_inset_px=64,
+        mission_path=Polyline(
+            "odom", ((-1.5, 0.0), (1.5, 0.0)), (255, 180, 0), thickness=2
+        ),
+        active_chunk_path=Polyline(
+            "odom", ((0.0, -1.5), (0.0, 1.5)), (0, 165, 255), thickness=3
+        ),
+    )
+
+    canvas, layers = _render_canvas(scene)
+
+    center = canvas[64, 64]
+    assert layers["plan"] is False
+    assert center[2] > 200
+    assert center[1] > 100
+    assert center[0] < 50
+
+
+def test_global_inset_draws_retained_mission_and_active_chunk() -> None:
+    scene = SnapshotScene(
+        local_costmap=_grid(),
+        center_xy=(0.0, 0.0),
+        extent_m=4.0,
+        size_px=128,
+        global_inset_px=64,
+        global_costmap=_grid("map"),
+        global_mission_path=Polyline(
+            "map", ((-1.5, -1.0), (1.5, -1.0)), (255, 180, 0), thickness=2
+        ),
+        global_active_chunk_path=Polyline(
+            "map", ((-1.5, 1.0), (1.5, 1.0)), (0, 165, 255), thickness=3
+        ),
+    )
+
+    canvas, layers = _render_canvas(scene)
+    inset = canvas[10:74, 54:118]
+
+    assert layers["global_inset"] is True
+    assert np.any(np.all(inset == np.array([255, 180, 0]), axis=2))
+    assert np.any(np.all(inset == np.array([0, 165, 255]), axis=2))
 
 
 def test_renderer_draws_vector_keepout_with_a_hole_without_global_raster() -> None:

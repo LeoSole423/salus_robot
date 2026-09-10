@@ -91,8 +91,12 @@ class SnapshotScene:
     stop_zone: Optional[Polyline] = None
     collision_polygons: Tuple[Polyline, ...] = ()
     scan: Optional[Polyline] = None
+    mission_path: Optional[Polyline] = None
     plan: Optional[Polyline] = None
+    active_chunk_path: Optional[Polyline] = None
+    global_mission_path: Optional[Polyline] = None
     global_plan: Optional[Polyline] = None
+    global_active_chunk_path: Optional[Polyline] = None
     robot_global: Optional[Point] = None
 
 
@@ -365,21 +369,35 @@ def _global_inset(canvas: np.ndarray, scene: SnapshotScene) -> bool:
             (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
              grid.origin[1], grid.origin[1] + grid.height * grid.resolution),
         )
-    if scene.global_plan is not None:
-        plan = _to_frame(
-            scene.global_plan.points,
-            scene.global_plan.frame_id,
-            grid.frame_id,
-            scene.global_plan.transform,
-        )
-        if plan is not None and len(plan) >= 2:
+    for path in (
+        scene.global_mission_path,
+        scene.global_plan,
+        scene.global_active_chunk_path,
+    ):
+        if path is not None:
+            points = _to_frame(
+                path.points,
+                path.frame_id,
+                grid.frame_id,
+                path.transform,
+            )
+        else:
+            points = None
+        if points is not None and len(points) >= 2:
             window = (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
                       grid.origin[1], grid.origin[1] + grid.height * grid.resolution)
-            pixels = [_world_to_px_unbounded(point, window, inset_size) for point in plan]
+            pixels = [_world_to_px_unbounded(point, window, inset_size) for point in points]
             for first, second in zip(pixels, pixels[1:]):
                 visible, a, b = cv2.clipLine((0, 0, inset_size, inset_size), first, second)
                 if visible:
-                    cv2.line(image, a, b, (96, 255, 96), 2, cv2.LINE_AA)
+                    cv2.line(
+                        image,
+                        a,
+                        b,
+                        path.color_bgr,
+                        path.thickness,
+                        cv2.LINE_AA,
+                    )
     if scene.robot_global is not None:
         px = _world_to_px(scene.robot_global, (grid.origin[0], grid.origin[0] + grid.width * grid.resolution,
                                      grid.origin[1], grid.origin[1] + grid.height * grid.resolution), inset_size)
@@ -413,8 +431,12 @@ def _render_canvas(scene: SnapshotScene) -> Tuple[np.ndarray, Dict[str, bool]]:
         layers["collision_polygons"] = _draw_polyline(canvas, scene, polygon, window) or layers["collision_polygons"]
     if scene.scan is not None:
         layers["scan"] = _draw_points(canvas, scene, scene.scan, window)
+    if scene.mission_path is not None:
+        _draw_polyline(canvas, scene, scene.mission_path, window)
     if scene.plan is not None:
         layers["plan"] = _draw_polyline(canvas, scene, scene.plan, window)
+    if scene.active_chunk_path is not None:
+        _draw_polyline(canvas, scene, scene.active_chunk_path, window)
     if scene.global_costmap is not None:
         layers["global_inset"] = _global_inset(canvas, scene)
         layers["global_costmap"] = layers["global_inset"]

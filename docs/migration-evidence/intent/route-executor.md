@@ -8,10 +8,11 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
 - Los puntos originales son checkpoints. Los puntos expandidos son geometría
   entregada dentro del chunk multi-pose, además de servir para anclaje,
   progreso y diagnóstico: no producen éxito, freno ni acciones.
-- Los límites de cantidad y distancia de un chunk son suaves: después de
-  cruzarlos se continúa hasta el próximo checkpoint original. El chunk finito
-  completo se entrega como `NavigateThroughPoses`; sólo un chunk de una pose
-  usa `NavigateToPose`.
+- Cada chunk termina en el próximo checkpoint original. Los límites de cantidad
+  y distancia son suaves dentro de esa pierna: si se cruzan entre puntos
+  sintéticos, se conserva la geometría hasta el checkpoint. El chunk finito se
+  entrega como `NavigateThroughPoses`; sólo un chunk de una pose usa
+  `NavigateToPose`.
 - No hay freno entre objetivos contiguos; sí al finalizar, cancelar o abortar.
 - Esta migración convierte LL una vez para validar/preparar la misión y conserva las poses `map` para diagnóstico. Cada despacho usa el contrato legacy `SetNavGoalLL`, cuyo servidor mantiene su conversión defensiva.
 
@@ -41,3 +42,17 @@ Nav2 debe seguir, pero no redefine los hitos de la misión.
 
 No validado en hardware en este corte: continuidad física, curva Ackermann y
 loop. Esas pruebas sólo se habilitan después de PC/CI y simulación verdes.
+
+## Corrección física posterior a #244
+
+La primera implementación de paridad agrupó hasta cinco checkpoints originales
+en un único `NavigateThroughPoses`. Una ruta física corta demostró que eso no
+reproducía `build_chunk_waypoints(..., key_stop_indices=...)` del legacy:
+Smac/Dubins intentaba satisfacer varios yaws cercanos dentro de un solo plan y
+producía bucles de gran radio. El contrato corregido corta en el siguiente
+checkpoint y conserva únicamente los sintéticos de esa pierna.
+
+Los paths diagnósticos de misión y chunk son estado, no sensores. Se publican y
+consumen con `TRANSIENT_LOCAL`, se proyectan usando el TF actual y permanecen
+en el snapshot hasta que el executor publica explícitamente un path vacío. Esto
+evita que Nav Live pierda la ruta cuando Nav2 limpia o reemplaza `/plan`.
