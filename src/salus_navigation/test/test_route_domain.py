@@ -131,6 +131,25 @@ def test_loop_anchor_enters_at_next_waypoint_of_nearby_segment():
         route, 10.4, 0.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
     ) == 2
 
+
+def test_loop_anchor_respects_configured_segment_tolerance():
+    route = PreparedRoute(
+        (
+            RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, 0.0, 1, map_x=10.0, map_y=0.0),
+            RouteWaypoint(0, 0, 0.0, 2, map_x=5.0, map_y=4.0),
+        ),
+        True, 3, 0.0, 20.0, 5,
+    )
+
+    assert select_anchor(
+        route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
+    ) == 1
+    assert select_anchor(
+        route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=0.5,
+    ) == 2
+
+
 def test_loop_chunk_does_not_contain_a_complete_circuit():
     route = prepare([point(0,0),point(2,1),point(4,2),point(6,3)], loop=True,input_count=4,spacing_m=0,chunk_span_m=100,chunk_max_waypoints=10)
     chunk=build_chunk(route,0); assert len(chunk.waypoints)==2 and next_start(route,chunk)==2

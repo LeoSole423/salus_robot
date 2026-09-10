@@ -276,6 +276,9 @@ class RouteExecutorNode(Node):
             anchor = select_anchor(
                 prepared, self._pose.x, self._pose.y,
                 float(self.get_parameter("waypoint_reached_tolerance_m").value),
+                segment_tolerance_m=float(
+                    self.get_parameter("route_segment_start_tolerance_m").value
+                ),
             )
         prepared = type(prepared)(**{**prepared.__dict__, "anchor_input_index": anchor})
         mission = RouteMission(
