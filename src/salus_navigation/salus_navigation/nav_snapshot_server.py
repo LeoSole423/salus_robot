@@ -22,7 +22,7 @@ from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformException, TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
-from salus_interfaces.msg import NavSnapshotLayers, ProjectedKeepoutState
+from salus_interfaces.msg import NavSnapshotLayers, NavTelemetry, ProjectedKeepoutState
 from salus_interfaces.srv import GetNavSnapshot
 from salus_navigation.snapshot_renderer import (
     Grid,
@@ -39,6 +39,37 @@ from salus_navigation.snapshot_renderer import (
 class Cached:
     message: Any
     first_received_monotonic: float
+
+
+@dataclass
+class ActivePlanRetention:
+    """Keep a diagnostic plan only for the navigation action that produced it.
+
+    Nav2 publishes ``/plan`` on planning/replanning, rather than as a sensor
+    stream. Its header therefore becomes old while a healthy action is still
+    executing. A retained plan is visual-only: it is discarded as soon as the
+    corresponding navigation action is no longer active and never changes the
+    snapshot's required TF/costmap freshness gates.
+    """
+
+    goal_active: bool = False
+    held_plan: Cached | None = None
+
+    def update_goal(self, goal_active: bool) -> None:
+        self.goal_active = bool(goal_active)
+        if not self.goal_active:
+            self.held_plan = None
+
+    def update_plan(self, cached: Cached) -> None:
+        if self.goal_active:
+            self.held_plan = cached
+
+    def select(self, fresh_plan: Cached | None, *, telemetry_fresh: bool) -> Cached | None:
+        if fresh_plan is not None:
+            return fresh_plan
+        if self.goal_active and telemetry_fresh:
+            return self.held_plan
+        return None
 
 
 def is_fresh(stamp_ns: int, now_ns: int, received_monotonic: float,
@@ -88,6 +119,7 @@ class NavSnapshotServer(Node):
             "collision_polygons_topic": "/collision_monitor/polygons",
             "scan_topic": "/scan_clean",
             "plan_topic": "/plan",
+            "nav_telemetry_topic": "/nav_command_server/telemetry",
             "mission_path_topic": "/route_executor/mission_path",
             "active_chunk_path_topic": "/route_executor/active_chunk_path",
             "base_frame": "base_footprint",
@@ -120,6 +152,7 @@ class NavSnapshotServer(Node):
         self._parameter["startup_grace_s"] = max(0.0, float(self._parameter["startup_grace_s"]))
         self._lock = threading.Lock()
         self._cache: Dict[str, Cached] = {}
+        self._plan_retention = ActivePlanRetention()
         # Rendering may take longer than a costmap publication period.  Keep
         # subscriptions and the service in different groups so a request can
         # never starve freshness-critical cache updates.
@@ -162,7 +195,13 @@ class NavSnapshotServer(Node):
         subscribe(
             LaserScan, self._parameter["scan_topic"],
             lambda msg: self._cache_message("scan", msg), qos_profile_sensor_data)
-        subscribe(Path, self._parameter["plan_topic"], lambda msg: self._cache_message("plan", msg), 10)
+        subscribe(Path, self._parameter["plan_topic"], self._cache_plan, 10)
+        subscribe(
+            NavTelemetry,
+            self._parameter["nav_telemetry_topic"],
+            self._cache_nav_telemetry,
+            10,
+        )
         route_path_qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
@@ -194,6 +233,21 @@ class NavSnapshotServer(Node):
             first = previous.first_received_monotonic if previous else time.monotonic()
             self._cache[key] = Cached(message, first)
 
+    def _cache_plan(self, message: Path) -> None:
+        with self._lock:
+            previous = self._cache.get("plan")
+            first = previous.first_received_monotonic if previous else time.monotonic()
+            cached = Cached(message, first)
+            self._cache["plan"] = cached
+            self._plan_retention.update_plan(cached)
+
+    def _cache_nav_telemetry(self, message: NavTelemetry) -> None:
+        with self._lock:
+            previous = self._cache.get("nav_telemetry")
+            first = previous.first_received_monotonic if previous else time.monotonic()
+            self._cache["nav_telemetry"] = Cached(message, first)
+            self._plan_retention.update_goal(bool(message.goal_active))
+
     def _cache_grid_update(self, key: str, update: OccupancyGridUpdate) -> None:
         with self._lock:
             previous = self._cache.get(key)
@@ -203,9 +257,12 @@ class NavSnapshotServer(Node):
             if updated is not None:
                 self._cache[key] = Cached(updated, previous.first_received_monotonic)
 
-    def _copy_cache(self) -> Dict[str, Cached]:
+    def _copy_cache(self) -> tuple[Dict[str, Cached], ActivePlanRetention]:
         with self._lock:
-            return dict(self._cache)
+            return dict(self._cache), ActivePlanRetention(
+                goal_active=self._plan_retention.goal_active,
+                held_plan=self._plan_retention.held_plan,
+            )
 
     def _stamp_age_ok(self, cached: Cached, required: bool) -> bool:
         stamp = self._message_stamp(cached.message)
@@ -355,7 +412,7 @@ class NavSnapshotServer(Node):
 
     def _on_snapshot(self, _request: GetNavSnapshot.Request, response: GetNavSnapshot.Response) -> GetNavSnapshot.Response:
         started = time.monotonic()
-        cache = self._copy_cache()
+        cache, plan_retention = self._copy_cache()
         local_cached = cache.get("local")
         if local_cached is None:
             return self._failure(response, "MISSING_LOCAL_COSTMAP: no local costmap received")
@@ -377,7 +434,12 @@ class NavSnapshotServer(Node):
             if global_grid is not None:
                 global_keepouts = self._keepouts(keepout_cached.message, global_grid.frame_id)
         footprint_cached, stop_cached = dynamic("footprint"), dynamic("stop_zone")
-        scan_cached, plan_cached, collision_cached = dynamic("scan"), dynamic("plan"), dynamic("collision")
+        scan_cached, collision_cached = dynamic("scan"), dynamic("collision")
+        fresh_plan_cached = dynamic("plan")
+        plan_cached = plan_retention.select(
+            fresh_plan_cached,
+            telemetry_fresh=dynamic("nav_telemetry") is not None,
+        )
         # Mission and chunk paths are retained route state, not sensor data.
         # They remain valid until route_executor explicitly publishes an empty
         # path, and map->local projection must use the latest localization.

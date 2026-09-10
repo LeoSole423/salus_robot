@@ -53,8 +53,14 @@ snapshot.
   `always_send_full_costmap=true`, igual que la variante legacy optimizada.
 - El costmap local deberá tener stamp válido y una edad ROS no mayor que
   `local_costmap_max_age_s` (default 2.0 s, mínimo 0.1 s).
-- Las capas dinámicas opcionales usarán `dynamic_layer_max_age_s` (default
-  2.0 s, mínimo 0.1 s). Una capa vencida se omite y su flag queda en `false`.
+- Scan, stop zone y polígonos de colisión son capas dinámicas opcionales y
+  usarán `dynamic_layer_max_age_s` (default 2.0 s, mínimo 0.1 s). Una capa
+  vencida se omite y su flag queda en `false`.
+- El plan Nav2 es estado de una acción, no un stream de sensor: una vez que se
+  recibió un plan fresco se conservará como diagnóstico visual durante ese
+  mismo goal activo. Un nuevo plan lo reemplaza; telemetría fresca que indica
+  goal inactivo lo descarta. Esta retención no relaja TF/costmap ni presenta
+  un plan de una acción terminada como vigente.
 - Keepout es configuración transitorio-local y no caduca por edad.
 - Si el reloj ROS no avanza o una entrada usa stamp cero, se acepta durante
   `startup_grace_s` (default 5.0 s) desde la primera recepción. Después se
