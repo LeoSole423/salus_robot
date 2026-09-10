@@ -1,6 +1,6 @@
 from math import nan
 from types import SimpleNamespace
-from salus_navigation.route_model import RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
@@ -109,6 +109,27 @@ def test_chunk_request_does_not_mutate_first_yaw_from_robot_approach():
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)
     assert select_anchor(route, 9.0, 0.2) >= 1
+
+
+def test_loop_anchor_enters_at_next_waypoint_of_nearby_segment():
+    route = PreparedRoute(
+        (
+            RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, 0.0, 1, map_x=10.0, map_y=0.0),
+            RouteWaypoint(0, 0, 0.0, 2, map_x=5.0, map_y=4.0),
+        ),
+        True, 3, 0.0, 20.0, 5,
+    )
+
+    # The robot is midway along 0 -> 1, outside waypoint tolerance from both
+    # endpoints. Waypoint 2 is nevertheless the closest vertex; loop
+    # incorporation must follow the nearby segment and enter at waypoint 1.
+    assert select_anchor(
+        route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
+    ) == 1
+    assert select_anchor(
+        route, 10.4, 0.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
+    ) == 2
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():
     route = prepare([point(0,0),point(2,1),point(4,2),point(6,3)], loop=True,input_count=4,spacing_m=0,chunk_span_m=100,chunk_max_waypoints=10)

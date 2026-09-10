@@ -574,6 +574,14 @@ def main():
             (float(node.odom[-1].pose.pose.position.x),
              float(node.odom[-1].pose.pose.position.y)),
         )
+        if (
+            not yaw_policy_evidence["selection_matches_measurement"]
+            or yaw_policy_evidence["winner"] != yaw_policy_evidence["selected_policy"]
+            or yaw_policy_evidence["selected_policy"] != "terminal_incoming"
+        ):
+            raise RuntimeError(
+                "yaw policy gate failed: production policy is not the measured winner"
+            )
         initial_state = call(node, node.state, GetRouteMissionState.Request())
         if not initial_state.ok:
             raise RuntimeError(f"route state handshake failed: {initial_state.error}")

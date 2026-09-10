@@ -103,6 +103,8 @@ El mismo smoke ya había documentado 5 pasadas y 1 fallo intermitente antes de
 este corte. Después del cambio se obtuvieron tres pasadas consecutivas:
 `patrol-battery-return-20260910T205001-1`, `205134-1` y `205307-1`, todas con
 la secuencia `JOIN_LOOP -> PATROL -> EXIT_LOOP -> RETURN_HOME -> AT_HOME`.
+Una repetición posterior volvió a reproducir el mismo stall en
+`patrol-battery-return-20260910T210709-1`, sin cambiar la causa observada.
 La evidencia disponible clasifica el fallo como un stall transitorio de
 progresión del simulador en el escenario de patrulla, no como una regresión
 causal del PR ni como un stop de Collision Monitor. No se aumentaron timeouts,
