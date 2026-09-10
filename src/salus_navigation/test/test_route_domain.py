@@ -1,7 +1,7 @@
 from math import nan
 from types import SimpleNamespace
 from salus_navigation.route_model import RouteWaypoint
-from salus_navigation.route_preparation import expand, prepare, resolve_yaws
+from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
 from salus_navigation.route_chunker import build_chunk, next_start
@@ -23,6 +23,54 @@ def test_open_route_final_automatic_yaw_follows_its_incoming_leg():
     ], False)
 
     assert [point.yaw_deg for point in route] == [90.0, 90.0]
+
+
+def test_finite_chunk_changes_only_an_automatic_terminal_yaw_to_its_incoming_leg():
+    chunk = (
+        RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0),
+    )
+
+    assert dispatch_yaws(chunk) == [0.0, 0.0]
+    assert chunk[-1].yaw_deg == 90.0
+
+
+def test_finite_chunk_preserves_an_explicit_terminal_yaw():
+    chunk = (
+        RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0, yaw_explicit=True),
+    )
+
+    assert dispatch_yaws(chunk) == [0.0, 90.0]
+
+
+def test_chunk_request_uses_incoming_yaw_only_for_an_automatic_terminal_checkpoint():
+    automatic_route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+        ],
+        loop=True, input_count=3, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    automatic_chunk = build_chunk(automatic_route, 0)
+
+    assert [point.yaw_deg for point in automatic_chunk.waypoints] == [0.0, 90.0]
+    assert list(chunk_goal_request(automatic_chunk, automatic_route).yaws_deg) == [0.0, 0.0]
+
+    explicit_route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0, yaw_explicit=True),
+            RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+        ],
+        loop=True, input_count=3, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    explicit_chunk = build_chunk(explicit_route, 0)
+
+    assert list(chunk_goal_request(explicit_chunk, explicit_route).yaws_deg) == [0.0, 90.0]
 
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)

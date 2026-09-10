@@ -13,6 +13,11 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
   sintéticos, se conserva la geometría hasta el checkpoint. El chunk finito se
   entrega como `NavigateThroughPoses`; sólo un chunk de una pose usa
   `NavigateToPose`.
+- Un yaw automático describe la pierna siguiente de la misión. Cuando un
+  checkpoint automático pasa a ser el terminal de un chunk finito, el request
+  a Nav2 usa en esa pose el rumbo de llegada desde el punto anterior. El estado
+  y la misión preparada conservan su rumbo saliente; un yaw explícito del
+  operador nunca se sustituye.
 - No hay freno entre objetivos contiguos; sí al finalizar, cancelar o abortar.
 - Esta migración convierte LL una vez para validar/preparar la misión y conserva las poses `map` para diagnóstico. Cada despacho usa el contrato legacy `SetNavGoalLL`, cuyo servidor mantiene su conversión defensiva.
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import threading
 import uuid
+from math import isfinite
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -32,7 +33,7 @@ from salus_interfaces.srv import (
 from .route_anchor import select_anchor
 from .route_chunker import build_chunk, next_start
 from .route_model import RouteMission, RoutePhase, RouteWaypoint
-from .route_preparation import prepare, validate_inputs
+from .route_preparation import dispatch_yaws, prepare, validate_inputs
 from .route_progress import project
 from .route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
@@ -72,7 +73,7 @@ def chunk_goal_request(chunk, prepared) -> SetNavGoalLL.Request:
     request = SetNavGoalLL.Request()
     request.lats = [float(point.lat) for point in chunk.waypoints]
     request.lons = [float(point.lon) for point in chunk.waypoints]
-    request.yaws_deg = [float(point.yaw_deg) for point in chunk.waypoints]
+    request.yaws_deg = dispatch_yaws(chunk.waypoints)
     request.lat, request.lon, request.yaw_deg = (
         request.lats[0], request.lons[0], request.yaws_deg[0]
     )
@@ -193,7 +194,8 @@ class RouteExecutorNode(Node):
         raw = tuple(
             RouteWaypoint(float(lat), float(lon), float(yaw), index, True,
                           canonical_actions[index],
-                          (roles or ["normal"] * len(lats))[index])
+                          (roles or ["normal"] * len(lats))[index],
+                          yaw_explicit=isfinite(float(yaw)))
             for index, (lat, lon, yaw) in enumerate(zip(lats, lons, yaws))
         )
         with self._lock:
