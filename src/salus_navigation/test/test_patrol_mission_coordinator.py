@@ -1,3 +1,4 @@
+from math import nan
 from types import SimpleNamespace
 
 from salus_navigation.patrol_mission_coordinator import (
@@ -44,6 +45,14 @@ def test_request_keeps_legacy_empty_yaws_and_applies_declared_defaults():
     assert spec.chunk_span_m == 120.0
     assert spec.chunk_max_waypoints == 5
     assert spec.loop.waypoints[0].yaw_deg != spec.loop.waypoints[0].yaw_deg
+
+
+def test_request_preserves_the_distinction_between_automatic_and_explicit_yaws():
+    spec, error = patrol_spec_from_request(
+        request(loop_yaws_deg=[nan, 90.0, nan]), DEFAULTS)
+
+    assert error == ""
+    assert [point.yaw_explicit for point in spec.loop.waypoints] == [False, True, False]
 
 
 def test_request_rejects_mismatched_actions_before_replacing_a_mission():

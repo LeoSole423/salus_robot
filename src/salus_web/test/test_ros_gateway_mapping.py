@@ -78,12 +78,17 @@ def test_route_mapping_keeps_roles_actions_and_options() -> None:
 def test_route_mapping_uses_physically_characterized_multi_pose_defaults() -> None:
     request = build_ros_request(_request({
         "op": "set_route_ll",
-        "waypoints": [{"lat": -31.0, "lon": -64.0}],
+        "waypoints": [
+            {"lat": -31.0, "lon": -64.0},
+            {"lat": -31.1, "lon": -64.1, "yaw_deg": 25.0},
+        ],
     }))
 
     assert request.leg_spacing_m == 35.0
     assert request.chunk_span_m == 120.0
     assert request.chunk_max_waypoints == 5
+    assert math.isnan(request.yaws_deg[0])
+    assert request.yaws_deg[1] == 25.0
 
 
 def test_patrol_mapping_matches_cockpit_nested_shape() -> None:
@@ -104,6 +109,8 @@ def test_patrol_mapping_matches_cockpit_nested_shape() -> None:
     assert request.home_yaw_deg == 90.0
     assert request.depart_entry_loop_index == 1
     assert list(request.depart_lons) == [-64.15]
+    assert all(math.isnan(value) for value in request.loop_yaws_deg)
+    assert math.isnan(request.depart_yaws_deg[0])
 
 
 def test_camera_mapping_preserves_optional_axis_contract() -> None:

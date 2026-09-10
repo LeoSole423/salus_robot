@@ -13,7 +13,8 @@ from .route_model import RouteWaypoint
 def _point(point: RouteWaypoint) -> dict:
     return {"lat": point.lat, "lon": point.lon, "yaw_deg": point.yaw_deg,
             "input_index": point.input_index, "action_json": point.action_json,
-            "map_x": point.map_x, "map_y": point.map_y}
+            "map_x": point.map_x, "map_y": point.map_y,
+            "yaw_explicit": point.yaw_explicit}
 
 
 def _route(route: PatrolRoute) -> dict:
@@ -38,6 +39,7 @@ def _decode_point(payload: object, label: str) -> RouteWaypoint:
             int(payload["input_index"]), action_json=str(payload.get("action_json", "")),
             map_x=None if payload.get("map_x") is None else float(payload["map_x"]),
             map_y=None if payload.get("map_y") is None else float(payload["map_y"]),
+            yaw_explicit=bool(payload.get("yaw_explicit", False)),
         )
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f"invalid {label}: {error}") from error

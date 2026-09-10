@@ -7,7 +7,7 @@ talks directly to Nav2.
 from __future__ import annotations
 
 from dataclasses import replace
-from math import hypot, isfinite, nan
+from math import hypot, isfinite, isnan, nan
 from pathlib import Path
 import threading
 import uuid
@@ -50,8 +50,8 @@ def _route(lats, lons, yaws, actions, label, *, allow_empty):
     yaw_values = [float(v) for v in yaws]
     if yaw_values and len(yaw_values) != len(lat_values):
         return None, f"{label} yaws_deg must be empty or match coordinates"
-    if yaw_values and any(not isfinite(v) for v in yaw_values):
-        return None, f"{label} yaws_deg must be finite when supplied"
+    if yaw_values and any(not (isfinite(v) or isnan(v)) for v in yaw_values):
+        return None, f"{label} yaws_deg must be finite or automatic"
     if not yaw_values:
         yaw_values = [nan] * len(lat_values)
     action_values = [str(v) for v in actions]
@@ -64,7 +64,8 @@ def _route(lats, lons, yaws, actions, label, *, allow_empty):
         if error:
             return None, f"{label}: {error}"
     return PatrolRoute(
-        tuple(RouteWaypoint(lat, lon, yaw, index, True, action)
+        tuple(RouteWaypoint(lat, lon, yaw, index, True, action,
+                            yaw_explicit=isfinite(yaw))
               for index, (lat, lon, yaw, action) in
               enumerate(zip(lat_values, lon_values, yaw_values, action_values))),
         tuple(action_values),
@@ -101,7 +102,7 @@ def patrol_spec_from_request(request, defaults):
     maximum = int(request.chunk_max_waypoints) or max_default
     try:
         spec = PatrolMissionSpec(
-            home=RouteWaypoint(home[0], home[1], home[2], -1), loop=loop,
+            home=RouteWaypoint(home[0], home[1], home[2], -1, yaw_explicit=True), loop=loop,
             depart=depart, returning=returning,
             depart_entry_loop_index=int(request.depart_entry_loop_index),
             leg_spacing_m=leg, chunk_span_m=span, chunk_max_waypoints=maximum,
@@ -498,7 +499,7 @@ class PatrolMissionCoordinator(Node):
             p.lat for p in route.waypoints], [
             p.lon for p in route.waypoints]
         request.yaws_deg, request.waypoint_action_jsons = [
-            p.yaw_deg for p in route.waypoints], list(route.actions)
+            p.yaw_deg if p.yaw_explicit else nan for p in route.waypoints], list(route.actions)
         request.waypoint_roles, request.loop = [
             "normal"] * len(route.waypoints), loop
         request.leg_spacing_m = machine.spec.leg_spacing_m

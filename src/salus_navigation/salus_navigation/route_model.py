@@ -19,6 +19,10 @@ class RouteWaypoint:
     lat: float; lon: float; yaw_deg: float; input_index: int
     key: bool = True; action_json: str = ""; role: str = "normal"
     map_x: float | None = None; map_y: float | None = None
+    # ``yaw_deg`` becomes finite during route preparation. Retain whether the
+    # operator actually supplied it so a finite execution window can adapt an
+    # inferred terminal heading without overriding an explicit orientation.
+    yaw_explicit: bool = False
 
     def distance_to(self, other: "RouteWaypoint") -> float:
         return hypot((self.map_x or 0.0) - (other.map_x or 0.0), (self.map_y or 0.0) - (other.map_y or 0.0))

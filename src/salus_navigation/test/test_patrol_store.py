@@ -22,6 +22,19 @@ def test_atomic_store_writes_versioned_document(tmp_path):
     assert not list(target.parent.glob("tmp*"))
 
 
+def test_store_preserves_yaw_provenance_and_defaults_missing_legacy_metadata_to_automatic():
+    payload = encode(spec())
+    payload["home"]["yaw_explicit"] = True
+    payload["loop"]["waypoints"][0]["yaw_explicit"] = True
+    payload["loop"]["waypoints"][1].pop("yaw_explicit")
+
+    decoded = decode(payload)
+
+    assert decoded.home.yaw_explicit
+    assert decoded.loop.waypoints[0].yaw_explicit
+    assert not decoded.loop.waypoints[1].yaw_explicit
+
+
 def test_decode_rejects_unknown_schema_and_malformed_route():
     payload = encode(spec())
     payload["schema_version"] = 99
