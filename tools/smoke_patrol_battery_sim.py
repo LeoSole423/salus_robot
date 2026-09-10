@@ -97,12 +97,13 @@ def patrol_request(pose, *, home_at_origin):
             origin_y + forward * math.sin(yaw) + left * math.cos(yaw),
         )
 
-    # Use a short rounded diamond rather than a collinear loop.  Its closing
-    # leg changes heading by less than 90 degrees and remains feasible for
-    # the Ackermann/Dubins model.
+    # Use a broad loop rather than a collinear loop or a tight diamond.  Each
+    # segment is about 8.5 m and each corner is 90 degrees, giving the
+    # Ackermann/Dubins model room for the 4 m minimum turning radius while
+    # keeping the battery-return path short enough for this smoke.
     loop_xy = [
-        world(3.0, 0.0), world(6.0, -2.0),
-        world(9.0, 0.0), world(6.0, 2.0),
+        world(6.0, 0.0), world(12.0, -6.0),
+        world(18.0, 0.0), world(12.0, 6.0),
     ]
     loop_ll = [ll_from_local(x, y) for x, y in loop_xy]
     home_xy = (origin_x, origin_y) if home_at_origin else loop_xy[-1]
