@@ -1,8 +1,18 @@
+"""Contract tests for the single-pose recovery tree.
+
+The existing navigation smoke exercises normal Nav2 execution and terminal
+cancellation, but it has no fault-injection hook for planner/controller
+failures or an invalid PathHealth candidate.  These tests therefore verify the
+production BT wiring and promotion ordering without introducing a second
+simulation harness or claiming coverage that the current harness cannot run.
+"""
+
 from pathlib import Path
 from xml.etree import ElementTree
 
 
 TREE = Path(__file__).parents[1] / "config" / "navigation_core.xml"
+SMOKE = Path(__file__).parents[2] / ".." / "tools" / "smoke_navigation_core_sim.py"
 
 
 def _tree() -> ElementTree.Element:
@@ -72,3 +82,11 @@ def test_no_healthy_path_keeps_stop_and_wait_and_cancellation_has_no_motion_path
     assert outer_fallback[0].tag == "GoalUpdated"
     assert "Spin" not in TREE.read_text(encoding="utf-8")
     assert "BackUp" not in TREE.read_text(encoding="utf-8")
+
+
+def test_existing_smoke_covers_terminal_cancel_and_safe_zero_boundary() -> None:
+    smoke = SMOKE.resolve().read_text(encoding="utf-8")
+
+    assert 'CancelNavGoal.Request()' in smoke
+    assert 'not get_state(node).goal_active' in smoke
+    assert 'message.twist.linear.x == 0.0 and message.brake_pct == 100' in smoke
