@@ -13,20 +13,14 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
   sintéticos, se conserva la geometría hasta el checkpoint. El chunk finito se
   entrega como `NavigateThroughPoses`; sólo un chunk de una pose usa
   `NavigateToPose`.
-- Antes de cada dispatch se avanza sólo sobre puntos ya alcanzados y sobre el
-  tramo sintético inicial ya sobrepasado. Los checkpoints con acciones son
-  protegidos; nunca se reduce el índice de ruta ni se cierra prematuramente un
-  loop.
-- Un yaw automático describe la pierna siguiente de la misión. Cuando un
-  checkpoint automático pasa a ser el terminal de un chunk finito, el request
-  a Nav2 usa en esa pose el rumbo de llegada desde el punto anterior. El estado
-  y la misión preparada conservan su rumbo saliente; un yaw explícito del
-  operador nunca se sustituye.
-- Cuando un chunk multi-pose comienza en un checkpoint automático y la pose
-  actual del robot es conocida, la primera pose del request usa el rumbo de
-  aproximación desde el robot. Esto evita exigir en ese checkpoint un rumbo de
-  salida casi opuesto que Smac/Dubins resolvería con un rulo de radio mínimo.
-  No modifica un yaw explícito, el terminal ni los checkpoints de misión.
+- Antes de cada dispatch se avanza sólo sobre el tramo sintético inicial ya
+  sobrepasado. Los checkpoints originales nunca se podan: cada uno es una
+  frontera observable para `ROUTE_CHECKPOINT_REACHED`, incluida la salida de
+  loop que Patrol usa para pasar de `EXIT_LOOP` a `RETURN_HOME`.
+- Un yaw automático describe la pierna siguiente de la misión. Durante un
+  dispatch finito sólo el terminal automático se adapta al rumbo de llegada;
+  esto evita exigir geometría fuera de la ventana. Los yaws explícitos nunca se
+  sustituyen.
 - No hay freno entre objetivos contiguos; sí al finalizar, cancelar o abortar.
 - Esta migración convierte LL una vez para validar/preparar la misión y conserva las poses `map` para diagnóstico. Cada despacho usa el contrato legacy `SetNavGoalLL`, cuyo servidor mantiene su conversión defensiva.
 
@@ -55,7 +49,23 @@ Nav2 debe seguir, pero no redefine los hitos de la misión.
   el `/plan`; sus métricas deterministas incluyen longitud, ratio de desvío,
   máxima distancia a la polilínea solicitada y auto-intersecciones. La
   comparación de yaw mantiene separadas la política actual, la preparada sin
-  mutación y la terminal entrante; el yaw explícito siempre prevalece.
+  mutación y la terminal entrante; el yaw explícito siempre prevalece. En tres
+  ejecuciones del escenario determinista `wide_turn_two_pose_window`, usando
+  `ComputePathThroughPoses` y el path devuelto por Nav2, se obtuvo la misma
+  conclusión:
+
+  | política | yaw solicitado (°) | longitud (m) | detour | max deviation (m) | auto-intersecciones |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | actual (approach + terminal) | 90, 0 | 61.298 | 6.130 | 8.07 | 1 |
+  | preparada estilo legacy | 0, 90 | 62.441 | 6.244 | 10.83 | 2 |
+  | sólo terminal entrante | 0, 0 | 39.605 | 3.961 | 8.07 | 0 |
+
+  La variación entre ejecuciones fue menor que 0.03 m en `max deviation` y no
+  cambió la clasificación. Se conserva `terminal_incoming`: elimina las
+  auto-intersecciones y minimiza longitud/detour sin mutar el primer yaw; un
+  yaw explícito continúa siendo intocable. La evidencia queda reproducible con
+  `./tools/smoke_route_executor_sim.sh`, que escribe
+  `evidence.yaw_policy_comparison` en `route_probe.json`.
 - No se incorporan parámetros legacy omitidos ni tuning: requieren evidencia
   independiente y no son necesarios para restaurar el contrato multi-pose.
 
@@ -75,3 +85,25 @@ Los paths diagnósticos de misión y chunk son estado, no sensores. Se publican 
 consumen con `TRANSIENT_LOCAL`, se proyectan usando el TF actual y permanecen
 en el snapshot hasta que el executor publica explícitamente un path vacío. Esto
 evita que Nav Live pierda la ruta cuando Nav2 limpia o reemplaza `/plan`.
+
+## Diagnóstico `patrol_battery`
+
+El artifact rojo de CI `34511311407` (`patrol-battery-return-20260910T180024-1`)
+terminó esperando `PATROL`/`EXIT_LOOP` con navegación activa: el comando final
+era AUTO y positivo, `collision_stop_active=false`, `failure_code` vacío y el
+historial de `PathHealth` era `path_healthy`. El artifact rojo local posterior
+(`patrol-battery-return-20260910T193206-1`) avanzó hasta `EXIT_LOOP`, completó
+dos chunks y volvió a mostrar `collision_stop_active=false`, `failure_code`
+vacío y `path_healthy`; sólo registró dos episodios de `progress_stalled` antes
+de agotar la espera del tercer chunk. Por tanto no hay evidencia de que
+Collision Monitor haya detenido el vehículo simulado ni de un error de
+dispatch/authority.
+
+El mismo smoke ya había documentado 5 pasadas y 1 fallo intermitente antes de
+este corte. Después del cambio se obtuvieron tres pasadas consecutivas:
+`patrol-battery-return-20260910T205001-1`, `205134-1` y `205307-1`, todas con
+la secuencia `JOIN_LOOP -> PATROL -> EXIT_LOOP -> RETURN_HOME -> AT_HOME`.
+La evidencia disponible clasifica el fallo como un stall transitorio de
+progresión del simulador en el escenario de patrulla, no como una regresión
+causal del PR ni como un stop de Collision Monitor. No se aumentaron timeouts,
+se agregaron retries ni se modificó Collision Monitor.

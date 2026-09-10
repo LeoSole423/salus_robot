@@ -9,10 +9,12 @@ from pathlib import Path
 
 import rclpy
 from nav2_msgs.action import (
-    ComputePathToPose, FollowPath, NavigateThroughPoses, NavigateToPose,
+    ComputePathThroughPoses, ComputePathToPose, FollowPath,
+    NavigateThroughPoses, NavigateToPose,
 )
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Odometry, Path as NavPath
+from geometry_msgs.msg import PoseStamped
 from lifecycle_msgs.srv import GetState
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -24,6 +26,8 @@ from salus_interfaces.srv import (
     CancelRouteMission, GetRouteMissionState, SetNavGoalLL, SetRouteMissionLL,
 )
 from salus_navigation.route_geometry import path_geometry_metrics
+from salus_navigation.route_model import RouteWaypoint
+from salus_navigation.route_preparation import dispatch_yaws, resolve_yaws
 from smoke_runtime import (
     AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps, stamp_ns,
 )
@@ -103,6 +107,9 @@ class Smoke(Node):
             self, NavigateThroughPoses, "/navigate_through_poses"
         )
         self.plan_action = ActionClient(self, ComputePathToPose, "/compute_path_to_pose")
+        self.plan_through_action = ActionClient(
+            self, ComputePathThroughPoses, "/compute_path_through_poses"
+        )
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
         self.bt_state = self.create_client(GetState, "/bt_navigator/get_state")
         self.bt_state_future = None
@@ -370,6 +377,97 @@ def call(node, client, request):
     return node.runtime.call("route service", client, request, timeout_s=8.0)
 
 
+def _pose_stamped(node, x, y, yaw):
+    pose = PoseStamped()
+    pose.header.frame_id = "map"
+    pose.header.stamp = node.get_clock().now().to_msg()
+    pose.pose.position.x = float(x)
+    pose.pose.position.y = float(y)
+    pose.pose.orientation.z = math.sin(float(yaw) * 0.5)
+    pose.pose.orientation.w = math.cos(float(yaw) * 0.5)
+    return pose
+
+
+def compare_yaw_policies(node, runtime, robot_xy):
+    """Compare the three approved yaw policies against real planner output."""
+    origin_x, origin_y = robot_xy
+    full_route = [
+        RouteWaypoint(0, 0, math.nan, 0, map_x=origin_x, map_y=origin_y + 6.0),
+        RouteWaypoint(0, 0, math.nan, 1, map_x=origin_x + 8.0, map_y=origin_y + 6.0),
+        RouteWaypoint(0, 0, math.nan, 2, map_x=origin_x + 8.0, map_y=origin_y + 14.0),
+    ]
+    prepared = resolve_yaws(full_route, False)
+    window = tuple(prepared[:2])
+    policies = {
+        "current": dispatch_yaws(window, approach_xy=robot_xy),
+        "prepared_legacy": [float(point.yaw_deg) for point in window],
+        "terminal_incoming": dispatch_yaws(window),
+    }
+    evidence = {}
+    for name, yaws in policies.items():
+        goal = ComputePathThroughPoses.Goal()
+        goal.goals = [
+            _pose_stamped(node, point.map_x, point.map_y, math.radians(yaw))
+            for point, yaw in zip(window, yaws)
+        ]
+        sent = node.plan_through_action.send_goal_async(goal)
+        runtime.wait(
+            f"yaw policy {name} accepted", lambda: sent.done(), 12.0,
+            observe=lambda: {"done": sent.done(), "policy": name},
+        )
+        handle = sent.result()
+        if handle is None or not handle.accepted:
+            raise RuntimeError(f"Nav2 rejected yaw policy {name}")
+        result_future = handle.get_result_async()
+        runtime.wait(
+            f"yaw policy {name} plan", lambda: result_future.done(), 12.0,
+            observe=lambda: {"done": result_future.done(), "policy": name},
+        )
+        action_result = result_future.result()
+        plan = action_result.result.path
+        plan_points = [
+            (float(pose.pose.position.x), float(pose.pose.position.y))
+            for pose in plan.poses
+        ]
+        if len(plan_points) < 2:
+            raise RuntimeError(f"Nav2 returned an empty path for yaw policy {name}")
+        metrics = path_geometry_metrics(
+            plan_points,
+            [robot_xy] + [(float(point.map_x), float(point.map_y)) for point in window],
+        )
+        evidence[name] = {
+            "request_yaws_deg": [float(value) for value in yaws],
+            "plan_frame": str(plan.header.frame_id),
+            "plan_poses": len(plan_points),
+            "length_m": metrics.length_m,
+            "detour_ratio": metrics.detour_ratio,
+            "max_deviation_m": metrics.max_deviation_m,
+            "self_intersections": metrics.self_intersections,
+        }
+    winner = min(
+        evidence,
+        key=lambda policy: (
+            evidence[policy]["self_intersections"],
+            evidence[policy]["detour_ratio"],
+            evidence[policy]["max_deviation_m"],
+            evidence[policy]["length_m"],
+        ),
+    )
+    selected_policy = "terminal_incoming"
+    return {
+        "scenario": "wide_turn_two_pose_window",
+        "policies": evidence,
+        "winner": winner,
+        "selected_policy": selected_policy,
+        "selection_matches_measurement": winner == selected_policy,
+        "decision": (
+            "keep terminal_incoming: it minimizes topology/detour in the deterministic Nav2 comparison"
+            if winner == selected_policy
+            else f"measured winner is {winner}; selected policy requires review"
+        ),
+    }
+
+
 def request_from_pose(pose, *, loop=False):
     yaw = math.atan2(2 * pose.orientation.w * pose.orientation.z, 1 - 2 * pose.orientation.z ** 2)
     x, y = pose.position.x, pose.position.y
@@ -470,6 +568,11 @@ def main():
             and finite_odometry(node.local_odom[-1]),
             5,
             "local odometry unavailable for route progress diagnostics",
+        )
+        yaw_policy_evidence = compare_yaw_policies(
+            node, runtime,
+            (float(node.odom[-1].pose.pose.position.x),
+             float(node.odom[-1].pose.pose.position.y)),
         )
         initial_state = call(node, node.state, GetRouteMissionState.Request())
         if not initial_state.ok:
@@ -583,6 +686,7 @@ def main():
             "chunks": len(node.chunks),
             "plans": len(node.plans),
             "geometry": node.geometry_evidence(),
+            "yaw_policy_comparison": locals().get("yaw_policy_evidence", {}),
             "dispatches": node.dispatch_evidence(),
             "final_commands": len(node.final),
             "first_checkpoint_progress_trace": node.progress_trace,

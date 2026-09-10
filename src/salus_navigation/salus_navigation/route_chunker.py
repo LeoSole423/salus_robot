@@ -70,7 +70,14 @@ def resolve_dispatch_start(
     segment_tolerance = max(0.05, float(synthetic_segment_tolerance_m))
     max_steps = max(0, total - 1)
     skipped_reached = 0
-    while skipped_reached < max_steps and current not in protected:
+    # Every original checkpoint is an observable mission boundary. Patrol
+    # consumes ROUTE_CHECKPOINT_REACHED, including the EXIT_LOOP checkpoint,
+    # so pre-dispatch pruning may only skip synthetic geometry.
+    while (
+        skipped_reached < max_steps
+        and current not in protected
+        and not points[current].key
+    ):
         if _distance_to_waypoint(points[current], x, y) > reached_tolerance:
             break
         next_index = current + 1
