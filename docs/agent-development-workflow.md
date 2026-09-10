@@ -221,6 +221,10 @@ Orden requerido:
 5. Smoke de composición, sin duplicar escenarios funcionales.
 6. Replay/bag o banco cuando la evidencia dependa de hardware.
 
+Para matrices y parameter sweeps de navegación, consultar
+[`src/salus_evaluation/README.md`](../src/salus_evaluation/README.md) y usar
+`nav_eval.sh`; no levantar manualmente varias `integration_sim` en paralelo.
+
 Los smokes son causales: avanzan por discovery, lifecycle, TF, mensajes válidos
 y estados semánticos, no por `sleep` fijo. Consultar `docs/smoke-testing.md`.
 
