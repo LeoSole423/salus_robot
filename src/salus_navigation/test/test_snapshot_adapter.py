@@ -1,4 +1,5 @@
 import math
+from threading import Lock
 
 import pytest
 from geometry_msgs.msg import Point, Point32
@@ -31,9 +32,9 @@ def test_active_navigation_retains_last_plan_without_relaxing_telemetry_freshnes
     replanned = Cached(object(), 3.0)
 
     retention.update_plan(before_goal)
-    assert retention.select(None, telemetry_fresh=True) is None
+    retention.update_goal(True, fresh_plan=before_goal)
+    assert retention.select(None, telemetry_fresh=True) is before_goal
 
-    retention.update_goal(True)
     retention.update_plan(active_plan)
     assert retention.select(None, telemetry_fresh=True) is active_plan
     assert retention.select(replanned, telemetry_fresh=True) is replanned
@@ -50,6 +51,29 @@ def test_terminal_navigation_state_discards_retained_plan_before_next_goal() -> 
     retention.update_goal(True)
 
     assert retention.select(None, telemetry_fresh=True) is None
+
+
+def test_goal_activation_never_latches_a_stale_plan() -> None:
+    retention = ActivePlanRetention()
+    stale_plan = Cached(object(), 1.0)
+
+    retention.update_plan(stale_plan)
+    retention.update_goal(True, fresh_plan=None)
+
+    assert retention.select(None, telemetry_fresh=True) is None
+
+
+def test_telemetry_activation_latches_only_the_fresh_initial_plan() -> None:
+    server = object.__new__(NavSnapshotServer)
+    fresh_plan = Cached(object(), 1.0)
+    server._lock = Lock()
+    server._cache = {"plan": fresh_plan}
+    server._plan_retention = ActivePlanRetention()
+    server._stamp_age_ok = lambda cached, _static: cached is fresh_plan
+
+    server._cache_nav_telemetry(type("Telemetry", (), {"goal_active": True})())
+
+    assert server._plan_retention.select(None, telemetry_fresh=True) is fresh_plan
 
 
 def test_incremental_costmap_update_is_applied_without_mutating_base() -> None:

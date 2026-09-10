@@ -18,6 +18,11 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
   a Nav2 usa en esa pose el rumbo de llegada desde el punto anterior. El estado
   y la misión preparada conservan su rumbo saliente; un yaw explícito del
   operador nunca se sustituye.
+- Cuando un chunk multi-pose comienza en un checkpoint automático y la pose
+  actual del robot es conocida, la primera pose del request usa el rumbo de
+  aproximación desde el robot. Esto evita exigir en ese checkpoint un rumbo de
+  salida casi opuesto que Smac/Dubins resolvería con un rulo de radio mínimo.
+  No modifica un yaw explícito, el terminal ni los checkpoints de misión.
 - No hay freno entre objetivos contiguos; sí al finalizar, cancelar o abortar.
 - Esta migración convierte LL una vez para validar/preparar la misión y conserva las poses `map` para diagnóstico. Cada despacho usa el contrato legacy `SetNavGoalLL`, cuyo servidor mantiene su conversión defensiva.
 
