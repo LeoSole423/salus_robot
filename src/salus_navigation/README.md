@@ -22,9 +22,10 @@ autoridad de velocidad.
   datos, cooldown, limpieza de costmaps, reanclaje hacia delante y límite de
   intentos observable en los campos `blocked_*`.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
-  ni invoca Nav2 directamente. Cada chunk conserva su geometría sintética y se
-  despacha por `nav_command_server`: una pose usa `NavigateToPose` y varias
-  usan `NavigateThroughPoses`. Sólo los checkpoints originales incrementan el
+  ni invoca Nav2 directamente. Cada chunk termina en el siguiente checkpoint,
+  conserva la geometría sintética de esa pierna y se despacha por
+  `nav_command_server`: una pose usa `NavigateToPose` y varias usan
+  `NavigateThroughPoses`. Sólo los checkpoints originales incrementan el
   progreso de misión o ejecutan acciones.
 - Las acciones `brake_hold` y `set_navigation_profile` se ejecutan sólo en
   checkpoints originales. Tienen estado explícito y se cancelan ante takeover,

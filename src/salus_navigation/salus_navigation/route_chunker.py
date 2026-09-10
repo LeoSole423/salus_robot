@@ -22,6 +22,17 @@ def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteCh
             if route.loop:
                 index %= total
             break
+        # Match the physically validated legacy contract: a finite chunk may
+        # contain every synthetic sample along one leg, but it ends at the
+        # next original checkpoint.  Sending several original checkpoints in
+        # one NavigateThroughPoses goal forces the Dubins planner to satisfy
+        # several independent headings at once and can create large loops on
+        # otherwise short route legs.
+        if point.key and len(selected) > 1:
+            index += 1
+            if route.loop:
+                index %= total
+            break
         limit_reached = len(selected) >= maximum or distance >= limit
         index += 1
         if not route.loop and index >= total: break

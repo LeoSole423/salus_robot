@@ -16,6 +16,12 @@ from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+)
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
@@ -150,8 +156,18 @@ class RouteExecutorNode(Node):
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self._on_telemetry, 10)
         self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
         self._events = self.create_publisher(NavEvent, "/nav_command_server/events", 10)
-        self._mission_path = self.create_publisher(Path, "/route_executor/mission_path", 10)
-        self._chunk_path = self.create_publisher(Path, "/route_executor/active_chunk_path", 10)
+        route_path_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self._mission_path = self.create_publisher(
+            Path, "/route_executor/mission_path", route_path_qos
+        )
+        self._chunk_path = self.create_publisher(
+            Path, "/route_executor/active_chunk_path", route_path_qos
+        )
         self.create_service(SetRouteMissionLL, "/route_executor/set_route_mission_ll", self._set)
         self.create_service(CancelRouteMission, "/route_executor/cancel_route_mission", self._cancel)
         self.create_service(GetRouteMissionState, "/route_executor/get_route_mission_state", self._state)

@@ -12,6 +12,8 @@ def test_snapshot_server_keeps_adr_boundaries_and_contract_topics() -> None:
     assert '"/nav_snapshot_server/get_nav_snapshot"' in source
     assert '"/scan_clean"' in source
     assert '"/stop_zone_raw"' in source
+    assert '"/route_executor/mission_path"' in source
+    assert '"/route_executor/active_chunk_path"' in source
     assert '"/scan_preview"' not in source
     assert "MISSING_LOCAL_COSTMAP" in source
     assert "STALE_LOCAL_COSTMAP" in source
@@ -25,6 +27,12 @@ def test_snapshot_server_keeps_adr_boundaries_and_contract_topics() -> None:
     assert "snapshot_png_compression: 6" in config
     assert "local_costmap_max_age_s: 2.0" in config
     assert "dynamic_layer_max_age_s: 2.0" in config
+    assert "mission_path_topic: /route_executor/mission_path" in config
+    assert "active_chunk_path_topic: /route_executor/active_chunk_path" in config
+    assert 'cache.get("mission_path")' in source
+    assert 'cache.get("active_chunk_path")' in source
+    assert "use_latest_transform=True" in source
+    assert "DurabilityPolicy.TRANSIENT_LOCAL" in source
 
 
 def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> None:

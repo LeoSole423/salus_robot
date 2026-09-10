@@ -88,6 +88,8 @@ class NavSnapshotServer(Node):
             "collision_polygons_topic": "/collision_monitor/polygons",
             "scan_topic": "/scan_clean",
             "plan_topic": "/plan",
+            "mission_path_topic": "/route_executor/mission_path",
+            "active_chunk_path_topic": "/route_executor/active_chunk_path",
             "base_frame": "base_footprint",
             "snapshot_extent_m": 30.0,
             "snapshot_size_px": 384,
@@ -161,6 +163,24 @@ class NavSnapshotServer(Node):
             LaserScan, self._parameter["scan_topic"],
             lambda msg: self._cache_message("scan", msg), qos_profile_sensor_data)
         subscribe(Path, self._parameter["plan_topic"], lambda msg: self._cache_message("plan", msg), 10)
+        route_path_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        subscribe(
+            Path,
+            self._parameter["mission_path_topic"],
+            lambda msg: self._cache_message("mission_path", msg),
+            route_path_qos,
+        )
+        subscribe(
+            Path,
+            self._parameter["active_chunk_path_topic"],
+            lambda msg: self._cache_message("active_chunk_path", msg),
+            route_path_qos,
+        )
         self.create_service(
             GetNavSnapshot,
             self._parameter["get_snapshot_service"],
@@ -250,11 +270,20 @@ class NavSnapshotServer(Node):
         transform = self._transform(target, source, message.header.stamp)
         return Polyline(source, tuple(points), (0, 80, 255), 1, False, transform) if points and transform else None
 
-    def _path(self, message: Path, target: str, color: Tuple[int, int, int]) -> Optional[Polyline]:
+    def _path(
+        self,
+        message: Path,
+        target: str,
+        color: Tuple[int, int, int],
+        *,
+        use_latest_transform: bool = False,
+        thickness: int = 2,
+    ) -> Optional[Polyline]:
         points = tuple((float(pose.pose.position.x), float(pose.pose.position.y)) for pose in message.poses)
         source = message.header.frame_id or (message.poses[0].header.frame_id if message.poses else "") or str(self._parameter["base_frame"])
-        transform = self._transform(target, source, message.header.stamp)
-        return Polyline(source, points, color, 2, False, transform) if len(points) >= 2 and transform else None
+        stamp = Time() if use_latest_transform else message.header.stamp
+        transform = self._transform(target, source, stamp)
+        return Polyline(source, points, color, thickness, False, transform) if len(points) >= 2 and transform else None
 
     def _collision(self, message: MarkerArray, target: str) -> Tuple[Polyline, ...]:
         result = []
@@ -349,7 +378,20 @@ class NavSnapshotServer(Node):
                 global_keepouts = self._keepouts(keepout_cached.message, global_grid.frame_id)
         footprint_cached, stop_cached = dynamic("footprint"), dynamic("stop_zone")
         scan_cached, plan_cached, collision_cached = dynamic("scan"), dynamic("plan"), dynamic("collision")
+        # Mission and chunk paths are retained route state, not sensor data.
+        # They remain valid until route_executor explicitly publishes an empty
+        # path, and map->local projection must use the latest localization.
+        mission_cached = cache.get("mission_path")
+        chunk_cached = cache.get("active_chunk_path")
         global_plan = self._path(plan_cached.message, global_grid.frame_id, (96, 255, 96)) if plan_cached and global_grid else None
+        global_mission = self._path(
+            mission_cached.message, global_grid.frame_id, (255, 180, 0),
+            use_latest_transform=True,
+        ) if mission_cached and global_grid else None
+        global_chunk = self._path(
+            chunk_cached.message, global_grid.frame_id, (0, 165, 255),
+            use_latest_transform=True, thickness=3,
+        ) if chunk_cached and global_grid else None
         robot_global_transform = self._transform(global_grid.frame_id, base, local_cached.message.header.stamp) if global_grid else None
         scene = SnapshotScene(
             local_costmap=local,
@@ -364,8 +406,18 @@ class NavSnapshotServer(Node):
             stop_zone=self._polyline(stop_cached.message, (0, 0, 255), local.frame_id) if stop_cached else None,
             collision_polygons=self._collision(collision_cached.message, local.frame_id) if collision_cached else (),
             scan=self._scan(scan_cached.message, local.frame_id) if scan_cached else None,
+            mission_path=self._path(
+                mission_cached.message, local.frame_id, (255, 180, 0),
+                use_latest_transform=True,
+            ) if mission_cached else None,
             plan=self._path(plan_cached.message, local.frame_id, (64, 255, 64)) if plan_cached else None,
+            active_chunk_path=self._path(
+                chunk_cached.message, local.frame_id, (0, 165, 255),
+                use_latest_transform=True, thickness=3,
+            ) if chunk_cached else None,
+            global_mission_path=global_mission,
             global_plan=global_plan,
+            global_active_chunk_path=global_chunk,
             robot_global=(robot_global_transform.x, robot_global_transform.y) if robot_global_transform else None,
         )
         try:

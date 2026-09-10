@@ -11,6 +11,8 @@ nav_snapshot_server:
     collision_polygons_topic: /collision_monitor/polygons
     scan_topic: /scan_clean
     plan_topic: /plan
+    mission_path_topic: /route_executor/mission_path
+    active_chunk_path_topic: /route_executor/active_chunk_path
     base_frame: base_footprint
     snapshot_extent_m: 30.0
     snapshot_size_px: 384

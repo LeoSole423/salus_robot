@@ -4,6 +4,14 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 
 
+def test_route_debug_paths_are_retained_for_late_snapshot_consumers():
+    source = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
+    assert "route_path_qos = QoSProfile(" in source
+    assert "durability=DurabilityPolicy.TRANSIENT_LOCAL" in source
+    assert 'Path, "/route_executor/mission_path", route_path_qos' in source
+    assert 'Path, "/route_executor/active_chunk_path", route_path_qos' in source
+
+
 def test_patrol_coordinator_exposes_legacy_endpoints_without_nav2_or_velocity_clients():
     source = (ROOT / "salus_navigation" / "patrol_mission_coordinator.py").read_text()
     for endpoint in (
