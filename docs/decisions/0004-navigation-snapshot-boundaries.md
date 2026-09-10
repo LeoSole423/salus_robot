@@ -61,12 +61,18 @@ snapshot.
   mismo goal activo. Un nuevo plan lo reemplaza; telemetría fresca que indica
   goal inactivo lo descarta. Esta retención no relaja TF/costmap ni presenta
   un plan de una acción terminada como vigente.
+- `NavTelemetry` no tiene `Header`, por lo que su frescura se determina por la
+  última recepción dentro de `dynamic_layer_max_age_s`; esto no cambia las
+  reglas timestamped de costmaps ni sensores. Un plan retenido se transforma
+  con el TF actual; sólo un plan recién recibido usa su timestamp histórico.
 - Keepout es configuración transitorio-local y no caduca por edad.
 - Si el reloj ROS no avanza o una entrada usa stamp cero, se acepta durante
   `startup_grace_s` (default 5.0 s) desde la primera recepción. Después se
   considera inválida. Esta tolerancia no altera umbrales del robot.
-- Todas las transformaciones se resolverán para el stamp de la capa, con
-  `tf_timeout_s=0.2`. No se reutilizará silenciosamente una TF fallida.
+- Todas las transformaciones de entradas timestamped se resolverán para el
+  stamp de la capa, con `tf_timeout_s=0.2`. Un plan retenido es la excepción
+  documentada: se resolverá con el TF actual. No se reutilizará silenciosamente
+  una TF fallida.
 
 ## Límites
 

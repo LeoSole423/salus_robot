@@ -2,9 +2,9 @@ import math
 from threading import Lock
 
 import pytest
-from geometry_msgs.msg import Point, Point32
+from geometry_msgs.msg import Point, Point32, PoseStamped
 from map_msgs.msg import OccupancyGridUpdate
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Path
 from visualization_msgs.msg import Marker, MarkerArray
 
 from salus_navigation.nav_snapshot_server import (
@@ -33,11 +33,20 @@ def test_active_navigation_retains_last_plan_without_relaxing_telemetry_freshnes
 
     retention.update_plan(before_goal)
     retention.update_goal(True, fresh_plan=before_goal)
-    assert retention.select(None, telemetry_fresh=True) is before_goal
+    selected = retention.select(None, telemetry_fresh=True)
+    assert selected is not None
+    assert selected.cached is before_goal
+    assert selected.retained
 
     retention.update_plan(active_plan)
-    assert retention.select(None, telemetry_fresh=True) is active_plan
-    assert retention.select(replanned, telemetry_fresh=True) is replanned
+    selected = retention.select(None, telemetry_fresh=True)
+    assert selected is not None
+    assert selected.cached is active_plan
+    assert selected.retained
+    selected = retention.select(replanned, telemetry_fresh=True)
+    assert selected is not None
+    assert selected.cached is replanned
+    assert not selected.retained
     assert retention.select(None, telemetry_fresh=False) is None
 
 
@@ -51,6 +60,17 @@ def test_terminal_navigation_state_discards_retained_plan_before_next_goal() -> 
     retention.update_goal(True)
 
     assert retention.select(None, telemetry_fresh=True) is None
+
+
+def test_terminal_telemetry_rejects_a_fresh_plan_from_the_completed_goal() -> None:
+    retention = ActivePlanRetention()
+    plan = Cached(object(), 2.0)
+
+    retention.update_goal(True)
+    retention.update_plan(plan)
+    retention.update_goal(False)
+
+    assert retention.select(plan, telemetry_fresh=True) is None
 
 
 def test_goal_activation_never_latches_a_stale_plan() -> None:
@@ -73,7 +93,81 @@ def test_telemetry_activation_latches_only_the_fresh_initial_plan() -> None:
 
     server._cache_nav_telemetry(type("Telemetry", (), {"goal_active": True})())
 
-    assert server._plan_retention.select(None, telemetry_fresh=True) is fresh_plan
+    selected = server._plan_retention.select(None, telemetry_fresh=True)
+    assert selected is not None
+    assert selected.cached is fresh_plan
+    assert selected.retained
+
+
+def test_headerless_telemetry_uses_last_receipt_beyond_startup_grace(monkeypatch) -> None:
+    from salus_interfaces.msg import NavTelemetry
+
+    clock = [100.0]
+    monkeypatch.setattr("salus_navigation.nav_snapshot_server.time.monotonic", lambda: clock[0])
+    server = object.__new__(NavSnapshotServer)
+    server._lock = Lock()
+    server._cache = {}
+    server._plan_retention = ActivePlanRetention()
+    server._parameter = {
+        "dynamic_layer_max_age_s": 2.0,
+        "local_costmap_max_age_s": 2.0,
+        "startup_grace_s": 5.0,
+    }
+    server.get_clock = lambda: type("Clock", (), {
+        "now": lambda _self: type("Now", (), {"nanoseconds": 0})()
+    })()
+
+    server._cache_nav_telemetry(NavTelemetry())
+    clock[0] = 104.0
+    server._cache_nav_telemetry(NavTelemetry())
+    clock[0] = 105.5
+
+    assert server._stamp_age_ok(server._cache["nav_telemetry"], False, use_last_received=True)
+    clock[0] = 107.0
+    assert not server._stamp_age_ok(server._cache["nav_telemetry"], False, use_last_received=True)
+    assert not server._stamp_age_ok(
+        Cached(NavTelemetry(), 100.0, 104.0), False, use_last_received=False
+    )
+
+    timestamped = Path()
+    timestamped.header.stamp.sec = 90
+    server.get_clock = lambda: type("Clock", (), {
+        "now": lambda _self: type("Now", (), {"nanoseconds": 100_000_000_000})()
+    })()
+    assert not server._stamp_age_ok(
+        Cached(timestamped, 1.0, 99.0), False, use_last_received=True
+    )
+
+
+def test_retained_plan_selects_latest_tf_instead_of_historical_stamp() -> None:
+    retention = ActivePlanRetention()
+    path = Path()
+    path.header.frame_id = "map"
+    path.header.stamp.sec = 1
+    for x in (0.0, 1.0):
+        pose = PoseStamped()
+        pose.pose.position.x = x
+        path.poses.append(pose)
+    cached = Cached(path, 1.0, 1.0)
+    retention.update_goal(True)
+    retention.update_plan(cached)
+    selected = retention.select(None, telemetry_fresh=True)
+    assert selected is not None and selected.retained
+
+    calls = []
+    server = object.__new__(NavSnapshotServer)
+    server._transform = lambda target, source, stamp: calls.append(stamp) or Transform2D(
+        source, target, 0.0, 0.0, 0.0
+    )
+    result = server._path(
+        selected.cached.message,
+        "odom",
+        (64, 255, 64),
+        use_latest_transform=selected.retained,
+    )
+
+    assert result is not None
+    assert calls[0].nanoseconds == 0
 
 
 def test_incremental_costmap_update_is_applied_without_mutating_base() -> None:
