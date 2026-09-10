@@ -23,6 +23,7 @@ from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
     CancelRouteMission, GetRouteMissionState, SetNavGoalLL, SetRouteMissionLL,
 )
+from salus_navigation.route_geometry import path_geometry_metrics
 from smoke_runtime import (
     AsyncServicePoller, SmokeRuntime, finite_odometry, has_increasing_stamps, stamp_ns,
 )
@@ -48,7 +49,7 @@ class Smoke(Node):
     def __init__(self):
         super().__init__("route_executor_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom, self.local_odom = [], []
-        self.mission_paths, self.chunks, self.final = [], [], []
+        self.mission_paths, self.chunks, self.plans, self.final = [], [], [], []
         self.path_health, self.telemetry, self.events = [], [], []
         self.progress_trace = []
         self.next_progress_sample_at = 0.0
@@ -63,6 +64,7 @@ class Smoke(Node):
         )
         self.create_subscription(NavPath, "/route_executor/mission_path", self.mission_paths.append, 10)
         self.create_subscription(NavPath, "/route_executor/active_chunk_path", self.chunks.append, 10)
+        self.create_subscription(NavPath, "/plan", self.plans.append, 10)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(
@@ -293,6 +295,72 @@ class Smoke(Node):
         if len(self.progress_trace) > 100:
             del self.progress_trace[0]
 
+    def geometry_evidence(self):
+        dispatches = self.dispatch_evidence()
+        observations = []
+        for index, dispatch in enumerate(dispatches):
+            next_stamp = (
+                dispatches[index + 1]["stamp_ns"]
+                if index + 1 < len(dispatches)
+                else None
+            )
+            plans = [
+                plan for plan in self.plans
+                if stamp_ns(plan) >= dispatch["stamp_ns"]
+                and (next_stamp is None or stamp_ns(plan) < next_stamp)
+            ]
+            if not plans:
+                continue
+            plan = plans[-1]
+            plan_points = [
+                (float(pose.pose.position.x), float(pose.pose.position.y))
+                for pose in plan.poses
+            ]
+            robot_xy = dispatch.get("robot_xy")
+            reference_points = [tuple(robot_xy)] if robot_xy else []
+            reference_points.extend(dispatch.get("poses_xy") or [])
+            if len(plan_points) < 2 or len(reference_points) < 2:
+                continue
+            metrics = path_geometry_metrics(plan_points, reference_points)
+            observations.append({
+                "chunk_id": dispatch.get("chunk_id"),
+                "plan_frame": str(plan.header.frame_id),
+                "plan_poses": len(plan_points),
+                "reference_poses": len(reference_points),
+                "length_m": metrics.length_m,
+                "direct_distance_m": metrics.direct_distance_m,
+                "detour_ratio": metrics.detour_ratio,
+                "max_deviation_m": metrics.max_deviation_m,
+                "self_intersections": metrics.self_intersections,
+                "plan_messages": len(plans),
+            })
+        return {
+            "available": bool(observations),
+            "plans": len(self.plans),
+            "chunks": len(self.chunks),
+            "dispatches": len(dispatches),
+            "per_dispatch": observations,
+        }
+
+    def dispatch_evidence(self):
+        result = []
+        for event in self.events:
+            if event.code != "ROUTE_CHUNK_DISPATCHED":
+                continue
+            details = {item.key: item.value for item in event.details}
+            for key in ("input_indices", "synthetic_offsets", "yaws_deg", "poses_xy", "robot_xy"):
+                if key in details:
+                    try:
+                        details[key] = json.loads(details[key])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            result.append({
+                "event_id": int(event.event_id),
+                "stamp_ns": int(event.stamp.sec) * 1_000_000_000 + int(event.stamp.nanosec),
+                **details,
+            })
+        return result
+
 
 def wait(node, predicate, timeout, error, **kwargs):
     node.runtime.wait(error, predicate, timeout, **kwargs)
@@ -513,6 +581,9 @@ def main():
             "local_odometry": len(node.local_odom),
             "mission_paths": len(node.mission_paths),
             "chunks": len(node.chunks),
+            "plans": len(node.plans),
+            "geometry": node.geometry_evidence(),
+            "dispatches": node.dispatch_evidence(),
             "final_commands": len(node.final),
             "first_checkpoint_progress_trace": node.progress_trace,
             "last_course_heading": (

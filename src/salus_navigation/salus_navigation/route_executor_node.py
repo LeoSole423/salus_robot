@@ -5,6 +5,7 @@ Nav2 action: every waypoint crosses nav_command_server.
 """
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 from math import isfinite
@@ -31,7 +32,7 @@ from salus_interfaces.srv import (
 )
 
 from .route_anchor import select_anchor
-from .route_chunker import build_chunk, next_start
+from .route_chunker import build_chunk, next_start, resolve_dispatch_start
 from .route_model import RouteMission, RoutePhase, RouteWaypoint
 from .route_preparation import dispatch_yaws, prepare, validate_inputs
 from .route_progress import project
@@ -101,6 +102,7 @@ class RouteExecutorNode(Node):
         self.declare_parameter("blocked_retry_wait_s", 5.0)
         self.declare_parameter("blocked_retry_max_attempts", 3)
         self.declare_parameter("blocked_retry_reanchor_tolerance_m", 8.0)
+        self.declare_parameter("route_segment_start_tolerance_m", 5.0)
         self.declare_parameter("costmap_clear_timeout_s", 3.0)
         self.declare_parameter("nav_cancel_timeout_s", 15.0)
         self.declare_parameter("profile_coordinator_discovery_timeout_s", 5.0)
@@ -114,6 +116,7 @@ class RouteExecutorNode(Node):
         self._target_offset = 0
         self._goal_epoch = 0
         self._goal_request_pending = False
+        self._last_dispatch_start = None
         self._goal_result_event_floor = -1
         self._last_result_event_id = -1
         self._action: ActionExecution | None = None
@@ -475,6 +478,23 @@ class RouteExecutorNode(Node):
 
     def _dispatch(self) -> None:
         route = self._mission.prepared
+        start = resolve_dispatch_start(
+            route,
+            self._mission.target_index,
+            robot_xy=(None if self._pose is None else (self._pose.x, self._pose.y)),
+            reached_tolerance_m=float(
+                self.get_parameter("waypoint_reached_tolerance_m").value
+            ),
+            synthetic_segment_tolerance_m=float(
+                self.get_parameter("route_segment_start_tolerance_m").value
+            ),
+        )
+        if start.index is None:
+            transition(self._mission, RoutePhase.COMPLETED)
+            self._chunk = None
+            return
+        self._mission.target_index = start.index
+        self._last_dispatch_start = start
         self._chunk = build_chunk(route, self._mission.target_index, self._mission.loop_iteration)
         if self._chunk is None:
             transition(self._mission, RoutePhase.COMPLETED)
@@ -550,6 +570,46 @@ class RouteExecutorNode(Node):
             self._chunk,
             self._mission.prepared,
             approach_xy=approach_xy,
+        )
+        self._event(
+            DiagnosticStatus.OK,
+            "ROUTE_CHUNK_DISPATCHED",
+            "finite route chunk dispatched",
+            mission_id=self._mission.mission_id,
+            chunk_id=self._mission.chunk_id,
+            loop_iteration=self._mission.loop_iteration,
+            input_indices=json.dumps(
+                [point.input_index for point in self._chunk.waypoints],
+                separators=(",", ":"),
+            ),
+            synthetic_offsets=json.dumps(
+                [index for index, point in enumerate(self._chunk.waypoints) if not point.key],
+                separators=(",", ":"),
+            ),
+            yaws_deg=json.dumps([float(value) for value in request.yaws_deg], separators=(",", ":")),
+            poses_xy=json.dumps(
+                [
+                    [float(point.map_x), float(point.map_y)]
+                    for point in self._chunk.waypoints
+                ],
+                separators=(",", ":"),
+            ),
+            robot_xy=json.dumps(
+                None
+                if self._pose is None
+                else [float(self._pose.x), float(self._pose.y)],
+                separators=(",", ":"),
+            ),
+            skipped_reached=(
+                0
+                if self._last_dispatch_start is None
+                else self._last_dispatch_start.skipped_reached
+            ),
+            skipped_synthetic=(
+                0
+                if self._last_dispatch_start is None
+                else self._last_dispatch_start.skipped_synthetic
+            ),
         )
         self._goal_epoch += 1
         epoch = self._goal_epoch

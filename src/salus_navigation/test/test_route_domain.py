@@ -4,7 +4,7 @@ from salus_navigation.route_model import RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
-from salus_navigation.route_chunker import build_chunk, next_start
+from salus_navigation.route_chunker import build_chunk, next_start, resolve_dispatch_start
 from salus_navigation.route_progress import project
 from salus_navigation.route_executor_node import RouteExecutorNode, chunk_goal_request
 
@@ -289,6 +289,68 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
     assert len(events) == len(chunk.checkpoint_offsets)
     assert len(events) < len(chunk.waypoints)
     assert advanced == [True]
+
+
+def test_dispatch_start_skips_passed_synthetics_without_moving_backwards():
+    route = prepare(
+        [point(0, 0), point(10, 1)], loop=False, input_count=2,
+        spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
+    )
+    resolved = resolve_dispatch_start(
+        route, 1, robot_xy=(5.0, 0.0), reached_tolerance_m=1.2,
+        synthetic_segment_tolerance_m=5.0,
+    )
+    assert resolved.index == 3
+    assert resolved.skipped_synthetic > 0
+    assert resolved.index > 1
+
+
+def test_dispatch_start_never_skips_an_action_checkpoint():
+    points = [point(0, 0), point(10, 1)]
+    points[1] = RouteWaypoint(
+        **{**points[1].__dict__, "action_json": '[{"type":"brake_hold","duration_s":1}]'}
+    )
+    route = prepare(
+        points, loop=False, input_count=2, spacing_m=2,
+        chunk_span_m=100, chunk_max_waypoints=20,
+    )
+    resolved = resolve_dispatch_start(
+        route, len(route.waypoints) - 1, robot_xy=(10.0, 0.0),
+        reached_tolerance_m=1.2, synthetic_segment_tolerance_m=5.0,
+    )
+    assert resolved.index == len(route.waypoints) - 1
+    assert resolved.skipped_reached == 0
+
+
+def test_dispatch_start_skips_reached_checkpoint_but_not_a_future_checkpoint():
+    route = prepare(
+        [point(0, 0), point(10, 1), point(20, 2)], loop=False,
+        input_count=3, spacing_m=0, chunk_span_m=100, chunk_max_waypoints=5,
+    )
+    resolved = resolve_dispatch_start(
+        route, 0, robot_xy=(0.5, 0.0), reached_tolerance_m=1.2,
+        synthetic_segment_tolerance_m=5.0,
+    )
+    assert resolved.index == 1
+    assert resolved.skipped_reached == 1
+
+
+def test_yaw_policies_are_compared_and_explicit_yaw_is_unchanged():
+    points = (
+        RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0),
+    )
+    current = dispatch_yaws(points, approach_xy=(0.0, -10.0))
+    prepared_without_mutation = [point.yaw_deg for point in points]
+    terminal_incoming = dispatch_yaws(points)
+    assert current == [90.0, 0.0]
+    assert prepared_without_mutation == [0.0, 90.0]
+    assert terminal_incoming == [0.0, 0.0]
+    explicit = tuple(
+        point if index == 0 else RouteWaypoint(**{**point.__dict__, "yaw_explicit": True})
+        for index, point in enumerate(points)
+    )
+    assert dispatch_yaws(explicit, approach_xy=(0.0, -10.0)) == [90.0, 90.0]
 
 
 def test_supported_actions_are_accepted_but_unknown_actions_are_rejected():

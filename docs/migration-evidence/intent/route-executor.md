@@ -13,6 +13,10 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
   sintéticos, se conserva la geometría hasta el checkpoint. El chunk finito se
   entrega como `NavigateThroughPoses`; sólo un chunk de una pose usa
   `NavigateToPose`.
+- Antes de cada dispatch se avanza sólo sobre puntos ya alcanzados y sobre el
+  tramo sintético inicial ya sobrepasado. Los checkpoints con acciones son
+  protegidos; nunca se reduce el índice de ruta ni se cierra prematuramente un
+  loop.
 - Un yaw automático describe la pierna siguiente de la misión. Cuando un
   checkpoint automático pasa a ser el terminal de un chunk finito, el request
   a Nav2 usa en esa pose el rumbo de llegada desde el punto anterior. El estado
@@ -47,6 +51,11 @@ Nav2 debe seguir, pero no redefine los hitos de la misión.
   follower.
 - El progreso se calcula proyectando sobre segmentos del chunk activo. Esto
   evita reportar como error transversal la distancia al vértice más cercano.
+- El smoke de rutas registra el request lógico del chunk, el pose del robot y
+  el `/plan`; sus métricas deterministas incluyen longitud, ratio de desvío,
+  máxima distancia a la polilínea solicitada y auto-intersecciones. La
+  comparación de yaw mantiene separadas la política actual, la preparada sin
+  mutación y la terminal entrante; el yaw explícito siempre prevalece.
 - No se incorporan parámetros legacy omitidos ni tuning: requieren evidencia
   independiente y no son necesarios para restaurar el contrato multi-pose.
 
