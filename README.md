@@ -27,6 +27,7 @@ no una fuente para copiar carpetas completas.
 | `salus_control` | Arbitraje final, actuación, telemetría y batería |
 | `salus_navigation` | Nav2, rutas, patrulla, zonas y observabilidad |
 | `salus_navigation_bt` | Plugins Behavior Tree propios |
+| [`salus_evaluation`](src/salus_evaluation/README.md) | Matrices y campañas de evaluación de navegación |
 | `salus_web` | Puente ROS/WebSocket y herramientas del operador |
 | `salus_simulation` | Gazebo, mundos y sensores simulados |
 | `salus_bringup` | Únicos launches completos del sistema |

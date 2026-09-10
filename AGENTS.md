@@ -71,8 +71,14 @@ For migration work:
 ./tools/smoke_integration_sim.sh
 ./tools/sim.sh
 ./tools/cmd_vel_sim.sh straight
+./tools/nav_eval.sh isolation artifacts/evaluations/isolation
+./tools/nav_eval.sh matrix src/salus_evaluation/config/matrices/<matrix>.yaml artifacts/evaluations/matrix --jobs N
 ./tools/shell.sh
 ```
+
+Para experimentos o tuning de navegación, leer primero
+[`src/salus_evaluation/README.md`](src/salus_evaluation/README.md). Allí está la
+guía de uso de `nav_eval.sh`, sus matrices y la evaluación paralela.
 
 Run focused package tests while iterating, then the full repository validation.
 Do not run a real launch against hardware without an explicit operator request

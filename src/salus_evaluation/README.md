@@ -61,6 +61,31 @@ Ejecutar la matriz completa y producir el resumen report-only:
   src/salus_evaluation/config/matrices/ackermann_speed_curvature.yaml
 ```
 
+La ejecución conserva `--jobs 1` como default. `--jobs N` limita el número de
+trials simultáneos; cada trial recibe su propio `ROS_DOMAIN_ID`,
+`IGN_PARTITION == GZ_PARTITION`, `ROS_LOG_DIR`, runtime de zonas y grupo de
+procesos. Las identidades se guardan en `matrix_trial` dentro del bundle y del
+manifest, y el resumen conserva el orden de la matriz aunque los workers
+terminen en otro orden:
+
+```bash
+./tools/nav_eval.sh matrix \
+  src/salus_evaluation/config/matrices/ackermann_speed_curvature.yaml \
+  artifacts/evaluations/ackermann-parallel --jobs 2
+```
+
+Antes de usar `--jobs 2`, la caracterización de aislamiento de dos
+simulaciones debe pasar:
+
+```bash
+./tools/nav_eval.sh isolation artifacts/evaluations/isolation
+```
+
+Ese comando conserva `isolation-report.json` con las secuencias de `/clock`,
+información de publishers, odometría, lifecycle, muerte del worker A y
+cleanup. La concurrencia está acotada al harness de evaluación; no cambia el
+DDS del robot físico.
+
 También puede agregarse una colección ya capturada de bundles, en el orden
 determinista de la matriz:
 
