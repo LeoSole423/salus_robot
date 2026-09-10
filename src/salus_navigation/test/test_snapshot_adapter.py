@@ -6,7 +6,13 @@ from map_msgs.msg import OccupancyGridUpdate
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker, MarkerArray
 
-from salus_navigation.nav_snapshot_server import NavSnapshotServer, apply_grid_update, is_fresh
+from salus_navigation.nav_snapshot_server import (
+    ActivePlanRetention,
+    Cached,
+    NavSnapshotServer,
+    apply_grid_update,
+    is_fresh,
+)
 from salus_navigation.snapshot_renderer import Transform2D
 
 
@@ -16,6 +22,34 @@ def test_freshness_separates_startup_grace_age_and_future_data() -> None:
     assert is_fresh(9_000_000_000, 10_000_000_000, 0.0, 100.0, 2.0, 5.0)
     assert not is_fresh(7_000_000_000, 10_000_000_000, 0.0, 100.0, 2.0, 5.0)
     assert not is_fresh(11_000_000_000, 10_000_000_000, 0.0, 100.0, 2.0, 5.0)
+
+
+def test_active_navigation_retains_last_plan_without_relaxing_telemetry_freshness() -> None:
+    retention = ActivePlanRetention()
+    before_goal = Cached(object(), 1.0)
+    active_plan = Cached(object(), 2.0)
+    replanned = Cached(object(), 3.0)
+
+    retention.update_plan(before_goal)
+    assert retention.select(None, telemetry_fresh=True) is None
+
+    retention.update_goal(True)
+    retention.update_plan(active_plan)
+    assert retention.select(None, telemetry_fresh=True) is active_plan
+    assert retention.select(replanned, telemetry_fresh=True) is replanned
+    assert retention.select(None, telemetry_fresh=False) is None
+
+
+def test_terminal_navigation_state_discards_retained_plan_before_next_goal() -> None:
+    retention = ActivePlanRetention()
+    active_plan = Cached(object(), 2.0)
+
+    retention.update_goal(True)
+    retention.update_plan(active_plan)
+    retention.update_goal(False)
+    retention.update_goal(True)
+
+    assert retention.select(None, telemetry_fresh=True) is None
 
 
 def test_incremental_costmap_update_is_applied_without_mutating_base() -> None:

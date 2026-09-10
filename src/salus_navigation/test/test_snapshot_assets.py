@@ -27,12 +27,17 @@ def test_snapshot_server_keeps_adr_boundaries_and_contract_topics() -> None:
     assert "snapshot_png_compression: 6" in config
     assert "local_costmap_max_age_s: 2.0" in config
     assert "dynamic_layer_max_age_s: 2.0" in config
+    assert "nav_telemetry_topic: /nav_command_server/telemetry" in config
     assert "mission_path_topic: /route_executor/mission_path" in config
     assert "active_chunk_path_topic: /route_executor/active_chunk_path" in config
     assert 'cache.get("mission_path")' in source
     assert 'cache.get("active_chunk_path")' in source
     assert "use_latest_transform=True" in source
     assert "DurabilityPolicy.TRANSIENT_LOCAL" in source
+    assert "ActivePlanRetention" in source
+    assert "self._cache_plan" in source
+    assert "self._cache_nav_telemetry" in source
+    assert "telemetry_fresh=dynamic(\"nav_telemetry\") is not None" in source
 
 
 def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> None:
