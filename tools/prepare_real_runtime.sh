@@ -185,6 +185,7 @@ mkdir -p "${workspace_dir}"
 workspace_action=clean_build
 needs_build=true
 previous_sha=
+declare -A removed_source_packages=()
 if [[ -f "${state_file}" ]]; then
   unset STATE_SOURCE_SHA STATE_IMAGE_ID STATE_RECIPE_HASH STATE_DEPS_HASH STATE_PREPARED_AT
   source "${state_file}"
@@ -209,6 +210,25 @@ if [[ "${needs_build}" == true ]]; then
   if [[ "${workspace_action}" == clean_build ]]; then
     rm -rf -- "${build_dir}" "${install_dir}" "${log_dir}"
     rm -f -- "${state_file}"
+  elif [[ "${workspace_action}" == incremental_build ]]; then
+    # Python packages can retain deleted data files in their setuptools build
+    # manifest.  Prune only packages with deleted checked-in sources before
+    # the incremental build, preserving the shared workspace cache and log.
+    while IFS= read -r -d '' removed_path; do
+      case "${removed_path}" in
+        src/*/*)
+          package_name="${removed_path#src/}"
+          package_name="${package_name%%/*}"
+          if [[ "${package_name}" =~ ^[[:alnum:]_.-]+$ ]]; then
+            removed_source_packages["${package_name}"]=1
+          fi
+          ;;
+      esac
+    done < <(git -C "${SALUS_REPO_DIR}" diff --name-only -z --diff-filter=D \
+      "${previous_sha}" "${source_sha}" -- src)
+    for package_name in "${!removed_source_packages[@]}"; do
+      rm -rf -- "${build_dir}/${package_name}" "${install_dir}/${package_name}"
+    done
   fi
   mkdir -p "${build_dir}" "${install_dir}" "${log_dir}"
   # rs_driver's CMake configure_file() writes its generated config/version
@@ -261,4 +281,7 @@ printf 'DEPS_HASH=%s\n' "${deps_hash}"
 printf 'IMAGE_ACTION=%s\n' "${image_action}"
 printf 'DEPS_ACTION=%s\n' "${deps_action}"
 printf 'WORKSPACE_ACTION=%s\n' "${workspace_action}"
+if (( ${#removed_source_packages[@]} > 0 )); then
+  printf 'WORKSPACE_PRUNED_PACKAGES=%s\n' "$(IFS=,; echo "${!removed_source_packages[*]}")"
+fi
 printf 'CACHE_DIR=%s\n' "${SALUS_REAL_CACHE_DIR}"

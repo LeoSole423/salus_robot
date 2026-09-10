@@ -39,6 +39,9 @@ class RealRuntimeCacheTest(unittest.TestCase):
         self._git("config", "user.name", "Runtime Cache Test")
         (self.repo / "marker.txt").write_text("base\n", encoding="utf-8")
         (self.repo / "src" / "marker.txt").write_text("source\n", encoding="utf-8")
+        self.deleted_asset = self.repo / "src" / "salus_navigation" / "config" / "obsolete.xml"
+        self.deleted_asset.parent.mkdir(parents=True)
+        self.deleted_asset.write_text("<obsolete/>\n", encoding="utf-8")
         self._git("add", ".")
         self._git("commit", "-qm", "base")
         self.initial_sha = self._git_output("rev-parse", "HEAD")
@@ -210,6 +213,30 @@ raise SystemExit(2)
         self.assertEqual(sum(line == "build" for line in self._log()), 0)
         self.assertEqual(sum("network=bridge" in line for line in self._log()), 1)
         self.assertEqual(sum("network=none" in line for line in self._log()), 2)
+
+    def test_t2b_deleted_source_asset_prunes_only_its_package_build_state(self) -> None:
+        self.assertEqual(self._prepare_initial().returncode, 0)
+        workspace = self.cache / "workspace" / self._prepared_value("WORKSPACE_KEY")
+        stale_build = workspace / "build" / "salus_navigation" / "config" / "obsolete.xml"
+        stale_install = workspace / "install" / "salus_navigation" / "config" / "obsolete.xml"
+        preserved = workspace / "log" / "persistent.marker"
+        stale_build.parent.mkdir(parents=True)
+        stale_install.parent.mkdir(parents=True)
+        stale_build.write_text("stale\n", encoding="utf-8")
+        stale_install.write_text("stale\n", encoding="utf-8")
+        preserved.write_text("keep\n", encoding="utf-8")
+        self.deleted_asset.unlink()
+        self._git("add", "-u")
+        self._git("commit", "-qm", "remove obsolete navigation asset")
+
+        result = self._run("prepare_real_runtime.sh")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("WORKSPACE_ACTION=incremental_build", result.stdout)
+        self.assertIn("WORKSPACE_PRUNED_PACKAGES=salus_navigation", result.stdout)
+        self.assertFalse(stale_build.exists())
+        self.assertFalse(stale_install.exists())
+        self.assertTrue(preserved.exists())
 
     def test_t3_recipe_change_rebuilds_image_and_uses_new_workspace(self) -> None:
         self.assertEqual(self._prepare_initial().returncode, 0)
