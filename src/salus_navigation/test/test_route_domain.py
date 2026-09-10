@@ -44,6 +44,24 @@ def test_finite_chunk_preserves_an_explicit_terminal_yaw():
     assert dispatch_yaws(chunk) == [0.0, 90.0]
 
 
+def test_finite_chunk_uses_approach_heading_for_first_automatic_checkpoint():
+    chunk = (
+        RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0),
+    )
+
+    assert dispatch_yaws(chunk, approach_xy=(0.0, -10.0)) == [90.0, 0.0]
+
+
+def test_finite_chunk_preserves_explicit_first_checkpoint_yaw():
+    chunk = (
+        RouteWaypoint(0, 0, -30.0, 0, map_x=0.0, map_y=0.0, yaw_explicit=True),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=10.0, map_y=0.0),
+    )
+
+    assert dispatch_yaws(chunk, approach_xy=(0.0, -10.0)) == [-30.0, 0.0]
+
+
 def test_chunk_request_uses_incoming_yaw_only_for_an_automatic_terminal_checkpoint():
     automatic_route = prepare(
         [
@@ -71,6 +89,24 @@ def test_chunk_request_uses_incoming_yaw_only_for_an_automatic_terminal_checkpoi
     explicit_chunk = build_chunk(explicit_route, 0)
 
     assert list(chunk_goal_request(explicit_chunk, explicit_route).yaws_deg) == [0.0, 90.0]
+
+
+def test_chunk_request_passes_robot_approach_only_to_automatic_first_pose():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+        ],
+        loop=True, input_count=3, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(chunk, route, approach_xy=(0.0, -10.0)).yaws_deg) == [
+        90.0,
+        0.0,
+    ]
 
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)

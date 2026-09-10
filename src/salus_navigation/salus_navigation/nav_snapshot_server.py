@@ -55,10 +55,22 @@ class ActivePlanRetention:
     goal_active: bool = False
     held_plan: Cached | None = None
 
-    def update_goal(self, goal_active: bool) -> None:
+    def update_goal(
+        self,
+        goal_active: bool,
+        *,
+        fresh_plan: Cached | None = None,
+    ) -> None:
+        """Track action lifetime and latch a plan published before acceptance."""
+        was_active = self.goal_active
         self.goal_active = bool(goal_active)
         if not self.goal_active:
             self.held_plan = None
+        elif not was_active and fresh_plan is not None:
+            # Nav2 normally publishes the initial /plan before the action
+            # acceptance reaches nav_command_server telemetry.  That plan is
+            # valid diagnostic state for this action if it is still fresh.
+            self.held_plan = fresh_plan
 
     def update_plan(self, cached: Cached) -> None:
         if self.goal_active:
@@ -246,7 +258,14 @@ class NavSnapshotServer(Node):
             previous = self._cache.get("nav_telemetry")
             first = previous.first_received_monotonic if previous else time.monotonic()
             self._cache["nav_telemetry"] = Cached(message, first)
-            self._plan_retention.update_goal(bool(message.goal_active))
+            plan = self._cache.get("plan")
+            fresh_plan = (
+                plan if plan is not None and self._stamp_age_ok(plan, False)
+                else None
+            )
+            self._plan_retention.update_goal(
+                bool(message.goal_active), fresh_plan=fresh_plan
+            )
 
     def _cache_grid_update(self, key: str, update: OccupancyGridUpdate) -> None:
         with self._lock:

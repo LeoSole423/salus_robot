@@ -29,17 +29,36 @@ def resolve_yaws(points: list[RouteWaypoint], loop: bool) -> list[RouteWaypoint]
     return result
 
 
-def dispatch_yaws(points: tuple[RouteWaypoint, ...]) -> list[float]:
+def dispatch_yaws(
+    points: tuple[RouteWaypoint, ...],
+    *,
+    approach_xy: tuple[float, float] | None = None,
+) -> list[float]:
     """Return finite headings for one Nav2 execution window.
 
     Automatic headings describe the mission's following leg. A finite window,
     however, terminates at its last waypoint. Give that automatic terminal
     pose the incoming-leg heading so Smac does not need to satisfy a heading
-    toward a waypoint outside the request. Explicit operator yaw is an input
-    contract and is never changed here.
+    toward a waypoint outside the request. When the current robot position is
+    known, its first automatic pose instead uses the approach heading: asking
+    an Ackermann planner to arrive at that checkpoint already facing its next
+    leg can require an unnecessary Dubins loop. Explicit operator yaw is an
+    input contract and is never changed here.
     """
     yaws = [float(point.yaw_deg) for point in points]
-    if len(points) < 2 or points[-1].yaw_explicit:
+    if len(points) < 2:
+        return yaws
+
+    first = points[0]
+    if approach_xy is not None and not first.yaw_explicit:
+        values = (approach_xy[0], approach_xy[1], first.map_x, first.map_y)
+        if all(value is not None and isfinite(value) for value in values):
+            dx = float(first.map_x) - float(approach_xy[0])
+            dy = float(first.map_y) - float(approach_xy[1])
+            if hypot(dx, dy) > 1e-9:
+                yaws[0] = degrees(atan2(dy, dx))
+
+    if points[-1].yaw_explicit:
         return yaws
     previous, terminal = points[-2], points[-1]
     values = (previous.map_x, previous.map_y, terminal.map_x, terminal.map_y)

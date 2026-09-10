@@ -38,6 +38,7 @@ def test_snapshot_server_keeps_adr_boundaries_and_contract_topics() -> None:
     assert "self._cache_plan" in source
     assert "self._cache_nav_telemetry" in source
     assert "telemetry_fresh=dynamic(\"nav_telemetry\") is not None" in source
+    assert "fresh_plan=fresh_plan" in source
 
 
 def test_snapshot_smoke_waits_for_causal_navigation_startup_before_polling() -> None:

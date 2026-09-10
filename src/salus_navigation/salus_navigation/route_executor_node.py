@@ -66,14 +66,19 @@ def terminal_nav_result_is_current(
     )
 
 
-def chunk_goal_request(chunk, prepared) -> SetNavGoalLL.Request:
+def chunk_goal_request(
+    chunk,
+    prepared,
+    *,
+    approach_xy: tuple[float, float] | None = None,
+) -> SetNavGoalLL.Request:
     """Translate one finite route window without changing checkpoint semantics."""
     if chunk is None or not chunk.waypoints or not chunk.checkpoint_offsets:
         raise ValueError("route chunk contains no original checkpoint")
     request = SetNavGoalLL.Request()
     request.lats = [float(point.lat) for point in chunk.waypoints]
     request.lons = [float(point.lon) for point in chunk.waypoints]
-    request.yaws_deg = dispatch_yaws(chunk.waypoints)
+    request.yaws_deg = dispatch_yaws(chunk.waypoints, approach_xy=approach_xy)
     request.lat, request.lon, request.yaw_deg = (
         request.lats[0], request.lons[0], request.yaws_deg[0]
     )
@@ -540,7 +545,12 @@ class RouteExecutorNode(Node):
             return
         self._target_offset = offsets[-1]
         self._recovery_checkpoint_reached = False
-        request = chunk_goal_request(self._chunk, self._mission.prepared)
+        approach_xy = None if self._pose is None else (self._pose.x, self._pose.y)
+        request = chunk_goal_request(
+            self._chunk,
+            self._mission.prepared,
+            approach_xy=approach_xy,
+        )
         self._goal_epoch += 1
         epoch = self._goal_epoch
         self._goal_request_pending = True
