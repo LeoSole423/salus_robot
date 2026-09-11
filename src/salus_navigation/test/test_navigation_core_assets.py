@@ -137,14 +137,16 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "/path_health/evaluate" in tree
     assert 'context="1"' in tree
     assert "IsPathHealthValid" in tree
-    assert tree.count('server_timeout="500"') == 4
+    assert tree.count('server_timeout="500"') == 5
     assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree
     assert "SmoothPath" not in tree
     assert "smoothed_path" not in tree
     assert 'path="{candidate_path}"' in tree
     assert 'input_path="{candidate_path}" output_path="{path}"' in tree
+    assert '<RecoveryNode number_of_retries="1" name="FollowPathRecovery">' in tree
     assert '<FollowPath path="{path}" controller_id="FollowPath" server_timeout="500"/>' in tree
+    assert '<Wait wait_duration="1"/>' in tree
     assert "Spin" not in tree and "BackUp" not in tree
 
 
