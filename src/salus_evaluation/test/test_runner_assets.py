@@ -39,3 +39,10 @@ def test_isolation_characterization_uses_shared_domain_allocator():
     assert "allocated_trial_isolation" in contents
     assert "ExitStack" in contents
     assert "--domain-a" not in contents and "--domain-b" not in contents
+
+
+def test_isolation_readiness_uses_typed_topic_probe():
+    contents = (ROOT.parents[1] / "tools" / "nav_eval_isolation.py").read_text()
+    assert "ros_topic_probe.py" in contents
+    assert '"ros2", "topic", "echo"' not in contents
+    assert '"typed_topic_probe"' in contents
