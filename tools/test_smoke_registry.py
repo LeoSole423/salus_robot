@@ -6,6 +6,14 @@ from tools.ci_select_smokes import ALL_SMOKES, PACKAGE_SMOKES
 from tools.smoke_registry import BY_ID, SCENARIOS, ids, nightly_matrix, nightly_scripts
 
 ROOT = Path(__file__).resolve().parents[1]
+FAST_GATE = {
+    "control",
+    "localization_canonical",
+    "sensor_selection",
+    "safety",
+    "integration",
+    "navigation_canonical",
+}
 
 
 class SmokeRegistryTest(unittest.TestCase):
@@ -17,6 +25,8 @@ class SmokeRegistryTest(unittest.TestCase):
     def test_selector_only_references_registered_ids(self):
         registered = set(BY_ID)
         self.assertEqual(set(ALL_SMOKES), set(ids(participation="pr")))
+        self.assertEqual(set(ids(participation="pr")), FAST_GATE)
+        self.assertEqual(set(ids(participation="main")), FAST_GATE)
         for prefix, selected in PACKAGE_SMOKES.items():
             with self.subTest(prefix=prefix):
                 self.assertLessEqual(set(selected), registered)
@@ -24,7 +34,13 @@ class SmokeRegistryTest(unittest.TestCase):
     def test_pr_workflow_is_registry_matrix_driven(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("fromJSON(needs.classify-changes.outputs.smoke_matrix)", workflow)
-        self.assertIn('run_registered_smoke.py "${{ matrix.id }}" --context ci', workflow)
+        self.assertIn("--context pr", workflow)
+        self.assertIn("--context main", workflow)
+        self.assertIn("--context full", workflow)
+        self.assertIn(
+            'run_registered_smoke.py "${{ matrix.id }}" --context "${SMOKE_RUN_CONTEXT}"',
+            workflow,
+        )
         self.assertNotIn("run_smoke.sh ./tools/smoke_", workflow)
 
     def test_registered_runner_owns_execution_metadata(self):
@@ -39,6 +55,7 @@ class SmokeRegistryTest(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/nightly-smokes.yml").read_text(encoding="utf-8")
         runner = (ROOT / "tools/smoke_reliability.sh").read_text(encoding="utf-8")
         self.assertIn("args=(--nightly-matrix)", workflow)
+        self.assertIn("max-parallel: 3", workflow)
         self.assertIn('python3 tools/smoke_registry.py "${args[@]}"', workflow)
         self.assertIn("SMOKE_SCENARIO_ID", runner)
         self.assertNotIn("scenarios=(", runner)

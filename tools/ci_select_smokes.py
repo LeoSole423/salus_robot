@@ -15,8 +15,7 @@ try:
 except ModuleNotFoundError:  # Direct execution: python3 tools/ci_select_smokes.py
     from smoke_registry import ids as registry_ids
 
-CORE_SMOKES = registry_ids(family="core", participation="pr")
-NAVIGATION_SMOKES = registry_ids(family="navigation", participation="pr")
+PARTICIPATION_CONTEXTS = ("pr", "full", "main")
 ALL_SMOKES = registry_ids(participation="pr")
 
 FULL_PREFIXES = (
@@ -103,14 +102,27 @@ class Selection:
     smokes: frozenset[str]
     changed_files: tuple[str, ...]
     reasons: tuple[str, ...]
+    context: str
+
+    @property
+    def universe(self) -> tuple[str, ...]:
+        return registry_ids(participation=self.context)
 
     @property
     def run_simulation_core(self) -> bool:
-        return bool(self.smokes.intersection(CORE_SMOKES))
+        return bool(
+            self.smokes.intersection(
+                registry_ids(family="core", participation=self.context)
+            )
+        )
 
     @property
     def run_navigation_missions(self) -> bool:
-        return bool(self.smokes.intersection(NAVIGATION_SMOKES))
+        return bool(
+            self.smokes.intersection(
+                registry_ids(family="navigation", participation=self.context)
+            )
+        )
 
 
 def _clean_paths(paths: Iterable[str]) -> tuple[str, ...]:
@@ -124,25 +136,36 @@ def _clean_paths(paths: Iterable[str]) -> tuple[str, ...]:
     return tuple(sorted(set(cleaned)))
 
 
-def classify(paths: Iterable[str], *, force_full_reason: str | None = None) -> Selection:
+def classify(
+    paths: Iterable[str],
+    *,
+    context: str = "pr",
+    force_full_reason: str | None = None,
+) -> Selection:
+    if context not in PARTICIPATION_CONTEXTS:
+        raise ValueError(f"unsupported CI participation context: {context!r}")
+
     changed = _clean_paths(paths)
+    universe = frozenset(registry_ids(participation=context))
 
     if force_full_reason:
         return Selection(
             classification="FULL",
             full_ci=True,
-            smokes=frozenset(ALL_SMOKES),
+            smokes=universe,
             changed_files=changed,
             reasons=(force_full_reason,),
+            context=context,
         )
 
     if not changed:
         return Selection(
             classification="FULL",
             full_ci=True,
-            smokes=frozenset(ALL_SMOKES),
+            smokes=universe,
             changed_files=changed,
             reasons=("no changed files were available; conservative FULL CI fallback",),
+            context=context,
         )
 
     selected: set[str] = set()
@@ -155,9 +178,10 @@ def classify(paths: Iterable[str], *, force_full_reason: str | None = None) -> S
             return Selection(
                 classification="FULL",
                 full_ci=True,
-                smokes=frozenset(ALL_SMOKES),
+                smokes=universe,
                 changed_files=changed,
                 reasons=tuple(reasons),
+                context=context,
             )
 
         if path in FAST_ONLY_FILES or any(path.startswith(prefix) for prefix in FAST_ONLY_PREFIXES):
@@ -188,11 +212,13 @@ def classify(paths: Iterable[str], *, force_full_reason: str | None = None) -> S
         return Selection(
             classification="FULL",
             full_ci=True,
-            smokes=frozenset(ALL_SMOKES),
+            smokes=universe,
             changed_files=changed,
             reasons=tuple(reasons),
+            context=context,
         )
 
+    selected.intersection_update(universe)
     if selected:
         owners = sorted(
             {
@@ -208,6 +234,7 @@ def classify(paths: Iterable[str], *, force_full_reason: str | None = None) -> S
             smokes=frozenset(selected),
             changed_files=changed,
             reasons=tuple(reasons),
+            context=context,
         )
 
     return Selection(
@@ -216,6 +243,7 @@ def classify(paths: Iterable[str], *, force_full_reason: str | None = None) -> S
         smokes=frozenset(),
         changed_files=changed,
         reasons=tuple(reasons),
+        context=context,
     )
 
 
@@ -227,11 +255,17 @@ def outputs(selection: Selection) -> dict[str, str]:
         "run_navigation_missions": str(selection.run_navigation_missions).lower(),
         "run_smokes": str(bool(selection.smokes)).lower(),
         "smoke_matrix": json.dumps(
-            {"include": [{"id": smoke} for smoke in ALL_SMOKES if smoke in selection.smokes]},
+            {
+                "include": [
+                    {"id": smoke}
+                    for smoke in selection.universe
+                    if smoke in selection.smokes
+                ]
+            },
             separators=(",", ":"),
         ),
     }
-    for smoke in ALL_SMOKES:
+    for smoke in selection.universe:
         data[f"smoke_{smoke}"] = str(smoke in selection.smokes).lower()
     return data
 
@@ -243,8 +277,8 @@ def _write_github_output(path: str, selection: Selection) -> None:
 
 
 def _write_summary(path: str, selection: Selection) -> None:
-    selected = [name for name in ALL_SMOKES if name in selection.smokes]
-    skipped = [name for name in ALL_SMOKES if name not in selection.smokes]
+    selected = [name for name in selection.universe if name in selection.smokes]
+    skipped = [name for name in selection.universe if name not in selection.smokes]
     with open(path, "a", encoding="utf-8") as handle:
         handle.write("## Change-aware CI selection\n\n")
         handle.write(f"- Classification: {selection.classification}\n")
@@ -272,6 +306,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--files", type=Path, help="newline-separated changed-file list")
     parser.add_argument("--full-reason", help="force FULL CI with this reason")
+    parser.add_argument("--context", choices=PARTICIPATION_CONTEXTS, default="pr")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT"))
     parser.add_argument("--github-step-summary", default=os.environ.get("GITHUB_STEP_SUMMARY"))
     parser.add_argument("--json", action="store_true", help="print selection as JSON")
@@ -281,7 +316,11 @@ def main() -> int:
     if args.files:
         paths = args.files.read_text(encoding="utf-8").splitlines()
 
-    selection = classify(paths, force_full_reason=args.full_reason)
+    selection = classify(
+        paths,
+        context=args.context,
+        force_full_reason=args.full_reason,
+    )
 
     print(f"[ci-selector] classification={selection.classification}")
     print(f"[ci-selector] full_ci={str(selection.full_ci).lower()}")
@@ -293,7 +332,7 @@ def main() -> int:
     for name in selected or ["<none>"]:
         print(f"  - {name}")
     print("[ci-selector] skipped smokes:")
-    skipped = [name for name in ALL_SMOKES if name not in selection.smokes]
+    skipped = [name for name in selection.universe if name not in selection.smokes]
     for name in skipped or ["<none>"]:
         print(f"  - {name}")
     print("[ci-selector] reasons:")
