@@ -86,6 +86,7 @@ controller_server:
       max_angular_accel: 3.0
       transform_tolerance: 0.2
       use_interpolation: true
+      max_robot_pose_search_dist: 4.0
 
 behavior_server:
   ros__parameters:

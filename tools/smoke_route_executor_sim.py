@@ -17,6 +17,7 @@ from nav_msgs.msg import Odometry, Path as NavPath
 from geometry_msgs.msg import PoseStamped
 from lifecycle_msgs.srv import GetState
 from rclpy.action import ActionClient
+from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
@@ -54,6 +55,7 @@ class Smoke(Node):
         super().__init__("route_executor_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom, self.local_odom = [], []
         self.mission_paths, self.chunks, self.plans, self.final = [], [], [], []
+        self.received_global_plans = []
         self.path_health, self.telemetry, self.events = [], [], []
         self.progress_trace = []
         self.next_progress_sample_at = 0.0
@@ -69,6 +71,9 @@ class Smoke(Node):
         self.create_subscription(NavPath, "/route_executor/mission_path", self.mission_paths.append, 10)
         self.create_subscription(NavPath, "/route_executor/active_chunk_path", self.chunks.append, 10)
         self.create_subscription(NavPath, "/plan", self.plans.append, 10)
+        self.create_subscription(
+            NavPath, "/received_global_plan", self.received_global_plans.append, 10
+        )
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(
@@ -111,6 +116,9 @@ class Smoke(Node):
             self, ComputePathThroughPoses, "/compute_path_through_poses"
         )
         self.follow_action = ActionClient(self, FollowPath, "/follow_path")
+        self.controller_parameters = self.create_client(
+            GetParameters, "/controller_server/get_parameters"
+        )
         self.bt_state = self.create_client(GetState, "/bt_navigator/get_state")
         self.bt_state_future = None
         self.bt_state_requested_at = 0.0
@@ -468,6 +476,118 @@ def compare_yaw_policies(node, runtime, robot_xy):
     }
 
 
+def rpp_branch_selection_gate(node, runtime):
+    """Require the production RPP bound to keep the first local path branch."""
+    runtime.wait(
+        "RPP parameter service unavailable",
+        lambda: node.controller_parameters.service_is_ready(),
+        8.0,
+    )
+    future = node.controller_parameters.call_async(
+        GetParameters.Request(names=["FollowPath.max_robot_pose_search_dist"])
+    )
+    runtime.wait("RPP production parameter unavailable", lambda: future.done(), 5.0)
+    values = future.result().values
+    configured_value = float(values[0].double_value) if values else None
+    if configured_value is None or abs(configured_value - 4.0) > 1.0e-9:
+        raise RuntimeError(
+            "RPP branch gate requires production max_robot_pose_search_dist=4.0, "
+            f"got {configured_value}"
+        )
+
+    origin = node.odom[-1].pose.pose
+    yaw = math.atan2(
+        2.0 * (origin.orientation.w * origin.orientation.z),
+        1.0 - 2.0 * origin.orientation.z * origin.orientation.z,
+    )
+    origin_x, origin_y = float(origin.position.x), float(origin.position.y)
+
+    def world(forward, lateral):
+        return (
+            origin_x + forward * math.cos(yaw) - lateral * math.sin(yaw),
+            origin_y + forward * math.sin(yaw) + lateral * math.cos(yaw),
+        )
+
+    # The second passage is closer to the robot, but lies beyond the
+    # production integrated search bound from the start of the path.
+    route = [
+        world(-2.5, 0.5), world(0.0, 0.5), world(2.5, 0.5),
+        world(2.5, 2.5), world(0.0, 2.5),
+        world(0.0, 0.1), world(2.5, 0.1),
+    ]
+    path = NavPath()
+    path.header.frame_id = "map"
+    path.header.stamp = node.get_clock().now().to_msg()
+    for x, y in route:
+        pose = PoseStamped()
+        pose.header = path.header
+        pose.pose.position.x = x
+        pose.pose.position.y = y
+        pose.pose.orientation.z = math.sin(yaw * 0.5)
+        pose.pose.orientation.w = math.cos(yaw * 0.5)
+        path.poses.append(pose)
+
+    node.received_global_plans.clear()
+    goal = FollowPath.Goal()
+    goal.path = path
+    goal.controller_id = "FollowPath"
+    sent = node.follow_action.send_goal_async(goal)
+    runtime.wait("RPP branch probe was not accepted", lambda: sent.done(), 8.0)
+    handle = sent.result()
+    if handle is None or not handle.accepted:
+        raise RuntimeError("RPP branch probe was rejected")
+    result_future = handle.get_result_async()
+
+    def classify(plan):
+        first = plan.poses[0].pose.position
+        first_y = float(first.y)
+        local_error = abs(first_y - 0.5)
+        later_error = abs(first_y - 0.1)
+        return {
+            "first_transformed_pose": [float(first.x), first_y],
+            "selected_branch": (
+                "first_local_passage" if local_error < later_error else "later_crossing"
+            ),
+            "first_branch_error_m": local_error,
+            "later_branch_error_m": later_error,
+        }
+
+    def local_branch_received():
+        return any(
+            plan.poses and classify(plan)["selected_branch"] == "first_local_passage"
+            for plan in node.received_global_plans
+        )
+
+    runtime.wait(
+        "RPP production bound selected a later crossing",
+        local_branch_received,
+        8.0,
+        observe=lambda: {
+            "plans": len(node.received_global_plans),
+            "branches": [
+                classify(plan)["selected_branch"]
+                for plan in node.received_global_plans
+                if plan.poses
+            ],
+        },
+    )
+    selected = next(
+        classify(plan)
+        for plan in node.received_global_plans
+        if plan.poses and classify(plan)["selected_branch"] == "first_local_passage"
+    )
+    cancel = handle.cancel_goal_async()
+    runtime.wait("RPP branch probe cancellation unavailable", lambda: cancel.done(), 5.0)
+    runtime.wait("RPP branch probe did not settle", lambda: result_future.done(), 5.0)
+    return {
+        "scenario": "crossing_path_near_robot",
+        "production_search_distance_m": configured_value,
+        **selected,
+        "selection_matches_measurement": selected["selected_branch"] == "first_local_passage",
+        "decision": "production bound keeps the first local passage",
+    }
+
+
 def request_from_pose(pose, *, loop=False):
     yaw = math.atan2(2 * pose.orientation.w * pose.orientation.z, 1 - 2 * pose.orientation.z ** 2)
     x, y = pose.position.x, pose.position.y
@@ -511,6 +631,7 @@ def main():
     node.runtime = runtime
     success = False
     failure = None
+    rpp_branch_evidence = {}
     state_poller = AsyncServicePoller(
         node.state, GetRouteMissionState.Request, interval_s=0.5, response_timeout_s=8.0
     )
@@ -569,6 +690,7 @@ def main():
             5,
             "local odometry unavailable for route progress diagnostics",
         )
+        rpp_branch_evidence = rpp_branch_selection_gate(node, runtime)
         yaw_policy_evidence = compare_yaw_policies(
             node, runtime,
             (float(node.odom[-1].pose.pose.position.x),
@@ -694,6 +816,7 @@ def main():
             "chunks": len(node.chunks),
             "plans": len(node.plans),
             "geometry": node.geometry_evidence(),
+            "rpp_branch_selection": rpp_branch_evidence,
             "yaw_policy_comparison": locals().get("yaw_policy_evidence", {}),
             "dispatches": node.dispatch_evidence(),
             "final_commands": len(node.final),
