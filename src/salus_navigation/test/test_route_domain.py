@@ -106,6 +106,92 @@ def test_chunk_request_does_not_mutate_first_yaw_from_robot_approach():
 
     assert list(chunk_goal_request(chunk, route).yaws_deg) == [0.0, 0.0]
 
+
+def test_chunk_request_uses_current_pose_for_automatic_first_yaw():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        ],
+        loop=False, input_count=2, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(
+        chunk, route, approach_xy=(0.0, -10.0)
+    ).yaws_deg) == [90.0, 0.0]
+
+
+def test_chunk_request_preserves_explicit_first_yaw_with_current_pose():
+    route = prepare(
+        [
+            RouteWaypoint(
+                0, 0, -30.0, 0, map_x=0.0, map_y=0.0,
+                yaw_explicit=True,
+            ),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        ],
+        loop=False, input_count=2, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(
+        chunk, route, approach_xy=(0.0, -10.0)
+    ).yaws_deg) == [-30.0, 0.0]
+
+
+def test_chunk_request_keeps_terminal_incoming_yaw_for_automatic_pose():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        ],
+        loop=False, input_count=2, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(
+        chunk, route, approach_xy=(0.0, -10.0)
+    ).yaws_deg)[-1] == 0.0
+
+
+def test_chunk_request_preserves_explicit_terminal_yaw_with_current_pose():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(
+                0, 0, 90.0, 1, map_x=10.0, map_y=0.0,
+                yaw_explicit=True,
+            ),
+        ],
+        loop=False, input_count=2, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(
+        chunk, route, approach_xy=(0.0, -10.0)
+    ).yaws_deg) == [90.0, 90.0]
+
+
+def test_chunk_request_falls_back_when_current_pose_is_invalid():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        ],
+        loop=False, input_count=2, spacing_m=0,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0)
+
+    assert list(chunk_goal_request(
+        chunk, route, approach_xy=(float("nan"), -10.0)
+    ).yaws_deg) == [0.0, 0.0]
+
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)
     assert select_anchor(route, 9.0, 0.2) >= 1
