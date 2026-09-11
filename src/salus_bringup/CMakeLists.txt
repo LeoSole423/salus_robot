@@ -13,6 +13,8 @@ if(BUILD_TESTING)
   ament_add_pytest_test(test_smoke_runtime test/test_smoke_runtime.py)
   ament_add_pytest_test(test_smoke_harness test/test_smoke_harness.py)
   ament_add_pytest_test(test_route_smoke_probe test/test_route_smoke_probe.py)
+  ament_add_pytest_test(
+    test_patrol_battery_smoke_probe test/test_patrol_battery_smoke_probe.py)
   ament_add_pytest_test(test_nightly_smokes test/test_nightly_smokes.py)
   ament_add_pytest_test(test_sim_helper test/test_sim_helper.py)
   ament_add_pytest_test(
