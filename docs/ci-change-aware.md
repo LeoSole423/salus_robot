@@ -30,11 +30,11 @@ smoke conserva su propio build aislado, por lo que `build-unit`,
 | Cambio | Smokes seleccionados |
 | --- | --- |
 | `docs/**`, `README.md`, `AGENTS.md`, metadatos editoriales conocidos | ninguno; sólo fast gate |
-| `src/salus_control/**` | control, motion, safety, integration |
-| `src/salus_localization/**` | localization, canonical localization, sensor selection, integration, navigation core, canonical navigation |
-| `src/salus_navigation/**` | safety, integration, navigation core, canonical navigation, navigation no-obstacles, zones, routes, patrol/HOME, snapshot |
-| `src/salus_navigation_bt/**` | integration y los smokes funcionales de `navigation-missions` |
-| `src/salus_perception/**` | LiDAR, integration, navigation core, canonical navigation |
+| `src/salus_control/**` | control, safety, integration |
+| `src/salus_localization/**` | canonical localization, sensor selection, integration, canonical navigation |
+| `src/salus_navigation/**` | safety, integration, canonical navigation |
+| `src/salus_navigation_bt/**` | integration y canonical navigation |
+| `src/salus_perception/**` | integration, canonical navigation |
 | `src/salus_web/**` | integration; protocolo/gateway/lease Web quedan además cubiertos por el fast gate unitario |
 | `src/salus_evaluation/**` | ninguno; actualmente no posee un runtime smoke, por lo que queda cubierto por build/lint/unit del fast gate |
 
@@ -93,8 +93,11 @@ por defecto. El diff desactiva la detección de renames para clasificar tanto la
 ruta eliminada como la nueva; mover un archivo no puede ocultar su frontera de
 origen.
 
-`push` a `main` y `workflow_dispatch` fuerzan siempre `FULL`, independientemente
-de los paths. El nightly conserva su workflow y repeticiones existentes.
+El selector recibe explícitamente el contexto de participación: `pull_request`
+usa `pr`, `push` a `main` usa `main` y `workflow_dispatch` usa `full`. Una
+clasificación `FULL` selecciona todos los escenarios habilitados para ese
+contexto, no toda la matriz registrada. El nightly conserva su workflow y
+repeticiones existentes.
 
 ## Agregación de resultados
 

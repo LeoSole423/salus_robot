@@ -37,6 +37,7 @@ jobs:
     needs: plan
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     name: nightly / ${{ matrix.id }}
     runs-on: ubuntu-22.04

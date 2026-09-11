@@ -6,11 +6,19 @@ Each entry records the stable scenario id, executable script, family, effective 
 
 Consumers should read the registry through `tools/smoke_registry.py` rather than maintaining another scenario list. The change-aware PR selector derives its scenario ids from this registry, and the current nightly reliability runner derives its ordered scenario list and default repetition count from it.
 
-This first CI v2 step intentionally preserves current execution semantics. In particular, existing differences between PR/main coverage and nightly coverage are represented explicitly rather than silently corrected here. Later CI v2 issues can change participation or orchestration with an attributable diff.
+PR y push a `main` comparten el fast gate determinista definido por
+`participation.pr` y `participation.main`. Los escenarios pesados conservan
+`participation.full` para ejecuciones manuales completas y su participación
+nightly independiente.
 
 Registry validation is part of the fast classifier tests. It verifies that registered scripts exist, selector-owned ids are registered, PR workflow smoke scripts match the PR registry, and nightly execution is registry-driven.
 
 ## PR/main matrix execution
+
+El fast gate de PR/main está compuesto exactamente por `control`,
+`localization_canonical`, `sensor_selection`, `safety`, `integration` y
+`navigation_canonical`. Los escenarios desplazados siguen registrados y se
+incluyen en el contexto `full` cuando `participation.full` está habilitado.
 
 CI v2 consumes the change-aware selection as a dynamic matrix. Each selected scenario becomes an independent GitHub Actions job named `smoke / <id>` with `fail-fast: false`.
 
@@ -37,6 +45,7 @@ Nightly reliability is planned from the same registry instead of a hand-maintain
 
 Each `nightly / <id>` job:
 - runs on a fresh runner with `fail-fast: false`;
+- is limited to three concurrent reliability jobs;
 - builds the workspace once for that scenario;
 - repeats only that registered scenario;
 - writes an incremental per-scenario JSON summary with completed/passed/failed/incomplete repetitions;

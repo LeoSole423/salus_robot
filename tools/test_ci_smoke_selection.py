@@ -3,6 +3,28 @@ import json
 import unittest
 
 from tools.ci_select_smokes import ALL_SMOKES, classify, outputs
+from tools.smoke_registry import ids
+
+
+FAST_GATE = {
+    "control",
+    "localization_canonical",
+    "sensor_selection",
+    "safety",
+    "integration",
+    "navigation_canonical",
+}
+HEAVY_SMOKES = {
+    "motion",
+    "localization",
+    "lidar",
+    "navigation",
+    "navigation_no_obstacles",
+    "zones",
+    "routes",
+    "patrol_battery",
+    "snapshot",
+}
 
 
 class ChangeAwareCiSelectionTest(unittest.TestCase):
@@ -17,21 +39,40 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
         self.assertFalse(selection.full_ci)
         self.assertEqual(selection.smokes, frozenset())
 
+    def test_pr_and_main_participation_are_exactly_the_fast_gate(self):
+        self.assertEqual(set(ids(participation="pr")), FAST_GATE)
+        self.assertEqual(set(ids(participation="main")), FAST_GATE)
+        self.assertEqual(set(ALL_SMOKES), FAST_GATE)
+
+    def test_full_context_preserves_heavy_scenarios(self):
+        selection = classify([], context="full")
+        self.assertTrue(selection.full_ci)
+        self.assertEqual(set(selection.smokes), set(ids(participation="full")))
+        self.assertTrue(HEAVY_SMOKES.issubset(selection.smokes))
+
+    def test_targeted_main_selection_uses_main_universe(self):
+        selection = classify(
+            ["src/salus_navigation/salus_navigation/route_executor.py"],
+            context="main",
+        )
+        self.assertEqual(
+            set(selection.smokes),
+            {"safety", "integration", "navigation_canonical"},
+        )
+
     def test_control_only(self):
         self.assert_smokes(
             "src/salus_control/salus_control/controller.py",
-            {"control", "motion", "safety", "integration"},
+            {"control", "safety", "integration"},
         )
 
     def test_localization_only(self):
         self.assert_smokes(
             "src/salus_localization/salus_localization/odometry.py",
             {
-                "localization",
                 "localization_canonical",
                 "sensor_selection",
                 "integration",
-                "navigation",
                 "navigation_canonical",
             },
         )
@@ -42,13 +83,7 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
             {
                 "safety",
                 "integration",
-                "navigation",
                 "navigation_canonical",
-                "navigation_no_obstacles",
-                "zones",
-                "routes",
-                "patrol_battery",
-                "snapshot",
             },
         )
 
@@ -86,14 +121,14 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
     def test_perception_runs_lidar_and_navigation_contracts(self):
         self.assert_smokes(
             "src/salus_perception/salus_perception/cloud_normalizer.py",
-            {"lidar", "integration", "navigation", "navigation_canonical"},
+            {"integration", "navigation_canonical"},
         )
 
     def test_navigation_bt_runs_navigation_missions(self):
         selection = classify(["src/salus_navigation_bt/src/path_health_condition.cpp"])
         self.assertFalse(selection.full_ci)
         self.assertTrue(selection.run_navigation_missions)
-        self.assertIn("navigation", selection.smokes)
+        self.assertIn("navigation_canonical", selection.smokes)
         self.assertNotIn("web_cockpit", selection.smokes)
 
     def test_evaluation_has_no_owned_runtime_smoke(self):
@@ -114,6 +149,25 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
 
     def test_empty_change_set_falls_back_to_full(self):
         self.assertTrue(classify([]).full_ci)
+
+    def test_pr_full_fallback_does_not_use_full_universe(self):
+        selection = classify(["src/salus_interfaces/msg/VehicleCommand.msg"])
+        self.assertEqual(set(selection.smokes), FAST_GATE)
+        self.assertTrue(HEAVY_SMOKES.isdisjoint(selection.smokes))
+
+    def test_main_full_fallback_uses_main_universe(self):
+        selection = classify(
+            ["src/salus_interfaces/msg/VehicleCommand.msg"],
+            context="main",
+        )
+        self.assertEqual(set(selection.smokes), FAST_GATE)
+
+    def test_manual_full_fallback_uses_full_universe(self):
+        selection = classify(
+            ["src/salus_interfaces/msg/VehicleCommand.msg"],
+            context="full",
+        )
+        self.assertEqual(set(selection.smokes), set(ids(participation="full")))
 
     def test_targeted_selection_emits_only_selected_matrix_ids(self):
         selection = classify(["src/salus_web/salus_web/bridge.py"])
