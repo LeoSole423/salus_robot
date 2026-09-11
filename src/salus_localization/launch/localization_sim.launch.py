@@ -13,7 +13,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description() -> LaunchDescription:
     share_dir = Path(get_package_share_directory("salus_localization"))
-    params_file = share_dir / "config" / "localization_local_sim.yaml"
+    default_params_file = share_dir / "config" / "localization_local_sim.yaml"
+    local_ekf_params_file = LaunchConfiguration("local_ekf_params_file")
     use_sim_time = LaunchConfiguration("use_sim_time")
     odometry_backend = LaunchConfiguration("odometry_backend")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
@@ -50,6 +51,13 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="imu_primary",
                 choices=["imu_primary", "imu_secondary"],
                 description="Exclusive logical IMU source; no automatic fallback.",
+            ),
+            DeclareLaunchArgument(
+                "local_ekf_params_file",
+                default_value=str(default_params_file),
+                description=(
+                    "Simulation-only local EKF YAML; defaults to the frozen baseline."
+                ),
             ),
             OpaqueFunction(function=_validate_profile),
             Node(
@@ -128,7 +136,10 @@ def generate_launch_description() -> LaunchDescription:
                 executable="ekf_node",
                 name="ekf_filter_node_local",
                 output="screen",
-                parameters=[str(params_file), {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
+                parameters=[
+                    local_ekf_params_file,
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)},
+                ],
                 remappings=[("odometry/filtered", "/odometry/local")],
             ),
         ]
