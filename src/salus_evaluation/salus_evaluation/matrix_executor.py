@@ -175,6 +175,51 @@ def _sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def _repository_sha():
+    """Return the source checkout SHA used by the evaluation container."""
+    roots = [Path("/ros2_ws"), Path.cwd()]
+    seen = set()
+    for root in roots:
+        root = root.resolve()
+        if root in seen:
+            continue
+        seen.add(root)
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            text=True, capture_output=True, check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    return "unavailable"
+
+
+def _resolve_ekf_params_file(matrix_path, configured_path):
+    """Resolve a variant path relative to the matrix source file."""
+    if configured_path is None:
+        return None
+    path = Path(configured_path)
+    return path.resolve() if path.is_absolute() else (
+        Path(matrix_path).parent / path
+    ).resolve()
+
+
+def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
+                             local_ekf_params_file=None):
+    """Build the existing integration launch command plus selected overlays."""
+    args = [
+        "ros2", "launch", "salus_bringup", "integration_sim.launch.py",
+        "capability_profile:=no_obstacle_detection",
+        "world:=/ros2_ws/install/salus_simulation/share/salus_simulation/"
+        "worlds/free.world",
+        f"zones_runtime_dir:={zones_runtime_dir}",
+    ]
+    if nav2_params_file is not None:
+        args.append(f"nav2_no_obstacles_params_file:={nav2_params_file}")
+    if local_ekf_params_file is not None:
+        args.append(f"local_ekf_params_file:={local_ekf_params_file}")
+    return args
+
+
 def _terminate_process_group(process):
     """Bounded TERM -> KILL cleanup for one owned launch process group."""
     if process is None:
@@ -217,16 +262,20 @@ def _live_processes_in_group(pgid):
     return False
 
 
-def _trial_metadata(cell, scenario, isolation):
+def _trial_metadata(cell, scenario, isolation, source_sha):
     return {
         "matrix_id": cell.matrix_id,
         "trial_id": cell.trial_id,
+        "variant": cell.variant_id,
+        "local_ekf_params_file": cell.local_ekf_params_file,
+        "source_sha": source_sha,
         "repetition": cell.repetition,
         "requested_speed_mps": cell.speed_mps,
         "direction": cell.case.direction,
         "requested_radius_m": cell.case.requested_radius_m,
         "scenario": str(scenario),
         "isolation": "fresh_simulation",
+        "isolation_id": isolation.partition,
         "ros_domain_id": isolation.ros_domain_id,
         "ign_partition": isolation.partition,
         "gz_partition": isolation.partition,
@@ -237,9 +286,9 @@ def _trial_metadata(cell, scenario, isolation):
 
 
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
-                         planner_minimum_turning_radius, isolation):
+                         planner_minimum_turning_radius, isolation, source_sha):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
-    metadata = _trial_metadata(cell, scenario, isolation)
+    metadata = _trial_metadata(cell, scenario, isolation, source_sha)
     trial_dir.mkdir(parents=True, exist_ok=True)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
@@ -261,13 +310,21 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                 "base_sha256": _sha256(base_params),
                 "effective_sha256": _sha256(effective_params),
             }
-        launch_args = ["ros2", "launch", "salus_bringup", "integration_sim.launch.py",
-                       "capability_profile:=no_obstacle_detection",
-                       "world:=/ros2_ws/install/salus_simulation/share/salus_simulation/"
-                       "worlds/free.world",
-                       f"zones_runtime_dir:={isolation.runtime_root / 'zones'}"]
-        if effective_params is not None:
-            launch_args.append(f"nav2_no_obstacles_params_file:={effective_params}")
+        selected_ekf_params = _resolve_ekf_params_file(
+            matrix_path, cell.local_ekf_params_file
+        )
+        if selected_ekf_params is not None:
+            if not selected_ekf_params.is_file():
+                raise FileNotFoundError(
+                    f"selected EKF params file does not exist: {selected_ekf_params}"
+                )
+            metadata["local_ekf_params_file"] = str(selected_ekf_params)
+            metadata["local_ekf_params_sha256"] = _sha256(selected_ekf_params)
+        launch_args = _build_trial_launch_args(
+            zones_runtime_dir=isolation.runtime_root / "zones",
+            nav2_params_file=effective_params,
+            local_ekf_params_file=selected_ekf_params,
+        )
         with (trial_dir.parent / f"{cell.trial_id}-launch.log").open("w") as launch_log:
             launch = subprocess.Popen(
                 launch_args, env=environment, start_new_session=True,
@@ -326,26 +383,35 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():
+                    outcome = (
+                        "passed" if evaluation.returncode == 0
+                        else "functional_failure"
+                    )
+                    metadata["result"] = outcome
                     _record_metadata(trial_dir, metadata)
+                    return outcome
                 else:
-                    _failure_bundle(trial_dir, "navigation evaluation produced no summary",
-                                    metadata)
+                    metadata["result"] = "setup_failure"
+                    _failure_bundle(
+                        trial_dir, "navigation evaluation produced no summary", metadata
+                    )
                     return "setup_failure"
-                return "passed" if evaluation.returncode == 0 else "functional_failure"
             except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
                 if isinstance(exc, ReadinessError):
                     metadata["readiness"] = exc.evidence
+                metadata["result"] = "setup_failure"
                 _failure_bundle(trial_dir, str(exc), metadata)
                 return "setup_failure"
             finally:
                 _terminate_process_group(launch)
     except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+        metadata["result"] = "setup_failure"
         _failure_bundle(trial_dir, str(exc), metadata)
         return "setup_failure"
 
 
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
-              planner_minimum_turning_radius, run_token):
+              planner_minimum_turning_radius, run_token, source_sha):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -357,12 +423,16 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 cell, matrix_path=Path(matrix_path), trial_dir=trial_dir,
                 startup_timeout_s=startup_timeout_s,
                 planner_minimum_turning_radius=planner_minimum_turning_radius,
-                isolation=isolation,
+                isolation=isolation, source_sha=source_sha,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
             "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
+            "variant": cell.variant_id,
+            "local_ekf_params_file": cell.local_ekf_params_file,
+            "source_sha": source_sha,
             "repetition": cell.repetition, "isolation": "allocation_failure",
+            "result": "setup_failure",
         })
         return "setup_failure"
 
@@ -397,6 +467,7 @@ def main(argv=None):
         "startup_timeout_s": args.startup_timeout_s,
         "planner_minimum_turning_radius": args.planner_minimum_turning_radius,
         "run_token": run_token,
+        "source_sha": _repository_sha(),
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in cells]

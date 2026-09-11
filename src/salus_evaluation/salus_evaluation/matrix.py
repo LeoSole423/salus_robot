@@ -62,6 +62,14 @@ class MatrixCase:
 
 
 @dataclass(frozen=True)
+class MatrixVariant:
+    """One configuration variant selected for every trial in its expansion."""
+
+    variant_id: str
+    local_ekf_params_file: str | None
+
+
+@dataclass(frozen=True)
 class MatrixCell:
     """One speed/geometry/repetition trial with a stable filesystem identifier."""
 
@@ -69,21 +77,26 @@ class MatrixCell:
     case: MatrixCase
     speed_mps: float
     repetition: int
+    variant_id: str = "default"
+    local_ekf_params_file: str | None = None
 
     @property
     def trial_id(self) -> str:
+        variant = "" if self.variant_id == "default" else f"{self.variant_id}-"
         radius = "straight" if self.case.requested_radius_m is None else (
             f"r{self.case.requested_radius_m:g}".replace(".", "p")
         )
         speed = f"v{self.speed_mps:g}".replace(".", "p")
         return (
-            f"{self.case.case_id}-{self.case.direction}-{radius}-{speed}"
+            f"{variant}{self.case.case_id}-{self.case.direction}-{radius}-{speed}"
             f"-rep{self.repetition:02d}"
         )
 
 
-def _require_keys(value, required):
-    if not isinstance(value, dict) or set(value) != set(required):
+def _require_keys(value, required, optional=()):
+    allowed = set(required) | set(optional)
+    if (not isinstance(value, dict) or not set(required).issubset(value)
+            or not set(value).issubset(allowed)):
         raise ValueError(f"invalid keys; expected={sorted(required)}")
 
 
@@ -96,11 +109,30 @@ def _finite_positive(value, name):
     return result
 
 
+def _parse_variants(raw):
+    variant_values = raw.get("variants")
+    if variant_values is None:
+        return (MatrixVariant("default", None),)
+    if not isinstance(variant_values, list) or not variant_values:
+        raise ValueError("variants must be a non-empty list")
+    variants = []
+    for item in variant_values:
+        _require_keys(item, ("id", "local_ekf_params_file"))
+        variant_id = str(item["id"]).strip()
+        params_file = str(item["local_ekf_params_file"]).strip()
+        if not variant_id or not params_file:
+            raise ValueError("variant needs non-empty id and local_ekf_params_file")
+        variants.append(MatrixVariant(variant_id, params_file))
+    if len({item.variant_id for item in variants}) != len(variants):
+        raise ValueError("variant ids must be unique")
+    return tuple(variants)
+
+
 def load_matrix(path):
     """Load a strict matrix definition without silently accepting new semantics."""
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     _require_keys(raw, ("schema_version", "id", "repetitions", "max_speed_mps",
-                        "speeds_mps", "cases"))
+                        "speeds_mps", "cases"), optional=("variants",))
     if raw["schema_version"] != SCHEMA_VERSION:
         raise ValueError("unsupported matrix schema_version")
     matrix_id = str(raw["id"]).strip()
@@ -133,15 +165,19 @@ def load_matrix(path):
         cases.append(MatrixCase(case_id, scenario, direction, radius))
     if len({case.case_id for case in cases}) != len(cases):
         raise ValueError("case ids must be unique")
-    return matrix_id, int(raw["repetitions"]), maximum, speeds, tuple(cases)
+    return (matrix_id, int(raw["repetitions"]), maximum, speeds, tuple(cases),
+            _parse_variants(raw))
 
 
 def expand_matrix(path):
     """Expand a matrix in deterministic case, speed, then repetition order."""
-    matrix_id, repetitions, _maximum, speeds, cases = load_matrix(path)
-    return tuple(MatrixCell(matrix_id, case, speed, repetition)
-                 for case in cases for speed in speeds
-                 for repetition in range(1, repetitions + 1))
+    matrix_id, repetitions, _maximum, speeds, cases, variants = load_matrix(path)
+    return tuple(
+        MatrixCell(matrix_id, case, speed, repetition, variant.variant_id,
+                   variant.local_ekf_params_file)
+        for variant in variants for case in cases for speed in speeds
+        for repetition in range(1, repetitions + 1)
+    )
 
 
 def _percentile(values, fraction):
@@ -169,11 +205,12 @@ def aggregate_trials(cells, trial_summaries):
     groups = {}
     for trial_id, summary in trial_summaries.items():
         cell = by_id[trial_id]
-        key = (cell.case.case_id, cell.speed_mps)
+        key = (cell.variant_id, cell.case.case_id, cell.speed_mps)
         groups.setdefault(key, []).append((cell, summary))
     result = []
     for key in sorted(groups):
         entries = groups[key]
+        variant = entries[0][0].variant_id
         case, _ = entries[0][0].case, entries[0][0].speed_mps
         successes = [item for _cell, item in entries if item.get("terminal_status") == 4]
 
@@ -186,6 +223,8 @@ def aggregate_trials(cells, trial_summaries):
                 found.append(current)
             return found
         result.append({
+            "variant": variant,
+            "local_ekf_params_file": entries[0][0].local_ekf_params_file,
             "case_id": case.case_id, "direction": case.direction,
             "requested_radius_m": case.requested_radius_m,
             "requested_curvature_per_m": (

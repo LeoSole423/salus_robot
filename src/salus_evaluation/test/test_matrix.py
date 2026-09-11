@@ -37,6 +37,37 @@ def test_initial_matrix_expands_speed_geometry_and_repetitions_deterministically
     assert cells == expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")
 
 
+def test_local_ekf_matrix_expands_variants_and_repetitions_deterministically(tmp_path):
+    path = tmp_path / "local-ekf.yaml"
+    path.write_text("""schema_version: 1
+id: issue60_local_ekf_v1
+repetitions: 5
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+variants:
+  - {id: baseline, local_ekf_params_file: baseline.yaml}
+  - {id: wheel_twist_imu_yaw_rate, local_ekf_params_file: twist.yaml}
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
+  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}
+""", encoding="utf-8")
+    cells = expand_matrix(path)
+    assert len(cells) == 30
+    assert cells[0].trial_id == "baseline-straight-straight-straight-v0p8-rep01"
+    assert cells[0].variant_id == "baseline"
+    assert cells[0].local_ekf_params_file == "baseline.yaml"
+    assert cells[15].variant_id == "wheel_twist_imu_yaw_rate"
+    assert cells == expand_matrix(path)
+
+
+def test_matrix_without_variants_retains_legacy_default_trial_ids():
+    cells = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")
+    assert all(cell.variant_id == "default" for cell in cells)
+    assert all(cell.local_ekf_params_file is None for cell in cells)
+    assert cells[0].trial_id == "straight-straight-straight-v0p8-rep01"
+
+
 def test_matrix_rejects_invalid_speed_and_straight_radius(tmp_path):
     path = tmp_path / "bad.yaml"
     path.write_text("""schema_version: 1
@@ -122,6 +153,40 @@ def test_numeric_parameter_metadata_keeps_speed_set_returncode():
     assert result["requested_speed_mps"] == 1.2
     assert result["effective_speed_mps"] == 1.2
     assert result["unit"] == "m/s" and result["matches_requested"]
+
+
+def test_variant_launch_argument_is_explicit_and_selected_per_trial(tmp_path):
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+
+    params = tmp_path / "localization.yaml"
+    args = _build_trial_launch_args(
+        zones_runtime_dir=tmp_path / "zones",
+        local_ekf_params_file=params,
+    )
+    assert f"local_ekf_params_file:={params}" in args
+    assert args[-1] == f"local_ekf_params_file:={params}"
+
+
+def test_trial_metadata_records_variant_yaml_sha_scenario_and_isolation(tmp_path):
+    from salus_evaluation import matrix_executor
+    from salus_evaluation.isolation import make_trial_isolation
+    from salus_evaluation.matrix import MatrixCase, MatrixCell
+
+    cell = MatrixCell(
+        "issue60", MatrixCase("straight", "scenarios/straight.yaml", "straight", None),
+        0.8, 1, "baseline", "baseline.yaml",
+    )
+    isolation = make_trial_isolation(
+        tmp_path, run_token="issue60", trial_id=cell.trial_id, ros_domain_id=64,
+    )
+    metadata = matrix_executor._trial_metadata(
+        cell, tmp_path / "straight.yaml", isolation, "abc123",
+    )
+    assert metadata["variant"] == "baseline"
+    assert metadata["local_ekf_params_file"] == "baseline.yaml"
+    assert metadata["source_sha"] == "abc123"
+    assert metadata["scenario"] == str(tmp_path / "straight.yaml")
+    assert metadata["isolation_id"] == isolation.partition
 
 
 def test_candidate_nav2_params_changes_only_smac_radius(tmp_path):
