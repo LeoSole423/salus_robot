@@ -301,6 +301,7 @@ def generate_launch_description() -> LaunchDescription:
                     "ws_port": web_ws_port,
                     "waypoints_file": web_waypoints_file,
                     "telemetry_profile": web_telemetry_profile,
+                    "heading_odometry_topic": "/odometry/global",
                     "scan_preview_enabled": obstacle_detection_enabled,
                     "require_camera_service": launch_camera,
                 },
