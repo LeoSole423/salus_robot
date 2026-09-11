@@ -70,6 +70,8 @@ def terminal_nav_result_is_current(
 def chunk_goal_request(
     chunk,
     prepared,
+    *,
+    approach_xy=None,
 ) -> SetNavGoalLL.Request:
     """Translate one finite route window without changing checkpoint semantics."""
     if chunk is None or not chunk.waypoints or not chunk.checkpoint_offsets:
@@ -80,7 +82,10 @@ def chunk_goal_request(
     # Preserve prepared headings except for the automatic terminal pose: the
     # incoming-leg heading avoids an artificial turn toward geometry outside
     # this finite dispatch window. Explicit headings remain unchanged.
-    request.yaws_deg = dispatch_yaws(chunk.waypoints)
+    request.yaws_deg = dispatch_yaws(
+        chunk.waypoints,
+        approach_xy=approach_xy,
+    )
     request.lat, request.lon, request.yaw_deg = (
         request.lats[0], request.lons[0], request.yaws_deg[0]
     )
@@ -569,9 +574,18 @@ class RouteExecutorNode(Node):
             return
         self._target_offset = offsets[-1]
         self._recovery_checkpoint_reached = False
+        approach_xy = None
+        if self._pose is not None:
+            try:
+                pose_xy = (float(self._pose.x), float(self._pose.y))
+            except (AttributeError, TypeError, ValueError):
+                pose_xy = None
+            if pose_xy is not None and all(isfinite(value) for value in pose_xy):
+                approach_xy = pose_xy
         request = chunk_goal_request(
             self._chunk,
             self._mission.prepared,
+            approach_xy=approach_xy,
         )
         self._event(
             DiagnosticStatus.OK,
