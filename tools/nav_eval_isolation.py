@@ -7,10 +7,8 @@ import argparse
 from contextlib import ExitStack
 from datetime import datetime, timezone
 import json
-import math
 import os
 from pathlib import Path
-import re
 import signal
 import subprocess
 import time
@@ -30,40 +28,6 @@ def _run(command, env):
                               timeout=8, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return subprocess.CompletedProcess(command, 124, "", str(exc))
-
-
-def _clock_ns(text):
-    sec = re.search(r"\bsec:\s*(-?\d+)", text)
-    nanosec = re.search(r"\bnanosec:\s*(-?\d+)", text)
-    if not sec or not nanosec:
-        return None
-    return int(sec.group(1)) * 1_000_000_000 + int(nanosec.group(1))
-
-
-def _odom_sample(text):
-    stamp = _clock_ns(text)
-    x = re.search(r"(?m)^\s*x:\s*([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\s*$", text)
-    y = re.search(r"(?m)^\s*y:\s*([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\s*$", text)
-    values = [stamp, *(float(match.group(1)) if match else None for match in (x, y))]
-    if any(value is None or not math.isfinite(float(value)) for value in values):
-        return None
-    return {"stamp_ns": int(stamp), "x_m": values[1], "y_m": values[2]}
-
-
-def _clock_sample(env):
-    result = _run(["ros2", "topic", "echo", "--no-daemon", "/clock", "--once"], env)
-    return {"returncode": result.returncode, "clock_ns": _clock_ns(result.stdout),
-            "stderr": result.stderr[-1000:]}
-
-
-def _odom_sample_result(env):
-    result = _run(
-        ["ros2", "topic", "echo", "--no-daemon", "/odometry/global", "--once"],
-        env,
-    )
-    sample = _odom_sample(result.stdout)
-    return {"returncode": result.returncode, "sample": sample,
-            "stderr": result.stderr[-1000:]}
 
 
 def _lifecycle(env, node):
@@ -104,11 +68,19 @@ def _topic_series(env, clock_samples=5, odometry_samples=3):
 
 
 def _probe(worker):
-    clock = _clock_sample(worker["env"])
-    odom = _odom_sample_result(worker["env"])
+    topics = _topic_series(worker["env"], clock_samples=1, odometry_samples=1)
+    clock_samples = topics.get("clock_ns", [])
+    odometry_samples = topics.get("odometry", [])
+    clock = {"returncode": topics.get("returncode", 1),
+             "clock_ns": clock_samples[0] if clock_samples else None,
+             "stderr": topics.get("stderr", "")}
+    odom = {"returncode": topics.get("returncode", 1),
+            "sample": odometry_samples[0] if odometry_samples else None,
+            "stderr": topics.get("stderr", "")}
     lifecycles = [_lifecycle(worker["env"], node)
                   for node in ("/planner_server", "/controller_server")]
-    return {"clock": clock, "odometry": odom, "lifecycles": lifecycles}
+    return {"clock": clock, "odometry": odom, "lifecycles": lifecycles,
+            "typed_topic_probe": topics}
 
 
 def _wait_ready(workers, timeout_s):
@@ -118,7 +90,9 @@ def _wait_ready(workers, timeout_s):
         for worker in workers:
             latest[worker["id"]] = _probe(worker)
         if all(
-            report["clock"]["clock_ns"] is not None
+            report["clock"]["returncode"] == 0
+            and report["clock"]["clock_ns"] is not None
+            and report["odometry"]["returncode"] == 0
             and report["odometry"]["sample"] is not None
             and all(item["active"] for item in report["lifecycles"])
             for report in latest.values()
