@@ -9,7 +9,7 @@ from salus_evaluation.metrics import (absolute_goal, arrival_metrics,
                                       command_stage_alignments,
                                       expected_turn_from_path,
                                       first_divergent_stage,
-                                      latest_prior,
+                                      latest_prior, covariance_summary,
                                       localization_metrics, tracking_metrics,
                                       saturation_intervals,
                                       steering_margin_summary,
@@ -82,6 +82,44 @@ def test_localization_uses_ground_truth_not_self_consistency():
                                   (timed(0, .2, 0), timed(1, 1.2, 0)))
     assert result.position_rmse_m == pytest.approx(.2)
     assert result.final_position_error_m == pytest.approx(.2)
+    assert result.yaw_p95_rad == pytest.approx(0.0)
+
+
+def test_localization_reports_yaw_p95_with_the_existing_percentile_method():
+    truth = tuple(timed(index, 0, 0, 0) for index in range(4))
+    estimates = tuple(timed(index, 0, 0, error)
+                      for index, error in enumerate((.1, .2, .3, .4)))
+    result = localization_metrics(truth, estimates)
+    assert result.yaw_p95_rad == pytest.approx(.385)
+
+
+def test_covariance_summary_reports_finite_local_output_diagonals():
+    estimates = tuple(
+        TimedPose(index, Pose2D(0, 0, 0), covariance_x_m2=x,
+                  covariance_y_m2=y, covariance_yaw_rad2=yaw)
+        for index, (x, y, yaw) in enumerate(((.1, .2, .01),
+                                             (.3, .4, .03),
+                                             (.5, .6, .05)))
+    )
+    result = covariance_summary(estimates)
+    assert result.sample_count == 3
+    assert result.x_m2_median == pytest.approx(.3)
+    assert result.x_m2_p95 == pytest.approx(.48)
+    assert result.y_m2_median == pytest.approx(.4)
+    assert result.y_m2_p95 == pytest.approx(.58)
+    assert result.yaw_rad2_median == pytest.approx(.03)
+    assert result.yaw_rad2_p95 == pytest.approx(.048)
+
+
+def test_covariance_summary_ignores_unavailable_or_nonfinite_samples():
+    estimates = (
+        timed(0, 0, 0),
+        TimedPose(1, Pose2D(0, 0, 0), covariance_x_m2=math.nan,
+                  covariance_y_m2=.2, covariance_yaw_rad2=.01),
+    )
+    result = covariance_summary(estimates)
+    assert result.sample_count == 0
+    assert result.x_m2_median is None and result.yaw_rad2_p95 is None
 
 
 def test_localization_rejects_stale_ground_truth():

@@ -2,8 +2,8 @@
 
 import math
 
-from .models import (ArrivalMetrics, ExpectedTurn, LocalizationMetrics, Pose2D,
-                     SignMetrics, TrackingMetrics)
+from .models import (ArrivalMetrics, ExpectedTurn, LocalizationCovarianceSummary,
+                     LocalizationMetrics, Pose2D, SignMetrics, TrackingMetrics)
 
 
 COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S = 0.2
@@ -180,7 +180,33 @@ def localization_metrics(ground_truth, estimates, max_alignment_gap_s=0.2):
     return LocalizationMetrics(len(errors), math.sqrt(sum(x*x for x in errors)/len(errors)),
                                _percentile(errors, .95),
                                math.sqrt(sum(x*x for x in yaw_errors)/len(yaw_errors)),
-                               errors[-1])
+                               errors[-1], _percentile(yaw_errors, .95))
+
+
+def covariance_summary(estimates):
+    """Summarize finite X/Y/yaw covariance diagonals from timed poses."""
+    samples = []
+    for item in estimates:
+        values = (
+            item.covariance_x_m2,
+            item.covariance_y_m2,
+            item.covariance_yaw_rad2,
+        )
+        try:
+            values = tuple(float(value) for value in values)
+        except (TypeError, ValueError):
+            continue
+        if all(math.isfinite(value) for value in values):
+            samples.append(values)
+    if not samples:
+        return LocalizationCovarianceSummary(0, None, None, None, None, None, None)
+    columns = tuple(zip(*samples))
+    return LocalizationCovarianceSummary(
+        len(samples),
+        _percentile(columns[0], .5), _percentile(columns[0], .95),
+        _percentile(columns[1], .5), _percentile(columns[1], .95),
+        _percentile(columns[2], .5), _percentile(columns[2], .95),
+    )
 
 
 def latest_prior(samples, stamp_s, max_gap_s=COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S):

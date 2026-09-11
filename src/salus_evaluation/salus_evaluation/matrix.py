@@ -237,6 +237,29 @@ def aggregate_trials(cells, trial_summaries):
             "cross_track_rmse_m": continuous_summary(values("metrics", "cross_track_rms_m")),
             "cross_track_p95_m": continuous_summary(values("metrics", "cross_track_p95_m")),
             "heading_p95_rad": continuous_summary(values("metrics", "heading_p95_rad")),
+            "localization_yaw_p95_rad": continuous_summary(
+                values("localization", "yaw_p95_rad")
+            ),
+            "localization_covariance": {
+                "x_m2_median": continuous_summary(values(
+                    "localization_covariance", "x_m2_median"
+                )),
+                "x_m2_p95": continuous_summary(values(
+                    "localization_covariance", "x_m2_p95"
+                )),
+                "y_m2_median": continuous_summary(values(
+                    "localization_covariance", "y_m2_median"
+                )),
+                "y_m2_p95": continuous_summary(values(
+                    "localization_covariance", "y_m2_p95"
+                )),
+                "yaw_rad2_median": continuous_summary(values(
+                    "localization_covariance", "yaw_rad2_median"
+                )),
+                "yaw_rad2_p95": continuous_summary(values(
+                    "localization_covariance", "yaw_rad2_p95"
+                )),
+            },
             "final_xy_error_m": continuous_summary(values("arrival", "final_distance_m")),
             "overshoot_m": continuous_summary(values("arrival", "overshoot_m")),
             "replans": continuous_summary(values("replans")),

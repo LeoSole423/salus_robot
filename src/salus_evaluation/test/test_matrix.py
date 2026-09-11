@@ -105,6 +105,25 @@ def test_aggregation_keeps_failed_trials_and_performance_report_only(tmp_path):
     assert row["performance_gate_state"] == "calibrating"
 
 
+def test_aggregation_keeps_localization_yaw_and_covariance_evidence():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cells = expand_matrix(matrix)[:2]
+    summaries = {}
+    for index, cell in enumerate(cells):
+        summary = _summary(offset=index / 10)
+        summary["localization"] = {"yaw_p95_rad": .1 + index / 10}
+        summary["localization_covariance"] = {
+            "x_m2_median": .1 + index / 10, "x_m2_p95": .2 + index / 10,
+            "y_m2_median": .3 + index / 10, "y_m2_p95": .4 + index / 10,
+            "yaw_rad2_median": .01 + index / 100,
+            "yaw_rad2_p95": .02 + index / 100,
+        }
+        summaries[cell.trial_id] = summary
+    row = aggregate_trials(cells, summaries)[0]
+    assert row["localization_yaw_p95_rad"]["median"] == pytest.approx(.15)
+    assert row["localization_covariance"]["yaw_rad2_p95"]["max"] == pytest.approx(.03)
+
+
 def test_one_continuous_sample_has_no_artificial_p95():
     assert continuous_summary([.2])["p95"] is None
 
