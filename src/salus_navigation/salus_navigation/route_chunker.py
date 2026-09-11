@@ -1,5 +1,114 @@
 """Finite route windows whose boundaries are real mission checkpoints."""
+from dataclasses import dataclass
+from math import hypot, isfinite
+
 from .route_model import PreparedRoute, RouteChunk
+
+
+@dataclass(frozen=True)
+class DispatchStart:
+    """Forward-only start resolution applied before every chunk dispatch."""
+
+    index: int | None
+    skipped_reached: int = 0
+    skipped_synthetic: int = 0
+
+
+def _distance_to_waypoint(point, x: float, y: float) -> float:
+    return hypot((point.map_x or 0.0) - x, (point.map_y or 0.0) - y)
+
+
+def _passed_synthetic_segment(start, end, x: float, y: float, tolerance: float) -> bool:
+    ax, ay = float(start.map_x or 0.0), float(start.map_y or 0.0)
+    bx, by = float(end.map_x or 0.0), float(end.map_y or 0.0)
+    dx, dy = bx - ax, by - ay
+    length_sq = dx * dx + dy * dy
+    if length_sq <= 1.0e-9:
+        return False
+    ratio = ((x - ax) * dx + (y - ay) * dy) / length_sq
+    if ratio <= 0.0:
+        return False
+    ratio = min(1.0, ratio)
+    projected_x, projected_y = ax + ratio * dx, ay + ratio * dy
+    return hypot(x - projected_x, y - projected_y) <= tolerance
+
+
+def resolve_dispatch_start(
+    route: PreparedRoute,
+    start: int,
+    *,
+    robot_xy: tuple[float, float] | None,
+    reached_tolerance_m: float,
+    synthetic_segment_tolerance_m: float,
+    protected_indices: set[int] | None = None,
+) -> DispatchStart:
+    """Resolve a chunk start without moving backwards or skipping actions.
+
+    This is the small forward-only equivalent of the legacy executor's two
+    pre-dispatch guards.  Reached waypoints are skipped by radius, then a
+    synthetic point is skipped only when the robot is already beyond its
+    outgoing segment.  Action checkpoints are protected even when they are
+    within the reached tolerance.
+    """
+    points = route.waypoints
+    total = len(points)
+    if not points:
+        return DispatchStart(None)
+    requested = max(0, int(start))
+    if not route.loop and requested >= total:
+        return DispatchStart(None)
+    current = requested % total if route.loop else requested
+    if robot_xy is None or not all(isfinite(float(value)) for value in robot_xy):
+        return DispatchStart(current)
+
+    x, y = map(float, robot_xy)
+    protected = {int(index) for index in (protected_indices or set())}
+    protected.update(
+        index for index, point in enumerate(points) if point.key and point.action_json
+    )
+    reached_tolerance = max(0.05, float(reached_tolerance_m))
+    segment_tolerance = max(0.05, float(synthetic_segment_tolerance_m))
+    max_steps = max(0, total - 1)
+    skipped_reached = 0
+    # Every original checkpoint is an observable mission boundary. Patrol
+    # consumes ROUTE_CHECKPOINT_REACHED, including the EXIT_LOOP checkpoint,
+    # so pre-dispatch pruning may only skip synthetic geometry.
+    while (
+        skipped_reached < max_steps
+        and current not in protected
+        and not points[current].key
+    ):
+        if _distance_to_waypoint(points[current], x, y) > reached_tolerance:
+            break
+        next_index = current + 1
+        if route.loop:
+            next_index %= total
+        elif next_index >= total:
+            current = total
+            break
+        current = next_index
+        skipped_reached += 1
+
+    skipped_synthetic = 0
+    while (
+        current < total
+        and skipped_synthetic < max_steps
+        and not points[current].key
+        and current not in protected
+    ):
+        next_index = current + 1
+        if route.loop:
+            next_index %= total
+        elif next_index >= total:
+            break
+        if next_index == current or not _passed_synthetic_segment(
+            points[current], points[next_index], x, y, segment_tolerance
+        ):
+            break
+        current = next_index
+        skipped_synthetic += 1
+
+    return DispatchStart(current, skipped_reached, skipped_synthetic)
 
 
 def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteChunk | None:
