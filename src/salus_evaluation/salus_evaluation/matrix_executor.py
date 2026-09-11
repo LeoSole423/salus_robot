@@ -177,6 +177,9 @@ def _sha256(path):
 
 def _repository_sha():
     """Return the source checkout SHA used by the evaluation container."""
+    explicit = os.environ.get("SALUS_NAV_EVAL_SOURCE_SHA", "").strip()
+    if explicit:
+        return explicit
     roots = [Path("/ros2_ws"), Path.cwd()]
     seen = set()
     for root in roots:

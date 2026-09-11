@@ -37,10 +37,12 @@ case "${mode}" in
     mkdir -p "${output}"
     output="$(cd "${output}" && pwd)"
     matrix_run_token="salus-nav-matrix-$(date -u +%Y%m%dT%H%M%S)-$$"
+    source_sha="$(git -C "${repo_dir}" rev-parse HEAD)"
     eval_lock_root="${TMPDIR:-/tmp}/salus-nav-evaluation-domains"
     mkdir -p "${eval_lock_root}"
     exec docker compose run --rm \
       -e "SALUS_NAV_EVAL_RUN_TOKEN=${matrix_run_token}" \
+      -e "SALUS_NAV_EVAL_SOURCE_SHA=${source_sha}" \
       -e SALUS_NAV_EVAL_LOCK_ROOT=/salus-nav-evaluation-domains \
       -e "FASTDDS_BUILTIN_TRANSPORTS=UDPv4" \
       -v "${eval_lock_root}:/salus-nav-evaluation-domains" \

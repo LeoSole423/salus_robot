@@ -47,17 +47,30 @@ speeds_mps: [0.8]
 variants:
   - {id: baseline, local_ekf_params_file: baseline.yaml}
   - {id: wheel_twist_imu_yaw_rate, local_ekf_params_file: twist.yaml}
+  - {id: wheel_pose_imu_yaw_rate, local_ekf_params_file: pose.yaml}
 cases:
-  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
-  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
-  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}
+  - id: straight
+    scenario: scenarios/straight.yaml
+    direction: straight
+    requested_radius_m: null
+  - id: left_gentle
+    scenario: scenarios/left_gentle.yaml
+    direction: left
+    requested_radius_m: 8.0
+  - id: right_gentle
+    scenario: scenarios/right_gentle.yaml
+    direction: right
+    requested_radius_m: 8.0
 """, encoding="utf-8")
     cells = expand_matrix(path)
-    assert len(cells) == 30
+    assert len(cells) == 45
     assert cells[0].trial_id == "baseline-straight-straight-straight-v0p8-rep01"
     assert cells[0].variant_id == "baseline"
     assert cells[0].local_ekf_params_file == "baseline.yaml"
     assert cells[15].variant_id == "wheel_twist_imu_yaw_rate"
+    assert cells[15].local_ekf_params_file == "twist.yaml"
+    assert cells[30].variant_id == "wheel_pose_imu_yaw_rate"
+    assert cells[30].local_ekf_params_file == "pose.yaml"
     assert cells == expand_matrix(path)
 
 
