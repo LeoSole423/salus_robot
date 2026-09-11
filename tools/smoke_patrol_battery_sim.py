@@ -7,9 +7,10 @@ import time
 from pathlib import Path
 
 import rclpy
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from salus_navigation.route_geometry import path_geometry_metrics
 from salus_interfaces.msg import (
     BatteryMissionGuard, CmdVelFinal, NavEvent, NavTelemetry, PathHealth,
 )
@@ -24,6 +25,67 @@ from smoke_runtime import (
 
 
 LAT, LON = -31.4858037, -64.2410570
+PLAN_MIN_DIRECT_DISTANCE_M = 2.0
+PLAN_MAX_DETOUR_RATIO = 3.0
+
+
+def _path_record(message):
+    return {
+        "stamp_ns": int(message.header.stamp.sec) * 1_000_000_000
+        + int(message.header.stamp.nanosec),
+        "frame_id": str(message.header.frame_id),
+        "points": [
+            (float(pose.pose.position.x), float(pose.pose.position.y))
+            for pose in message.poses
+        ],
+    }
+
+
+def plan_topology_evidence(plans, chunks):
+    """Measure every planner path against its active route chunk.
+
+    The patrol itself is deliberately a loop.  This only rejects a loop *inside
+    a single Nav2 plan*, where an Ackermann route in the obstacle-free smoke
+    should stay topologically simple and reasonably direct.
+    """
+    observations = []
+    for plan in plans:
+        candidates = [chunk for chunk in chunks if chunk["stamp_ns"] <= plan["stamp_ns"]]
+        if not candidates or len(plan["points"]) < 2:
+            continue
+        chunk = candidates[-1]
+        if len(chunk["points"]) < 1:
+            continue
+        reference = [plan["points"][0], *chunk["points"]]
+        metrics = path_geometry_metrics(plan["points"], reference)
+        excessive_detour = (
+            metrics.direct_distance_m >= PLAN_MIN_DIRECT_DISTANCE_M
+            and metrics.detour_ratio > PLAN_MAX_DETOUR_RATIO
+        )
+        observations.append({
+            "plan_frame": plan["frame_id"],
+            "plan_poses": len(plan["points"]),
+            "chunk_frame": chunk["frame_id"],
+            "chunk_poses": len(chunk["points"]),
+            "length_m": metrics.length_m,
+            "direct_distance_m": metrics.direct_distance_m,
+            "detour_ratio": metrics.detour_ratio,
+            "max_deviation_m": metrics.max_deviation_m,
+            "self_intersections": metrics.self_intersections,
+            "excessive_detour": excessive_detour,
+            "topology_ok": metrics.self_intersections == 0 and not excessive_detour,
+        })
+    return observations
+
+
+def assert_plan_topology(plans, chunks):
+    observations = plan_topology_evidence(plans, chunks)
+    if not observations:
+        raise RuntimeError("no planner paths observed while active patrol was running")
+    failures = [item for item in observations if not item["topology_ok"]]
+    if failures:
+        raise RuntimeError(f"unnecessary planner loop detected: {failures}")
+    return observations
 
 
 class Smoke(Node):
@@ -36,6 +98,9 @@ class Smoke(Node):
         self.telemetry = []
         self.path_health = []
         self.final_commands = []
+        self.plans = []
+        self.active_chunks = []
+        self.capture_plan_topology = False
         self.guard_low = False
         self.guard_publications = 0
         self.last_guard_publish = 0.0
@@ -50,6 +115,9 @@ class Smoke(Node):
             PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(
             CmdVelFinal, "/cmd_vel_final", self.final_commands.append, 10)
+        self.create_subscription(NavPath, "/plan", self._on_plan, 10)
+        self.create_subscription(
+            NavPath, "/route_executor/active_chunk_path", self._on_active_chunk, 10)
         self.guard = self.create_publisher(
             BatteryMissionGuard, "/smoke/battery_mission_guard", 10)
         self.set_patrol = self.create_client(
@@ -61,6 +129,19 @@ class Smoke(Node):
         self.cancel = self.create_client(
             CancelPatrolMission, "/route_executor/cancel_patrol_mission")
         self.startup = subscribe_navigation_startup(self)
+
+    def _on_plan(self, message):
+        if self.capture_plan_topology:
+            self.plans.append(_path_record(message))
+
+    def _on_active_chunk(self, message):
+        if self.capture_plan_topology:
+            self.active_chunks.append(_path_record(message))
+
+    def begin_plan_topology_capture(self):
+        self.plans.clear()
+        self.active_chunks.clear()
+        self.capture_plan_topology = True
 
     def publish_guard(self):
         now = time.monotonic()
@@ -217,6 +298,8 @@ def main():
                 "costmap_age_s": item.costmap_age_s,
                 "cross_track_error_m": item.cross_track_error_m,
             } for item in node.path_health],
+            "planner_path_topology": plan_topology_evidence(
+                node.plans, node.active_chunks),
             "state_poller": poller.evidence(),
             "route_state_poller": route_poller.evidence(),
         }
@@ -292,6 +375,7 @@ def main():
             "healthy guard delivered",
             lambda: node.guard_publications >= baseline_publications + 3,
             5.0, stimulate=stimulate)
+        node.begin_plan_topology_capture()
         accepted = runtime.call(
             "set active patrol", node.set_patrol,
             patrol_request(node.odom[-1].pose.pose, home_at_origin=False),
@@ -303,6 +387,15 @@ def main():
             "patrol entered loop", lambda: state_is("PATROL"),
             70.0, stimulate=stimulate,
             observe=lambda: {"phase_history": node.phase_history})
+        runtime.wait(
+            "planner path observed in patrol",
+            lambda: bool(plan_topology_evidence(node.plans, node.active_chunks)),
+            10.0, stimulate=stimulate,
+            observe=lambda: {
+                "plans": len(node.plans),
+                "active_chunks": len(node.active_chunks),
+            })
+        assert_plan_topology(node.plans, node.active_chunks)
         node.guard_low = True
         runtime.wait(
             "battery return requested",
@@ -327,6 +420,7 @@ def main():
         if not required.issubset(set(node.phase_history)):
             raise RuntimeError(
                 f"incomplete battery return phases: {node.phase_history}")
+        assert_plan_topology(node.plans, node.active_chunks)
         success = True
         runtime.report.evidence = diagnostic_evidence()
     except Exception as exc:
