@@ -13,6 +13,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     orientation_source = LaunchConfiguration("orientation_source")
+    global_ekf_params_file = LaunchConfiguration("global_ekf_params_file")
     sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
     sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
     sensor_profile_file = PathJoinSubstitution([
@@ -24,6 +25,13 @@ def generate_launch_description() -> LaunchDescription:
     config = str(Path(get_package_share_directory("salus_localization")) / "config" / "localization_global_sim.yaml")
     params = [{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}]
     return LaunchDescription([DeclareLaunchArgument("use_sim_time", default_value="true"),
+        DeclareLaunchArgument(
+            "global_ekf_params_file",
+            default_value=config,
+            description=(
+                "Simulation-only global EKF YAML; defaults to the current baseline."
+            ),
+        ),
         DeclareLaunchArgument(
             "orientation_source",
             default_value="course_over_ground",
@@ -90,4 +98,4 @@ def generate_launch_description() -> LaunchDescription:
         ),
         Node(package="salus_localization", executable="map_gps_absolute_measurement", name="map_gps_absolute_measurement", output="screen", parameters=params),
         Node(package="robot_localization", executable="navsat_transform_node", name="navsat_transform", output="screen", parameters=[config, {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}], remappings=[("imu/data", "/localization/orientation"), ("gps/fix", "/gps/fix"), ("odometry/filtered", "/odometry/local"), ("odometry/gps", "/odometry/gps")]),
-        Node(package="robot_localization", executable="ekf_node", name="ekf_filter_node_global", output="screen", parameters=[config, {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}], remappings=[("odometry/filtered", "/odometry/global")])])
+        Node(package="robot_localization", executable="ekf_node", name="ekf_filter_node_global", output="screen", parameters=[global_ekf_params_file, {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}], remappings=[("odometry/filtered", "/odometry/global")])])

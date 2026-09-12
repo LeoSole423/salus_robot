@@ -68,7 +68,8 @@ class MatrixVariant:
     """One configuration variant selected for every trial in its expansion."""
 
     variant_id: str
-    local_ekf_params_file: str | None
+    local_ekf_params_file: str | None = None
+    global_ekf_params_file: str | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,7 @@ class MatrixCell:
     repetition: int
     variant_id: str = "default"
     local_ekf_params_file: str | None = None
+    global_ekf_params_file: str | None = None
     sim_sensor_profile: str = "clean"
     sim_sensor_seed: int = 6400
 
@@ -127,17 +129,25 @@ def _nonnegative_int(value, name):
 def _parse_variants(raw):
     variant_values = raw.get("variants")
     if variant_values is None:
-        return (MatrixVariant("default", None),)
+        return (MatrixVariant("default"),)
     if not isinstance(variant_values, list) or not variant_values:
         raise ValueError("variants must be a non-empty list")
     variants = []
     for item in variant_values:
-        _require_keys(item, ("id", "local_ekf_params_file"))
+        _require_keys(item, ("id",), optional=(
+            "local_ekf_params_file", "global_ekf_params_file",
+        ))
         variant_id = str(item["id"]).strip()
-        params_file = str(item["local_ekf_params_file"]).strip()
-        if not variant_id or not params_file:
-            raise ValueError("variant needs non-empty id and local_ekf_params_file")
-        variants.append(MatrixVariant(variant_id, params_file))
+        local_file = item.get("local_ekf_params_file")
+        global_file = item.get("global_ekf_params_file")
+        local_file = None if local_file is None else str(local_file).strip()
+        global_file = None if global_file is None else str(global_file).strip()
+        if not variant_id or not (local_file or global_file):
+            raise ValueError(
+                "variant needs a non-empty local_ekf_params_file or "
+                "global_ekf_params_file"
+            )
+        variants.append(MatrixVariant(variant_id, local_file, global_file))
     if len({item.variant_id for item in variants}) != len(variants):
         raise ValueError("variant ids must be unique")
     return tuple(variants)
@@ -201,7 +211,8 @@ def expand_matrix(path):
      sim_sensor_profile, sim_sensor_seed) = load_matrix(path)
     return tuple(
         MatrixCell(matrix_id, case, speed, repetition, variant.variant_id,
-                   variant.local_ekf_params_file, sim_sensor_profile,
+                   variant.local_ekf_params_file, variant.global_ekf_params_file,
+                   sim_sensor_profile,
                    sim_sensor_seed)
         for variant in variants for case in cases for speed in speeds
         for repetition in range(1, repetitions + 1)
@@ -266,6 +277,7 @@ def aggregate_trials(cells, trial_summaries):
         result.append({
             "variant": variant,
             "local_ekf_params_file": entries[0][0].local_ekf_params_file,
+            "global_ekf_params_file": entries[0][0].global_ekf_params_file,
             "sim_sensor_profile": entries[0][0].sim_sensor_profile,
             "sim_sensor_seed_base": entries[0][0].sim_sensor_seed,
             "sim_sensor_seeds": [cell.repetition_seed for cell, _summary in entries],

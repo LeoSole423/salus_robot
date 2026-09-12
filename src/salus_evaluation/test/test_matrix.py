@@ -75,6 +75,27 @@ cases:
     assert cells == expand_matrix(path)
 
 
+def test_global_ekf_variants_are_supported_without_changing_local_selector(tmp_path):
+    path = tmp_path / "global-ekf.yaml"
+    path.write_text("""schema_version: 1
+id: issue61_global_yaw_v1
+repetitions: 1
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+variants:
+  - {id: baseline_duplicate, global_ekf_params_file: baseline.yaml}
+  - {id: local_odom_yaw_rate, global_ekf_params_file: local.yaml}
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight,
+     requested_radius_m: null}
+""", encoding="utf-8")
+    cells = expand_matrix(path)
+    assert [cell.global_ekf_params_file for cell in cells] == [
+        "baseline.yaml", "local.yaml",
+    ]
+    assert all(cell.local_ekf_params_file is None for cell in cells)
+
+
 def test_matrix_records_sim_sensor_profile_and_derives_repetition_seed(tmp_path):
     path = tmp_path / "sensor-profile.yaml"
     path.write_text("""schema_version: 1
@@ -257,6 +278,18 @@ def test_variant_launch_argument_is_explicit_and_selected_per_trial(tmp_path):
     assert args[-1] == f"local_ekf_params_file:={params}"
 
 
+def test_global_variant_launch_argument_is_explicit_and_selected_per_trial(tmp_path):
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+
+    params = tmp_path / "global.yaml"
+    args = _build_trial_launch_args(
+        zones_runtime_dir=tmp_path / "zones",
+        global_ekf_params_file=params,
+    )
+    assert f"global_ekf_params_file:={params}" in args
+    assert args[-1] == f"global_ekf_params_file:={params}"
+
+
 def test_sensor_launch_arguments_are_explicit_and_selected_per_trial(tmp_path):
     from salus_evaluation.matrix_executor import _build_trial_launch_args
 
@@ -286,6 +319,7 @@ def test_trial_metadata_records_variant_yaml_sha_scenario_and_isolation(tmp_path
     )
     assert metadata["variant"] == "baseline"
     assert metadata["local_ekf_params_file"] == "baseline.yaml"
+    assert metadata["global_ekf_params_file"] is None
     assert metadata["source_sha"] == "abc123"
     assert metadata["scenario"] == str(tmp_path / "straight.yaml")
     assert metadata["isolation_id"] == isolation.partition
