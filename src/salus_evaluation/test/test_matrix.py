@@ -14,7 +14,7 @@ from salus_evaluation.matrix import (aggregate_trials, continuous_summary,
 ROOT = Path(__file__).parents[1]
 
 
-def _summary(success=True, offset=0.0):
+def _summary(success=True, offset=0.0, result=None):
     return {
         "terminal_status": 4 if success else 6,
         "metrics": {"cross_track_rms_m": .1 + offset,
@@ -22,6 +22,7 @@ def _summary(success=True, offset=0.0):
                     "heading_p95_rad": .3 + offset},
         "arrival": {"final_distance_m": .4 + offset, "overshoot_m": .5 + offset},
         "replans": 1,
+        "matrix_trial": {"result": result or ("passed" if success else "functional_failure")},
         "command_chain": {"steering_saturation": {"interval_count": 2},
                           "ackermann": {"requested_to_applied_steer_delta_rad": {
                               "max": .02 + offset}}},
@@ -35,6 +36,50 @@ def test_initial_matrix_expands_speed_geometry_and_repetitions_deterministically
     assert {cell.case.direction for cell in cells} == {"left", "right", "straight"}
     assert {cell.case.requested_radius_m for cell in cells} == {None, 4.0, 8.0}
     assert cells == expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")
+
+
+def test_local_ekf_matrix_expands_variants_and_repetitions_deterministically(tmp_path):
+    path = tmp_path / "local-ekf.yaml"
+    path.write_text("""schema_version: 1
+id: issue60_local_ekf_v1
+repetitions: 5
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+variants:
+  - {id: baseline, local_ekf_params_file: baseline.yaml}
+  - {id: wheel_twist_imu_yaw_rate, local_ekf_params_file: twist.yaml}
+  - {id: wheel_pose_imu_yaw_rate, local_ekf_params_file: pose.yaml}
+cases:
+  - id: straight
+    scenario: scenarios/straight.yaml
+    direction: straight
+    requested_radius_m: null
+  - id: left_gentle
+    scenario: scenarios/left_gentle.yaml
+    direction: left
+    requested_radius_m: 8.0
+  - id: right_gentle
+    scenario: scenarios/right_gentle.yaml
+    direction: right
+    requested_radius_m: 8.0
+""", encoding="utf-8")
+    cells = expand_matrix(path)
+    assert len(cells) == 45
+    assert cells[0].trial_id == "baseline-straight-straight-straight-v0p8-rep01"
+    assert cells[0].variant_id == "baseline"
+    assert cells[0].local_ekf_params_file == "baseline.yaml"
+    assert cells[15].variant_id == "wheel_twist_imu_yaw_rate"
+    assert cells[15].local_ekf_params_file == "twist.yaml"
+    assert cells[30].variant_id == "wheel_pose_imu_yaw_rate"
+    assert cells[30].local_ekf_params_file == "pose.yaml"
+    assert cells == expand_matrix(path)
+
+
+def test_matrix_without_variants_retains_legacy_default_trial_ids():
+    cells = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")
+    assert all(cell.variant_id == "default" for cell in cells)
+    assert all(cell.local_ekf_params_file is None for cell in cells)
+    assert cells[0].trial_id == "straight-straight-straight-v0p8-rep01"
 
 
 def test_matrix_rejects_invalid_speed_and_straight_radius(tmp_path):
@@ -68,10 +113,43 @@ def test_aggregation_keeps_failed_trials_and_performance_report_only(tmp_path):
                                     cells[2].trial_id: _summary(True, .2)})
     assert len(rows) == 1
     row = rows[0]
-    assert row["trial_count"] == 3 and row["success_count"] == 2
-    assert row["failure_count"] == 1 and row["success_rate"] == pytest.approx(2 / 3)
+    assert row["trial_count"] == 3
+    assert row["nav2_terminal_trial_count"] == 3
+    assert row["nav2_terminal_success_count"] == 2
+    assert row["nav2_terminal_failure_count"] == 1
+    assert row["nav2_terminal_success_rate"] == pytest.approx(2 / 3)
+    assert row["outcome_counts"] == {
+        "passed": 2, "functional_failure": 1, "setup_failure": 0, "unknown": 0,
+    }
     assert row["cross_track_rmse_m"]["median"] == pytest.approx(.2)
     assert row["performance_gate_state"] == "calibrating"
+
+
+def test_aggregation_keeps_localization_yaw_and_covariance_evidence():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cells = expand_matrix(matrix)[:2]
+    summaries = {}
+    for index, cell in enumerate(cells):
+        summary = _summary(offset=index / 10)
+        summary["localization"] = {"yaw_p95_rad": .1 + index / 10}
+        summary["localization"].update({
+            "position_rmse_m": .11 + index / 10,
+            "position_p95_m": .21 + index / 10,
+            "yaw_rmse_rad": .31 + index / 10,
+        })
+        summary["localization_covariance"] = {
+            "x_m2_median": .1 + index / 10, "x_m2_p95": .2 + index / 10,
+            "y_m2_median": .3 + index / 10, "y_m2_p95": .4 + index / 10,
+            "yaw_rad2_median": .01 + index / 100,
+            "yaw_rad2_p95": .02 + index / 100,
+        }
+        summaries[cell.trial_id] = summary
+    row = aggregate_trials(cells, summaries)[0]
+    assert row["localization_yaw_p95_rad"]["median"] == pytest.approx(.15)
+    assert row["position_rmse_m"]["median"] == pytest.approx(.16)
+    assert row["position_p95_m"]["median"] == pytest.approx(.26)
+    assert row["yaw_rmse_rad"]["median"] == pytest.approx(.36)
+    assert row["localization_covariance"]["yaw_rad2_p95"]["max"] == pytest.approx(.03)
 
 
 def test_one_continuous_sample_has_no_artificial_p95():
@@ -122,6 +200,40 @@ def test_numeric_parameter_metadata_keeps_speed_set_returncode():
     assert result["requested_speed_mps"] == 1.2
     assert result["effective_speed_mps"] == 1.2
     assert result["unit"] == "m/s" and result["matches_requested"]
+
+
+def test_variant_launch_argument_is_explicit_and_selected_per_trial(tmp_path):
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+
+    params = tmp_path / "localization.yaml"
+    args = _build_trial_launch_args(
+        zones_runtime_dir=tmp_path / "zones",
+        local_ekf_params_file=params,
+    )
+    assert f"local_ekf_params_file:={params}" in args
+    assert args[-1] == f"local_ekf_params_file:={params}"
+
+
+def test_trial_metadata_records_variant_yaml_sha_scenario_and_isolation(tmp_path):
+    from salus_evaluation import matrix_executor
+    from salus_evaluation.isolation import make_trial_isolation
+    from salus_evaluation.matrix import MatrixCase, MatrixCell
+
+    cell = MatrixCell(
+        "issue60", MatrixCase("straight", "scenarios/straight.yaml", "straight", None),
+        0.8, 1, "baseline", "baseline.yaml",
+    )
+    isolation = make_trial_isolation(
+        tmp_path, run_token="issue60", trial_id=cell.trial_id, ros_domain_id=64,
+    )
+    metadata = matrix_executor._trial_metadata(
+        cell, tmp_path / "straight.yaml", isolation, "abc123",
+    )
+    assert metadata["variant"] == "baseline"
+    assert metadata["local_ekf_params_file"] == "baseline.yaml"
+    assert metadata["source_sha"] == "abc123"
+    assert metadata["scenario"] == str(tmp_path / "straight.yaml")
+    assert metadata["isolation_id"] == isolation.partition
 
 
 def test_candidate_nav2_params_changes_only_smac_radius(tmp_path):
@@ -290,6 +402,19 @@ def test_matrix_executor_rejects_non_positive_jobs(monkeypatch, tmp_path):
     monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: ())
     with pytest.raises(SystemExit):
         matrix_executor.main(["matrix.yaml", str(tmp_path), "--jobs", "0"])
+
+
+def test_matrix_executor_selects_only_existing_setup_failures(tmp_path):
+    from salus_evaluation.matrix_executor import _setup_failure_cells
+
+    cells = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")[:3]
+    for cell, result in zip(cells, ("passed", "functional_failure", "setup_failure")):
+        directory = tmp_path / "trials" / cell.trial_id
+        directory.mkdir(parents=True)
+        (directory / "summary.json").write_text(json.dumps({
+            "matrix_trial": {"result": result},
+        }))
+    assert _setup_failure_cells(cells, tmp_path) == (cells[2],)
 
 
 def test_matrix_executor_rejects_more_workers_than_domain_pool(monkeypatch, tmp_path):

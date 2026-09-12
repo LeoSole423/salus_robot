@@ -55,6 +55,9 @@ class TimedPose:
     pose: Pose2D
     linear_x_mps: float = 0.0
     angular_z_rps: float = 0.0
+    covariance_x_m2: Optional[float] = None
+    covariance_y_m2: Optional[float] = None
+    covariance_yaw_rad2: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -187,3 +190,17 @@ class LocalizationMetrics:
     position_p95_m: float
     yaw_rmse_rad: float
     final_position_error_m: float
+    yaw_p95_rad: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class LocalizationCovarianceSummary:
+    """Simple observed EKF covariance summary for one localization stream."""
+
+    sample_count: int
+    x_m2_median: Optional[float]
+    x_m2_p95: Optional[float]
+    y_m2_median: Optional[float]
+    y_m2_p95: Optional[float]
+    yaw_rad2_median: Optional[float]
+    yaw_rad2_p95: Optional[float]

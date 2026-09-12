@@ -1,0 +1,16 @@
+schema_version: 1
+id: issue60_local_ekf_v1
+repetitions: 5
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+variants:
+  - id: baseline
+    local_ekf_params_file: ../../../salus_localization/config/localization_local_sim.yaml
+  - id: wheel_twist_imu_yaw_rate
+    local_ekf_params_file: ../../../salus_localization/config/localization_local_sim_wheel_twist_imu_yaw_rate.yaml
+  - id: wheel_pose_imu_yaw_rate
+    local_ekf_params_file: ../../../salus_localization/config/localization_local_sim_wheel_pose_imu_yaw_rate.yaml
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
+  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}

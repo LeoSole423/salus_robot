@@ -21,7 +21,8 @@ from .gates import GateState, functional_gates, performance_gate
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       command_stage_alignments, expected_turn_from_path,
                       first_divergent_stage, latest_prior,
-                      localization_metrics, saturation_intervals,
+                      covariance_summary, localization_metrics,
+                      saturation_intervals,
                       steering_margin_summary,
                       tracking_metrics, trial_data_finite)
 from .models import (ExpectedTurn, Pose2D, TimedCommand,
@@ -43,9 +44,13 @@ def _yaw(quaternion):
 
 def _timed_odometry(message):
     pose = message.pose.pose
+    covariance = message.pose.covariance
     return TimedPose(_stamp(message), Pose2D(pose.position.x, pose.position.y,
                                              _yaw(pose.orientation)),
-                     message.twist.twist.linear.x, message.twist.twist.angular.z)
+                     message.twist.twist.linear.x, message.twist.twist.angular.z,
+                     covariance[0] if len(covariance) > 0 else None,
+                     covariance[7] if len(covariance) > 7 else None,
+                     covariance[35] if len(covariance) > 35 else None)
 
 
 def _now_s(node):
@@ -632,6 +637,7 @@ class EvaluationRunner(Node):
             self.goal, (global_poses, raw_poses, local_poses), commands, plan
         )
         metrics, arrival, localization = None, None, None
+        localization_covariance = covariance_summary(local_poses)
         signs = command_response_sign(commands, raw_poses) if raw_poses else None
         errors = []
         try:
@@ -670,7 +676,9 @@ class EvaluationRunner(Node):
                    "goal": self.goal, "metrics": metrics, "arrival": arrival,
                    "operational_tolerance_m": self.tolerance,
                    "precision": precision,
-                   "localization": localization, "sign": signs, "gates": gates,
+                   "localization": localization,
+                   "localization_covariance": localization_covariance,
+                   "sign": signs, "gates": gates,
                    "performance": [performance_gate(
                        "cross_track_p95_m",
                        metrics.cross_track_p95_m if metrics else float("inf"),
