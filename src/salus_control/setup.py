@@ -25,6 +25,7 @@ setup(
             "legacy_vehicle_command_node = salus_control.legacy_vehicle_command_node:main",
             "vehicle_command_comparison_node = salus_control.vehicle_command_comparison_node:main",
             "canonical_command_dry_run_node = salus_control.canonical_command_dry_run_node:main",
+            "sim_drive_sensor_adapter = salus_control.sim_drive_sensor_adapter:main",
         ],
     },
 )

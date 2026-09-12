@@ -10,11 +10,13 @@
   <depend>nav_msgs</depend>
   <depend>rclpy</depend>
   <depend>salus_interfaces</depend>
+  <exec_depend>salus_simulation</exec_depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <exec_depend>python3-serial</exec_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

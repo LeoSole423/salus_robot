@@ -75,6 +75,49 @@ cases:
     assert cells == expand_matrix(path)
 
 
+def test_matrix_records_sim_sensor_profile_and_derives_repetition_seed(tmp_path):
+    path = tmp_path / "sensor-profile.yaml"
+    path.write_text("""schema_version: 1
+id: issue64_sensor_profile_v1
+repetitions: 3
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6400
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight,
+     requested_radius_m: null}
+""", encoding="utf-8")
+    cells = expand_matrix(path)
+    assert [cell.repetition_seed for cell in cells] == [6400, 6401, 6402]
+    assert all(cell.sim_sensor_profile == "independent_nominal" for cell in cells)
+    row = aggregate_trials(cells, {cell.trial_id: _summary() for cell in cells})[0]
+    assert row["sim_sensor_profile"] == "independent_nominal"
+    assert row["sim_sensor_seed_base"] == 6400
+    assert row["sim_sensor_seeds"] == [6400, 6401, 6402]
+
+
+@pytest.mark.parametrize("field, value", [
+    ("sim_sensor_profile", "unknown"),
+    ("sim_sensor_seed", -1),
+    ("sim_sensor_seed", '"6400"'),
+])
+def test_matrix_rejects_invalid_sim_sensor_identity(tmp_path, field, value):
+    path = tmp_path / "bad-sensor-profile.yaml"
+    path.write_text(f"""schema_version: 1
+id: bad
+repetitions: 1
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+{field}: {value}
+cases:
+  - {{id: straight, scenario: scenarios/straight.yaml, direction: straight,
+       requested_radius_m: null}}
+""", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_matrix(path)
+
+
 def test_matrix_without_variants_retains_legacy_default_trial_ids():
     cells = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")
     assert all(cell.variant_id == "default" for cell in cells)
@@ -212,6 +255,18 @@ def test_variant_launch_argument_is_explicit_and_selected_per_trial(tmp_path):
     )
     assert f"local_ekf_params_file:={params}" in args
     assert args[-1] == f"local_ekf_params_file:={params}"
+
+
+def test_sensor_launch_arguments_are_explicit_and_selected_per_trial(tmp_path):
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+
+    args = _build_trial_launch_args(
+        zones_runtime_dir=tmp_path / "zones",
+        sim_sensor_profile="degraded",
+        sim_sensor_seed=6402,
+    )
+    assert "sim_sensor_profile:=degraded" in args
+    assert "sim_sensor_seed:=6402" in args
 
 
 def test_trial_metadata_records_variant_yaml_sha_scenario_and_isolation(tmp_path):

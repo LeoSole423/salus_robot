@@ -55,6 +55,17 @@ def generate_launch_description() -> LaunchDescription:
             choices=["course_over_ground", "external_heading"],
         ),
         DeclareLaunchArgument(
+            "sim_sensor_profile",
+            default_value="clean",
+            choices=["clean", "independent_nominal", "degraded"],
+            description="Simulation-only sensor profile.",
+        ),
+        DeclareLaunchArgument(
+            "sim_sensor_seed",
+            default_value="6400",
+            description="Non-negative deterministic simulation sensor seed.",
+        ),
+        DeclareLaunchArgument(
             "headless", default_value="false",
             description="Run only the Gazebo server when true.",
         ),
@@ -88,6 +99,8 @@ def generate_launch_description() -> LaunchDescription:
                 "capability_profile": LaunchConfiguration("capability_profile"),
                 "imu_source": LaunchConfiguration("imu_source"),
                 "orientation_source": LaunchConfiguration("orientation_source"),
+                "sim_sensor_profile": LaunchConfiguration("sim_sensor_profile"),
+                "sim_sensor_seed": LaunchConfiguration("sim_sensor_seed"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "rviz": LaunchConfiguration("rviz"),

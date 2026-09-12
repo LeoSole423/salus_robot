@@ -225,7 +225,8 @@ def _resolve_ekf_params_file(matrix_path, configured_path):
 
 
 def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
-                             local_ekf_params_file=None):
+                             local_ekf_params_file=None,
+                             sim_sensor_profile=None, sim_sensor_seed=None):
     """Build the existing integration launch command plus selected overlays."""
     args = [
         "ros2", "launch", "salus_bringup", "integration_sim.launch.py",
@@ -236,6 +237,10 @@ def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
     ]
     if nav2_params_file is not None:
         args.append(f"nav2_no_obstacles_params_file:={nav2_params_file}")
+    if sim_sensor_profile is not None:
+        args.append(f"sim_sensor_profile:={sim_sensor_profile}")
+    if sim_sensor_seed is not None:
+        args.append(f"sim_sensor_seed:={sim_sensor_seed}")
     if local_ekf_params_file is not None:
         args.append(f"local_ekf_params_file:={local_ekf_params_file}")
     return args
@@ -289,6 +294,9 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
         "trial_id": cell.trial_id,
         "variant": cell.variant_id,
         "local_ekf_params_file": cell.local_ekf_params_file,
+        "sim_sensor_profile": cell.sim_sensor_profile,
+        "sim_sensor_seed": cell.repetition_seed,
+        "sim_sensor_seed_base": cell.sim_sensor_seed,
         "source_sha": source_sha,
         "repetition": cell.repetition,
         "requested_speed_mps": cell.speed_mps,
@@ -345,6 +353,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
             zones_runtime_dir=isolation.runtime_root / "zones",
             nav2_params_file=effective_params,
             local_ekf_params_file=selected_ekf_params,
+            sim_sensor_profile=cell.sim_sensor_profile,
+            sim_sensor_seed=cell.repetition_seed,
         )
         with (trial_dir.parent / f"{cell.trial_id}-launch.log").open("w") as launch_log:
             launch = subprocess.Popen(
@@ -451,6 +461,9 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
             "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
             "variant": cell.variant_id,
             "local_ekf_params_file": cell.local_ekf_params_file,
+            "sim_sensor_profile": cell.sim_sensor_profile,
+            "sim_sensor_seed": cell.repetition_seed,
+            "sim_sensor_seed_base": cell.sim_sensor_seed,
             "source_sha": source_sha,
             "repetition": cell.repetition, "isolation": "allocation_failure",
             "result": "setup_failure",
@@ -512,6 +525,9 @@ def main(argv=None):
                     trial_dir = root / "trials" / cell.trial_id
                     _failure_bundle(trial_dir, str(exc), {
                         "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
+                        "sim_sensor_profile": cell.sim_sensor_profile,
+                        "sim_sensor_seed": cell.repetition_seed,
+                        "sim_sensor_seed_base": cell.sim_sensor_seed,
                         "repetition": cell.repetition, "isolation": "worker_exception",
                     })
                     outcomes.append("setup_failure")

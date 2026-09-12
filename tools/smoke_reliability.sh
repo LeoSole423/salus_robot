@@ -6,6 +6,12 @@ cd "${repo_dir}"
 scenario_id="${SMOKE_SCENARIO_ID:?SMOKE_SCENARIO_ID is required}"
 repetitions="${SMOKE_REPETITIONS:?SMOKE_REPETITIONS is required}"
 summary_path="${SMOKE_RELIABILITY_SUMMARY:-${repo_dir}/artifacts/smokes/reliability-${scenario_id}.json}"
+sensor_profile="${SMOKE_SENSOR_PROFILE:-clean}"
+sensor_seed_base="${SMOKE_SENSOR_SEED_BASE:-${SMOKE_SENSOR_SEED:-6400}}"
+if [[ ! "${sensor_seed_base}" =~ ^[0-9]+$ ]]; then
+  echo "SMOKE_SENSOR_SEED_BASE must be a non-negative integer" >&2
+  exit 2
+fi
 
 python3 - "${scenario_id}" <<'PY'
 import sys
@@ -20,18 +26,20 @@ PY
 completed=0
 passed=0
 failed=0
+sensor_seed_history=""
 
 write_summary() {
   local status="$1"
   mkdir -p "$(dirname "${summary_path}")"
   python3 - "${summary_path}" "${scenario_id}" "${status}" "${repetitions}" \
-    "${completed}" "${passed}" "${failed}" <<'PY'
+    "${completed}" "${passed}" "${failed}" "${sensor_profile}" \
+    "${sensor_seed_base}" "${sensor_seed_history}" <<'PY'
 import json
 import os
 import sys
 from pathlib import Path
 
-(destination, scenario_id, status, configured, completed, passed, failed) = sys.argv[1:]
+(destination, scenario_id, status, configured, completed, passed, failed, profile, seed_base, seed_history) = sys.argv[1:]
 configured_i = int(configured)
 completed_i = int(completed)
 payload = {
@@ -42,6 +50,11 @@ payload = {
     "passed_repetitions": int(passed),
     "failed_repetitions": int(failed),
     "incomplete_repetitions": max(0, configured_i - completed_i),
+    "simulation_sensors": {
+        "profile": profile,
+        "seed_base": int(seed_base),
+        "seeds_by_repetition": [int(value) for value in seed_history.split()],
+    },
 }
 path = Path(destination)
 temporary = path.with_suffix(path.suffix + ".tmp")
@@ -53,7 +66,10 @@ PY
 write_summary running
 for ((attempt = 1; attempt <= repetitions; attempt++)); do
   echo "[nightly] scenario=${scenario_id} repetition=${attempt}/${repetitions}"
-  if python3 tools/run_registered_smoke.py "${scenario_id}" --context nightly; then
+  sensor_seed=$((sensor_seed_base + attempt - 1))
+  sensor_seed_history+=" ${sensor_seed}"
+  if SMOKE_SENSOR_PROFILE="${sensor_profile}" SMOKE_SENSOR_SEED="${sensor_seed}" \
+      python3 tools/run_registered_smoke.py "${scenario_id}" --context nightly; then
     passed=$((passed + 1))
   else
     failed=$((failed + 1))

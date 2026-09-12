@@ -12,12 +12,16 @@ smoke_init() {
   SMOKE_LAUNCH_PIDS=()
   SMOKE_READY_EVENTS=()
   SMOKE_ARTIFACT_NAMES=()
+  SMOKE_SENSOR_PROFILE="${SMOKE_SENSOR_PROFILE:-clean}"
+  SMOKE_SENSOR_SEED="${SMOKE_SENSOR_SEED:-6400}"
   mkdir -p "${SMOKE_ARTIFACT_DIR}"
   export SMOKE_SCENARIO SMOKE_RUN_ID SMOKE_ARTIFACT_DIR
   printf '%s\n' "${ROS_DOMAIN_ID:-}" >"${SMOKE_ARTIFACT_DIR}/ros_domain_id.txt"
   printf '%s\n' "${GZ_PARTITION:-}" >"${SMOKE_ARTIFACT_DIR}/gz_partition.txt"
   printf '%s\n' "${SMOKE_RUNTIME_DIR:-}" >"${SMOKE_ARTIFACT_DIR}/runtime_dir.txt"
   printf '%s\n' "${FASTDDS_BUILTIN_TRANSPORTS:-}" >"${SMOKE_ARTIFACT_DIR}/fastdds_builtin_transports.txt"
+  printf '%s\n' "${SMOKE_SENSOR_PROFILE}" >"${SMOKE_ARTIFACT_DIR}/sim_sensor_profile.txt"
+  printf '%s\n' "${SMOKE_SENSOR_SEED}" >"${SMOKE_ARTIFACT_DIR}/sim_sensor_seed.txt"
 }
 
 smoke_reserve_artifact_name() {
@@ -154,11 +158,12 @@ smoke_write_report() {
   python3 - "${SMOKE_ARTIFACT_DIR}/report.json" "${SMOKE_SCENARIO}" \
     "${SMOKE_RUN_ID}" "${SMOKE_STARTED_AT}" "${status}" "${SMOKE_TIMEOUT_S}" \
     "${SMOKE_READY_EVENTS[*]}" "${SMOKE_STARTED_MONOTONIC}" \
-    "${startup_finished}" "${functional_finished}" "${cleanup_started}" "${cleanup_finished}" <<'PY'
+    "${startup_finished}" "${functional_finished}" "${cleanup_started}" "${cleanup_finished}" \
+    "${SMOKE_SENSOR_PROFILE}" "${SMOKE_SENSOR_SEED}" <<'PY'
 import json
 import sys
 
-path, scenario, run_id, started, status, timeout_s, events, scenario_started, startup_finished, functional_finished, cleanup_started, cleanup_finished = sys.argv[1:]
+path, scenario, run_id, started, status, timeout_s, events, scenario_started, startup_finished, functional_finished, cleanup_started, cleanup_finished, sensor_profile, sensor_seed = sys.argv[1:]
 import os
 with open(path, "w", encoding="utf-8") as report:
     json.dump({
@@ -181,6 +186,10 @@ with open(path, "w", encoding="utf-8") as report:
             "run_token": os.environ.get("SMOKE_RUN_TOKEN", ""),
             "runtime_dir": os.environ.get("SMOKE_RUNTIME_DIR", ""),
             "fastdds_builtin_transports": os.environ.get("FASTDDS_BUILTIN_TRANSPORTS", ""),
+        },
+        "simulation_sensors": {
+            "profile": sensor_profile,
+            "seed": int(sensor_seed),
         },
     }, report, indent=2, sort_keys=True)
     report.write("\n")

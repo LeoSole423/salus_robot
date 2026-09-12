@@ -15,3 +15,14 @@
   `./tools/smoke_motion_sim.sh`.
 - Migración: los normalizadores y sensores simulados se migrarán junto con sus
   consumidores de localización y percepción.
+
+## Perfiles de sensores de simulación (#64)
+
+`config/sensor_profiles/{clean,independent_nominal,degraded}.yaml` son archivos
+ROS 2 de parámetros y la única fuente de los valores simulation-only de ruido,
+bias, latencia/jitter, dropout y calidad GNSS. El seed no vive en el YAML: las
+composiciones de simulación aceptan `sim_sensor_profile` (default `clean`) y
+`sim_sensor_seed` (default `6400`) para que cada ejecución sea reproducible.
+La ausencia de mensajes y los timeouts existentes representan la falta de
+freshness; no hay un umbral `stale_after_s` adicional. `/odom_raw` sigue siendo
+sólo ground truth del evaluador.

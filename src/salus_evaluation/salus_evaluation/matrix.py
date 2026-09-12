@@ -16,6 +16,7 @@ import yaml
 
 SCHEMA_VERSION = 1
 EFFECTIVE_SPEED_TOLERANCE_MPS = 1.0e-6
+SIM_SENSOR_PROFILES = ("clean", "independent_nominal", "degraded")
 
 
 def parse_effective_speed(readback):
@@ -80,6 +81,13 @@ class MatrixCell:
     repetition: int
     variant_id: str = "default"
     local_ekf_params_file: str | None = None
+    sim_sensor_profile: str = "clean"
+    sim_sensor_seed: int = 6400
+
+    @property
+    def repetition_seed(self) -> int:
+        """Return the deterministic seed assigned to this repetition."""
+        return self.sim_sensor_seed + self.repetition - 1
 
     @property
     def trial_id(self) -> str:
@@ -110,6 +118,12 @@ def _finite_positive(value, name):
     return result
 
 
+def _nonnegative_int(value, name):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
+    return value
+
+
 def _parse_variants(raw):
     variant_values = raw.get("variants")
     if variant_values is None:
@@ -129,11 +143,22 @@ def _parse_variants(raw):
     return tuple(variants)
 
 
+def _parse_sensor_config(raw):
+    profile = str(raw.get("sim_sensor_profile", "clean")).strip()
+    if profile not in SIM_SENSOR_PROFILES:
+        raise ValueError(
+            "sim_sensor_profile must be one of " + ", ".join(SIM_SENSOR_PROFILES)
+        )
+    seed = _nonnegative_int(raw.get("sim_sensor_seed", 6400), "sim_sensor_seed")
+    return profile, seed
+
+
 def load_matrix(path):
     """Load a strict matrix definition without silently accepting new semantics."""
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     _require_keys(raw, ("schema_version", "id", "repetitions", "max_speed_mps",
-                        "speeds_mps", "cases"), optional=("variants",))
+                        "speeds_mps", "cases"),
+                  optional=("variants", "sim_sensor_profile", "sim_sensor_seed"))
     if raw["schema_version"] != SCHEMA_VERSION:
         raise ValueError("unsupported matrix schema_version")
     matrix_id = str(raw["id"]).strip()
@@ -167,15 +192,17 @@ def load_matrix(path):
     if len({case.case_id for case in cases}) != len(cases):
         raise ValueError("case ids must be unique")
     return (matrix_id, int(raw["repetitions"]), maximum, speeds, tuple(cases),
-            _parse_variants(raw))
+            _parse_variants(raw), *_parse_sensor_config(raw))
 
 
 def expand_matrix(path):
     """Expand a matrix in deterministic case, speed, then repetition order."""
-    matrix_id, repetitions, _maximum, speeds, cases, variants = load_matrix(path)
+    (matrix_id, repetitions, _maximum, speeds, cases, variants,
+     sim_sensor_profile, sim_sensor_seed) = load_matrix(path)
     return tuple(
         MatrixCell(matrix_id, case, speed, repetition, variant.variant_id,
-                   variant.local_ekf_params_file)
+                   variant.local_ekf_params_file, sim_sensor_profile,
+                   sim_sensor_seed)
         for variant in variants for case in cases for speed in speeds
         for repetition in range(1, repetitions + 1)
     )
@@ -206,7 +233,8 @@ def aggregate_trials(cells, trial_summaries):
     groups = {}
     for trial_id, summary in trial_summaries.items():
         cell = by_id[trial_id]
-        key = (cell.variant_id, cell.case.case_id, cell.speed_mps)
+        key = (cell.variant_id, cell.sim_sensor_profile,
+               cell.case.case_id, cell.speed_mps)
         groups.setdefault(key, []).append((cell, summary))
     result = []
     for key in sorted(groups):
@@ -238,6 +266,9 @@ def aggregate_trials(cells, trial_summaries):
         result.append({
             "variant": variant,
             "local_ekf_params_file": entries[0][0].local_ekf_params_file,
+            "sim_sensor_profile": entries[0][0].sim_sensor_profile,
+            "sim_sensor_seed_base": entries[0][0].sim_sensor_seed,
+            "sim_sensor_seeds": [cell.repetition_seed for cell, _summary in entries],
             "case_id": case.case_id, "direction": case.direction,
             "requested_radius_m": case.requested_radius_m,
             "requested_curvature_per_m": (
