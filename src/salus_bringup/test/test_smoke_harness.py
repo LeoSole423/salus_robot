@@ -96,3 +96,21 @@ def test_harness_reports_effective_fastdds_transport(tmp_path) -> None:
     assert len(reports) == 1
     report = json.loads(reports[0].read_text(encoding="utf-8"))
     assert report["isolation"]["fastdds_builtin_transports"] == "UDPv4"
+
+
+def test_harness_reports_simulation_sensor_identity(tmp_path) -> None:
+    command = f"""
+      source {HARNESS}
+      export SMOKE_ARTIFACT_ROOT={tmp_path}
+      export SMOKE_SENSOR_PROFILE=degraded
+      export SMOKE_SENSOR_SEED=6402
+      smoke_init sensor-fixture
+      smoke_cleanup
+    """
+    subprocess.run(["bash", "-c", command], check=True)
+    report_path = next(tmp_path.glob("sensor-fixture-*/report.json"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["simulation_sensors"] == {"profile": "degraded", "seed": 6402}
+    artifact_dir = report_path.parent
+    assert (artifact_dir / "sim_sensor_profile.txt").read_text().strip() == "degraded"
+    assert (artifact_dir / "sim_sensor_seed.txt").read_text().strip() == "6402"

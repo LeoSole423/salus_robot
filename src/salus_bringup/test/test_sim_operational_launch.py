@@ -34,6 +34,10 @@ def test_operational_profile_has_full_remote_defaults() -> None:
         '"capability_profile": LaunchConfiguration("capability_profile")',
         '"imu_source": LaunchConfiguration("imu_source")',
         '"orientation_source": LaunchConfiguration("orientation_source")',
+        'DeclareLaunchArgument(\n            "sim_sensor_profile"',
+        'DeclareLaunchArgument(\n            "sim_sensor_seed"',
+        '"sim_sensor_profile": LaunchConfiguration("sim_sensor_profile")',
+        '"sim_sensor_seed": LaunchConfiguration("sim_sensor_seed")',
     ):
         assert fragment in contents
 
