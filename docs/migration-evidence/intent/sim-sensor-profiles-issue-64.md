@@ -6,7 +6,8 @@ This Subagente C cut defines and wires the simulation-only profiles `clean`,
 `independent_nominal` and `degraded`. It also makes profile and deterministic
 seed identity visible in matrix and smoke artifacts.
 
-The profiles are configuration contracts for the simulation sensor adapters.
+The profiles are ROS 2 parameter files consumed by the simulation sensor
+adapters.
 They do not change real launches, real parameters, `/odom_raw`, or any
 productive drive/IMU/GNSS path. `/odom_raw` remains evaluator ground truth.
 
@@ -26,8 +27,12 @@ productive drive/IMU/GNSS path. `/odom_raw` remains evaluator ground truth.
 ## Exact profile values
 
 The three YAMLs are the frozen values for this cut. Units are encoded in each
-key; probabilities are in `[0, 1]`; `quality_dwell_s: 0` means no transition
-schedule for `clean`.
+key; probabilities are in `[0, 1]`; `quality_transition_period_s: 0` means no
+transition schedule for `clean`. The launch selector chooses one file and
+passes it to the three matching nodes; the seed remains a separate parameter.
+
+Freshness is intentionally represented by the existing delivery/dropout and
+consumer timeout behavior. No unused `stale_after_s` parameter is defined.
 
 ## Evidence limits
 

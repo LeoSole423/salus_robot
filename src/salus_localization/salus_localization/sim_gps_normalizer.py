@@ -3,10 +3,21 @@ from __future__ import annotations
 
 import rclpy
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import String
-from .gps_profiles import SimGpsFixProcessor, resolve_gps_profile
+from .gps_profiles import (
+    SimGpsFixProcessor,
+    resolve_gps_profile,
+    sim_gps_profile_from_parameters,
+)
+
+
+def _double_array_parameter(node: Node, name: str) -> list[float]:
+    """Read a possibly empty statically typed ROS double-array parameter."""
+    default = Parameter(name, Parameter.Type.DOUBLE_ARRAY, [])
+    return list(node.get_parameter_or(name, default).value)
 
 
 class SimGpsNormalizer(Node):
@@ -19,6 +30,26 @@ class SimGpsNormalizer(Node):
         self.declare_parameter("gps_profile", "f9p_rtk")
         self.declare_parameter("sim_sensor_profile", "clean")
         self.declare_parameter("sim_sensor_seed", 6400)
+        for parameter, default in (
+            ("gnss.noise_stddev_m", 0.02),
+            ("gnss.vertical_noise_stddev_m", 0.04),
+            ("gnss.rate_hz", 10.0),
+            ("gnss.covariance_m2", 0.02**2),
+            ("gnss.rtk_status", "RTK_FIXED"),
+            ("gnss.navsat_status", 2),
+            ("gnss.latency_s", 0.0),
+            ("gnss.jitter_s", 0.0),
+            ("gnss.dropout_probability", 0.0),
+            ("gnss.degraded_rtk_status", "RTK_FLOAT"),
+            ("gnss.degraded_navsat_status", 0),
+            ("gnss.degraded_covariance_m2", 1.0),
+            ("gnss.degraded_vertical_noise_m", 1.5),
+            ("gnss.quality_transition_period_s", 0.0),
+            ("gnss.quality_degraded_duration_s", 0.0),
+            ("gnss.forced_dropout_start_s", Parameter.Type.DOUBLE_ARRAY),
+            ("gnss.forced_dropout_end_s", Parameter.Type.DOUBLE_ARRAY),
+        ):
+            self.declare_parameter(parameter, default)
         # Kept as a compatibility alias for callers of the old adapter.
         self.declare_parameter("random_seed", -1)
         self.declare_parameter("max_pending", 256)
@@ -26,15 +57,47 @@ class SimGpsNormalizer(Node):
         self.frame_id = str(self.get_parameter("frame_id").value)
         sensor_profile = str(self.get_parameter("sim_sensor_profile").value).strip()
         gps_profile = str(self.get_parameter("gps_profile").value).strip()
-        profile_name = sensor_profile if sensor_profile != "clean" else gps_profile
+        profile_name = sensor_profile
         seed = int(self.get_parameter("sim_sensor_seed").value)
         legacy_seed = int(self.get_parameter("random_seed").value)
         if legacy_seed >= 0:
             seed = legacy_seed
+        profile_parameters = {
+            parameter: self.get_parameter(parameter).value
+            for parameter in (
+                "gnss.noise_stddev_m",
+                "gnss.vertical_noise_stddev_m",
+                "gnss.rate_hz",
+                "gnss.covariance_m2",
+                "gnss.rtk_status",
+                "gnss.navsat_status",
+                "gnss.latency_s",
+                "gnss.jitter_s",
+                "gnss.dropout_probability",
+                "gnss.degraded_rtk_status",
+                "gnss.degraded_navsat_status",
+                "gnss.degraded_covariance_m2",
+                "gnss.degraded_vertical_noise_m",
+                "gnss.quality_transition_period_s",
+                "gnss.quality_degraded_duration_s",
+            )
+        }
+        profile_parameters.update(
+            {
+                "gnss.forced_dropout_start_s": _double_array_parameter(
+                    self, "gnss.forced_dropout_start_s"
+                ),
+                "gnss.forced_dropout_end_s": _double_array_parameter(
+                    self, "gnss.forced_dropout_end_s"
+                ),
+            }
+        )
+        if sensor_profile == "clean" and gps_profile not in {"", "f9p_rtk"}:
+            profile = resolve_gps_profile(gps_profile)
+        else:
+            profile = sim_gps_profile_from_parameters(profile_name, profile_parameters)
         self.processor = SimGpsFixProcessor(
-            resolve_gps_profile(profile_name),
-            seed=seed,
-            max_pending=int(self.get_parameter("max_pending").value),
+            profile, seed=seed, max_pending=int(self.get_parameter("max_pending").value)
         )
         self.publisher = self.create_publisher(
             NavSatFix, str(self.get_parameter("output_topic").value), 10

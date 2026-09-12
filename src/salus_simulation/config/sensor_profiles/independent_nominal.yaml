@@ -1,32 +1,48 @@
-schema_version: 1
-id: independent_nominal
-description: Low-error independent sensor model for nominal simulation campaigns.
+# ROS 2 parameter file for the independent nominal simulation sensor profile.
+# The seed is supplied separately by the launch/evaluation harness.
+sim_drive_sensor_adapter:
+  ros__parameters:
+    sim_sensor_profile: independent_nominal
+    wheel.traction_scale: 1.005
+    wheel.bias_mps: 0.0
+    wheel.noise_stddev_mps: 0.015
+    wheel.latency_s: 0.020
+    wheel.jitter_s: 0.005
+    wheel.dropout_probability: 0.005
+    steering.bias_deg: 0.15
+    steering.noise_stddev_deg: 0.20
+    steering.latency_s: 0.020
+    steering.jitter_s: 0.005
+    steering.dropout_probability: 0.005
 
-# All values are simulation-only. The seed is supplied by the launch/evaluation
-# harness and is intentionally not stored in a profile.
-imu:
-  gyro_bias_rad_s: 0.002
-  gyro_noise_stddev_rad_s: 0.005
-  latency_s: 0.010
-  jitter_s: 0.002
-  dropout_probability: 0.002
-  stale_after_s: 0.200
-wheel:
-  traction_scale: 1.005
-  speed_noise_stddev_mps: 0.015
-  steering_bias_deg: 0.15
-  steering_noise_stddev_deg: 0.20
-  latency_s: 0.020
-  jitter_s: 0.005
-  dropout_probability: 0.005
-  stale_after_s: 0.250
-gnss:
-  # Keep the existing f9p_rtk accuracy and add only delivery/quality effects.
-  horizontal_noise_stddev_m: 0.02
-  vertical_noise_stddev_m: 0.04
-  latency_s: 0.100
-  jitter_s: 0.030
-  dropout_probability: 0.01
-  stale_after_s: 1.000
-  quality_states: [RTK_FIXED, RTK_FLOAT]
-  quality_dwell_s: 30.0
+sim_imu_from_odom:
+  ros__parameters:
+    sim_sensor_profile: independent_nominal
+    imu.gyro_bias_rad_s: 0.002
+    imu.gyro_noise_stddev_rad_s: 0.005
+    imu.latency_s: 0.010
+    imu.jitter_s: 0.002
+    imu.dropout_probability: 0.002
+    imu.forced_dropout_start_s: []
+    imu.forced_dropout_end_s: []
+
+sim_gps_normalizer:
+  ros__parameters:
+    sim_sensor_profile: independent_nominal
+    gnss.noise_stddev_m: 0.02
+    gnss.vertical_noise_stddev_m: 0.04
+    gnss.rate_hz: 10.0
+    gnss.covariance_m2: 0.0004
+    gnss.rtk_status: RTK_FIXED
+    gnss.navsat_status: 2
+    gnss.latency_s: 0.100
+    gnss.jitter_s: 0.030
+    gnss.dropout_probability: 0.01
+    gnss.degraded_rtk_status: RTK_FLOAT
+    gnss.degraded_navsat_status: 0
+    gnss.degraded_covariance_m2: 1.0
+    gnss.degraded_vertical_noise_m: 1.5
+    gnss.quality_transition_period_s: 30.0
+    gnss.quality_degraded_duration_s: 5.0
+    gnss.forced_dropout_start_s: []
+    gnss.forced_dropout_end_s: []

@@ -1,13 +1,28 @@
 import math
+from pathlib import Path
 
 import pytest
 from sensor_msgs.msg import NavSatFix, NavSatStatus
+import yaml
 from salus_localization.gps_profiles import (
     GPS_RNG_OFFSET,
     SimGpsFixProcessor,
     SimGpsProfile,
     resolve_gps_profile,
+    sim_gps_profile_from_parameters,
 )
+
+
+PROFILE_DIR = Path(__file__).parents[2] / "salus_simulation" / "config" / "sensor_profiles"
+
+
+def _profile_from_yaml(name: str) -> SimGpsProfile:
+    document = yaml.safe_load(
+        (PROFILE_DIR / f"{name}.yaml").read_text(encoding="utf-8")
+    )
+    return sim_gps_profile_from_parameters(
+        name, document["sim_gps_normalizer"]["ros__parameters"]
+    )
 
 
 def make_fix(stamp_s: float = 10.0) -> NavSatFix:
@@ -36,7 +51,7 @@ def test_m8n_profile_throttles_samples() -> None:
 
 
 def test_clean_preserves_the_existing_f9p_receiver_statistics() -> None:
-    clean = resolve_gps_profile("clean")
+    clean = _profile_from_yaml("clean")
     f9p = resolve_gps_profile("f9p_rtk")
     assert clean.noise_m == f9p.noise_m
     assert clean.vertical_noise_m == f9p.vertical_noise_m
@@ -46,7 +61,7 @@ def test_clean_preserves_the_existing_f9p_receiver_statistics() -> None:
 
 
 def test_same_seed_replays_gnss_and_uses_the_gnss_stream_offset() -> None:
-    profile = resolve_gps_profile("independent_nominal")
+    profile = _profile_from_yaml("independent_nominal")
     first_processor = SimGpsFixProcessor(profile, seed=6400)
     second_processor = SimGpsFixProcessor(profile, seed=6400)
     assert first_processor.process(make_fix(), now_s=10.0) is None
@@ -57,6 +72,17 @@ def test_same_seed_replays_gnss_and_uses_the_gnss_stream_offset() -> None:
     assert first.latitude == second.latitude
     assert first.longitude == second.longitude
     assert first_processor.stream_seed == 6400 + GPS_RNG_OFFSET
+
+
+def test_profile_file_parameters_are_the_effective_gnss_inputs() -> None:
+    document = yaml.safe_load(
+        (PROFILE_DIR / "independent_nominal.yaml").read_text(encoding="utf-8")
+    )
+    parameters = dict(document["sim_gps_normalizer"]["ros__parameters"])
+    parameters["gnss.latency_s"] = 0.75
+    profile = sim_gps_profile_from_parameters("independent_nominal", parameters)
+
+    assert profile.latency_s == pytest.approx(0.75)
 
 
 def test_different_seed_changes_gnss_perturbation() -> None:
@@ -140,4 +166,4 @@ def test_gnss_rejects_non_finite_configuration_and_data() -> None:
         SimGpsProfile("invalid", math.nan, 0.0, 0.0, 1.0, "RTK_FIXED", 2)
     source = make_fix()
     source.latitude = math.nan
-    assert SimGpsFixProcessor(resolve_gps_profile("clean")).process(source) is None
+    assert SimGpsFixProcessor(_profile_from_yaml("clean")).process(source) is None

@@ -1,32 +1,48 @@
-schema_version: 1
-id: clean
-description: Baseline inputs with no additional perturbation over the current sim path.
+# ROS 2 parameter file for the clean simulation sensor profile.
+# The seed is supplied separately by the launch/evaluation harness.
+sim_drive_sensor_adapter:
+  ros__parameters:
+    sim_sensor_profile: clean
+    wheel.traction_scale: 1.0
+    wheel.bias_mps: 0.0
+    wheel.noise_stddev_mps: 0.0
+    wheel.latency_s: 0.0
+    wheel.jitter_s: 0.0
+    wheel.dropout_probability: 0.0
+    steering.bias_deg: 0.0
+    steering.noise_stddev_deg: 0.0
+    steering.latency_s: 0.0
+    steering.jitter_s: 0.0
+    steering.dropout_probability: 0.0
 
-# All values are simulation-only. The seed is supplied by the launch/evaluation
-# harness and is intentionally not stored in a profile.
-imu:
-  gyro_bias_rad_s: 0.0
-  gyro_noise_stddev_rad_s: 0.0
-  latency_s: 0.0
-  jitter_s: 0.0
-  dropout_probability: 0.0
-  stale_after_s: 0.0
-wheel:
-  traction_scale: 1.0
-  speed_noise_stddev_mps: 0.0
-  steering_bias_deg: 0.0
-  steering_noise_stddev_deg: 0.0
-  latency_s: 0.0
-  jitter_s: 0.0
-  dropout_probability: 0.0
-  stale_after_s: 0.0
-gnss:
-  # Preserve the existing f9p_rtk receiver model; clean adds no perturbation.
-  horizontal_noise_stddev_m: 0.02
-  vertical_noise_stddev_m: 0.04
-  latency_s: 0.0
-  jitter_s: 0.0
-  dropout_probability: 0.0
-  stale_after_s: 0.0
-  quality_states: [RTK_FIXED]
-  quality_dwell_s: 0.0
+sim_imu_from_odom:
+  ros__parameters:
+    sim_sensor_profile: clean
+    imu.gyro_bias_rad_s: 0.0
+    imu.gyro_noise_stddev_rad_s: 0.0
+    imu.latency_s: 0.0
+    imu.jitter_s: 0.0
+    imu.dropout_probability: 0.0
+    imu.forced_dropout_start_s: []
+    imu.forced_dropout_end_s: []
+
+sim_gps_normalizer:
+  ros__parameters:
+    sim_sensor_profile: clean
+    gnss.noise_stddev_m: 0.02
+    gnss.vertical_noise_stddev_m: 0.04
+    gnss.rate_hz: 10.0
+    gnss.covariance_m2: 0.0004
+    gnss.rtk_status: RTK_FIXED
+    gnss.navsat_status: 2
+    gnss.latency_s: 0.0
+    gnss.jitter_s: 0.0
+    gnss.dropout_probability: 0.0
+    gnss.degraded_rtk_status: RTK_FLOAT
+    gnss.degraded_navsat_status: 0
+    gnss.degraded_covariance_m2: 1.0
+    gnss.degraded_vertical_noise_m: 1.5
+    gnss.quality_transition_period_s: 0.0
+    gnss.quality_degraded_duration_s: 0.0
+    gnss.forced_dropout_start_s: []
+    gnss.forced_dropout_end_s: []

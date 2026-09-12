@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
+import yaml
 
 from salus_control.sim_drive_sensor_adapter import (
     DRIVE_ODOM_TOPIC,
@@ -15,11 +16,21 @@ from salus_control.sim_drive_sensor_adapter import (
     SimDriveSensorProfile,
     SimDriveSensorProcessor,
     _SimTimeQueue,
-    resolve_sim_drive_sensor_profile,
+    sim_drive_profile_from_parameters,
 )
 
 
 ROOT = Path(__file__).parents[1]
+PROFILE_DIR = ROOT.parent / "salus_simulation" / "config" / "sensor_profiles"
+
+
+def _profile_from_yaml(name: str) -> SimDriveSensorProfile:
+    document = yaml.safe_load(
+        (PROFILE_DIR / f"{name}.yaml").read_text(encoding="utf-8")
+    )
+    return sim_drive_profile_from_parameters(
+        name, document["sim_drive_sensor_adapter"]["ros__parameters"]
+    )
 
 
 def _stamp(message, seconds: float) -> None:
@@ -62,7 +73,7 @@ def _joint_states(stamp_s: float = 1.0, position_rad: float = 0.2) -> JointState
 
 
 def test_clean_profile_preserves_measurement_and_stamp() -> None:
-    processor = SimDriveSensorProcessor(resolve_sim_drive_sensor_profile("clean"))
+    processor = SimDriveSensorProcessor(_profile_from_yaml("clean"))
     source = _odom(stamp_s=3.25, speed_mps=-0.7)
 
     output = processor.process_odom(source)
@@ -75,7 +86,7 @@ def test_clean_profile_preserves_measurement_and_stamp() -> None:
 
 
 def test_independent_nominal_uses_issue_values_and_units() -> None:
-    profile = resolve_sim_drive_sensor_profile("independent_nominal")
+    profile = _profile_from_yaml("independent_nominal")
 
     assert profile.wheel_scale == pytest.approx(1.005)
     assert profile.wheel_bias_mps == pytest.approx(0.0)
@@ -88,6 +99,20 @@ def test_independent_nominal_uses_issue_values_and_units() -> None:
     assert profile.steering_dropout_probability == pytest.approx(0.005)
     assert profile.steering_latency_base_s == pytest.approx(0.020)
     assert profile.steering_jitter_sigma_s == pytest.approx(0.005)
+
+
+def test_profile_file_parameters_are_the_effective_processor_inputs() -> None:
+    document = yaml.safe_load(
+        (PROFILE_DIR / "clean.yaml").read_text(encoding="utf-8")
+    )
+    parameters = dict(document["sim_drive_sensor_adapter"]["ros__parameters"])
+    parameters["wheel.traction_scale"] = 1.25
+    profile = sim_drive_profile_from_parameters("clean", parameters)
+
+    output = SimDriveSensorProcessor(profile).process_odom(_odom(speed_mps=2.0))
+
+    assert output is not None
+    assert output.message.twist.twist.linear.x == pytest.approx(2.5)
 
 
 def test_bias_and_scale_are_applied_in_the_documented_units() -> None:
@@ -110,7 +135,7 @@ def test_bias_and_scale_are_applied_in_the_documented_units() -> None:
 
 
 def test_same_seed_and_input_reproduce_both_independent_streams() -> None:
-    profile = resolve_sim_drive_sensor_profile("independent_nominal")
+    profile = _profile_from_yaml("independent_nominal")
     first = SimDriveSensorProcessor(profile, seed=6400)
     second = SimDriveSensorProcessor(profile, seed=6400)
 

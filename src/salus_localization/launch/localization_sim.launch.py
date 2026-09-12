@@ -6,9 +6,14 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import (
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    PythonExpression,
+)
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -21,6 +26,12 @@ def generate_launch_description() -> LaunchDescription:
     imu_source = LaunchConfiguration("imu_source")
     sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
     sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
+    sensor_profile_file = PathJoinSubstitution([
+        FindPackageShare("salus_simulation"),
+        "config",
+        "sensor_profiles",
+        PythonExpression(["'", sim_sensor_profile, "'.lower() + '.yaml'"]),
+    ])
     legacy_condition = IfCondition(
         PythonExpression(["'", odometry_backend, "' == 'legacy'"])
     )
@@ -78,7 +89,7 @@ def generate_launch_description() -> LaunchDescription:
                 executable="sim_imu_from_odom",
                 name="sim_imu_from_odom",
                 output="screen",
-                parameters=[{
+                parameters=[sensor_profile_file, {
                     "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
                     "imu_topic": "/hardware/imu_primary/data_raw",
                     "frame_id": "imu_primary_link",

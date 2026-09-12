@@ -15,10 +15,17 @@ import random
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from sensor_msgs.msg import Imu
 
 
 IMU_RNG_OFFSET = 307
+
+
+def _double_array_parameter(node: Node, name: str) -> list[float]:
+    """Read a possibly empty statically typed ROS double-array parameter."""
+    default = Parameter(name, Parameter.Type.DOUBLE_ARRAY, [])
+    return list(node.get_parameter_or(name, default).value)
 
 
 @dataclass(frozen=True)
@@ -57,34 +64,23 @@ class SimImuProfile:
         )
 
 
-IMU_PROFILES = {
-    "clean": SimImuProfile("clean"),
-    "independent_nominal": SimImuProfile(
-        "independent_nominal",
-        gyro_bias_rps=0.002,
-        gyro_noise_sigma_rps=0.005,
-        dropout_probability=0.002,
-        latency_s=0.010,
-        jitter_sigma_s=0.002,
-    ),
-    "degraded": SimImuProfile(
-        "degraded",
-        gyro_bias_rps=0.020,
-        gyro_noise_sigma_rps=0.050,
-        dropout_probability=0.20,
-        latency_s=0.20,
-        jitter_sigma_s=0.05,
-        forced_dropout_windows_s=((5.0, 6.0),),
-    ),
-}
-
-
-def resolve_imu_profile(name: str) -> SimImuProfile:
-    """Resolve a named simulation profile or fail closed."""
-    try:
-        return IMU_PROFILES[str(name).strip().lower()]
-    except KeyError as exc:
-        raise ValueError("Unsupported sim_sensor_profile: " + str(name)) from exc
+def sim_imu_profile_from_parameters(
+    name: str, parameters: dict[str, object]
+) -> SimImuProfile:
+    """Build an IMU profile from the ROS parameters loaded from its YAML file."""
+    starts = tuple(float(value) for value in parameters["imu.forced_dropout_start_s"])
+    ends = tuple(float(value) for value in parameters["imu.forced_dropout_end_s"])
+    if len(starts) != len(ends):
+        raise ValueError("IMU forced dropout start/end arrays must have equal length")
+    return SimImuProfile(
+        str(name).strip().lower(),
+        gyro_bias_rps=float(parameters["imu.gyro_bias_rad_s"]),
+        gyro_noise_sigma_rps=float(parameters["imu.gyro_noise_stddev_rad_s"]),
+        dropout_probability=float(parameters["imu.dropout_probability"]),
+        latency_s=float(parameters["imu.latency_s"]),
+        jitter_sigma_s=float(parameters["imu.jitter_s"]),
+        forced_dropout_windows_s=tuple(zip(starts, ends)),
+    )
 
 
 def planar_yaw_from_quaternion(quaternion) -> float:
@@ -217,6 +213,16 @@ class SimImuFromOdomNode(Node):
         self.declare_parameter("sim_sensor_profile", "clean")
         self.declare_parameter("imu_profile", "")
         self.declare_parameter("sim_sensor_seed", 6400)
+        for parameter, default in (
+            ("imu.gyro_bias_rad_s", 0.0),
+            ("imu.gyro_noise_stddev_rad_s", 0.0),
+            ("imu.latency_s", 0.0),
+            ("imu.jitter_s", 0.0),
+            ("imu.dropout_probability", 0.0),
+            ("imu.forced_dropout_start_s", Parameter.Type.DOUBLE_ARRAY),
+            ("imu.forced_dropout_end_s", Parameter.Type.DOUBLE_ARRAY),
+        ):
+            self.declare_parameter(parameter, default)
         # Kept as a compatibility alias for callers of the old adapter.
         self.declare_parameter("random_seed", -1)
         self.declare_parameter("max_pending", 256)
@@ -229,8 +235,28 @@ class SimImuFromOdomNode(Node):
         if legacy_seed >= 0:
             seed = legacy_seed
         self._frame_id = str(self.get_parameter("frame_id").value)
+        profile_parameters = {
+            parameter: self.get_parameter(parameter).value
+            for parameter in (
+                "imu.gyro_bias_rad_s",
+                "imu.gyro_noise_stddev_rad_s",
+                "imu.latency_s",
+                "imu.jitter_s",
+                "imu.dropout_probability",
+            )
+        }
+        profile_parameters.update(
+            {
+                "imu.forced_dropout_start_s": _double_array_parameter(
+                    self, "imu.forced_dropout_start_s"
+                ),
+                "imu.forced_dropout_end_s": _double_array_parameter(
+                    self, "imu.forced_dropout_end_s"
+                ),
+            }
+        )
         self._processor = SimImuProcessor(
-            resolve_imu_profile(profile_name),
+            sim_imu_profile_from_parameters(profile_name, profile_parameters),
             seed=seed,
             max_pending=int(self.get_parameter("max_pending").value),
         )

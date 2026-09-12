@@ -1,31 +1,48 @@
-schema_version: 1
-id: degraded
-description: Stress profile with bounded noise, latency, stale data and GNSS transitions.
+# ROS 2 parameter file for the degraded simulation sensor profile.
+# The seed is supplied separately by the launch/evaluation harness.
+sim_drive_sensor_adapter:
+  ros__parameters:
+    sim_sensor_profile: degraded
+    wheel.traction_scale: 1.020
+    wheel.bias_mps: 0.0
+    wheel.noise_stddev_mps: 0.080
+    wheel.latency_s: 0.250
+    wheel.jitter_s: 0.050
+    wheel.dropout_probability: 1.0
+    steering.bias_deg: 1.0
+    steering.noise_stddev_deg: 1.0
+    steering.latency_s: 0.250
+    steering.jitter_s: 0.050
+    steering.dropout_probability: 1.0
 
-# All values are simulation-only. The seed is supplied by the launch/evaluation
-# harness and is intentionally not stored in a profile.
-imu:
-  gyro_bias_rad_s: 0.020
-  gyro_noise_stddev_rad_s: 0.050
-  latency_s: 0.200
-  jitter_s: 0.030
-  dropout_probability: 0.20
-  stale_after_s: 0.500
-wheel:
-  traction_scale: 1.020
-  speed_noise_stddev_mps: 0.080
-  steering_bias_deg: 1.0
-  steering_noise_stddev_deg: 1.0
-  latency_s: 0.250
-  jitter_s: 0.050
-  dropout_probability: 1.0
-  stale_after_s: 0.500
-gnss:
-  horizontal_noise_stddev_m: 0.20
-  vertical_noise_stddev_m: 0.50
-  latency_s: 0.250
-  jitter_s: 0.100
-  dropout_probability: 0.20
-  stale_after_s: 2.000
-  quality_states: [RTK_FIXED, NO_FIX]
-  quality_dwell_s: 10.0
+sim_imu_from_odom:
+  ros__parameters:
+    sim_sensor_profile: degraded
+    imu.gyro_bias_rad_s: 0.020
+    imu.gyro_noise_stddev_rad_s: 0.050
+    imu.latency_s: 0.200
+    imu.jitter_s: 0.030
+    imu.dropout_probability: 0.20
+    imu.forced_dropout_start_s: [5.0]
+    imu.forced_dropout_end_s: [6.0]
+
+sim_gps_normalizer:
+  ros__parameters:
+    sim_sensor_profile: degraded
+    gnss.noise_stddev_m: 0.20
+    gnss.vertical_noise_stddev_m: 0.50
+    gnss.rate_hz: 5.0
+    gnss.covariance_m2: 0.0400
+    gnss.rtk_status: RTK_FIXED
+    gnss.navsat_status: 2
+    gnss.latency_s: 0.250
+    gnss.jitter_s: 0.100
+    gnss.dropout_probability: 0.20
+    gnss.degraded_rtk_status: NO_FIX
+    gnss.degraded_navsat_status: -1
+    gnss.degraded_covariance_m2: 25.0
+    gnss.degraded_vertical_noise_m: 8.0
+    gnss.quality_transition_period_s: 10.0
+    gnss.quality_degraded_duration_s: 5.0
+    gnss.forced_dropout_start_s: [5.0]
+    gnss.forced_dropout_end_s: [8.0]

@@ -1,16 +1,30 @@
 import math
+from pathlib import Path
 
 from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import Odometry
 import pytest
+import yaml
 
 from salus_localization.sim_imu_from_odom import (
     IMU_RNG_OFFSET,
     SimImuProfile,
     SimImuProcessor,
     planar_yaw_from_quaternion,
-    resolve_imu_profile,
+    sim_imu_profile_from_parameters,
 )
+
+
+PROFILE_DIR = Path(__file__).parents[2] / "salus_simulation" / "config" / "sensor_profiles"
+
+
+def _profile_from_yaml(name: str) -> SimImuProfile:
+    document = yaml.safe_load(
+        (PROFILE_DIR / f"{name}.yaml").read_text(encoding="utf-8")
+    )
+    return sim_imu_profile_from_parameters(
+        name, document["sim_imu_from_odom"]["ros__parameters"]
+    )
 
 
 def make_odom(stamp_s: float = 10.0, yaw_rate: float = 0.4) -> Odometry:
@@ -30,7 +44,7 @@ def test_planar_yaw_from_quaternion() -> None:
 
 def test_clean_imu_preserves_truth_values_and_stamp() -> None:
     source = make_odom()
-    output = SimImuProcessor(resolve_imu_profile("clean"), seed=6400).process(source)
+    output = SimImuProcessor(_profile_from_yaml("clean"), seed=6400).process(source)
     assert output is not None
     assert output.header.stamp == source.header.stamp
     assert output.orientation == source.pose.pose.orientation
@@ -38,7 +52,7 @@ def test_clean_imu_preserves_truth_values_and_stamp() -> None:
 
 
 def test_same_seed_replays_the_same_imu_measurement() -> None:
-    profile = resolve_imu_profile("independent_nominal")
+    profile = _profile_from_yaml("independent_nominal")
     first_processor = SimImuProcessor(profile, seed=6400)
     second_processor = SimImuProcessor(profile, seed=6400)
     assert first_processor.process(make_odom(yaw_rate=1.0), now_s=10.0) is None
@@ -47,6 +61,12 @@ def test_same_seed_replays_the_same_imu_measurement() -> None:
     second = second_processor.release(11.0)[0]
     assert first is not None and second is not None
     assert first.angular_velocity.z == second.angular_velocity.z
+
+
+def test_degraded_profile_uses_yaml_jitter_value() -> None:
+    profile = _profile_from_yaml("degraded")
+
+    assert profile.jitter_sigma_s == pytest.approx(0.030)
 
 
 def test_changing_seed_changes_imu_noise_and_uses_its_own_stream() -> None:
@@ -94,4 +114,4 @@ def test_imu_rejects_non_finite_configuration_and_data() -> None:
         SimImuProfile("invalid", gyro_noise_sigma_rps=math.nan)
     source = make_odom()
     source.twist.twist.angular.z = math.nan
-    assert SimImuProcessor(resolve_imu_profile("clean")).process(source) is None
+    assert SimImuProcessor(_profile_from_yaml("clean")).process(source) is None

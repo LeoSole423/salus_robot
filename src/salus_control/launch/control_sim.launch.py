@@ -3,10 +3,10 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
-from launch.substitutions import PythonExpression
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -14,6 +14,12 @@ def generate_launch_description() -> LaunchDescription:
     command_input_mode = LaunchConfiguration("command_input_mode")
     sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
     sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
+    sensor_profile_file = PathJoinSubstitution([
+        FindPackageShare("salus_simulation"),
+        "config",
+        "sensor_profiles",
+        PythonExpression(["'", sim_sensor_profile, "'.lower() + '.yaml'"]),
+    ])
     perturbed_condition = IfCondition(
         PythonExpression(["'", sim_sensor_profile, "'.lower() != 'clean'"])
     )
@@ -50,6 +56,7 @@ def generate_launch_description() -> LaunchDescription:
                 name="sim_drive_sensor_adapter",
                 output="screen",
                 parameters=[
+                    sensor_profile_file,
                     {
                         "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
                         "sim_sensor_profile": sim_sensor_profile,

@@ -115,49 +115,9 @@ _F9P_RTK = SimGpsProfile(
 )
 
 
-PROFILES = {
-    # These three names are the stable simulation campaign profiles.
-    "clean": SimGpsProfile(
-        "clean", 0.02, 0.04, 10.0, 0.02**2, "RTK_FIXED", NavSatStatus.STATUS_GBAS_FIX
-    ),
-    "independent_nominal": SimGpsProfile(
-        "independent_nominal",
-        0.02,
-        0.04,
-        10.0,
-        0.02**2,
-        "RTK_FIXED",
-        NavSatStatus.STATUS_GBAS_FIX,
-        dropout_probability=0.01,
-        latency_s=0.10,
-        jitter_sigma_s=0.03,
-        degraded_rtk_status="RTK_FLOAT",
-        degraded_navsat_status=NavSatStatus.STATUS_FIX,
-        degraded_covariance_m2=1.0,
-        degraded_vertical_noise_m=1.5,
-        quality_transition_period_s=30.0,
-        quality_degraded_duration_s=5.0,
-    ),
-    "degraded": SimGpsProfile(
-        "degraded",
-        0.20,
-        0.50,
-        5.0,
-        0.20**2,
-        "RTK_FIXED",
-        NavSatStatus.STATUS_GBAS_FIX,
-        dropout_probability=0.20,
-        latency_s=0.25,
-        jitter_sigma_s=0.10,
-        degraded_rtk_status="NO_FIX",
-        degraded_navsat_status=NavSatStatus.STATUS_NO_FIX,
-        degraded_covariance_m2=25.0,
-        degraded_vertical_noise_m=8.0,
-        quality_transition_period_s=10.0,
-        quality_degraded_duration_s=5.0,
-        forced_dropout_windows_s=((5.0, 8.0),),
-    ),
-    # Legacy receiver names remain available for existing simulation callers.
+# Legacy receiver names remain available for existing simulation callers. The
+# three #64 campaign profiles are constructed from ROS parameters instead.
+LEGACY_PROFILES = {
     "ideal": SimGpsProfile(
         "ideal", 0.0, 0.0, 0.0, 0.01**2, "SIM_IDEAL", NavSatStatus.STATUS_FIX
     ),
@@ -168,10 +128,45 @@ PROFILES = {
 }
 
 
+def sim_gps_profile_from_parameters(
+    name: str, parameters: dict[str, object]
+) -> SimGpsProfile:
+    """Build a campaign receiver profile from its ROS YAML parameters."""
+    starts = tuple(float(value) for value in parameters["gnss.forced_dropout_start_s"])
+    ends = tuple(float(value) for value in parameters["gnss.forced_dropout_end_s"])
+    if len(starts) != len(ends):
+        raise ValueError("GNSS forced dropout start/end arrays must have equal length")
+    return SimGpsProfile(
+        str(name).strip().lower(),
+        float(parameters["gnss.noise_stddev_m"]),
+        float(parameters["gnss.vertical_noise_stddev_m"]),
+        float(parameters["gnss.rate_hz"]),
+        float(parameters["gnss.covariance_m2"]),
+        str(parameters["gnss.rtk_status"]),
+        int(parameters["gnss.navsat_status"]),
+        dropout_probability=float(parameters["gnss.dropout_probability"]),
+        latency_s=float(parameters["gnss.latency_s"]),
+        jitter_sigma_s=float(parameters["gnss.jitter_s"]),
+        degraded_rtk_status=str(parameters["gnss.degraded_rtk_status"]),
+        degraded_navsat_status=int(parameters["gnss.degraded_navsat_status"]),
+        degraded_covariance_m2=float(parameters["gnss.degraded_covariance_m2"]),
+        degraded_vertical_noise_m=float(
+            parameters["gnss.degraded_vertical_noise_m"]
+        ),
+        quality_transition_period_s=float(
+            parameters["gnss.quality_transition_period_s"]
+        ),
+        quality_degraded_duration_s=float(
+            parameters["gnss.quality_degraded_duration_s"]
+        ),
+        forced_dropout_windows_s=tuple(zip(starts, ends)),
+    )
+
+
 def resolve_gps_profile(name: str) -> SimGpsProfile:
-    """Resolve a named simulation receiver profile or fail closed."""
+    """Resolve a legacy receiver profile or fail closed."""
     try:
-        return PROFILES[str(name).strip().lower()]
+        return LEGACY_PROFILES[str(name).strip().lower()]
     except KeyError as exc:
         raise ValueError("Unsupported gps_profile: " + str(name)) from exc
 

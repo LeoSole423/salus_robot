@@ -58,65 +58,24 @@ class SimDriveSensorProfile:
     steering_jitter_sigma_s: float
 
 
-SIM_DRIVE_SENSOR_PROFILES = {
-    "clean": SimDriveSensorProfile(
-        name="clean",
-        wheel_scale=1.0,
-        wheel_bias_mps=0.0,
-        wheel_noise_sigma_mps=0.0,
-        wheel_dropout_probability=0.0,
-        wheel_latency_base_s=0.0,
-        wheel_jitter_sigma_s=0.0,
-        steering_bias_deg=0.0,
-        steering_noise_sigma_deg=0.0,
-        steering_dropout_probability=0.0,
-        steering_latency_base_s=0.0,
-        steering_jitter_sigma_s=0.0,
-    ),
-    "independent_nominal": SimDriveSensorProfile(
-        name="independent_nominal",
-        wheel_scale=1.005,
-        wheel_bias_mps=0.0,
-        wheel_noise_sigma_mps=0.015,
-        wheel_dropout_probability=0.005,
-        wheel_latency_base_s=0.020,
-        wheel_jitter_sigma_s=0.005,
-        steering_bias_deg=0.15,
-        steering_noise_sigma_deg=0.20,
-        steering_dropout_probability=0.005,
-        steering_latency_base_s=0.020,
-        steering_jitter_sigma_s=0.005,
-    ),
-    # The issue intentionally leaves degraded magnitudes open.  This preset
-    # is a deterministic fault-characterization profile, not hardware
-    # calibration: both streams have a reproducible outage and larger errors.
-    "degraded": SimDriveSensorProfile(
-        name="degraded",
-        wheel_scale=1.02,
-        wheel_bias_mps=0.0,
-        wheel_noise_sigma_mps=0.08,
-        wheel_dropout_probability=1.0,
-        wheel_latency_base_s=0.25,
-        wheel_jitter_sigma_s=0.05,
-        steering_bias_deg=1.0,
-        steering_noise_sigma_deg=1.0,
-        steering_dropout_probability=1.0,
-        steering_latency_base_s=0.25,
-        steering_jitter_sigma_s=0.05,
-    ),
-}
-
-
-def resolve_sim_drive_sensor_profile(name: str) -> SimDriveSensorProfile:
-    """Return a named profile or fail closed for an unknown profile."""
-    normalized = str(name).strip().lower()
-    try:
-        return SIM_DRIVE_SENSOR_PROFILES[normalized]
-    except KeyError as exc:
-        choices = ", ".join(sorted(SIM_DRIVE_SENSOR_PROFILES))
-        raise ValueError(
-            f"Unsupported sim_sensor_profile={name!r}; expected one of {choices}"
-        ) from exc
+def sim_drive_profile_from_parameters(
+    name: str, parameters: dict[str, Any]
+) -> SimDriveSensorProfile:
+    """Build a drive profile from the ROS parameters loaded from its YAML file."""
+    return SimDriveSensorProfile(
+        name=str(name).strip().lower(),
+        wheel_scale=float(parameters["wheel.traction_scale"]),
+        wheel_bias_mps=float(parameters["wheel.bias_mps"]),
+        wheel_noise_sigma_mps=float(parameters["wheel.noise_stddev_mps"]),
+        wheel_dropout_probability=float(parameters["wheel.dropout_probability"]),
+        wheel_latency_base_s=float(parameters["wheel.latency_s"]),
+        wheel_jitter_sigma_s=float(parameters["wheel.jitter_s"]),
+        steering_bias_deg=float(parameters["steering.bias_deg"]),
+        steering_noise_sigma_deg=float(parameters["steering.noise_stddev_deg"]),
+        steering_dropout_probability=float(parameters["steering.dropout_probability"]),
+        steering_latency_base_s=float(parameters["steering.latency_s"]),
+        steering_jitter_sigma_s=float(parameters["steering.jitter_s"]),
+    )
 
 
 def _validate_probability(value: float, field: str) -> float:
@@ -320,12 +279,41 @@ class SimDriveSensorAdapterNode(Node):
         self.declare_parameter("sim_joint_states_topic", SIM_JOINT_STATES_TOPIC)
         self.declare_parameter("sim_sensor_profile", "clean")
         self.declare_parameter("sim_sensor_seed", DEFAULT_SIM_SENSOR_SEED)
+        for parameter, default in (
+            ("wheel.traction_scale", 1.0),
+            ("wheel.bias_mps", 0.0),
+            ("wheel.noise_stddev_mps", 0.0),
+            ("wheel.latency_s", 0.0),
+            ("wheel.jitter_s", 0.0),
+            ("wheel.dropout_probability", 0.0),
+            ("steering.bias_deg", 0.0),
+            ("steering.noise_stddev_deg", 0.0),
+            ("steering.latency_s", 0.0),
+            ("steering.jitter_s", 0.0),
+            ("steering.dropout_probability", 0.0),
+        ):
+            self.declare_parameter(parameter, default)
         self.declare_parameter("max_pending_samples", DEFAULT_MAX_PENDING_SAMPLES)
         self.declare_parameter("release_timer_period_s", DEFAULT_RELEASE_TIMER_PERIOD_S)
 
-        profile = resolve_sim_drive_sensor_profile(
-            str(self.get_parameter("sim_sensor_profile").value)
-        )
+        profile_name = str(self.get_parameter("sim_sensor_profile").value)
+        profile_parameters = {
+            parameter: self.get_parameter(parameter).value
+            for parameter in (
+                "wheel.traction_scale",
+                "wheel.bias_mps",
+                "wheel.noise_stddev_mps",
+                "wheel.latency_s",
+                "wheel.jitter_s",
+                "wheel.dropout_probability",
+                "steering.bias_deg",
+                "steering.noise_stddev_deg",
+                "steering.latency_s",
+                "steering.jitter_s",
+                "steering.dropout_probability",
+            )
+        }
+        profile = sim_drive_profile_from_parameters(profile_name, profile_parameters)
         seed = int(self.get_parameter("sim_sensor_seed").value)
         max_pending_samples = int(self.get_parameter("max_pending_samples").value)
         timer_period_s = _validate_nonnegative(
