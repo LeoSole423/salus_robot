@@ -1,0 +1,31 @@
+schema_version: 1
+id: degraded
+description: Stress profile with bounded noise, latency, stale data and GNSS transitions.
+
+# All values are simulation-only. The seed is supplied by the launch/evaluation
+# harness and is intentionally not stored in a profile.
+imu:
+  gyro_bias_rad_s: 0.020
+  gyro_noise_stddev_rad_s: 0.050
+  latency_s: 0.200
+  jitter_s: 0.030
+  dropout_probability: 0.20
+  stale_after_s: 0.500
+wheel:
+  traction_scale: 1.020
+  speed_noise_stddev_mps: 0.080
+  steering_bias_deg: 1.0
+  steering_noise_stddev_deg: 1.0
+  latency_s: 0.250
+  jitter_s: 0.050
+  dropout_probability: 1.0
+  stale_after_s: 0.500
+gnss:
+  horizontal_noise_stddev_m: 0.20
+  vertical_noise_stddev_m: 0.50
+  latency_s: 0.250
+  jitter_s: 0.100
+  dropout_probability: 0.20
+  stale_after_s: 2.000
+  quality_states: [RTK_FIXED, NO_FIX]
+  quality_dwell_s: 10.0

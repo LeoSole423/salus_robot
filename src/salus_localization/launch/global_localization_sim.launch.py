@@ -12,6 +12,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     orientation_source = LaunchConfiguration("orientation_source")
+    sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
+    sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
     config = str(Path(get_package_share_directory("salus_localization")) / "config" / "localization_global_sim.yaml")
     params = [{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}]
     return LaunchDescription([DeclareLaunchArgument("use_sim_time", default_value="true"),
@@ -24,7 +26,30 @@ def generate_launch_description() -> LaunchDescription:
                 "the other source."
             ),
         ),
-        Node(package="salus_localization", executable="sim_gps_normalizer", name="sim_gps_normalizer", output="screen", parameters=params),
+        DeclareLaunchArgument(
+            "sim_sensor_profile",
+            default_value="clean",
+            choices=["clean", "independent_nominal", "degraded"],
+            description="Simulation-only sensor profile.",
+        ),
+        DeclareLaunchArgument(
+            "sim_sensor_seed",
+            default_value="6400",
+            description="Non-negative deterministic simulation sensor seed.",
+        ),
+        Node(
+            package="salus_localization",
+            executable="sim_gps_normalizer",
+            name="sim_gps_normalizer",
+            output="screen",
+            parameters=[
+                *params,
+                {
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": ParameterValue(sim_sensor_seed, value_type=int),
+                },
+            ],
+        ),
         Node(package="salus_localization", executable="global_stationary_gates", name="global_stationary_gates", output="screen", parameters=params),
         Node(
             package="salus_localization",

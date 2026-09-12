@@ -10,6 +10,7 @@ if(BUILD_TESTING)
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
   ament_add_pytest_test(test_motion_assets test/test_motion_assets.py)
+  ament_add_pytest_test(test_sensor_profiles test/test_sensor_profiles.py)
 endif()
 
 ament_package()

@@ -1,0 +1,32 @@
+schema_version: 1
+id: clean
+description: Baseline inputs with no additional perturbation over the current sim path.
+
+# All values are simulation-only. The seed is supplied by the launch/evaluation
+# harness and is intentionally not stored in a profile.
+imu:
+  gyro_bias_rad_s: 0.0
+  gyro_noise_stddev_rad_s: 0.0
+  latency_s: 0.0
+  jitter_s: 0.0
+  dropout_probability: 0.0
+  stale_after_s: 0.0
+wheel:
+  traction_scale: 1.0
+  speed_noise_stddev_mps: 0.0
+  steering_bias_deg: 0.0
+  steering_noise_stddev_deg: 0.0
+  latency_s: 0.0
+  jitter_s: 0.0
+  dropout_probability: 0.0
+  stale_after_s: 0.0
+gnss:
+  # Preserve the existing f9p_rtk receiver model; clean adds no perturbation.
+  horizontal_noise_stddev_m: 0.02
+  vertical_noise_stddev_m: 0.04
+  latency_s: 0.0
+  jitter_s: 0.0
+  dropout_probability: 0.0
+  stale_after_s: 0.0
+  quality_states: [RTK_FIXED]
+  quality_dwell_s: 0.0

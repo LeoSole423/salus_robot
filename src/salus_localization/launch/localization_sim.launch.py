@@ -19,6 +19,8 @@ def generate_launch_description() -> LaunchDescription:
     odometry_backend = LaunchConfiguration("odometry_backend")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     imu_source = LaunchConfiguration("imu_source")
+    sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
+    sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
     legacy_condition = IfCondition(
         PythonExpression(["'", odometry_backend, "' == 'legacy'"])
     )
@@ -59,6 +61,17 @@ def generate_launch_description() -> LaunchDescription:
                     "Simulation-only local EKF YAML; defaults to the frozen baseline."
                 ),
             ),
+            DeclareLaunchArgument(
+                "sim_sensor_profile",
+                default_value="clean",
+                choices=["clean", "independent_nominal", "degraded"],
+                description="Simulation-only sensor profile.",
+            ),
+            DeclareLaunchArgument(
+                "sim_sensor_seed",
+                default_value="6400",
+                description="Non-negative deterministic simulation sensor seed.",
+            ),
             OpaqueFunction(function=_validate_profile),
             Node(
                 package="salus_localization",
@@ -69,6 +82,8 @@ def generate_launch_description() -> LaunchDescription:
                     "use_sim_time": ParameterValue(use_sim_time, value_type=bool),
                     "imu_topic": "/hardware/imu_primary/data_raw",
                     "frame_id": "imu_primary_link",
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": ParameterValue(sim_sensor_seed, value_type=int),
                 }],
             ),
             Node(

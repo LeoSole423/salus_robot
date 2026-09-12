@@ -48,6 +48,10 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert '"orientation_source"' in contents
     assert '"imu_source": imu_source' in contents
     assert '"orientation_source": orientation_source' in contents
+    assert '"sim_sensor_profile": sim_sensor_profile' in contents
+    assert '"sim_sensor_seed": sim_sensor_seed' in contents
+    assert '"sim_sensor_profile"' in contents
+    assert '"sim_sensor_seed"' in contents
     assert "no_obstacle_detection" in contents
     assert "safety_arbitration_no_obstacles_sim.launch.py" in contents
     assert "nav2_core_no_obstacles_sim.yaml" in contents

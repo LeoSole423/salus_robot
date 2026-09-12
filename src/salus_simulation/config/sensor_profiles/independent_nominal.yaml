@@ -1,0 +1,32 @@
+schema_version: 1
+id: independent_nominal
+description: Low-error independent sensor model for nominal simulation campaigns.
+
+# All values are simulation-only. The seed is supplied by the launch/evaluation
+# harness and is intentionally not stored in a profile.
+imu:
+  gyro_bias_rad_s: 0.002
+  gyro_noise_stddev_rad_s: 0.005
+  latency_s: 0.010
+  jitter_s: 0.002
+  dropout_probability: 0.002
+  stale_after_s: 0.200
+wheel:
+  traction_scale: 1.005
+  speed_noise_stddev_mps: 0.015
+  steering_bias_deg: 0.15
+  steering_noise_stddev_deg: 0.20
+  latency_s: 0.020
+  jitter_s: 0.005
+  dropout_probability: 0.005
+  stale_after_s: 0.250
+gnss:
+  # Keep the existing f9p_rtk accuracy and add only delivery/quality effects.
+  horizontal_noise_stddev_m: 0.02
+  vertical_noise_stddev_m: 0.04
+  latency_s: 0.100
+  jitter_s: 0.030
+  dropout_probability: 0.01
+  stale_after_s: 1.000
+  quality_states: [RTK_FIXED, RTK_FLOAT]
+  quality_dwell_s: 30.0

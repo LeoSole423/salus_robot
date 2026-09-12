@@ -45,6 +45,8 @@ def generate_launch_description() -> LaunchDescription:
     capability_profile = LaunchConfiguration("capability_profile")
     imu_source = LaunchConfiguration("imu_source")
     orientation_source = LaunchConfiguration("orientation_source")
+    sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
+    sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
     obstacle_detection_enabled = PythonExpression([
         "'", capability_profile, "' == 'obstacle_detection'",
     ])
@@ -94,6 +96,22 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="course_over_ground",
                 choices=["course_over_ground", "external_heading"],
                 description="Exclusive global orientation source; no automatic fallback.",
+            ),
+            DeclareLaunchArgument(
+                "sim_sensor_profile",
+                default_value="clean",
+                choices=["clean", "independent_nominal", "degraded"],
+                description=(
+                    "Simulation-only sensor profile; no effect on real launches."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "sim_sensor_seed",
+                default_value="6400",
+                description=(
+                    "Non-negative deterministic seed for simulation sensor noise "
+                    "and timing; no effect on real launches."
+                ),
             ),
             DeclareLaunchArgument(
                 "gz_args",
@@ -195,12 +213,21 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_control",
                 "control_sim.launch.py",
-                {**common, "command_input_mode": command_input_mode},
+                {
+                    **common,
+                    "command_input_mode": command_input_mode,
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": sim_sensor_seed,
+                },
             ),
             _include(
                 "salus_bringup",
                 "vehicle_io_sim.launch.py",
-                common,
+                {
+                    **common,
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": sim_sensor_seed,
+                },
                 condition=IfCondition(
                     PythonExpression(["'", vehicle_io_profile, "' == 'canonical'"])
                 ),
@@ -213,12 +240,19 @@ def generate_launch_description() -> LaunchDescription:
                     "odometry_backend": vehicle_io_profile,
                     "compare_legacy_odometry": compare_legacy_odometry,
                     "imu_source": imu_source,
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": sim_sensor_seed,
                 },
             ),
             _include(
                 "salus_localization",
                 "global_localization_sim.launch.py",
-                {**common, "orientation_source": orientation_source},
+                {
+                    **common,
+                    "orientation_source": orientation_source,
+                    "sim_sensor_profile": sim_sensor_profile,
+                    "sim_sensor_seed": sim_sensor_seed,
+                },
             ),
             _include(
                 "salus_hardware", "capability_profile.launch.py",
