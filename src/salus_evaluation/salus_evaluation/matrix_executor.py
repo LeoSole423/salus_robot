@@ -136,6 +136,24 @@ def _record_metadata(directory, metadata):
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _trial_result(root, cell):
+    """Read an existing matrix outcome without interpreting terminal status."""
+    summary_path = Path(root) / "trials" / cell.trial_id / "summary.json"
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "setup_failure"
+    metadata = summary.get("matrix_trial", {})
+    return metadata.get("result", "setup_failure") if isinstance(metadata, dict) else (
+        "setup_failure"
+    )
+
+
+def _setup_failure_cells(cells, root):
+    """Select only existing setup-failure bundles for an explicit rerun."""
+    return tuple(cell for cell in cells if _trial_result(root, cell) == "setup_failure")
+
+
 def _numeric_parameter_metadata(requested, get_result, *, quantity, unit,
                                 setup_result=None):
     """Persist an unambiguous numeric parameter set/get exchange."""
@@ -448,6 +466,10 @@ def main(argv=None):
     parser.add_argument("--planner-minimum-turning-radius", type=float)
     parser.add_argument("--jobs", type=int, default=1,
                         help="maximum number of concurrent trials (default: 1)")
+    parser.add_argument(
+        "--rerun-setup-failures", action="store_true",
+        help="rerun only existing trials whose recorded outcome is setup_failure",
+    )
     args = parser.parse_args(argv)
     if args.jobs < 1:
         parser.error("--jobs must be a positive integer")
@@ -460,6 +482,9 @@ def main(argv=None):
     cells = expand_matrix(args.matrix)
     matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
+    selected_cells = (
+        _setup_failure_cells(cells, root) if args.rerun_setup_failures else cells
+    )
     run_token = os.environ.get(
         "SALUS_NAV_EVAL_RUN_TOKEN",
         f"matrix-{os.getpid()}-{uuid.uuid4().hex[:8]}",
@@ -473,14 +498,14 @@ def main(argv=None):
         "source_sha": _repository_sha(),
     }
     if args.jobs == 1:
-        outcomes = [run_trial(cell, **arguments) for cell in cells]
+        outcomes = [run_trial(cell, **arguments) for cell in selected_cells]
     else:
         futures = []
         outcomes = []
         with ProcessPoolExecutor(max_workers=args.jobs) as executor:
-            for cell in cells:
+            for cell in selected_cells:
                 futures.append(executor.submit(run_trial, cell, **arguments))
-            for cell, future in zip(cells, futures):
+            for cell, future in zip(selected_cells, futures):
                 try:
                     outcomes.append(future.result())
                 except Exception as exc:
@@ -492,6 +517,8 @@ def main(argv=None):
                     outcomes.append("setup_failure")
     trial_dirs = [root / "trials" / cell.trial_id for cell in cells]
     write_matrix_artifacts(root / "summary", matrix_path, cells, trial_dirs)
+    if args.rerun_setup_failures:
+        outcomes = [_trial_result(root, cell) for cell in cells]
     return matrix_exit_code(outcomes)
 
 

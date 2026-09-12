@@ -24,7 +24,8 @@ deterministas, pequeñas y compatibles con bundles anteriores.
 ## Contratos e invariantes
 
 - Entradas: muestras observadas de `/odometry/local`, alineadas con el collector.
-- Salidas: `yaw_p95_rad` y medianas/P95 de las diagonales X/Y/yaw de pose.
+- Salidas: RMSE/P95 de posición y RMSE/P95 de yaw, más medianas/P95 de las
+  diagonales X/Y/yaw de pose.
 - Unidades: metros cuadrados para X/Y, radianes cuadrados para yaw.
 - TF/autoridades: el observador no publica TF ni comandos.
 - Compatibilidad pública: el esquema de bundle v2 y sus gates no cambian; el nuevo
@@ -45,6 +46,15 @@ deterministas, pequeñas y compatibles con bundles anteriores.
 | --- | --- | --- |
 | Covarianza ausente o no finita | Resumen con `sample_count=0`/campos nulos; no cambia gates | Test unitario |
 | Bundle anterior sin el campo nuevo | Consumidores siguen leyendo métricas existentes | Persistencia JSON compatible |
+
+## Resumen de matriz
+
+El agregado distingue explícitamente `nav2_terminal_success_*` (éxito terminal
+de Nav2, calculado sólo con `terminal_status`) del outcome del evaluator en
+`outcome_counts` y `outcomes`, cuyos valores son `passed`, `functional_failure`
+o `setup_failure`. La opción `--rerun-setup-failures` sólo selecciona bundles
+existentes con `setup_failure`; los fallos funcionales se conservan como
+resultados de campaña y no se reejecutan.
 
 ## Decisiones descartadas
 

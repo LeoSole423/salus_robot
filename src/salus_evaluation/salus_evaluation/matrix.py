@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from collections import Counter
 import html
 import json
 import math
@@ -212,7 +213,19 @@ def aggregate_trials(cells, trial_summaries):
         entries = groups[key]
         variant = entries[0][0].variant_id
         case, _ = entries[0][0].case, entries[0][0].speed_mps
-        successes = [item for _cell, item in entries if item.get("terminal_status") == 4]
+        terminal_outcomes = [
+            item for _cell, item in entries if item.get("terminal_status") is not None
+        ]
+        terminal_successes = [item for item in terminal_outcomes
+                              if item.get("terminal_status") == 4]
+        terminal_failures = [item for item in terminal_outcomes
+                             if item.get("terminal_status") != 4]
+        outcomes = [
+            item.get("matrix_trial", {}).get("result", "unknown")
+            if isinstance(item.get("matrix_trial", {}), dict) else "unknown"
+            for _cell, item in entries
+        ]
+        outcome_counts = Counter(outcomes)
 
         def values(*keys):
             found = []
@@ -232,13 +245,32 @@ def aggregate_trials(cells, trial_summaries):
                 else 1.0 / case.requested_radius_m
             ),
             "speed_mps": entries[0][0].speed_mps, "trial_count": len(entries),
-            "success_count": len(successes), "failure_count": len(entries) - len(successes),
-            "success_rate": len(successes) / len(entries),
+            "nav2_terminal_trial_count": len(terminal_outcomes),
+            "nav2_terminal_success_count": len(terminal_successes),
+            "nav2_terminal_failure_count": len(terminal_failures),
+            "nav2_terminal_success_rate": (
+                len(terminal_successes) / len(terminal_outcomes)
+                if terminal_outcomes else None
+            ),
+            "outcome_counts": {
+                name: outcome_counts.get(name, 0)
+                for name in ("passed", "functional_failure", "setup_failure", "unknown")
+            },
+            "outcomes": outcomes,
             "cross_track_rmse_m": continuous_summary(values("metrics", "cross_track_rms_m")),
             "cross_track_p95_m": continuous_summary(values("metrics", "cross_track_p95_m")),
             "heading_p95_rad": continuous_summary(values("metrics", "heading_p95_rad")),
             "localization_yaw_p95_rad": continuous_summary(
                 values("localization", "yaw_p95_rad")
+            ),
+            "position_rmse_m": continuous_summary(
+                values("localization", "position_rmse_m")
+            ),
+            "position_p95_m": continuous_summary(
+                values("localization", "position_p95_m")
+            ),
+            "yaw_rmse_rad": continuous_summary(
+                values("localization", "yaw_rmse_rad")
             ),
             "localization_covariance": {
                 "x_m2_median": continuous_summary(values(

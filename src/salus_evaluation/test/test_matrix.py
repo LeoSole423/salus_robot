@@ -14,7 +14,7 @@ from salus_evaluation.matrix import (aggregate_trials, continuous_summary,
 ROOT = Path(__file__).parents[1]
 
 
-def _summary(success=True, offset=0.0):
+def _summary(success=True, offset=0.0, result=None):
     return {
         "terminal_status": 4 if success else 6,
         "metrics": {"cross_track_rms_m": .1 + offset,
@@ -22,6 +22,7 @@ def _summary(success=True, offset=0.0):
                     "heading_p95_rad": .3 + offset},
         "arrival": {"final_distance_m": .4 + offset, "overshoot_m": .5 + offset},
         "replans": 1,
+        "matrix_trial": {"result": result or ("passed" if success else "functional_failure")},
         "command_chain": {"steering_saturation": {"interval_count": 2},
                           "ackermann": {"requested_to_applied_steer_delta_rad": {
                               "max": .02 + offset}}},
@@ -112,8 +113,14 @@ def test_aggregation_keeps_failed_trials_and_performance_report_only(tmp_path):
                                     cells[2].trial_id: _summary(True, .2)})
     assert len(rows) == 1
     row = rows[0]
-    assert row["trial_count"] == 3 and row["success_count"] == 2
-    assert row["failure_count"] == 1 and row["success_rate"] == pytest.approx(2 / 3)
+    assert row["trial_count"] == 3
+    assert row["nav2_terminal_trial_count"] == 3
+    assert row["nav2_terminal_success_count"] == 2
+    assert row["nav2_terminal_failure_count"] == 1
+    assert row["nav2_terminal_success_rate"] == pytest.approx(2 / 3)
+    assert row["outcome_counts"] == {
+        "passed": 2, "functional_failure": 1, "setup_failure": 0, "unknown": 0,
+    }
     assert row["cross_track_rmse_m"]["median"] == pytest.approx(.2)
     assert row["performance_gate_state"] == "calibrating"
 
@@ -125,6 +132,11 @@ def test_aggregation_keeps_localization_yaw_and_covariance_evidence():
     for index, cell in enumerate(cells):
         summary = _summary(offset=index / 10)
         summary["localization"] = {"yaw_p95_rad": .1 + index / 10}
+        summary["localization"].update({
+            "position_rmse_m": .11 + index / 10,
+            "position_p95_m": .21 + index / 10,
+            "yaw_rmse_rad": .31 + index / 10,
+        })
         summary["localization_covariance"] = {
             "x_m2_median": .1 + index / 10, "x_m2_p95": .2 + index / 10,
             "y_m2_median": .3 + index / 10, "y_m2_p95": .4 + index / 10,
@@ -134,6 +146,9 @@ def test_aggregation_keeps_localization_yaw_and_covariance_evidence():
         summaries[cell.trial_id] = summary
     row = aggregate_trials(cells, summaries)[0]
     assert row["localization_yaw_p95_rad"]["median"] == pytest.approx(.15)
+    assert row["position_rmse_m"]["median"] == pytest.approx(.16)
+    assert row["position_p95_m"]["median"] == pytest.approx(.26)
+    assert row["yaw_rmse_rad"]["median"] == pytest.approx(.36)
     assert row["localization_covariance"]["yaw_rad2_p95"]["max"] == pytest.approx(.03)
 
 
@@ -387,6 +402,19 @@ def test_matrix_executor_rejects_non_positive_jobs(monkeypatch, tmp_path):
     monkeypatch.setattr(matrix_executor, "expand_matrix", lambda _path: ())
     with pytest.raises(SystemExit):
         matrix_executor.main(["matrix.yaml", str(tmp_path), "--jobs", "0"])
+
+
+def test_matrix_executor_selects_only_existing_setup_failures(tmp_path):
+    from salus_evaluation.matrix_executor import _setup_failure_cells
+
+    cells = expand_matrix(ROOT / "config/matrices/ackermann_speed_curvature.yaml")[:3]
+    for cell, result in zip(cells, ("passed", "functional_failure", "setup_failure")):
+        directory = tmp_path / "trials" / cell.trial_id
+        directory.mkdir(parents=True)
+        (directory / "summary.json").write_text(json.dumps({
+            "matrix_trial": {"result": result},
+        }))
+    assert _setup_failure_cells(cells, tmp_path) == (cells[2],)
 
 
 def test_matrix_executor_rejects_more_workers_than_domain_pool(monkeypatch, tmp_path):
