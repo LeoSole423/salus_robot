@@ -1,0 +1,19 @@
+schema_version: 1
+world: obstacle_drag.world
+fixed_frame: odom
+obstacles:
+  - name: obstacle_near_post
+    shape: box
+    center_m: {x: 2.5, y: 1.5}
+    size_m: {x: 0.6, y: 0.6, z: 1.5}
+    distance_class: near
+  - name: obstacle_mid_wall
+    shape: box
+    center_m: {x: 7.5, y: -2.5}
+    size_m: {x: 2.0, y: 0.8, z: 1.6}
+    distance_class: medium
+  - name: obstacle_far_box
+    shape: box
+    center_m: {x: 14.0, y: 5.0}
+    size_m: {x: 2.0, y: 1.2, z: 1.8}
+    distance_class: far
