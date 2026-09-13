@@ -6,7 +6,7 @@ import pytest
 
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
-    StaticObstacle, load_obstacle_geometry, ray_box_intersection,
+    StaticObstacle, interpolate_pose, load_obstacle_geometry, ray_box_intersection,
     scan_static_error_metrics,
 )
 
@@ -47,6 +47,57 @@ def test_scan_metrics_transform_robot_pose_and_measure_error() -> None:
     assert metrics.sample_count > 0
     assert metrics.scan_static_error_rmse_m == pytest.approx(0.2)
     assert metrics.scan_static_error_p95_m == pytest.approx(0.2)
+    assert metrics.max_error_m == pytest.approx(0.2)
+    assert metrics.worst_beam_indices
+
+
+def test_interpolate_pose_uses_scan_timestamp_during_motion() -> None:
+    samples = [
+        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (12.0, Pose2D(2.0, 0.0, math.pi / 2.0)),
+    ]
+
+    at_first_half = interpolate_pose(samples, 11.0)
+    at_second = interpolate_pose(samples, 11.5)
+
+    assert at_first_half == Pose2D(1.0, 0.0, math.pi / 4.0)
+    assert at_second is not None
+    assert at_second.x_m == pytest.approx(1.5)
+    assert at_second.yaw_rad == pytest.approx(3.0 * math.pi / 8.0)
+    assert interpolate_pose(samples, 9.0) is None
+    assert interpolate_pose(samples, 13.0) is None
+
+
+def test_motion_scans_use_pose_at_each_scan_timestamp() -> None:
+    obstacle = StaticObstacle("box", 5.0, 0.0, 1.0, 1.0)
+    poses = [
+        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (11.0, Pose2D(1.0, 0.0, 0.0)),
+    ]
+
+    def perfect_scan(pose: Pose2D) -> list[float]:
+        ranges = []
+        for index in range(181):
+            angle = -math.pi / 2.0 + index * math.pi / 180.0
+            hit = ray_box_intersection(pose.x_m, pose.y_m, angle, obstacle)
+            ranges.append(float("inf") if hit is None else hit)
+        return ranges
+
+    first_scan_pose = interpolate_pose(poses, 10.0)
+    second_scan_pose = interpolate_pose(poses, 11.0)
+    assert first_scan_pose is not None and second_scan_pose is not None
+    assert first_scan_pose != second_scan_pose
+    first_metrics = scan_static_error_metrics(
+        perfect_scan(first_scan_pose), -math.pi / 2.0, math.pi / 180.0,
+        first_scan_pose, [obstacle], range_max_m=20.0,
+    )
+    second_metrics = scan_static_error_metrics(
+        perfect_scan(second_scan_pose), -math.pi / 2.0, math.pi / 180.0,
+        second_scan_pose, [obstacle], range_max_m=20.0,
+    )
+
+    assert first_metrics.scan_static_error_rmse_m == pytest.approx(0.0)
+    assert second_metrics.scan_static_error_rmse_m == pytest.approx(0.0)
 
 
 def test_obstacle_geometry_fixture_is_versioned_and_known() -> None:

@@ -61,3 +61,8 @@ def test_obstacle_drag_smoke_reuses_existing_integration_launch() -> None:
     assert "smoke_harness.sh" in smoke
     assert "/scan_clean" in probe
     assert "--metrics-path" in probe
+    assert "obstacle_drag_maneuver.py" in smoke
+    maneuver = (root / "tools" / "obstacle_drag_maneuver.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'create_publisher(Twist, "/cmd_vel", 10)' in maneuver

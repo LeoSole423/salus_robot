@@ -26,6 +26,8 @@ docker compose run --rm \
       "ros2 launch salus_bringup integration_sim.launch.py world:=${world} launch_navigation:=false rviz:=false"
     smoke_wait_node /cloud_normalizer 40
     smoke_wait_node /scan_ground_filter 40
+    smoke_start_launch obstacle_drag_maneuver \
+      "python3 /ros2_ws/tools/obstacle_drag_maneuver.py --ros-args -p use_sim_time:=true"
     smoke_run obstacle_drag_probe \
       "python3 /ros2_ws/tools/smoke_obstacle_drag_sim.py --geometry ${geometry} --report-path ${SMOKE_ARTIFACT_DIR}/obstacle_drag_probe.json --metrics-path ${SMOKE_ARTIFACT_DIR}/obstacle_drag_metrics.json"
     smoke_note obstacle_drag_geometry_visible

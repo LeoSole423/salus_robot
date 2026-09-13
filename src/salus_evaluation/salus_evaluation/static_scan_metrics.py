@@ -30,6 +30,46 @@ class StaticScanMetrics:
     sample_count: int
     scan_static_error_rmse_m: float | None
     scan_static_error_p95_m: float | None
+    max_error_m: float | None = None
+    worst_beam_indices: tuple[int, ...] = ()
+    worst_errors_m: tuple[float, ...] = ()
+
+
+def interpolate_pose(
+    pose_samples: Sequence[tuple[float, Pose2D]], stamp_s: float,
+) -> Pose2D | None:
+    """
+    Interpolate a fixed-frame pose at a ROS message timestamp.
+
+    Samples must be ordered by their ROS timestamp. The function deliberately
+    does not extrapolate: a scan without bracketing ground truth is not paired
+    with an unrelated pose.
+    """
+    if not math.isfinite(float(stamp_s)):
+        raise ValueError("stamp_s must be finite")
+    if not pose_samples:
+        return None
+    for index, (sample_stamp, sample_pose) in enumerate(pose_samples):
+        if stamp_s == sample_stamp:
+            return sample_pose
+        if stamp_s < sample_stamp:
+            if index == 0:
+                return None
+            previous_stamp, previous_pose = pose_samples[index - 1]
+            span = sample_stamp - previous_stamp
+            if span <= 0.0:
+                raise ValueError("pose timestamps must be strictly increasing")
+            fraction = (stamp_s - previous_stamp) / span
+            yaw_delta = math.atan2(
+                math.sin(sample_pose.yaw_rad - previous_pose.yaw_rad),
+                math.cos(sample_pose.yaw_rad - previous_pose.yaw_rad),
+            )
+            return Pose2D(
+                previous_pose.x_m + fraction * (sample_pose.x_m - previous_pose.x_m),
+                previous_pose.y_m + fraction * (sample_pose.y_m - previous_pose.y_m),
+                previous_pose.yaw_rad + fraction * yaw_delta,
+            )
+    return None
 
 
 def _finite_positive(value: object, label: str) -> float:
@@ -115,7 +155,7 @@ def scan_static_error_metrics(
     if not math.isfinite(angle_min_rad) or not math.isfinite(angle_increment_rad):
         raise ValueError("scan angles must be finite")
     obstacles = tuple(obstacles)
-    errors = []
+    errors: list[tuple[float, int]] = []
     origin_x, origin_y = robot_pose.x_m, robot_pose.y_m
     for index, observed in enumerate(ranges):
         observed = float(observed)
@@ -132,11 +172,18 @@ def scan_static_error_metrics(
         if not expected_values:
             continue
         expected = min(expected_values)
-        errors.append(abs(observed - expected))
+        errors.append((abs(observed - expected), index))
     if not errors:
         return StaticScanMetrics(0, None, None)
+    error_values = [error for error, _ in errors]
+    worst = sorted(errors, reverse=True)[:3]
     return StaticScanMetrics(
-        sample_count=len(errors),
-        scan_static_error_rmse_m=math.sqrt(sum(error * error for error in errors) / len(errors)),
-        scan_static_error_p95_m=_percentile(errors, 0.95),
+        sample_count=len(error_values),
+        scan_static_error_rmse_m=math.sqrt(
+            sum(error * error for error in error_values) / len(error_values)
+        ),
+        scan_static_error_p95_m=_percentile(error_values, 0.95),
+        max_error_m=max(error_values),
+        worst_beam_indices=tuple(index for _, index in worst),
+        worst_errors_m=tuple(error for error, _ in worst),
     )

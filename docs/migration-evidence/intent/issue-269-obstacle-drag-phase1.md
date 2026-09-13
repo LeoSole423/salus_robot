@@ -33,6 +33,16 @@ una caja no se consideran error. El resultado expone:
 - `scan_static_error_rmse_m`;
 - `scan_static_error_p95_m`.
 
+En la ejecución con movimiento, cada scan se conserva con su timestamp ROS y
+se asocia mediante interpolación a `/odom_raw` (yaw por el arco más corto), sin
+usar la última pose recibida ni extrapolar. El bundle incluye además
+`max_error_m`, el conteo de muestras y los índices/errores de los tres haces con
+mayor error por scan, para distinguir outliers de un sesgo global.
+
+El smoke ejecuta una maniobra open-loop única a través del `/cmd_vel` existente:
+entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
+y stop. No agrega otro controller ni modifica la navegación productiva.
+
 El smoke `tools/smoke_obstacle_drag_sim.sh` mantiene un observador ROS activo,
 reutiliza `tools/smoke_harness.sh`, inicia el world mediante el launch de
 integración existente con `launch_navigation:=false` y guarda provenance de
