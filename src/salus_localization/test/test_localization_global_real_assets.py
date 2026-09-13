@@ -182,8 +182,8 @@ def test_global_ekf_is_the_only_configured_map_to_odom_authority() -> None:
     assert parameters["odom1_differential"] is False
     assert parameters["odom1_relative"] is False
     assert parameters["imu0"] == "/imu/data_global"
-    assert parameters["imu0_config"][11] is True
-    assert sum(parameters["imu0_config"]) == 1
+    assert parameters["imu0_config"][11] is False
+    assert sum(parameters["imu0_config"]) == 0
     assert parameters["imu1"] == "/localization/orientation"
     assert parameters["imu1_config"][5] is True
     assert sum(parameters["imu1_config"]) == 1

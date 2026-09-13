@@ -13,6 +13,13 @@ def _local_ekf_parameters(filename: str) -> dict:
     return document["ekf_filter_node_local"]["ros__parameters"]
 
 
+def _global_ekf_parameters(filename: str) -> dict:
+    document = yaml.safe_load(
+        (PACKAGE / "config" / filename).read_text(encoding="utf-8")
+    )
+    return document["ekf_filter_node_global"]["ros__parameters"]
+
+
 def test_local_launch_uses_hardware_identity_before_logical_imu_topic() -> None:
     contents = (PACKAGE / "launch" / "localization_sim.launch.py").read_text(
         encoding="utf-8"
@@ -24,7 +31,7 @@ def test_local_launch_uses_hardware_identity_before_logical_imu_topic() -> None:
     assert '"selected_source": imu_source' in contents
 
 
-def test_global_launch_selects_one_heading_for_navsat_and_global_ekf() -> None:
+def test_global_launch_selects_one_heading_and_one_yaw_rate_authority() -> None:
     launch = (PACKAGE / "launch" / "global_localization_sim.launch.py").read_text(
         encoding="utf-8"
     )
@@ -37,6 +44,44 @@ def test_global_launch_selects_one_heading_for_navsat_and_global_ekf() -> None:
     assert "imu1: /localization/orientation" in config
     assert "odom2: /odometry/local_yaw_hold" not in config
     assert "imu0: /imu/data_global" in config
+    assert "imu0_config: [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]" in config
+
+
+def test_global_launch_exposes_a_simulation_only_ekf_override() -> None:
+    launch = (PACKAGE / "launch" / "global_localization_sim.launch.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"global_ekf_params_file"' in launch
+    assert "default_value=config" in launch
+    assert "global_ekf_params_file," in launch
+
+
+def test_global_yaw_authority_variants_have_exact_masks() -> None:
+    baseline = _global_ekf_parameters("localization_global_sim_baseline_duplicate.yaml")
+    local = _global_ekf_parameters("localization_global_sim_local_odom_yaw_rate.yaml")
+    direct = _global_ekf_parameters("localization_global_sim_direct_imu_yaw_rate.yaml")
+    yaw_rate = 11
+    assert baseline["odom0_config"][yaw_rate]
+    assert baseline["imu0_config"][yaw_rate]
+    assert local["odom0_config"][yaw_rate]
+    assert not local["imu0_config"][yaw_rate]
+    assert not direct["odom0_config"][yaw_rate]
+    assert direct["imu0_config"][yaw_rate]
+    for parameters in (baseline, local, direct):
+        assert parameters["odom1_config"] == baseline["odom1_config"]
+        assert parameters["imu1_config"] == baseline["imu1_config"]
+
+
+def test_promoted_global_yaw_authority_is_local_odom_for_sim_and_real() -> None:
+    sim = _global_ekf_parameters("localization_global_sim.yaml")
+    real = yaml.safe_load(
+        (PACKAGE / "config" / "localization_global_real.yaml").read_text(
+            encoding="utf-8"
+        )
+    )["salus_global_ekf"]["ros__parameters"]
+    for parameters in (sim, real):
+        assert parameters["odom0_config"][11]
+        assert not parameters["imu0_config"][11]
 
 
 def test_external_heading_fixture_is_profile_gated_not_a_fallback() -> None:

@@ -226,6 +226,7 @@ def _resolve_ekf_params_file(matrix_path, configured_path):
 
 def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
                              local_ekf_params_file=None,
+                             global_ekf_params_file=None,
                              sim_sensor_profile=None, sim_sensor_seed=None):
     """Build the existing integration launch command plus selected overlays."""
     args = [
@@ -243,6 +244,8 @@ def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
         args.append(f"sim_sensor_seed:={sim_sensor_seed}")
     if local_ekf_params_file is not None:
         args.append(f"local_ekf_params_file:={local_ekf_params_file}")
+    if global_ekf_params_file is not None:
+        args.append(f"global_ekf_params_file:={global_ekf_params_file}")
     return args
 
 
@@ -294,6 +297,7 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
         "trial_id": cell.trial_id,
         "variant": cell.variant_id,
         "local_ekf_params_file": cell.local_ekf_params_file,
+        "global_ekf_params_file": cell.global_ekf_params_file,
         "sim_sensor_profile": cell.sim_sensor_profile,
         "sim_sensor_seed": cell.repetition_seed,
         "sim_sensor_seed_base": cell.sim_sensor_seed,
@@ -349,10 +353,22 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                 )
             metadata["local_ekf_params_file"] = str(selected_ekf_params)
             metadata["local_ekf_params_sha256"] = _sha256(selected_ekf_params)
+        selected_global_ekf_params = _resolve_ekf_params_file(
+            matrix_path, cell.global_ekf_params_file
+        )
+        if selected_global_ekf_params is not None:
+            if not selected_global_ekf_params.is_file():
+                raise FileNotFoundError(
+                    "selected global EKF params file does not exist: "
+                    f"{selected_global_ekf_params}"
+                )
+            metadata["global_ekf_params_file"] = str(selected_global_ekf_params)
+            metadata["global_ekf_params_sha256"] = _sha256(selected_global_ekf_params)
         launch_args = _build_trial_launch_args(
             zones_runtime_dir=isolation.runtime_root / "zones",
             nav2_params_file=effective_params,
             local_ekf_params_file=selected_ekf_params,
+            global_ekf_params_file=selected_global_ekf_params,
             sim_sensor_profile=cell.sim_sensor_profile,
             sim_sensor_seed=cell.repetition_seed,
         )
@@ -461,6 +477,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
             "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
             "variant": cell.variant_id,
             "local_ekf_params_file": cell.local_ekf_params_file,
+            "global_ekf_params_file": cell.global_ekf_params_file,
             "sim_sensor_profile": cell.sim_sensor_profile,
             "sim_sensor_seed": cell.repetition_seed,
             "sim_sensor_seed_base": cell.sim_sensor_seed,

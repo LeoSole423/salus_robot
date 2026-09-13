@@ -39,6 +39,7 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     nav2_params_file = LaunchConfiguration("nav2_params_file")
     nav2_no_obstacles_params_file = LaunchConfiguration("nav2_no_obstacles_params_file")
+    global_ekf_params_file = LaunchConfiguration("global_ekf_params_file")
     vehicle_io_profile = LaunchConfiguration("vehicle_io_profile")
     compare_legacy_odometry = LaunchConfiguration("compare_legacy_odometry")
     command_input_mode = LaunchConfiguration("command_input_mode")
@@ -205,6 +206,16 @@ def generate_launch_description() -> LaunchDescription:
                 ),
                 description="Nav2 parameter file for the no-obstacle capability profile.",
             ),
+            DeclareLaunchArgument(
+                "global_ekf_params_file",
+                default_value=str(
+                    Path(get_package_share_directory("salus_localization"))
+                    / "config" / "localization_global_sim.yaml"
+                ),
+                description=(
+                    "Simulation-only global EKF YAML; defaults to the current baseline."
+                ),
+            ),
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
@@ -252,6 +263,7 @@ def generate_launch_description() -> LaunchDescription:
                     "orientation_source": orientation_source,
                     "sim_sensor_profile": sim_sensor_profile,
                     "sim_sensor_seed": sim_sensor_seed,
+                    "global_ekf_params_file": global_ekf_params_file,
                 },
             ),
             _include(

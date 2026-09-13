@@ -1,0 +1,15 @@
+schema_version: 1
+id: issue61_global_yaw_final_v1
+repetitions: 5
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6400
+variants:
+  - {id: baseline_duplicate, global_ekf_params_file: ../../../salus_localization/config/localization_global_sim_baseline_duplicate.yaml}
+  - {id: local_odom_yaw_rate, global_ekf_params_file: ../../../salus_localization/config/localization_global_sim_local_odom_yaw_rate.yaml}
+  - {id: direct_imu_yaw_rate, global_ekf_params_file: ../../../salus_localization/config/localization_global_sim_direct_imu_yaw_rate.yaml}
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_gentle, scenario: scenarios/left_gentle.yaml, direction: left, requested_radius_m: 8.0}
+  - {id: right_gentle, scenario: scenarios/right_gentle.yaml, direction: right, requested_radius_m: 8.0}
