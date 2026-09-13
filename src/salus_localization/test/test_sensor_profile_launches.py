@@ -31,7 +31,7 @@ def test_local_launch_uses_hardware_identity_before_logical_imu_topic() -> None:
     assert '"selected_source": imu_source' in contents
 
 
-def test_global_launch_selects_one_heading_for_navsat_and_global_ekf() -> None:
+def test_global_launch_selects_one_heading_and_one_yaw_rate_authority() -> None:
     launch = (PACKAGE / "launch" / "global_localization_sim.launch.py").read_text(
         encoding="utf-8"
     )
@@ -44,6 +44,7 @@ def test_global_launch_selects_one_heading_for_navsat_and_global_ekf() -> None:
     assert "imu1: /localization/orientation" in config
     assert "odom2: /odometry/local_yaw_hold" not in config
     assert "imu0: /imu/data_global" in config
+    assert "imu0_config: [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]" in config
 
 
 def test_global_launch_exposes_a_simulation_only_ekf_override() -> None:
@@ -71,14 +72,16 @@ def test_global_yaw_authority_variants_have_exact_masks() -> None:
         assert parameters["imu1_config"] == baseline["imu1_config"]
 
 
-def test_real_global_yaw_authority_remains_unchanged_during_characterization() -> None:
+def test_promoted_global_yaw_authority_is_local_odom_for_sim_and_real() -> None:
+    sim = _global_ekf_parameters("localization_global_sim.yaml")
     real = yaml.safe_load(
         (PACKAGE / "config" / "localization_global_real.yaml").read_text(
             encoding="utf-8"
         )
     )["salus_global_ekf"]["ros__parameters"]
-    assert real["odom0_config"][11]
-    assert real["imu0_config"][11]
+    for parameters in (sim, real):
+        assert parameters["odom0_config"][11]
+        assert not parameters["imu0_config"][11]
 
 
 def test_external_heading_fixture_is_profile_gated_not_a_fallback() -> None:

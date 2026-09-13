@@ -24,8 +24,10 @@ are outside this cut.
 
 Simulation accepts an optional `global_ekf_params_file`; the default remains
 the existing baseline while A/B/C characterization runs. Matrix provenance
-records the selected global YAML and its SHA-256. The real YAML is not changed
-until a single authority is selected from the final evidence.
+records the selected global YAML and its SHA-256. The final paired campaign
+selected `local_odom_yaw_rate` as the single production authority. The sim and
+real defaults now disable `imu0` yaw-rate while retaining the
+`/imu/data_global` publication for other consumers.
 
 ## Evidence interpretation
 
@@ -34,4 +36,8 @@ Position/yaw error and stationary behavior are evidence; no new performance
 gate is introduced. If the two single-source candidates are equivalent within
 the paired simulation noise, `local_odom_yaw_rate` is preferred because the
 global EKF then consumes the already-filtered local motion estimate without
-re-fusing its IMU contribution.
+re-fusing its IMU contribution. The final campaign used 45 trials (15 per
+variant, with paired seeds). B and C had comparable position, covariance,
+Nav2-terminal, and functional outcomes; C showed a modestly lower yaw error in
+this synthetic sample, but no consistent functional advantage. B was selected
+for the cleaner hierarchy. A remains the duplicate-fusion reference only.
