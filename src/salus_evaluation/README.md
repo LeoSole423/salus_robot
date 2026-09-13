@@ -18,6 +18,39 @@ si la maniobra inicial pide izquierda, derecha o recto. Si no puede inferirlo,
 el gate `turn_sign` falla en lugar de omitir esa comprobación. Ambos modos
 generan el mismo bundle versionado en `artifacts/evaluations/`.
 
+## Medición de arrastre de obstáculos
+
+La Fase 1 de #269 usa `salus_simulation/worlds/obstacle_drag.world`, un world
+con tres cajas estáticas de geometría conocida en `odom`. El fixture
+`obstacle_drag_geometry.yaml` conserva sus poses y dimensiones como provenance.
+El smoke `./tools/smoke_obstacle_drag_sim.sh` reutiliza
+`integration_sim.launch.py` y comprueba que `/scan_clean` vea la geometría sin
+iniciar navegación.
+
+`salus_evaluation.static_scan_metrics.scan_static_error_metrics` transforma cada
+haz de `/scan_clean` desde `base_footprint` a `odom` usando `/odom_raw`, calcula
+la intersección esperada con las cajas conocidas y reporta
+`scan_static_error_rmse_m` y `scan_static_error_p95_m`. Sólo se puntúan haces
+que deberían intersectar una caja; el espacio libre no se considera error.
+Esto es instrumentación base, no un diagnóstico ni un cambio del pipeline de
+LiDAR, TF, EKF, costmaps o Nav2.
+
+Para inspección gráfica, ejecutar desde el repo (con el entorno ROS del
+compose) una única vez:
+
+```bash
+docker compose run --rm \
+  -e ROS_DOMAIN_ID=49 -e GZ_PARTITION=salus-obstacle-drag-gui \
+  -e IGN_PARTITION=salus-obstacle-drag-gui \
+  ros2 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && \
+    ros2 launch salus_bringup integration_sim.launch.py \
+      world:=/ros2_ws/install/salus_simulation/share/salus_simulation/worlds/obstacle_drag.world \
+      gz_args:="-r" rviz:=true sim_sensor_profile:=clean sim_sensor_seed:=6400'
+```
+
+En RViz, seleccionar `odom` como Fixed Frame para esta medición y verificar
+`/scan_clean`, `/local_costmap/costmap`, `/global_costmap/costmap` y el robot.
+
 El bundle v2 conserva `commands.csv` como la solicitud Nav2 en `/cmd_vel` y
 agrega las etapas `/cmd_vel_safe`, `/cmd_vel_final`, `VehicleCommand` y
 `DriveTelemetry`, junto con los diagnósticos observados de control. Las

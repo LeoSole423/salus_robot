@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Check that the obstacle-drag world is visible in the clean scan."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import rclpy
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import LaserScan
+
+from salus_evaluation.models import Pose2D
+from salus_evaluation.static_scan_metrics import (
+    load_obstacle_geometry, scan_static_error_metrics,
+)
+from smoke_runtime import SmokeRuntime
+
+
+class ObstacleDragProbe(Node):
+    """Keep a persistent scan/pose pair while the existing sim is running."""
+
+    def __init__(self) -> None:
+        super().__init__("obstacle_drag_smoke")
+        self.scans: list[LaserScan] = []
+        self.pose = Pose2D(0.0, 0.0, 0.0)
+        self.odom_received = 0
+        self.create_subscription(
+            LaserScan, "/scan_clean", self.scans.append, qos_profile_sensor_data
+        )
+        self.create_subscription(Odometry, "/odom_raw", self._on_odom, 10)
+
+    def _on_odom(self, message: Odometry) -> None:
+        orientation = message.pose.pose.orientation
+        yaw = math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z),
+        )
+        self.pose = Pose2D(
+            message.pose.pose.position.x, message.pose.pose.position.y, yaw
+        )
+        self.odom_received += 1
+
+
+def _source_sha() -> str:
+    declared = os.environ.get("SMOKE_SOURCE_SHA", "")
+    if declared:
+        return declared
+    try:
+        return subprocess.check_output(
+            ["git", "-C", "/ros2_ws", "rev-parse", "HEAD"],
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--geometry", type=Path, required=True)
+    parser.add_argument("--report-path", type=Path, required=True)
+    parser.add_argument("--metrics-path", type=Path, required=True)
+    parser.add_argument("--timeout", type=float, default=30.0)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    fixed_frame, obstacles = load_obstacle_geometry(args.geometry)
+    rclpy.init()
+    node = ObstacleDragProbe()
+    runtime = SmokeRuntime(
+        node, "obstacle-drag", args.report_path, global_timeout_s=args.timeout
+    )
+    success = False
+    failure: Exception | None = None
+    measured = []
+    try:
+        runtime.wait(
+            "scan_clean messages", lambda: len(node.scans) >= 5, args.timeout,
+            observe=lambda: {
+                "scans": len(node.scans), "odom": node.odom_received,
+            },
+        )
+        if node.odom_received == 0:
+            raise RuntimeError(
+                "/odom_raw did not provide a pose for the fixed-frame transform"
+            )
+        for scan in node.scans[-5:]:
+            metrics = scan_static_error_metrics(
+                scan.ranges, scan.angle_min, scan.angle_increment, node.pose, obstacles,
+                range_min_m=max(0.0, scan.range_min), range_max_m=scan.range_max,
+            )
+            if metrics.sample_count:
+                measured.append(metrics)
+        if len(measured) < 2:
+            raise RuntimeError(
+                "/scan_clean did not contain known near/mid/far obstacle hits"
+            )
+        report = {
+            "schema_version": 1,
+            "source_sha": _source_sha(),
+            "world": "obstacle_drag.world",
+            "geometry_fixture": str(args.geometry),
+            "fixed_frame": fixed_frame,
+            "sensor_profile": os.environ.get("SMOKE_SENSOR_PROFILE", "clean"),
+            "sensor_seed": int(os.environ.get("SMOKE_SENSOR_SEED", "6400")),
+            "scan_topic": "/scan_clean",
+            "scan_frame": node.scans[-1].header.frame_id,
+            "odom_topic": "/odom_raw",
+            "scan_count": len(node.scans),
+            "odom_count": node.odom_received,
+            "samples_per_scan": [metric.sample_count for metric in measured],
+            "scan_static_error_rmse_m": max(
+                metric.scan_static_error_rmse_m for metric in measured
+            ),
+            "scan_static_error_p95_m": max(
+                metric.scan_static_error_p95_m for metric in measured
+            ),
+        }
+        args.report_path.parent.mkdir(parents=True, exist_ok=True)
+        args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        args.metrics_path.write_text(
+            json.dumps(report, indent=2) + "\n", encoding="utf-8"
+        )
+        print(f"Obstacle-drag scan smoke passed; metrics: {args.metrics_path}")
+        success = True
+        return 0
+    except Exception as exc:
+        failure = exc
+        raise
+    finally:
+        runtime.finish(success, error=failure, evidence={
+            "scan_count": len(node.scans), "odom_count": node.odom_received,
+            "metric_samples": [metric.sample_count for metric in measured],
+        })
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
