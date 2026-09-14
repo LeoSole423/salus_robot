@@ -232,6 +232,7 @@ def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
     args = [
         "ros2", "launch", "salus_bringup", "integration_sim.launch.py",
         "capability_profile:=no_obstacle_detection",
+        "launch_routes:=true",
         "world:=/ros2_ws/install/salus_simulation/share/salus_simulation/"
         "worlds/free.world",
         f"zones_runtime_dir:={zones_runtime_dir}",
