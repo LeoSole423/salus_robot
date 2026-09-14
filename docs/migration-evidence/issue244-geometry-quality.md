@@ -88,3 +88,37 @@ the STRAIGHT case. Do not backport it to production from this report alone.
 The boundary/fillet hypothesis remains evaluation evidence only; the logical
 checkpoint/action semantics and the dependency on #57/#63 must be resolved
 before any production driving-geometry change.
+
+## Smac #4549 A/B follow-up
+
+This follow-up used two external overlays built from the same navigation2
+`1.1.20` tag (`a097086719c88f781aa59788eca29ac6ca5e56db`) with the same compiler
+and image. `STOCK_1_1_20` was unmodified; `PATCHED_4549` contained only the
+five-file upstream change that replaces the analytic-expansion angular-bin
+rounding with the continuous `getAngle()` path. The SALUS source was
+`57c108c70f9fa8e80f81e0a6b999c00842e47ddd`.
+
+The isolation check passed before the experiment. STRAIGHT was run serially
+with the same `clean` profile, seed sequence, free world, DUBIN planner,
+`minimum_turning_radius=4.0`, `angle_quantization_bins=64`, and smoothing
+disabled. There were 10 valid repetitions per arm. One STOCK setup failure
+from the existing runtime parameter update was rerun as a setup failure only;
+it was not counted as a navigation result.
+
+| arm | valid repetitions | plan observations | wobble repetitions | max heading variation (rad) | max abs curvature (1/m) | max self-intersections |
+|---|---:|---:|---:|---:|---:|---:|
+| STOCK_1_1_20 | 10 | 17 | 6/10 | 0.326826 | 0.251691 | 0 |
+| PATCHED_4549 | 10 | 18 | 7/10 | 0.326826 | 0.251691 | 0 |
+
+`WOBBLY` is therefore `STRAIGHT_UNCHANGED` for this forward DUBIN
+integration case: the patched overlay did not materially reduce the observed
+variation. Since the deciding effect was not clear in STRAIGHT, the corner,
+boundary, and Track3 extensions were not run. This result does not justify a
+production backport and does not classify `VALID_BUT_WIDE_TURN` or
+`TOPOLOGICAL_LOOP` as fixed by #4549; those effects remain unassigned by this
+A/B.
+
+The persistent external artifacts are in
+`artifacts-issue244-smac4549-ab`, with per-arm trial bundles in
+`artifacts-issue244-smac4549-straight-stock-r1` and
+`artifacts-issue244-smac4549-straight-patched-r1`.
