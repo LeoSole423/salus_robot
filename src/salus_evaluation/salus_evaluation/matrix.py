@@ -17,6 +17,9 @@ import yaml
 SCHEMA_VERSION = 1
 EFFECTIVE_SPEED_TOLERANCE_MPS = 1.0e-6
 SIM_SENSOR_PROFILES = ("clean", "independent_nominal", "degraded")
+CHUNK_POLICIES = (
+    "terminal_incoming", "legacy_outgoing", "shared_tangent", "lookahead",
+)
 
 
 def parse_effective_speed(readback):
@@ -85,6 +88,8 @@ class MatrixCell:
     global_ekf_params_file: str | None = None
     sim_sensor_profile: str = "clean"
     sim_sensor_seed: int = 6400
+    evaluation_mode: str = "run"
+    chunk_policy: str = "default"
 
     @property
     def repetition_seed(self) -> int:
@@ -98,8 +103,9 @@ class MatrixCell:
             f"r{self.case.requested_radius_m:g}".replace(".", "p")
         )
         speed = f"v{self.speed_mps:g}".replace(".", "p")
+        policy = "" if self.chunk_policy == "default" else f"{self.chunk_policy}-"
         return (
-            f"{variant}{self.case.case_id}-{self.case.direction}-{radius}-{speed}"
+            f"{policy}{variant}{self.case.case_id}-{self.case.direction}-{radius}-{speed}"
             f"-rep{self.repetition:02d}"
         )
 
@@ -163,12 +169,32 @@ def _parse_sensor_config(raw):
     return profile, seed
 
 
+def _parse_evaluation_config(raw):
+    mode = str(raw.get("evaluation_mode", "run")).strip()
+    if mode not in ("run", "chunk_continuity"):
+        raise ValueError("evaluation_mode must be run or chunk_continuity")
+    policies = raw.get("chunk_policies")
+    if policies is None:
+        policies = ["default"]
+    if not isinstance(policies, list) or not policies:
+        raise ValueError("chunk_policies must be a non-empty list")
+    policies = tuple(str(item).strip() for item in policies)
+    if mode == "run" and policies != ("default",):
+        raise ValueError("chunk_policies require evaluation_mode=chunk_continuity")
+    if mode == "chunk_continuity" and (
+            len(set(policies)) != len(policies)
+            or any(item not in CHUNK_POLICIES for item in policies)):
+        raise ValueError("chunk_policies must contain unique approved policies")
+    return mode, policies
+
+
 def load_matrix(path):
     """Load a strict matrix definition without silently accepting new semantics."""
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     _require_keys(raw, ("schema_version", "id", "repetitions", "max_speed_mps",
                         "speeds_mps", "cases"),
-                  optional=("variants", "sim_sensor_profile", "sim_sensor_seed"))
+                  optional=("variants", "sim_sensor_profile", "sim_sensor_seed",
+                            "evaluation_mode", "chunk_policies"))
     if raw["schema_version"] != SCHEMA_VERSION:
         raise ValueError("unsupported matrix schema_version")
     matrix_id = str(raw["id"]).strip()
@@ -202,19 +228,22 @@ def load_matrix(path):
     if len({case.case_id for case in cases}) != len(cases):
         raise ValueError("case ids must be unique")
     return (matrix_id, int(raw["repetitions"]), maximum, speeds, tuple(cases),
-            _parse_variants(raw), *_parse_sensor_config(raw))
+            _parse_variants(raw), *_parse_sensor_config(raw),
+            *_parse_evaluation_config(raw))
 
 
 def expand_matrix(path):
     """Expand a matrix in deterministic case, speed, then repetition order."""
     (matrix_id, repetitions, _maximum, speeds, cases, variants,
-     sim_sensor_profile, sim_sensor_seed) = load_matrix(path)
+     sim_sensor_profile, sim_sensor_seed, evaluation_mode,
+     chunk_policies) = load_matrix(path)
     return tuple(
         MatrixCell(matrix_id, case, speed, repetition, variant.variant_id,
                    variant.local_ekf_params_file, variant.global_ekf_params_file,
                    sim_sensor_profile,
-                   sim_sensor_seed)
-        for variant in variants for case in cases for speed in speeds
+                   sim_sensor_seed, evaluation_mode, policy)
+        for policy in chunk_policies for variant in variants
+        for case in cases for speed in speeds
         for repetition in range(1, repetitions + 1)
     )
 
@@ -245,6 +274,7 @@ def aggregate_trials(cells, trial_summaries):
     for trial_id, summary in trial_summaries.items():
         cell = by_id[trial_id]
         key = (cell.variant_id, cell.sim_sensor_profile,
+               cell.evaluation_mode, cell.chunk_policy,
                cell.case.case_id, cell.speed_mps)
         groups.setdefault(key, []).append((cell, summary))
     result = []
@@ -276,6 +306,8 @@ def aggregate_trials(cells, trial_summaries):
             return found
         result.append({
             "variant": variant,
+            "evaluation_mode": entries[0][0].evaluation_mode,
+            "chunk_policy": entries[0][0].chunk_policy,
             "local_ekf_params_file": entries[0][0].local_ekf_params_file,
             "global_ekf_params_file": entries[0][0].global_ekf_params_file,
             "sim_sensor_profile": entries[0][0].sim_sensor_profile,
@@ -354,6 +386,15 @@ def aggregate_trials(cells, trial_summaries):
                 "command_chain", "ackermann",
                 "requested_to_applied_steer_delta_rad", "max",
             )),
+            "chunk_continuity": {
+                name: continuous_summary(values("chunk_continuity", name))
+                for name in (
+                    "length_m", "direct_distance_m", "detour_ratio",
+                    "max_deviation_m", "self_intersections",
+                    "boundary_heading_jump_rad", "boundary_max_curvature_per_m",
+                    "boundary_max_heading_step_rad", "steering_saturation_intervals",
+                )
+            },
             "trial_ids": [cell.trial_id for cell, _summary in entries],
             "performance_gate_state": "calibrating",
         })

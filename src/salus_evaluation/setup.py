@@ -23,6 +23,7 @@ setup(
     extras_require={"test": ["pytest"]},
     entry_points={"console_scripts": [
         "navigation_evaluation = salus_evaluation.evaluation_runner:main",
+        "navigation_chunk_continuity = salus_evaluation.chunk_continuity_runner:main",
         "navigation_matrix_summary = salus_evaluation.matrix_runner:main",
         "navigation_matrix_execute = salus_evaluation.matrix_executor:main",
     ]},
