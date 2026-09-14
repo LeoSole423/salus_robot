@@ -2,7 +2,7 @@ schema_version: 1
 id: issue244_track3_current_wide_turn_v1
 evaluation_mode: chunk_continuity
 chunk_policies: [terminal_incoming]
-repetitions: 2
+repetitions: 5
 max_speed_mps: 0.8
 speeds_mps: [0.8]
 cases:
