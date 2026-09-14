@@ -302,6 +302,30 @@ def aggregate_trials(cells, trial_summaries):
                     current = current.get(name) if isinstance(current, dict) else None
                 found.append(current)
             return found
+
+        def geometry_values(name):
+            """Collect one quality metric from every independent plan in trials."""
+            found = []
+            for _cell, item in entries:
+                plans = item.get("geometry_quality", [])
+                if isinstance(plans, list):
+                    found.extend(
+                        plan.get(name) for plan in plans
+                        if isinstance(plan, dict)
+                    )
+            return found
+
+        def plan_geometry_values(name):
+            """Collect existing geometry metrics from every independent plan."""
+            found = []
+            for _cell, item in entries:
+                plans = item.get("plan_geometry", [])
+                if isinstance(plans, list):
+                    found.extend(
+                        plan.get(name) for plan in plans
+                        if isinstance(plan, dict)
+                    )
+            return found
         result.append({
             "variant": variant,
             "evaluation_mode": entries[0][0].evaluation_mode,
@@ -387,10 +411,28 @@ def aggregate_trials(cells, trial_summaries):
             "chunk_continuity": {
                 name: continuous_summary(values("chunk_continuity", name))
                 for name in (
+                    "length_plan_A_m", "length_plan_B_m",
+                    "length_total_executable_estimated_m",
+                    "self_intersections_plan_A", "self_intersections_plan_B",
+                    "cross_intersections_A_B", "boundary_angular_discontinuity_rad",
+                    "heading_change_rad",
+                )
+            },
+            "geometry_quality": {
+                name: continuous_summary(geometry_values(name))
+                for name in (
+                    "total_heading_variation_rad", "curvature_sign_changes",
+                    "max_abs_curvature_per_m", "p95_abs_curvature_per_m",
+                    "max_equivalent_steering_rad", "p95_equivalent_steering_rad",
+                    "lateral_error_rms_m", "max_abs_lateral_error_m",
+                    "lateral_error_sign_changes",
+                )
+            },
+            "plan_geometry": {
+                name: continuous_summary(plan_geometry_values(name))
+                for name in (
                     "length_m", "direct_distance_m", "detour_ratio",
                     "max_deviation_m", "self_intersections",
-                    "boundary_heading_jump_rad", "boundary_max_curvature_per_m",
-                    "boundary_max_heading_step_rad", "steering_saturation_intervals",
                 )
             },
             "trial_ids": [cell.trial_id for cell, _summary in entries],

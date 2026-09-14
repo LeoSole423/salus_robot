@@ -1,0 +1,7 @@
+schema_version: 1
+id: boundary_corner_90
+world: free
+spawn: {x_m: 0.0, y_m: 0.0, yaw_rad: 0.0}
+goals:
+  - {id: boundary_corner, forward_m: 8.0, lateral_m: 8.0,
+     yaw_offset_rad: 1.5707963268, timeout_s: 90.0, expected_turn: left}

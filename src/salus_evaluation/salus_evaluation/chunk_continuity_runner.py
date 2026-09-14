@@ -20,6 +20,7 @@ from std_msgs.msg import String
 from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
+from .geometry_quality import quality_metrics
 from .metrics import angle_delta
 
 
@@ -79,6 +80,22 @@ def _wide_turn_route(origin):
             TURN_RADIUS_M + TURN_RADIUS_M * math.sin(theta),
         ))
     return points
+
+
+def _boundary_corner_route(origin):
+    """Construct a hard logical corner for the chunk-boundary case."""
+    return [
+        _body_to_map(origin, 2.0, 0.0),
+        _body_to_map(origin, 8.0, 0.0),
+        _body_to_map(origin, 8.0, 8.0),
+    ]
+
+
+def _route_for_scenario(origin, scenario):
+    """Select only the named evaluation fixture, never a production policy."""
+    if "boundary_corner_90" in scenario:
+        return _boundary_corner_route(origin)
+    return _wide_turn_route(origin)
 
 
 def _local_to_ll(point):
@@ -314,6 +331,7 @@ def _plan_metrics(points, reference):
         "detour_ratio": geometry.detour_ratio,
         "max_deviation_m": geometry.max_deviation_m,
         "self_intersections": geometry.self_intersections,
+        "geometry_quality": quality_metrics(points, reference or points),
     }
 
 
@@ -330,6 +348,7 @@ class ChunkContinuityRunner(Node):
         self.declare_parameter("scenario", "")
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.policy = str(self.get_parameter("chunk_policy").value)
+        self.scenario = str(self.get_parameter("scenario").value)
         if not self.output_dir:
             raise ValueError("output_dir is required")
         if self.policy != CURRENT_POLICY:
@@ -478,9 +497,12 @@ class ChunkContinuityRunner(Node):
         self._spin_wait(ready, timeout_s,
                         "productive route_executor did not dispatch chunk B")
         self._spin_wait(
-            lambda: len(self.plans) >= 2,
+            lambda: any(
+                item["stamp_s"] >= self.dispatches[1]["stamp_s"]
+                for item in self.plans
+            ),
             15.0,
-            "did not observe /plan for both route chunks",
+            "did not observe /plan for chunk B",
         )
 
     def run(self):
@@ -488,7 +510,7 @@ class ChunkContinuityRunner(Node):
                         "global odometry unavailable")
         origin_sample = self.odom[-1]
         origin = (origin_sample["x_m"], origin_sample["y_m"], origin_sample["yaw_rad"])
-        self.reference = _wide_turn_route(origin)
+        self.reference = _route_for_scenario(origin, self.scenario)
         self.route_request = self._request(self.reference)
         self.started_at = self.get_clock().now().nanoseconds / 1e9
         response = self._call(self.set_route, self.route_request)
@@ -516,6 +538,14 @@ class ChunkContinuityRunner(Node):
         windows = _chunk_windows(
             self.dispatches, self.events, self.plans, self.odom, route_reference
         )
+        geometry_quality = [
+            {
+                "plan_index": plan["plan_index"],
+                "stamp_s": plan["stamp_s"],
+                **plan["metrics"]["geometry_quality"],
+            }
+            for window in windows for plan in window["plans"]
+        ]
         first_window_plans = windows[0]["plans"] if windows else []
         second_window_plans = windows[1]["plans"] if len(windows) > 1 else []
         # Use final A and first B only for boundary continuity; all plans stay
@@ -563,6 +593,7 @@ class ChunkContinuityRunner(Node):
             },
             "transition": transition,
             "plans": self.plans,
+            "geometry_quality": geometry_quality,
             "observed_metrics": {
                 "active_chunk_count": len(active_paths),
                 "dispatch_count": len(self.dispatches),
@@ -581,14 +612,19 @@ class ChunkContinuityRunner(Node):
             "schema_version": 3,
             "mode": "chunk_continuity",
             "policy": self.policy,
-            "scenario": "wide_90deg_turn_boundary_inside",
+            "scenario": self.scenario or "wide_90deg_turn_boundary_inside",
             "route_executor_service": "/route_executor/set_route_mission_ll",
             "manual_navigate_through_poses_action": False,
             "geometry": {
-                "turn_radius_m": TURN_RADIUS_M,
+                "turn_radius_m": (
+                    None if "boundary_corner_90" in self.scenario else TURN_RADIUS_M
+                ),
                 "turn_angle_deg": 90.0,
-                "boundary_after_turn_deg": BOUNDARY_TURN_DEG,
-                "boundary_inside_broad_turn": True,
+                "boundary_after_turn_deg": (
+                    0.0 if "boundary_corner_90" in self.scenario
+                    else BOUNDARY_TURN_DEG
+                ),
+                "boundary_inside_broad_turn": "boundary_corner_90" not in self.scenario,
                 "reference_points": self.reference,
             },
             "topics": [

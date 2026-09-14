@@ -15,9 +15,11 @@ from salus_interfaces.msg import (CmdVelFinal, DriveTelemetry, NavEvent,
                                   NavTelemetry, VehicleCommand)
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
+from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
 from .gates import GateState, functional_gates, performance_gate
+from .geometry_quality import quality_metrics
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       command_stage_alignments, expected_turn_from_path,
                       first_divergent_stage, latest_prior,
@@ -671,6 +673,32 @@ class EvaluationRunner(Node):
             commands, safe_commands, final_commands, vehicle_commands,
             drive_telemetry, controller_status, controller_telemetry,
         )
+        reference_start = self.start_pose
+        if reference_start is None and global_poses:
+            reference_start = global_poses[0].pose
+        reference = None
+        if reference_start is not None and self.goal is not None:
+            reference = (
+                (reference_start.x_m, reference_start.y_m),
+                (self.goal.x_m, self.goal.y_m),
+            )
+        geometry_quality = []
+        plan_geometry = []
+        for index, candidate in enumerate(self.plans):
+            points = tuple((item.x_m, item.y_m) for item in candidate)
+            geometry_quality.append({
+                "plan_index": index,
+                **quality_metrics(points, reference),
+            })
+            geometry = path_geometry_metrics(points, reference or points)
+            plan_geometry.append({
+                "plan_index": index,
+                "length_m": geometry.length_m,
+                "direct_distance_m": geometry.direct_distance_m,
+                "detour_ratio": geometry.detour_ratio,
+                "max_deviation_m": geometry.max_deviation_m,
+                "self_intersections": geometry.self_intersections,
+            })
         summary = {"schema_version": 2, "reason": reason,
                    "terminal_status": self.terminal_status,
                    "goal": self.goal, "metrics": metrics, "arrival": arrival,
@@ -678,6 +706,8 @@ class EvaluationRunner(Node):
                    "precision": precision,
                    "localization": localization,
                    "localization_covariance": localization_covariance,
+                   "geometry_quality": geometry_quality,
+                   "plan_geometry": plan_geometry,
                    "sign": signs, "gates": gates,
                    "performance": [performance_gate(
                        "cross_track_p95_m",

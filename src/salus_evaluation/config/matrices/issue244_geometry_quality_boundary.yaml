@@ -1,0 +1,18 @@
+schema_version: 1
+id: issue244_geometry_quality_boundary_v1
+evaluation_mode: chunk_continuity
+chunk_policies: [terminal_incoming]
+repetitions: 3
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+sim_sensor_profile: clean
+sim_sensor_seed: 6400
+cases:
+  - id: boundary_corner_90
+    scenario: scenarios/boundary_corner_90.yaml
+    direction: left
+    requested_radius_m: 4.0
+  - id: track3_wide_r8
+    scenario: scenarios/left_gentle.yaml
+    direction: left
+    requested_radius_m: 8.0

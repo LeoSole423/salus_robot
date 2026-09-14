@@ -216,6 +216,42 @@ def test_aggregation_keeps_localization_yaw_and_covariance_evidence():
     assert row["localization_covariance"]["yaw_rad2_p95"]["max"] == pytest.approx(.03)
 
 
+def test_aggregation_keeps_per_plan_geometry_quality_metrics():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cells = expand_matrix(matrix)[:2]
+    summaries = {}
+    for index, cell in enumerate(cells):
+        summary = _summary(offset=index / 10)
+        summary["geometry_quality"] = [{
+            "total_heading_variation_rad": .1 + index,
+            "curvature_sign_changes": index,
+            "max_abs_curvature_per_m": .2 + index,
+        }]
+        summaries[cell.trial_id] = summary
+    row = aggregate_trials(cells, summaries)[0]
+    assert row["geometry_quality"]["curvature_sign_changes"]["max"] == 1
+    assert row["geometry_quality"]["max_abs_curvature_per_m"]["median"] == pytest.approx(.7)
+
+
+def test_aggregation_keeps_existing_per_plan_path_geometry_metrics():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cells = expand_matrix(matrix)[:2]
+    summaries = {}
+    for index, cell in enumerate(cells):
+        summary = _summary(offset=index / 10)
+        summary["plan_geometry"] = [{
+            "length_m": 2.0 + index,
+            "direct_distance_m": 1.0,
+            "detour_ratio": 2.0 + index,
+            "max_deviation_m": .2,
+            "self_intersections": index,
+        }]
+        summaries[cell.trial_id] = summary
+    row = aggregate_trials(cells, summaries)[0]
+    assert row["plan_geometry"]["self_intersections"]["max"] == 1
+    assert row["plan_geometry"]["detour_ratio"]["median"] == pytest.approx(2.5)
+
+
 def test_one_continuous_sample_has_no_artificial_p95():
     assert continuous_summary([.2])["p95"] is None
 

@@ -67,3 +67,12 @@ def test_transition_does_not_count_cross_plan_intersections_as_self_intersection
     assert metrics["self_intersections_note"] == (
         "not computed across independent plans"
     )
+
+
+def test_plan_metrics_include_geometry_quality_without_changing_topology_metric():
+    from salus_evaluation.chunk_continuity_runner import _plan_metrics
+
+    metrics = _plan_metrics(((0.0, 0.0), (1.0, 0.0), (2.0, 0.0)),
+                            ((0.0, 0.0), (2.0, 0.0)))
+    assert metrics["self_intersections"] == 0
+    assert metrics["geometry_quality"]["total_heading_variation_rad"] == 0.0
