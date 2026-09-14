@@ -27,6 +27,8 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_real_observation_launch test/test_real_observation_launch.py)
   ament_add_pytest_test(
+    test_ros_observability_probe test/test_ros_observability_probe.py)
+  ament_add_pytest_test(
     test_real_stack_integration test/test_real_stack_integration.py)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
