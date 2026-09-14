@@ -108,7 +108,7 @@ def _details(event):
     """Decode NavEvent key/value details, including JSON values."""
     result = {item.key: item.value for item in event.details}
     for key in ("input_indices", "synthetic_offsets", "yaws_deg", "poses_xy",
-                "robot_xy"):
+                "robot_xy", "goal_generation"):
         if key not in result:
             continue
         try:
@@ -200,8 +200,6 @@ def _transition_metrics(first_plan, second_plan, reference):
     """Measure path geometry and heading continuity at a chunk transition."""
     if not first_plan or not second_plan:
         return {"available": False, "reason": "both chunk plans were not observed"}
-    combined = tuple(first_plan) + tuple(second_plan)
-    geometry = path_geometry_metrics(combined, reference)
     geometry_a = path_geometry_metrics(first_plan, reference)
     geometry_b = path_geometry_metrics(second_plan, reference)
     incoming = _segment_heading(first_plan, at_end=True)
@@ -215,15 +213,14 @@ def _transition_metrics(first_plan, second_plan, reference):
         "available": True,
         "length_plan_A_m": geometry_a.length_m,
         "length_plan_B_m": geometry_b.length_m,
-        "length_total_m": geometry.length_m,
+        "length_total_executable_estimated_m": (
+            geometry_a.length_m + geometry_b.length_m
+        ),
         "self_intersections_plan_A": geometry_a.self_intersections,
         "self_intersections_plan_B": geometry_b.self_intersections,
         "cross_intersections_A_B": _cross_intersections(first_plan, second_plan),
-        "length_m": geometry.length_m,
-        "direct_distance_m": geometry.direct_distance_m,
-        "detour_ratio": geometry.detour_ratio,
-        "max_deviation_m": geometry.max_deviation_m,
-        "self_intersections": geometry.self_intersections,
+        "self_intersections": None,
+        "self_intersections_note": "not computed across independent plans",
         "heading_final_A_rad": incoming,
         "heading_initial_B_rad": outgoing,
         "distance_final_A_to_initial_B_m": boundary_distance,
@@ -232,6 +229,91 @@ def _transition_metrics(first_plan, second_plan, reference):
         "outgoing_heading_rad": outgoing,
         "heading_change_rad": heading_change,
         "heading_change_deg": math.degrees(heading_change),
+    }
+
+
+def _nearest_odom(samples, stamp_s):
+    """Return the global odometry sample closest to a ROS timestamp."""
+    if not samples:
+        return None
+    return min(samples, key=lambda item: abs(item["stamp_s"] - stamp_s))
+
+
+def _goal_generation(record):
+    """Return a goal generation from an event record, if present."""
+    value = record.get("details", {}).get("goal_generation")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _chunk_windows(dispatches, events, plans, odometry, reference):
+    """Associate every chunk dispatch with its goal and all plans in that window."""
+    windows = []
+    result_codes = {
+        "GOAL_RESULT_SUCCEEDED", "GOAL_RESULT_ABORTED", "GOAL_CANCELLED",
+    }
+    for index, dispatch in enumerate(dispatches):
+        start_s = dispatch["stamp_s"]
+        next_dispatch_s = (
+            dispatches[index + 1]["stamp_s"]
+            if index + 1 < len(dispatches) else float("inf")
+        )
+        accepted = next((event for event in events
+                         if event["code"] == "GOAL_ACCEPTED"
+                         and start_s <= event["stamp_s"] < next_dispatch_s), None)
+        generation = None if accepted is None else _goal_generation(accepted)
+        result = next((event for event in events
+                       if event["code"] in result_codes
+                       and event["stamp_s"] >= start_s
+                       and event["stamp_s"] < next_dispatch_s
+                       and (generation is None
+                            or _goal_generation(event) == generation)), None)
+        end_s = min(next_dispatch_s, result["stamp_s"] if result else next_dispatch_s)
+        window_plans = [item for item in plans
+                        if start_s <= item["stamp_s"] < end_s]
+        plan_records = []
+        for plan_index, item in enumerate(window_plans):
+            plan_records.append({
+                "plan_index": plan_index,
+                "stamp_s": item["stamp_s"],
+                "points": item["points"],
+                "odometry_global_near_plan": _nearest_odom(
+                    odometry, item["stamp_s"]
+                ),
+                "metrics": _plan_metrics(item["points"], reference),
+            })
+        windows.append({
+            "chunk_id": dispatch.get("chunk_id"),
+            "dispatch_stamp_s": start_s,
+            "dispatch": dispatch,
+            "goal_accepted": accepted,
+            "goal_generation": generation,
+            "goal_result": result,
+            "result_stamp_s": None if result is None else result["stamp_s"],
+            "odometry_global_near_dispatch": _nearest_odom(odometry, start_s),
+            "odometry_global_near_result": (
+                None if result is None
+                else _nearest_odom(odometry, result["stamp_s"])
+            ),
+            "plans": plan_records,
+        })
+    return windows
+
+
+def _plan_metrics(points, reference):
+    """Return geometry metrics for one independent Nav2 plan."""
+    if not points:
+        return {"available": False, "reason": "empty plan"}
+    geometry = path_geometry_metrics(points, reference or points)
+    return {
+        "available": True,
+        "length_m": geometry.length_m,
+        "direct_distance_m": geometry.direct_distance_m,
+        "detour_ratio": geometry.detour_ratio,
+        "max_deviation_m": geometry.max_deviation_m,
+        "self_intersections": geometry.self_intersections,
     }
 
 
@@ -325,10 +407,7 @@ class ChunkContinuityRunner(Node):
             robot_xy = details.get("robot_xy")
             robot_pose = None
             if isinstance(robot_xy, list) and len(robot_xy) == 2:
-                prior = [item for item in self.odom
-                         if item["stamp_s"] <= record["stamp_s"]]
-                robot_pose = (min(prior, key=lambda item: abs(
-                    item["stamp_s"] - record["stamp_s"])) if prior else None)
+                robot_pose = _nearest_odom(self.odom, record["stamp_s"])
             self.dispatches.append({
                 **record,
                 "chunk_id": details.get("chunk_id", record["event_id"]),
@@ -386,15 +465,6 @@ class ChunkContinuityRunner(Node):
         request.chunk_max_waypoints = ROUTE_CHUNK_MAX_WAYPOINTS
         return request
 
-    def _plans_for_dispatch(self, index):
-        dispatch = self.dispatches[index]
-        start = dispatch["stamp_s"]
-        end = (self.dispatches[index + 1]["stamp_s"]
-               if index + 1 < len(self.dispatches) else float("inf"))
-        candidates = [item for item in self.plans
-                      if start <= item["stamp_s"] < end]
-        return candidates[-1] if candidates else None
-
     def _wait_for_transition(self, timeout_s=105.0):
         def ready():
             if len(self.dispatches) >= 2:
@@ -408,8 +478,7 @@ class ChunkContinuityRunner(Node):
         self._spin_wait(ready, timeout_s,
                         "productive route_executor did not dispatch chunk B")
         self._spin_wait(
-            lambda: self._plans_for_dispatch(0) is not None
-            and self._plans_for_dispatch(1) is not None,
+            lambda: len(self.plans) >= 2,
             15.0,
             "did not observe /plan for both route chunks",
         )
@@ -443,30 +512,31 @@ class ChunkContinuityRunner(Node):
     def _summary(self, origin):
         mission_path = self.mission_paths[-1]["points"] if self.mission_paths else ()
         active_paths = [item["points"] for item in self.active_chunks]
-        plans = [self._plans_for_dispatch(index) for index in range(len(self.dispatches))]
-        first_plan = () if not plans[0] else plans[0]["points"]
-        second_plan = () if len(plans) < 2 or not plans[1] else plans[1]["points"]
         route_reference = tuple(mission_path) or tuple(self.reference)
+        windows = _chunk_windows(
+            self.dispatches, self.events, self.plans, self.odom, route_reference
+        )
+        first_window_plans = windows[0]["plans"] if windows else []
+        second_window_plans = windows[1]["plans"] if len(windows) > 1 else []
+        # Use final A and first B only for boundary continuity; all plans stay
+        # represented in chunk_windows.
+        first_plan = first_window_plans[-1]["points"] if first_window_plans else ()
+        second_plan = second_window_plans[0]["points"] if second_window_plans else ()
         transition = _transition_metrics(first_plan, second_plan, route_reference)
-        dispatch_a = self.dispatches[0] if self.dispatches else None
         dispatch_b = self.dispatches[1] if len(self.dispatches) > 1 else None
-        a_stamp = None if dispatch_a is None else dispatch_a["stamp_s"]
-        b_stamp = None if dispatch_b is None else dispatch_b["stamp_s"]
-        terminal_a = [item for item in self.events
-                      if a_stamp is not None and b_stamp is not None
-                      and a_stamp < item["stamp_s"] < b_stamp
-                      and item["code"] in (
-                          "GOAL_RESULT_SUCCEEDED", "GOAL_RESULT_ABORTED",
-                          "GOAL_CANCELLED")]
+        terminal_a = []
+        if windows and windows[0]["goal_result"] is not None:
+            terminal_a = [windows[0]["goal_result"]]
         route_events = [item for item in self.events
                         if item["code"].startswith("ROUTE_")]
         summary = {
             "schema_version": 3,
             "reason": "productive_route_executor_chunk_continuity",
             "conclusion": (
-                "REPRODUCED" if transition.get("available") and terminal_a
+                "OBSERVED_PARTIAL" if transition.get("available") and terminal_a
                 else "NOT_REPRODUCED/INCONCLUSIVE"
             ),
+            "classification": "INCONCLUSIVE",
             "terminal_status": None,
             "errors": [],
             "route_executor": {
@@ -489,9 +559,10 @@ class ChunkContinuityRunner(Node):
                 "route_events": route_events,
                 "terminal_chunk_a_events": terminal_a,
                 "chunk_b_dispatch": dispatch_b,
+                "chunk_windows": windows,
             },
             "transition": transition,
-            "plans": [item for item in plans if item is not None],
+            "plans": self.plans,
             "observed_metrics": {
                 "active_chunk_count": len(active_paths),
                 "dispatch_count": len(self.dispatches),

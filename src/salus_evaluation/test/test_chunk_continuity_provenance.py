@@ -1,0 +1,69 @@
+from salus_evaluation.chunk_continuity_runner import (
+    _chunk_windows,
+    _transition_metrics,
+)
+
+
+def _event(stamp, code, generation=None):
+    details = {}
+    if generation is not None:
+        details["goal_generation"] = str(generation)
+    return {"stamp_s": stamp, "code": code, "details": details}
+
+
+def _plan(stamp, points):
+    return {"stamp_s": stamp, "points": points}
+
+
+def test_chunk_windows_keep_all_plans_and_match_goal_generation():
+    dispatches = [
+        {"chunk_id": "A", "stamp_s": 1.0},
+        {"chunk_id": "B", "stamp_s": 5.0},
+    ]
+    events = [
+        _event(1.1, "GOAL_ACCEPTED", 7),
+        _event(4.0, "GOAL_RESULT_SUCCEEDED", 7),
+        _event(5.1, "GOAL_ACCEPTED", 8),
+        _event(8.0, "GOAL_RESULT_ABORTED", 8),
+    ]
+    plans = [
+        _plan(1.5, ((0.0, 0.0), (1.0, 0.0))),
+        _plan(2.0, ((0.0, 0.0), (1.0, 0.1))),
+        _plan(3.5, ((0.0, 0.0), (1.0, 0.2))),
+        _plan(5.2, ((1.0, 0.0), (2.0, 0.0))),
+        _plan(6.0, ((1.0, 0.0), (2.0, 0.1))),
+    ]
+    odometry = [
+        {"stamp_s": 1.0, "x_m": 0.0, "y_m": 0.0, "yaw_rad": 0.0},
+        {"stamp_s": 2.1, "x_m": 0.3, "y_m": 0.0, "yaw_rad": 0.1},
+        {"stamp_s": 4.1, "x_m": 0.8, "y_m": 0.0, "yaw_rad": 0.2},
+        {"stamp_s": 5.0, "x_m": 1.0, "y_m": 0.0, "yaw_rad": 0.3},
+        {"stamp_s": 6.1, "x_m": 1.4, "y_m": 0.0, "yaw_rad": 0.4},
+    ]
+
+    windows = _chunk_windows(
+        dispatches, events, plans, odometry, ((0.0, 0.0), (2.0, 0.0))
+    )
+
+    assert [len(window["plans"]) for window in windows] == [3, 2]
+    assert windows[0]["goal_generation"] == 7
+    assert windows[0]["goal_result"]["code"] == "GOAL_RESULT_SUCCEEDED"
+    assert windows[1]["goal_generation"] == 8
+    assert windows[0]["plans"][1]["odometry_global_near_plan"]["stamp_s"] == 2.1
+    assert windows[0]["odometry_global_near_dispatch"]["stamp_s"] == 1.0
+    assert windows[0]["odometry_global_near_result"]["stamp_s"] == 4.1
+
+
+def test_transition_does_not_count_cross_plan_intersections_as_self_intersections():
+    plan_a = ((0.0, 0.0), (2.0, 2.0))
+    plan_b = ((0.0, 2.0), (2.0, 0.0))
+
+    metrics = _transition_metrics(plan_a, plan_b, ((0.0, 0.0), (2.0, 0.0)))
+
+    assert metrics["self_intersections_plan_A"] == 0
+    assert metrics["self_intersections_plan_B"] == 0
+    assert metrics["cross_intersections_A_B"] == 1
+    assert metrics["self_intersections"] is None
+    assert metrics["self_intersections_note"] == (
+        "not computed across independent plans"
+    )
