@@ -17,9 +17,7 @@ import yaml
 SCHEMA_VERSION = 1
 EFFECTIVE_SPEED_TOLERANCE_MPS = 1.0e-6
 SIM_SENSOR_PROFILES = ("clean", "independent_nominal", "degraded")
-CHUNK_POLICIES = (
-    "terminal_incoming", "legacy_outgoing", "shared_tangent", "lookahead",
-)
+CHUNK_POLICIES = ("terminal_incoming",)
 
 
 def parse_effective_speed(readback):

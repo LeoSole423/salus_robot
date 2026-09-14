@@ -1,313 +1,548 @@
-"""Observer-only Nav2 experiment for continuity at a wide route boundary."""
+"""Observe productive route_executor continuity across a wide-turn boundary."""
 
 from __future__ import annotations
 
+import json
 import math
 import sys
 import time
 
 import rclpy
-from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import PoseStamped
-from nav2_msgs.action import NavigateThroughPoses
 from nav_msgs.msg import Odometry, Path as NavPath
-from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.parameter import Parameter
+from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry
+from salus_interfaces.srv import (
+    CancelRouteMission, GetRouteMissionState, SetRouteMissionLL,
+)
 from std_msgs.msg import String
 
 from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
-from .evaluation_runner import _status_snapshot
-from .gates import functional_gates, performance_gate
-from .metrics import (angle_delta, arrival_metrics, command_response_sign,
-                      localization_metrics, saturation_intervals,
-                      steering_margin_summary, tracking_metrics)
-from .models import ExpectedTurn, Pose2D, TimedPose
+from .metrics import angle_delta
 
 
-POLICIES = {
-    "terminal_incoming", "legacy_outgoing", "shared_tangent", "lookahead",
-}
-BOUNDARY_LOOKAHEAD_M = 2.0
+CURRENT_POLICY = "terminal_incoming"
+BASE_LAT = -31.4858037
+BASE_LON = -64.2410570
+TURN_RADIUS_M = 8.0
+BOUNDARY_TURN_DEG = 30.0
+ROUTE_SPACING_M = 1.0
+ROUTE_CHUNK_SPAN_M = 100.0
+ROUTE_CHUNK_MAX_WAYPOINTS = 20
 
 
 def _yaw(quaternion):
-    return math.atan2(2.0 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y),
-                      1.0 - 2.0 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z))
+    """Extract planar yaw from a quaternion."""
+    return math.atan2(
+        2.0 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y),
+        1.0 - 2.0 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z),
+    )
 
 
 def _stamp(message):
-    stamp = message.header.stamp
+    """Return a ROS message timestamp in seconds."""
+    stamp = message.header.stamp if hasattr(message, "header") else message.stamp
     return float(stamp.sec) + float(stamp.nanosec) / 1e9
 
 
-def _pose_message(node, point, yaw):
-    message = PoseStamped()
-    message.header.frame_id = "map"
-    message.header.stamp = node.get_clock().now().to_msg()
-    message.pose.position.x, message.pose.position.y = point
-    message.pose.orientation.z = math.sin(yaw / 2.0)
-    message.pose.orientation.w = math.cos(yaw / 2.0)
-    return message
+def _point_path(message):
+    """Convert a nav path to finite XY points."""
+    return tuple(
+        (float(item.pose.position.x), float(item.pose.position.y))
+        for item in message.poses
+    )
 
 
-def _rotate(origin, forward, lateral, yaw):
-    return (origin[0] + forward * math.cos(yaw) - lateral * math.sin(yaw),
-            origin[1] + forward * math.sin(yaw) + lateral * math.cos(yaw))
+def _body_to_map(origin, forward, lateral):
+    """Place a body-frame point at the observed map pose."""
+    x, y, yaw = origin
+    return (
+        x + forward * math.cos(yaw) - lateral * math.sin(yaw),
+        y + forward * math.sin(yaw) + lateral * math.cos(yaw),
+    )
 
 
-def _curvature(points, center_index):
-    values = []
-    low, high = max(1, center_index - 6), min(len(points) - 1, center_index + 6)
-    for index in range(low, high):
-        first, middle, last = points[index - 1:index + 2]
-        first_heading = math.atan2(middle[1] - first[1], middle[0] - first[0])
-        second_heading = math.atan2(last[1] - middle[1], last[0] - middle[0])
-        scale = (math.hypot(middle[0] - first[0], middle[1] - first[1])
-                 + math.hypot(last[0] - middle[0], last[1] - middle[1])) / 2.0
-        if scale > 1e-9:
-            values.append(abs(angle_delta(second_heading, first_heading)) / scale)
-    return max(values, default=None), max(
-        (abs(angle_delta(
-            math.atan2(points[index + 1][1] - points[index][1],
-                       points[index + 1][0] - points[index][0]),
-            math.atan2(points[index][1] - points[index - 1][1],
-                       points[index][0] - points[index - 1][0])))
-         for index in range(low, high)), default=None)
+def _wide_turn_route(origin):
+    """Construct a broad ninety-degree left-turn route."""
+    # The first chunk ends at the 30-degree checkpoint. Its successor segment
+    # is still inside the broad turn, making the boundary causal rather than a
+    # separate straight-line goal experiment.
+    center_forward = 1.5
+    points = []
+    for degrees in (-90.0, -60.0, -30.0, 0.0):
+        theta = math.radians(degrees)
+        points.append(_body_to_map(
+            origin,
+            center_forward + TURN_RADIUS_M * math.cos(theta),
+            TURN_RADIUS_M + TURN_RADIUS_M * math.sin(theta),
+        ))
+    return points
 
 
-def _boundary_metrics(first, second, boundary):
-    if len(first) < 2 or len(second) < 2:
-        return {"boundary_heading_jump_rad": None,
-                "boundary_max_curvature_per_m": None,
-                "boundary_max_heading_step_rad": None}
-    incoming = math.atan2(first[-1][1] - first[-2][1], first[-1][0] - first[-2][0])
-    outgoing = math.atan2(second[1][1] - second[0][1], second[1][0] - second[0][0])
-    combined = tuple(first) + tuple(second)
-    nearest = min(range(len(combined)),
-                  key=lambda index: math.hypot(combined[index][0] - boundary[0],
-                                               combined[index][1] - boundary[1]))
-    curvature, heading_step = _curvature(combined, min(max(1, nearest), len(combined) - 2))
+def _local_to_ll(point):
+    """Use the simulation datum conversion used by the existing route smoke."""
+    x, y = point
+    return (
+        BASE_LAT + y / 111320.0,
+        BASE_LON + x / (111320.0 * math.cos(math.radians(BASE_LAT))),
+    )
+
+
+def _finite_pose(message):
+    """Return a serializable pose sample."""
+    pose = message.pose.pose
+    values = (pose.position.x, pose.position.y, _yaw(pose.orientation))
+    if not all(math.isfinite(float(value)) for value in values):
+        return None
     return {
-        "boundary_incoming_realized_rad": incoming,
-        "boundary_outgoing_realized_rad": outgoing,
-        "boundary_heading_jump_rad": abs(angle_delta(outgoing, incoming)),
-        "boundary_max_curvature_per_m": curvature,
-        "boundary_max_heading_step_rad": heading_step,
+        "stamp_s": _stamp(message),
+        "x_m": float(values[0]),
+        "y_m": float(values[1]),
+        "yaw_rad": float(values[2]),
+    }
+
+
+def _details(event):
+    """Decode NavEvent key/value details, including JSON values."""
+    result = {item.key: item.value for item in event.details}
+    for key in ("input_indices", "synthetic_offsets", "yaws_deg", "poses_xy",
+                "robot_xy"):
+        if key not in result:
+            continue
+        try:
+            result[key] = json.loads(result[key])
+        except (TypeError, ValueError):
+            pass
+    return result
+
+
+def _event_record(event):
+    """Return the event fields needed for causal correlation."""
+    return {
+        "stamp_s": _stamp(event),
+        "event_id": int(event.event_id),
+        "severity": int(event.severity),
+        "component": str(event.component),
+        "code": str(event.code),
+        "message": str(event.message),
+        "details": _details(event),
+    }
+
+
+def _segment_heading(points, at_end=False):
+    """Get a realized polyline heading at its incoming or outgoing edge."""
+    if len(points) < 2:
+        return None
+    first, second = (points[-2], points[-1]) if at_end else (points[0], points[1])
+    return math.atan2(second[1] - first[1], second[0] - first[0])
+
+
+def _orientation(first, second, third):
+    """Return the signed area used by the segment crossing test."""
+    return ((second[0] - first[0]) * (third[1] - first[1])
+            - (second[1] - first[1]) * (third[0] - first[0]))
+
+
+def _on_segment(first, point, last):
+    """Return whether a collinear point is inside a segment."""
+    return (min(first[0], last[0]) - 1e-9 <= point[0] <= max(first[0], last[0]) + 1e-9
+            and min(first[1], last[1]) - 1e-9 <= point[1] <= max(first[1], last[1]) + 1e-9)
+
+
+def _segments_intersect(first, second):
+    """Return whether two closed XY segments intersect."""
+    a, b = first
+    c, d = second
+    values = (_orientation(a, b, c), _orientation(a, b, d),
+              _orientation(c, d, a), _orientation(c, d, b))
+    if ((values[0] > 1e-9 and values[1] < -1e-9
+         or values[0] < -1e-9 and values[1] > 1e-9)
+            and (values[2] > 1e-9 and values[3] < -1e-9
+                 or values[2] < -1e-9 and values[3] > 1e-9)):
+        return True
+    return any(abs(value) <= 1e-9 and _on_segment(start, middle, end)
+               for value, start, middle, end in (
+                   (values[0], a, c, b), (values[1], a, d, b),
+                   (values[2], c, a, d), (values[3], c, b, d)))
+
+
+def _polyline_length(points):
+    """Return the length of a finite XY polyline."""
+    return sum(math.hypot(end[0] - start[0], end[1] - start[1])
+               for start, end in zip(points, points[1:]))
+
+
+def _self_intersections(points):
+    """Count non-adjacent self-intersections within one plan."""
+    segments = tuple(zip(points, points[1:]))
+    return sum(
+        _segments_intersect(first, second)
+        for index, first in enumerate(segments)
+        for second in segments[index + 2:]
+        if not set(first).intersection(second)
+    )
+
+
+def _cross_intersections(first, second):
+    """Count crossings between plan A and plan B, excluding shared joins."""
+    first_segments = tuple(zip(first, first[1:]))
+    second_segments = tuple(zip(second, second[1:]))
+    return sum(
+        _segments_intersect(left, right)
+        for left in first_segments for right in second_segments
+        if not set(left).intersection(right)
+    )
+
+
+def _transition_metrics(first_plan, second_plan, reference):
+    """Measure path geometry and heading continuity at a chunk transition."""
+    if not first_plan or not second_plan:
+        return {"available": False, "reason": "both chunk plans were not observed"}
+    combined = tuple(first_plan) + tuple(second_plan)
+    geometry = path_geometry_metrics(combined, reference)
+    geometry_a = path_geometry_metrics(first_plan, reference)
+    geometry_b = path_geometry_metrics(second_plan, reference)
+    incoming = _segment_heading(first_plan, at_end=True)
+    outgoing = _segment_heading(second_plan)
+    heading_change = abs(angle_delta(outgoing, incoming))
+    boundary_distance = math.hypot(
+        second_plan[0][0] - first_plan[-1][0],
+        second_plan[0][1] - first_plan[-1][1],
+    )
+    return {
+        "available": True,
+        "length_plan_A_m": geometry_a.length_m,
+        "length_plan_B_m": geometry_b.length_m,
+        "length_total_m": geometry.length_m,
+        "self_intersections_plan_A": geometry_a.self_intersections,
+        "self_intersections_plan_B": geometry_b.self_intersections,
+        "cross_intersections_A_B": _cross_intersections(first_plan, second_plan),
+        "length_m": geometry.length_m,
+        "direct_distance_m": geometry.direct_distance_m,
+        "detour_ratio": geometry.detour_ratio,
+        "max_deviation_m": geometry.max_deviation_m,
+        "self_intersections": geometry.self_intersections,
+        "heading_final_A_rad": incoming,
+        "heading_initial_B_rad": outgoing,
+        "distance_final_A_to_initial_B_m": boundary_distance,
+        "boundary_angular_discontinuity_rad": heading_change,
+        "incoming_heading_rad": incoming,
+        "outgoing_heading_rad": outgoing,
+        "heading_change_rad": heading_change,
+        "heading_change_deg": math.degrees(heading_change),
     }
 
 
 class ChunkContinuityRunner(Node):
-    """Run two sequential Nav2 chunks while only observing control outputs."""
+    """Drive one route through the public route_executor service and observe it."""
 
     def __init__(self):
-        super().__init__("navigation_chunk_continuity")
+        super().__init__(
+            "navigation_chunk_continuity",
+            parameter_overrides=[Parameter("use_sim_time", value=True)],
+        )
         self.declare_parameter("output_dir", "")
-        self.declare_parameter("chunk_policy", "")
+        self.declare_parameter("chunk_policy", CURRENT_POLICY)
         self.declare_parameter("scenario", "")
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.policy = str(self.get_parameter("chunk_policy").value)
-        if not self.output_dir or self.policy not in POLICIES:
-            raise ValueError("output_dir and an approved chunk_policy are required")
+        if not self.output_dir:
+            raise ValueError("output_dir is required")
+        if self.policy != CURRENT_POLICY:
+            raise ValueError("Track 3 runner only accepts CURRENT/terminal_incoming")
+
         self.odom = []
         self.raw_odom = []
+        self.mission_paths = []
+        self.active_chunks = []
         self.plans = []
-        self.statuses = []
-        self.plan_action = ActionClient(self, NavigateThroughPoses,
-                                        "/navigate_through_poses")
-        self.create_subscription(Odometry, "/odometry/global", self._odom, 50)
-        self.create_subscription(Odometry, "/odom_raw", self._raw, 50)
-        self.create_subscription(NavPath, "/plan", self._plan, 20)
-        self.create_subscription(String, "/controller/status", self._status, 20)
-        self.started_at = None
-        self.origin = None
+        self.events = []
+        self.telemetry = []
+        self.controller_status = []
+        self.final_commands = []
+        self.set_route = self.create_client(
+            SetRouteMissionLL, "/route_executor/set_route_mission_ll"
+        )
+        self.get_state = self.create_client(
+            GetRouteMissionState, "/route_executor/get_route_mission_state"
+        )
+        self.cancel_route = self.create_client(
+            CancelRouteMission, "/route_executor/cancel_route_mission"
+        )
         self.reference = None
-        self.boundary = None
-        self.incoming_yaw = None
-        self.outgoing_yaw = None
-        self.goals = None
-        self.first_result = None
-        self.second_result = None
-        self.first_plan = ()
-        self.second_plan = ()
-        self.exit_code = 1
-        self.done = False
+        self.route_request = None
+        self.dispatches = []
+        self.started_at = None
+        self.last_state = None
+
+        self.create_subscription(Odometry, "/odometry/global", self._odom, 50)
+        self.create_subscription(Odometry, "/odom_raw", self._raw_odom, 50)
+        self.create_subscription(NavPath, "/route_executor/mission_path",
+                                 self._mission_path, 10)
+        self.create_subscription(NavPath, "/route_executor/active_chunk_path",
+                                 self._active_chunk, 10)
+        self.create_subscription(NavPath, "/plan", self._plan, 20)
+        self.create_subscription(NavEvent, "/nav_command_server/events",
+                                 self._event, 50)
+        self.create_subscription(NavTelemetry, "/nav_command_server/telemetry",
+                                 self.telemetry.append, 20)
+        self.create_subscription(String, "/controller/status", self._status, 20)
+        self.create_subscription(CmdVelFinal, "/cmd_vel_final",
+                                 self.final_commands.append, 50)
 
     def _odom(self, message):
-        pose = message.pose.pose
-        item = TimedPose(_stamp(message), Pose2D(pose.position.x, pose.position.y,
-                                                 _yaw(pose.orientation)),
-                         message.twist.twist.linear.x, message.twist.twist.angular.z)
-        self.odom.append(item)
-        if self.origin is None:
-            self.origin = (item.pose.x_m, item.pose.y_m, item.pose.yaw_rad)
+        sample = _finite_pose(message)
+        if sample is not None:
+            self.odom.append(sample)
 
-    def _raw(self, message):
-        pose = message.pose.pose
-        self.raw_odom.append(TimedPose(
-            _stamp(message), Pose2D(pose.position.x, pose.position.y,
-                                    _yaw(pose.orientation)),
-            message.twist.twist.linear.x, message.twist.twist.angular.z))
+    def _raw_odom(self, message):
+        sample = _finite_pose(message)
+        if sample is not None:
+            self.raw_odom.append(sample)
+
+    def _mission_path(self, message):
+        points = _point_path(message)
+        if points:
+            self.mission_paths.append({"stamp_s": _stamp(message), "points": points})
+
+    def _active_chunk(self, message):
+        points = _point_path(message)
+        if points:
+            self.active_chunks.append({"stamp_s": _stamp(message), "points": points})
 
     def _plan(self, message):
-        points = tuple((float(item.pose.position.x), float(item.pose.position.y))
-                       for item in message.poses)
+        points = _point_path(message)
         if points:
-            self.plans.append(points)
+            self.plans.append({"stamp_s": _stamp(message), "points": points})
+
+    def _event(self, message):
+        record = _event_record(message)
+        self.events.append(record)
+        if record["code"] == "ROUTE_CHUNK_DISPATCHED":
+            details = record["details"]
+            robot_xy = details.get("robot_xy")
+            robot_pose = None
+            if isinstance(robot_xy, list) and len(robot_xy) == 2:
+                prior = [item for item in self.odom
+                         if item["stamp_s"] <= record["stamp_s"]]
+                robot_pose = (min(prior, key=lambda item: abs(
+                    item["stamp_s"] - record["stamp_s"])) if prior else None)
+            self.dispatches.append({
+                **record,
+                "chunk_id": details.get("chunk_id", record["event_id"]),
+                "robot_xy_from_event": robot_xy,
+                "robot_pose_at_dispatch": robot_pose,
+                "yaws_deg": details.get("yaws_deg"),
+                "input_indices": details.get("input_indices"),
+                "synthetic_offsets": details.get("synthetic_offsets"),
+                "poses_xy": details.get("poses_xy"),
+            })
 
     def _status(self, message):
         try:
-            payload = __import__("json").loads(message.data)
+            payload = json.loads(message.data)
         except (TypeError, ValueError):
             return
-        snapshot = _status_snapshot(self.get_clock().now().nanoseconds / 1e9, payload)
-        if snapshot is not None:
-            self.statuses.append(snapshot)
+        if isinstance(payload, dict):
+            self.controller_status.append({
+                "stamp_s": self.get_clock().now().nanoseconds / 1e9,
+                "payload": payload,
+            })
 
-    def _wait(self, predicate, timeout_s, label):
+    def _spin_wait(self, predicate, timeout_s, label):
         deadline = time.monotonic() + timeout_s
         while rclpy.ok() and not predicate():
             if time.monotonic() >= deadline:
-                raise RuntimeError(label)
+                raise TimeoutError(label)
             rclpy.spin_once(self, timeout_sec=0.1)
 
-    def _send(self, points, yaws, label):
-        goal = NavigateThroughPoses.Goal()
-        goal.poses = [_pose_message(self, point, yaw)
-                      for point, yaw in zip(points, yaws)]
-        future = self.plan_action.send_goal_async(goal)
-        self._wait(future.done, 15.0, f"{label} goal request timed out")
-        handle = future.result()
-        if handle is None or not handle.accepted:
-            raise RuntimeError(f"{label} goal rejected")
-        result = handle.get_result_async()
-        self._wait(result.done, 100.0, f"{label} action timed out")
-        return result.result().status
+    def _call(self, client, request, timeout_s=10.0):
+        self._spin_wait(client.service_is_ready, timeout_s,
+                        f"service unavailable: {client.srv_name}")
+        future = client.call_async(request)
+        self._spin_wait(future.done, timeout_s,
+                        f"service call timed out: {client.srv_name}")
+        response = future.result()
+        if response is None:
+            raise RuntimeError(f"empty response: {client.srv_name}")
+        return response
 
-    def _prepare(self):
-        self._wait(lambda: self.origin is not None and self.plan_action.server_is_ready(),
-                   90.0, "Nav2 readiness timed out")
-        x, y, yaw = self.origin
-        self.reference = [_rotate((x, y), 4.0, 0.0, yaw),
-                          _rotate((x, y), 8.0, 0.0, yaw),
-                          _rotate((x, y), 8.0, 8.0, yaw)]
-        self.boundary = self.reference[1]
-        lookahead = _rotate(self.boundary, 2.0, 0.0, yaw + math.pi / 2.0)
-        self.incoming_yaw, self.outgoing_yaw = yaw, yaw + math.pi / 2.0
-        shared = self.incoming_yaw + math.pi / 4.0
-        terminal = {
-            "terminal_incoming": self.incoming_yaw,
-            "legacy_outgoing": self.outgoing_yaw,
-            "shared_tangent": shared,
-            "lookahead": self.incoming_yaw,
-        }[self.policy]
-        first_points = [self.reference[0], self.reference[1]]
-        first_yaws = [self.incoming_yaw, terminal]
-        if self.policy == "lookahead":
-            first_points.append(lookahead)
-            first_yaws.append(self.outgoing_yaw)
-        self.goals = (first_points, first_yaws, [self.reference[2]], [self.outgoing_yaw])
-        self._wait(lambda: len(self.odom) >= 2, 5.0, "odometry did not become progressive")
+    def _state(self):
+        return self._call(self.get_state, GetRouteMissionState.Request())
+
+    def _request(self, points):
+        request = SetRouteMissionLL.Request()
+        converted = [_local_to_ll(point) for point in points]
+        request.lats = [item[0] for item in converted]
+        request.lons = [item[1] for item in converted]
+        request.yaws_deg = [float("nan")] * len(points)
+        request.waypoint_action_jsons = []
+        request.waypoint_roles = []
+        request.loop = False
+        request.leg_spacing_m = ROUTE_SPACING_M
+        request.chunk_span_m = ROUTE_CHUNK_SPAN_M
+        request.chunk_max_waypoints = ROUTE_CHUNK_MAX_WAYPOINTS
+        return request
+
+    def _plans_for_dispatch(self, index):
+        dispatch = self.dispatches[index]
+        start = dispatch["stamp_s"]
+        end = (self.dispatches[index + 1]["stamp_s"]
+               if index + 1 < len(self.dispatches) else float("inf"))
+        candidates = [item for item in self.plans
+                      if start <= item["stamp_s"] < end]
+        return candidates[-1] if candidates else None
+
+    def _wait_for_transition(self, timeout_s=105.0):
+        def ready():
+            if len(self.dispatches) >= 2:
+                return True
+            try:
+                self.last_state = self._state()
+            except (RuntimeError, TimeoutError):
+                return False
+            return False
+
+        self._spin_wait(ready, timeout_s,
+                        "productive route_executor did not dispatch chunk B")
+        self._spin_wait(
+            lambda: self._plans_for_dispatch(0) is not None
+            and self._plans_for_dispatch(1) is not None,
+            15.0,
+            "did not observe /plan for both route chunks",
+        )
 
     def run(self):
-        self._prepare()
+        self._spin_wait(lambda: bool(self.odom), 30.0,
+                        "global odometry unavailable")
+        origin_sample = self.odom[-1]
+        origin = (origin_sample["x_m"], origin_sample["y_m"], origin_sample["yaw_rad"])
+        self.reference = _wide_turn_route(origin)
+        self.route_request = self._request(self.reference)
         self.started_at = self.get_clock().now().nanoseconds / 1e9
-        plan_count = len(self.plans)
-        self.first_result = self._send(*self.goals[:2], "first chunk")
-        self._wait(lambda: len(self.plans) > plan_count, 10.0,
-                   "first chunk produced no plan")
-        self.first_plan = self.plans[-1]
-        plan_count = len(self.plans)
-        if self.first_result == GoalStatus.STATUS_SUCCEEDED:
-            self.second_result = self._send(*self.goals[2:], "second chunk")
-            self._wait(lambda: len(self.plans) > plan_count, 10.0,
-                       "second chunk produced no plan")
-            self.second_plan = self.plans[-1]
-        self._finish()
+        response = self._call(self.set_route, self.route_request)
+        if not response.ok:
+            raise RuntimeError(f"route_executor rejected mission: {response.error}")
+        self._wait_for_transition()
+        # Allow callbacks after dispatch B to settle, then cancel through the
+        # public service so no evaluator-owned action is involved.
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        cancel = self._call(self.cancel_route, CancelRouteMission.Request())
+        if not cancel.ok:
+            raise RuntimeError(f"route cancellation failed: {cancel.error}")
+        self._spin_wait(
+            lambda: self._state().status == "CANCELLED", 8.0,
+            "route_executor did not reach CANCELLED after observation",
+        )
+        return self._summary(origin)
 
-    def _finish(self):
-        poses = tuple(item for item in self.odom if item.stamp_s >= self.started_at)
-        raw = tuple(item for item in self.raw_odom if item.stamp_s >= self.started_at)
-        first = self.first_plan
-        second = self.second_plan
-        combined = tuple(first) + tuple(second)
-        geometry = path_geometry_metrics(combined, self.reference) if len(combined) >= 2 else None
-        boundary = _boundary_metrics(first, second, self.boundary)
-        statuses = tuple(item for item in self.statuses if item.stamp_s >= self.started_at)
-        tracking = (
-            tracking_metrics(poses, tuple(Pose2D(x, y, 0.0) for x, y in combined))
-            if poses and len(combined) >= 2 else None
-        )
-        goal = Pose2D(*self.reference[2], self.outgoing_yaw)
-        arrival = arrival_metrics(poses, goal, 1.2) if poses else None
-        finite = all(math.isfinite(value) for item in poses
-                     for value in (item.stamp_s, item.pose.x_m, item.pose.y_m,
-                                   item.pose.yaw_rad))
-        signs = command_response_sign((), poses)
-        gates = functional_gates(
-            finite_data=finite and bool(combined), plan_present=bool(combined),
-            terminal_success=(self.first_result == GoalStatus.STATUS_SUCCEEDED and
-                              self.second_result == GoalStatus.STATUS_SUCCEEDED),
-            final_distance_m=arrival.final_distance_m if arrival else float("inf"),
-            tolerance_m=1.2, sign_metrics=signs, reverse_observed=any(
-                item.linear_x_mps < -0.01 for item in poses), reverse_allowed=False,
-            expected_turn=ExpectedTurn.ANY,
-            require_turn_expectation=False,
-        )
-        saturation = saturation_intervals(statuses)
-        margin = steering_margin_summary(statuses)
+    def _summary(self, origin):
+        mission_path = self.mission_paths[-1]["points"] if self.mission_paths else ()
+        active_paths = [item["points"] for item in self.active_chunks]
+        plans = [self._plans_for_dispatch(index) for index in range(len(self.dispatches))]
+        first_plan = () if not plans[0] else plans[0]["points"]
+        second_plan = () if len(plans) < 2 or not plans[1] else plans[1]["points"]
+        route_reference = tuple(mission_path) or tuple(self.reference)
+        transition = _transition_metrics(first_plan, second_plan, route_reference)
+        dispatch_a = self.dispatches[0] if self.dispatches else None
+        dispatch_b = self.dispatches[1] if len(self.dispatches) > 1 else None
+        a_stamp = None if dispatch_a is None else dispatch_a["stamp_s"]
+        b_stamp = None if dispatch_b is None else dispatch_b["stamp_s"]
+        terminal_a = [item for item in self.events
+                      if a_stamp is not None and b_stamp is not None
+                      and a_stamp < item["stamp_s"] < b_stamp
+                      and item["code"] in (
+                          "GOAL_RESULT_SUCCEEDED", "GOAL_RESULT_ABORTED",
+                          "GOAL_CANCELLED")]
+        route_events = [item for item in self.events
+                        if item["code"].startswith("ROUTE_")]
         summary = {
-            "schema_version": 2,
-            "reason": "chunk_continuity",
-            "terminal_status": self.second_result or self.first_result,
-            "goal": goal,
-            "metrics": tracking,
-            "arrival": arrival,
-            "operational_tolerance_m": 1.2,
-            "precision": {"target_m": 0.25, "state": "calibrating",
-                          "final_error_m": arrival.final_distance_m if arrival else None},
-            "localization": localization_metrics(raw, poses) if raw and poses else None,
-            "sign": signs,
-            "gates": gates,
-            "performance": [performance_gate(
-                "boundary_heading_jump_rad",
-                boundary.get("boundary_heading_jump_rad") or float("inf"))],
+            "schema_version": 3,
+            "reason": "productive_route_executor_chunk_continuity",
+            "conclusion": (
+                "REPRODUCED" if transition.get("available") and terminal_a
+                else "NOT_REPRODUCED/INCONCLUSIVE"
+            ),
+            "terminal_status": None,
             "errors": [],
-            "replans": max(0, len(self.plans) - 2),
-            "command_chain": {"steering_saturation": saturation,
-                              "steering_margin": margin},
-            "chunk_continuity": {
-                "policy": self.policy,
-                "length_m": geometry.length_m if geometry else None,
-                "direct_distance_m": geometry.direct_distance_m if geometry else None,
-                "detour_ratio": geometry.detour_ratio if geometry else None,
-                "max_deviation_m": geometry.max_deviation_m if geometry else None,
-                "self_intersections": geometry.self_intersections if geometry else None,
-                **boundary,
-                "steering_saturation_intervals": saturation["interval_count"],
-                "first_chunk_status": self.first_result,
-                "second_chunk_status": self.second_result,
+            "route_executor": {
+                "service": "/route_executor/set_route_mission_ll",
+                "used_productive_service": True,
+                "manual_nav2_action_used": False,
+                "route_request": {
+                    "input_waypoints": len(self.reference),
+                    "loop": False,
+                    "leg_spacing_m": ROUTE_SPACING_M,
+                    "chunk_span_m": ROUTE_CHUNK_SPAN_M,
+                    "chunk_max_waypoints": ROUTE_CHUNK_MAX_WAYPOINTS,
+                    "yaws_are_automatic_nan": True,
+                },
+                "origin_pose": origin,
+                "mission_path": mission_path,
+                "active_chunk_path_snapshots": active_paths,
+                "dispatched_yaws_deg": [item.get("yaws_deg") for item in self.dispatches],
+                "dispatches": self.dispatches,
+                "route_events": route_events,
+                "terminal_chunk_a_events": terminal_a,
+                "chunk_b_dispatch": dispatch_b,
+            },
+            "transition": transition,
+            "plans": [item for item in plans if item is not None],
+            "observed_metrics": {
+                "active_chunk_count": len(active_paths),
+                "dispatch_count": len(self.dispatches),
                 "plan_count": len(self.plans),
-                "explicit_yaws_changed": False,
-                "lookahead_synthetic": self.policy == "lookahead",
+                "odom_samples": len(self.odom),
+                "final_auto_commands": sum(
+                    int(item.source) == CmdVelFinal.SOURCE_AUTO
+                    for item in self.final_commands
+                ),
+                "final_brake_samples": sum(
+                    int(item.brake_pct) > 0 for item in self.final_commands
+                ),
             },
         }
         manifest = {
-            "schema_version": 2, "mode": "chunk_continuity",
-            "policy": self.policy, "scenario": "wide_90deg_boundary",
-            "geometry": {"leg_length_m": 8.0, "lookahead_m": BOUNDARY_LOOKAHEAD_M,
-                         "boundary_inside_wide_turn": True},
-            "planner_contract": {"motion_model_for_search": "DUBIN",
-                                 "minimum_turning_radius_m": 4.0},
-            "topics": ["/plan", "/odometry/global", "/odom_raw", "/controller/status"],
-            "streams": ["odometry_global", "odometry_raw", "controller_status"],
+            "schema_version": 3,
+            "mode": "chunk_continuity",
+            "policy": self.policy,
+            "scenario": "wide_90deg_turn_boundary_inside",
+            "route_executor_service": "/route_executor/set_route_mission_ll",
+            "manual_navigate_through_poses_action": False,
+            "geometry": {
+                "turn_radius_m": TURN_RADIUS_M,
+                "turn_angle_deg": 90.0,
+                "boundary_after_turn_deg": BOUNDARY_TURN_DEG,
+                "boundary_inside_broad_turn": True,
+                "reference_points": self.reference,
+            },
+            "topics": [
+                "/route_executor/mission_path",
+                "/route_executor/active_chunk_path",
+                "/nav_command_server/events",
+                "/plan",
+                "/odometry/global",
+                "/odom_raw",
+                "/cmd_vel_final",
+            ],
+            "streams": [
+                "odometry_global", "odometry_raw", "route_events",
+                "mission_path", "active_chunk_path", "plans",
+            ],
         }
         write_artifacts(self.output_dir, manifest, summary, {
-            "odometry_global": poses, "odometry_raw": raw, "controller_status": statuses,
+            "odometry_global": self.odom,
+            "odometry_raw": self.raw_odom,
+            "route_events": self.events,
+            "mission_path": self.mission_paths,
+            "active_chunk_path": self.active_chunks,
+            "plans": self.plans,
         })
-        self.exit_code = int(any(item.state.value == "fail" for item in gates))
-        self.done = True
+        return summary
 
 
 def main():
@@ -315,13 +550,39 @@ def main():
     node = ChunkContinuityRunner()
     try:
         node.run()
-        return node.exit_code
+        return 0
     except Exception as exc:
         node.get_logger().error(str(exc))
-        write_artifacts(node.output_dir, {
-            "schema_version": 2, "mode": "chunk_continuity", "policy": node.policy,
-        }, {"schema_version": 2, "reason": "setup_failure", "errors": [str(exc)],
-            "chunk_continuity": {"policy": node.policy}}, {})
+        write_artifacts(
+            node.output_dir,
+            {
+                "schema_version": 3,
+                "mode": "chunk_continuity",
+                "policy": node.policy,
+                "route_executor_service": "/route_executor/set_route_mission_ll",
+                "manual_navigate_through_poses_action": False,
+            },
+            {
+                "schema_version": 3,
+                "reason": "setup_or_observation_failure",
+                "conclusion": "NOT_REPRODUCED/INCONCLUSIVE",
+                "errors": [str(exc)],
+                "route_executor": {
+                    "used_productive_service": True,
+                    "manual_nav2_action_used": False,
+                    "dispatches": node.dispatches,
+                    "events": node.events,
+                },
+            },
+            {
+                "odometry_global": node.odom,
+                "odometry_raw": node.raw_odom,
+                "route_events": node.events,
+                "mission_path": node.mission_paths,
+                "active_chunk_path": node.active_chunks,
+                "plans": node.plans,
+            },
+        )
         return 1
     finally:
         node.destroy_node()

@@ -1,7 +1,7 @@
 schema_version: 1
-id: issue244_chunk_continuity_wide_turn_v1
+id: issue244_track3_current_wide_turn_v1
 evaluation_mode: chunk_continuity
-chunk_policies: [terminal_incoming, legacy_outgoing, shared_tangent, lookahead]
+chunk_policies: [terminal_incoming]
 repetitions: 2
 max_speed_mps: 0.8
 speeds_mps: [0.8]
@@ -9,4 +9,4 @@ cases:
   - id: wide_turn_boundary
     scenario: scenarios/left_gentle.yaml
     direction: left
-    requested_radius_m: 4.0
+    requested_radius_m: 8.0
