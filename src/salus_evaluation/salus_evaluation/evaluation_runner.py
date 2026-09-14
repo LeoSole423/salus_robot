@@ -7,8 +7,10 @@ import json
 from pathlib import Path
 
 import rclpy
+from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point, PoseStamped, Twist
+from nav2_msgs.action import NavigateThroughPoses
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
 from salus_interfaces.msg import (CmdVelFinal, DriveTelemetry, NavEvent,
@@ -19,7 +21,7 @@ from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
 from .gates import GateState, functional_gates, performance_gate
-from .geometry_quality import quality_metrics
+from .geometry_quality import quality_metrics, valid_fillet_r4
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       command_stage_alignments, expected_turn_from_path,
                       first_divergent_stage, latest_prior,
@@ -57,6 +59,39 @@ def _timed_odometry(message):
 
 def _now_s(node):
     return node.get_clock().now().nanoseconds / 1e9
+
+
+def _map_xy(spawn, point):
+    """Transform an evaluation-local XY point into the scenario map frame."""
+    cosine, sine = math.cos(spawn.yaw_rad), math.sin(spawn.yaw_rad)
+    return (spawn.x_m + cosine * point[0] - sine * point[1],
+            spawn.y_m + sine * point[0] + cosine * point[1])
+
+
+def _map_yaw(spawn, yaw_rad):
+    """Transform an evaluation-local heading into the scenario map frame."""
+    return spawn.yaw_rad + yaw_rad
+
+
+def _fillet_geometry_for_goal(spawn, goal_spec):
+    """Return evaluation-only fillet poses and reference geometry for one corner."""
+    p0 = (0.0, 0.0)
+    vertex = (goal_spec.forward_m, 0.0)
+    p2 = (goal_spec.forward_m, goal_spec.lateral_m)
+    fillet = valid_fillet_r4(p0, vertex, p2, radius_m=4.0)
+    if not fillet["valid"]:
+        raise ValueError(f"VALID_FILLET_R4 cannot represent goal: {fillet['reason']}")
+    arc = tuple(
+        (_map_xy(spawn, point), _map_yaw(spawn, heading))
+        for point, heading in zip(fillet["arc_points"], fillet["arc_headings_rad"])
+    )
+    goal_point = (_map_xy(spawn, p2), _map_yaw(spawn, goal_spec.yaw_offset_rad))
+    reference = (
+        (_map_xy(spawn, p0)),
+        *(point for point, _heading in arc),
+        goal_point[0],
+    )
+    return arc + (goal_point,), reference, fillet
 
 
 def _finite_float(value):
@@ -364,16 +399,20 @@ class EvaluationRunner(Node):
         self.declare_parameter("goal_tolerance_m", 1.2)
         self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
+        self.declare_parameter("geometry_variant", "current")
         self.scenario_path = str(self.get_parameter("scenario").value)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.mode = str(self.get_parameter("mode").value)
         self.tolerance = float(self.get_parameter("goal_tolerance_m").value)
         self.precision_target = float(self.get_parameter("precision_target_m").value)
         self.timeout_s = float(self.get_parameter("observe_timeout_s").value)
+        self.geometry_variant = str(self.get_parameter("geometry_variant").value).strip()
         if not self.output_dir:
             raise ValueError("output_dir is required")
         if self.mode not in ("run", "observe"):
             raise ValueError("mode must be run or observe")
+        if self.geometry_variant not in ("current", "valid_fillet_r4"):
+            raise ValueError("geometry_variant must be current or valid_fillet_r4")
         if self.mode == "run" and not self.scenario_path:
             raise ValueError("scenario is required in run mode")
         if self.tolerance <= 0.0 or self.precision_target <= 0.0:
@@ -395,9 +434,15 @@ class EvaluationRunner(Node):
         self.last_marker_s = None
         self.telemetry = None
         self.goal_event_baseline = None
+        self.geometry_reference = None
+        self._direct_goal_client = None
         self._finished = False
         self.exit_code = 1
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
+        if self.geometry_variant == "valid_fillet_r4":
+            self._direct_goal_client = ActionClient(
+                self, NavigateThroughPoses, "/navigate_through_poses"
+            )
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
         self.create_subscription(Odometry, "/odom_raw", self._raw, 50)
@@ -510,6 +555,8 @@ class EvaluationRunner(Node):
 
     def _event(self, message):
         self.events.append((message.code, _stamp(message)))
+        if self.geometry_variant == "valid_fillet_r4":
+            return
         if message.code == "GOAL_RESULT_SUCCEEDED":
             self.success_s, self.terminal_status = _stamp(message), GoalStatus.STATUS_SUCCEEDED
         elif message.code in ("GOAL_RESULT_ABORTED", "GOAL_CANCELLED"):
@@ -562,6 +609,27 @@ class EvaluationRunner(Node):
         self.timeout_s = goal_spec.timeout_s
         self.terminal_status = None
         self.terminal_received_s = None
+        if self.geometry_variant == "valid_fillet_r4":
+            poses, reference, _fillet = _fillet_geometry_for_goal(scenario.spawn, goal_spec)
+            self.geometry_reference = reference
+            if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
+                raise RuntimeError("NavigateThroughPoses action server is unavailable")
+            action_goal = NavigateThroughPoses.Goal()
+            stamp = self.get_clock().now().to_msg()
+            action_goal.poses = []
+            for x_y, yaw in poses:
+                pose = PoseStamped()
+                pose.header.frame_id = "map"
+                pose.header.stamp = stamp
+                pose.pose.position.x, pose.pose.position.y = x_y
+                pose.pose.orientation.z = math.sin(yaw / 2.0)
+                pose.pose.orientation.w = math.cos(yaw / 2.0)
+                action_goal.poses.append(pose)
+            self.goal_sent_s = _now_s(self)
+            self._direct_goal_client.send_goal_async(action_goal).add_done_callback(
+                self._on_direct_goal_response
+            )
+            return
         self.goal_event_baseline = int(self.telemetry.nav_result_event_id)
         message = PoseStamped()
         message.header.frame_id = "map"
@@ -571,6 +639,34 @@ class EvaluationRunner(Node):
         message.pose.orientation.w = math.cos(self.goal.yaw_rad / 2.0)
         self.goal_pub.publish(message)
         self.goal_sent_s = self.get_clock().now().nanoseconds / 1e9
+
+    def _on_direct_goal_response(self, future):
+        """Record the terminal result of the evaluation-only through-poses goal."""
+        try:
+            handle = future.result()
+        except Exception as exc:  # pragma: no cover - exercised by ROS runtime
+            self.get_logger().error(f"NavigateThroughPoses request failed: {exc}")
+            self.terminal_status = GoalStatus.STATUS_ABORTED
+            self.terminal_received_s = _now_s(self)
+            return
+        if not handle.accepted:
+            self.get_logger().error("NavigateThroughPoses goal rejected")
+            self.terminal_status = GoalStatus.STATUS_ABORTED
+            self.terminal_received_s = _now_s(self)
+            return
+        handle.get_result_async().add_done_callback(self._on_direct_goal_result)
+
+    def _on_direct_goal_result(self, future):
+        """Record a direct Nav2 action result without relying on gateway telemetry."""
+        try:
+            response = future.result()
+            self.terminal_status = int(response.status)
+        except Exception as exc:  # pragma: no cover - exercised by ROS runtime
+            self.get_logger().error(f"NavigateThroughPoses result failed: {exc}")
+            self.terminal_status = GoalStatus.STATUS_ABORTED
+        self.terminal_received_s = _now_s(self)
+        if self.terminal_status == GoalStatus.STATUS_SUCCEEDED:
+            self.success_s = self.terminal_received_s
 
     def _tick(self):
         if self._finished:
@@ -677,7 +773,9 @@ class EvaluationRunner(Node):
         if reference_start is None and global_poses:
             reference_start = global_poses[0].pose
         reference = None
-        if reference_start is not None and self.goal is not None:
+        if self.geometry_reference is not None:
+            reference = self.geometry_reference
+        elif reference_start is not None and self.goal is not None:
             reference = (
                 (reference_start.x_m, reference_start.y_m),
                 (self.goal.x_m, self.goal.y_m),
@@ -700,6 +798,7 @@ class EvaluationRunner(Node):
                 "self_intersections": geometry.self_intersections,
             })
         summary = {"schema_version": 2, "reason": reason,
+                   "geometry_variant": self.geometry_variant,
                    "terminal_status": self.terminal_status,
                    "goal": self.goal, "metrics": metrics, "arrival": arrival,
                    "operational_tolerance_m": self.tolerance,

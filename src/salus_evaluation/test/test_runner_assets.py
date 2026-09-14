@@ -22,6 +22,15 @@ def test_runner_only_publishes_goal_and_markers_not_control_or_tf_topics():
     assert '"/tf"' not in contents and '"/tf_static"' not in contents
 
 
+def test_fillet_arm_is_explicitly_evaluation_only():
+    contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
+    assert '"geometry_variant", "current"' in contents
+    assert '"valid_fillet_r4"' in contents
+    assert "valid_fillet_r4(" in contents
+    assert "NavigateThroughPoses" in contents
+    assert "geometry_reference" in contents
+
+
 def test_tool_exposes_run_observe_and_matrix_modes():
     contents = (ROOT.parents[1] / "tools" / "nav_eval.sh").read_text()
     assert "run <scenario.yaml>" in contents

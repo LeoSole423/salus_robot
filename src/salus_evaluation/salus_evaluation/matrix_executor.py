@@ -293,6 +293,7 @@ def _live_processes_in_group(pgid):
 
 
 def _trial_metadata(cell, scenario, isolation, source_sha):
+    geometry_variant = os.environ.get("SALUS_NAV_GEOMETRY_VARIANT", "current").strip()
     return {
         "matrix_id": cell.matrix_id,
         "trial_id": cell.trial_id,
@@ -309,6 +310,7 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
         "requested_speed_mps": cell.speed_mps,
         "direction": cell.case.direction,
         "requested_radius_m": cell.case.requested_radius_m,
+        "geometry_variant": geometry_variant,
         "scenario": str(scenario),
         "isolation": "fresh_simulation",
         "isolation_id": isolation.partition,
@@ -456,7 +458,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                      "--ros-args",
                      "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
                      f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
-                     "-p", f"chunk_policy:={cell.chunk_policy}"],
+                     "-p", f"chunk_policy:={cell.chunk_policy}", "-p",
+                     f"geometry_variant:={metadata['geometry_variant']}"],
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():

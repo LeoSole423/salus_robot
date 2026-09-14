@@ -1,0 +1,7 @@
+schema_version: 1
+id: single_corner_90_r4
+world: free
+spawn: {x_m: 0.0, y_m: 0.0, yaw_rad: 0.0}
+goals:
+  - {id: single_corner_90, forward_m: 8.0, lateral_m: 8.0,
+     yaw_offset_rad: 1.5707963268, timeout_s: 90.0, expected_turn: left}
