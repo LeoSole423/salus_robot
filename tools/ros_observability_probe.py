@@ -15,6 +15,7 @@ import csv
 import json
 import math
 import os
+import re
 import signal
 import time
 from datetime import datetime, timezone
@@ -51,6 +52,11 @@ CSV_FIELDS = (
     "event_message",
     "event_id",
     "event_details",
+    "causal_signal",
+    "log_stamp_ns",
+    "log_node",
+    "log_level",
+    "log_message",
     "goal_active",
     "active_action",
     "nav_result_status",
@@ -93,7 +99,55 @@ EXPECTED_TOPICS = (
     "/controller_server/transition_event",
     "/bt_navigator/transition_event",
     "/behavior_server/transition_event",
+    "/rosout",
 )
+
+POINTCLOUD_TOPICS = ("/scan_3d", "/obstacles_cloud")
+COLLISION_MONITOR_TIMESTAMP_IGNORE_SIGNAL = (
+    "collision_monitor_source_ignored_by_timestamp"
+)
+_COLLISION_MONITOR_TIMESTAMP_IGNORE = re.compile(
+    r"(?:latest\s+source.*current\s+collision\s+monitor\s+node\s+"
+    r"timestamps?\s+differ.*ignoring\s+the\s+source|"
+    r"(?:source|observation).{0,120}(?:timestamp|time).{0,120}"
+    r"(?:ignor\w*|drop\w*|discard\w*|stale|timeout))",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def is_collision_monitor_timestamp_ignore_signal(
+    node_name: str, message: str
+) -> bool:
+    """Match Nav2 Humble's direct source-timestamp ignore warning only."""
+    normalized_node = str(node_name).strip("/").split("/")[-1]
+    return normalized_node == "collision_monitor" and bool(
+        _COLLISION_MONITOR_TIMESTAMP_IGNORE.search(str(message))
+    )
+
+
+def resolve_pointcloud_topics(
+    mode: str, requested_topics: Sequence[str] | None = None
+) -> tuple[str, ...]:
+    """Resolve staged PointCloud2 capture without changing the ROS runtime.
+
+    ``none`` is the low-impact baseline, ``selected`` defaults to the primary
+    normalized cloud, and ``all`` is an explicit full-capture opt-in.
+    """
+    requested = tuple(requested_topics or ())
+    unknown = set(requested) - set(POINTCLOUD_TOPICS)
+    if unknown:
+        raise ValueError(f"unsupported PointCloud2 topic(s): {sorted(unknown)}")
+    if mode == "none":
+        if requested:
+            raise ValueError("--pointcloud-topic requires --pointcloud-mode selected")
+        return ()
+    if mode == "all":
+        if requested:
+            raise ValueError("--pointcloud-topic cannot be combined with --pointcloud-mode all")
+        return POINTCLOUD_TOPICS
+    if mode == "selected":
+        return tuple(dict.fromkeys(requested or ("/scan_3d",)))
+    raise ValueError(f"unsupported PointCloud2 capture mode: {mode}")
 
 
 def age_seconds(receipt_ros_ns: int | None, source_stamp_ns: int | None) -> float | None:
@@ -469,13 +523,26 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
                 lifecycle_goal=message.goal_state.label,
             )
 
+        def on_rosout(self, message: Any) -> None:
+            """Retain only the causal Collision Monitor timestamp warning."""
+            if not is_collision_monitor_timestamp_ignore_signal(
+                message.name, message.msg
+            ):
+                return
+            log_stamp_ns = stamp_ns(message.stamp)
+            self.record(
+                "/rosout",
+                "CollisionMonitorTimestampIgnore",
+                log_stamp_ns,
+                causal_signal=COLLISION_MONITOR_TIMESTAMP_IGNORE_SIGNAL,
+                log_stamp_ns=log_stamp_ns,
+                log_node=str(message.name),
+                log_level=int(message.level),
+                log_message=str(message.msg),
+            )
+
     node = CaptureNode()
     sensor_topics = {
-        "/scan_3d": (PointCloud2, lambda message: node.on_pointcloud("/scan_3d", message)),
-        "/obstacles_cloud": (
-            PointCloud2,
-            lambda message: node.on_pointcloud("/obstacles_cloud", message),
-        ),
         "/scan": (LaserScan, lambda message: node.on_scan("/scan", message)),
         "/scan_clean": (LaserScan, lambda message: node.on_scan("/scan_clean", message)),
         "/gps/course_heading/debug": (
@@ -489,6 +556,13 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
             ),
         ),
     }
+    for pointcloud_topic in getattr(
+        args, "pointcloud_capture_topics", resolve_pointcloud_topics("none")
+    ):
+        sensor_topics[pointcloud_topic] = (
+            PointCloud2,
+            lambda message, topic=pointcloud_topic: node.on_pointcloud(topic, message),
+        )
     for topic, (message_type, callback) in sensor_topics.items():
         node.create_subscription(message_type, topic, callback, qos_profile_sensor_data)
     node.create_subscription(Twist, "/cmd_vel_safe", node.on_twist, 10)
@@ -546,6 +620,9 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
             lambda message, name=lifecycle_node: node.on_transition(name, message),
             10,
         )
+    from rcl_interfaces.msg import Log
+
+    node.create_subscription(Log, "/rosout", node.on_rosout, 100)
 
     started_wall = datetime.now(timezone.utc)
     started_steady_ns = node.started_steady_ns
@@ -576,6 +653,10 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
                 "source_sha": args.source_sha,
                 "source_branch": args.source_branch,
                 "capture_mode": "single_read_only_window",
+                "pointcloud_capture_mode": getattr(args, "pointcloud_mode", "none"),
+                "pointcloud_capture_topics": list(
+                    getattr(args, "pointcloud_capture_topics", ())
+                ),
                 "generated_at": ended_wall.isoformat(timespec="seconds"),
                 "ros_domain_id": os.environ.get("ROS_DOMAIN_ID", ""),
                 "no_publishers": True,
@@ -602,6 +683,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--duration-s", type=float, default=30.0)
     parser.add_argument("--json-out", default="")
     parser.add_argument("--csv-out", default="")
+    parser.add_argument(
+        "--pointcloud-mode",
+        choices=("none", "selected", "all"),
+        default="none",
+        help="staged PointCloud2 capture: none, one selected topic, or all topics",
+    )
+    parser.add_argument(
+        "--pointcloud-topic",
+        dest="pointcloud_topics",
+        action="append",
+        choices=POINTCLOUD_TOPICS,
+        help="PointCloud2 topic for selected mode; repeat to capture both",
+    )
     parser.add_argument("--source-sha", default=os.environ.get("SOURCE_SHA", "unknown"))
     parser.add_argument("--source-branch", default=os.environ.get("SOURCE_BRANCH", "unknown"))
     args = parser.parse_args(argv)
@@ -609,6 +703,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         parser.error("--duration-s must be positive")
     if not args.json_out and not args.csv_out:
         parser.error("at least one of --json-out or --csv-out is required")
+    try:
+        args.pointcloud_capture_topics = resolve_pointcloud_topics(
+        args.pointcloud_mode, args.pointcloud_topics
+        )
+    except ValueError as error:
+        parser.error(str(error))
     return args
 
 

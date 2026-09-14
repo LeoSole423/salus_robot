@@ -82,11 +82,61 @@ def test_probe_topics_are_read_only_and_cover_the_causal_window() -> None:
         "/odometry/global",
         "/nav_command_server/events",
         "/nav_command_server/telemetry",
+        "/rosout",
         "map",
         "odom",
         "base_footprint",
     ):
         assert topic in source
+    assert "CollisionMonitorTimestampIgnore" in source
+    assert "log_stamp_ns" in source
+    assert "log_node" in source
+    assert "log_message" in source
+
+
+def test_collision_monitor_timestamp_ignore_signal_is_direct_and_filtered() -> None:
+    warning = (
+        "[scan]: Latest source and current collision monitor node timestamps "
+        "differ on 1.055044 seconds. Ignoring the source."
+    )
+    assert probe.is_collision_monitor_timestamp_ignore_signal(
+        "/collision_monitor", warning
+    )
+    assert probe.is_collision_monitor_timestamp_ignore_signal(
+        "robot/collision_monitor", warning
+    )
+    assert not probe.is_collision_monitor_timestamp_ignore_signal(
+        "/scan_ground_filter", warning
+    )
+    assert not probe.is_collision_monitor_timestamp_ignore_signal(
+        "/collision_monitor", "Ignoring the source because it has no points."
+    )
+
+
+def test_pointcloud_capture_is_staged_and_full_mode_is_opt_in() -> None:
+    assert probe.resolve_pointcloud_topics("none") == ()
+    assert probe.resolve_pointcloud_topics("selected") == ("/scan_3d",)
+    assert probe.resolve_pointcloud_topics("selected", ["/obstacles_cloud"]) == (
+        "/obstacles_cloud",
+    )
+    assert probe.resolve_pointcloud_topics("all") == (
+        "/scan_3d",
+        "/obstacles_cloud",
+    )
+    with pytest.raises(ValueError):
+        probe.resolve_pointcloud_topics("none", ["/scan_3d"])
+    with pytest.raises(ValueError):
+        probe.resolve_pointcloud_topics("all", ["/scan_3d"])
+
+
+def test_cli_records_default_low_impact_mode_and_explicit_full_mode() -> None:
+    baseline = probe.parse_args(["--json-out", "/tmp/probe.json"])
+    assert baseline.pointcloud_mode == "none"
+    assert baseline.pointcloud_capture_topics == ()
+    full = probe.parse_args(
+        ["--json-out", "/tmp/probe.json", "--pointcloud-mode", "all"]
+    )
+    assert full.pointcloud_capture_topics == ("/scan_3d", "/obstacles_cloud")
 
 
 def test_report_writer_preserves_provenance_in_json_and_csv(tmp_path: Path) -> None:
