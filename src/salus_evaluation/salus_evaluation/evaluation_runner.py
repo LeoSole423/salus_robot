@@ -73,25 +73,45 @@ def _map_yaw(spawn, yaw_rad):
     return spawn.yaw_rad + yaw_rad
 
 
-def _fillet_geometry_for_goal(spawn, goal_spec):
-    """Return evaluation-only fillet poses and reference geometry for one corner."""
+def _experiment_geometry(spawn, goal_spec, variant):
+    """Build the matched three-pose evaluation-only geometry experiment."""
     p0 = (0.0, 0.0)
     vertex = (goal_spec.forward_m, 0.0)
     p2 = (goal_spec.forward_m, goal_spec.lateral_m)
     fillet = valid_fillet_r4(p0, vertex, p2, radius_m=4.0)
     if not fillet["valid"]:
         raise ValueError(f"VALID_FILLET_R4 cannot represent goal: {fillet['reason']}")
-    arc = tuple(
+    tangent_entry = fillet["tangent_entry"]
+    tangent_exit = fillet["tangent_exit"]
+    final_yaw = goal_spec.yaw_offset_rad
+    if variant == "hard_vertex_current":
+        local_poses = (
+            (tangent_entry, 0.0),
+            (vertex, 0.0),
+            (p2, final_yaw),
+        )
+        arm_reference = (p0, tangent_entry, vertex, p2)
+    elif variant == "sparse_fillet_r4":
+        local_poses = (
+            (tangent_entry, 0.0),
+            (tangent_exit, final_yaw),
+            (p2, final_yaw),
+        )
+        arm_reference = (p0, *fillet["arc_points"], p2)
+    else:
+        raise ValueError(f"unknown matched geometry variant: {variant}")
+    poses = tuple(
         (_map_xy(spawn, point), _map_yaw(spawn, heading))
-        for point, heading in zip(fillet["arc_points"], fillet["arc_headings_rad"])
+        for point, heading in local_poses
     )
-    goal_point = (_map_xy(spawn, p2), _map_yaw(spawn, goal_spec.yaw_offset_rad))
-    reference = (
-        (_map_xy(spawn, p0)),
-        *(point for point, _heading in arc),
-        goal_point[0],
-    )
-    return arc + (goal_point,), reference, fillet
+    common_reference = tuple(_map_xy(spawn, point) for point in (p0, vertex, p2))
+    arm_reference = tuple(_map_xy(spawn, point) for point in arm_reference)
+    return {
+        "poses": poses,
+        "common_reference": common_reference,
+        "arm_reference": arm_reference,
+        "fillet": fillet,
+    }
 
 
 def _finite_float(value):
@@ -399,7 +419,7 @@ class EvaluationRunner(Node):
         self.declare_parameter("goal_tolerance_m", 1.2)
         self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
-        self.declare_parameter("geometry_variant", "current")
+        self.declare_parameter("geometry_variant", "hard_vertex_current")
         self.scenario_path = str(self.get_parameter("scenario").value)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.mode = str(self.get_parameter("mode").value)
@@ -411,8 +431,10 @@ class EvaluationRunner(Node):
             raise ValueError("output_dir is required")
         if self.mode not in ("run", "observe"):
             raise ValueError("mode must be run or observe")
-        if self.geometry_variant not in ("current", "valid_fillet_r4"):
-            raise ValueError("geometry_variant must be current or valid_fillet_r4")
+        if self.geometry_variant not in ("hard_vertex_current", "sparse_fillet_r4"):
+            raise ValueError(
+                "geometry_variant must be hard_vertex_current or sparse_fillet_r4"
+            )
         if self.mode == "run" and not self.scenario_path:
             raise ValueError("scenario is required in run mode")
         if self.tolerance <= 0.0 or self.precision_target <= 0.0:
@@ -435,14 +457,16 @@ class EvaluationRunner(Node):
         self.telemetry = None
         self.goal_event_baseline = None
         self.geometry_reference = None
-        self._direct_goal_client = None
+        self.common_geometry_reference = None
+        self.arm_geometry_reference = None
+        self.dispatched_poses = ()
+        self._direct_goal_client = (
+            ActionClient(self, NavigateThroughPoses, "/navigate_through_poses")
+            if self.mode == "run" else None
+        )
         self._finished = False
         self.exit_code = 1
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
-        if self.geometry_variant == "valid_fillet_r4":
-            self._direct_goal_client = ActionClient(
-                self, NavigateThroughPoses, "/navigate_through_poses"
-            )
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
         self.create_subscription(Odometry, "/odom_raw", self._raw, 50)
@@ -555,7 +579,7 @@ class EvaluationRunner(Node):
 
     def _event(self, message):
         self.events.append((message.code, _stamp(message)))
-        if self.geometry_variant == "valid_fillet_r4":
+        if self._direct_goal_client is not None:
             return
         if message.code == "GOAL_RESULT_SUCCEEDED":
             self.success_s, self.terminal_status = _stamp(message), GoalStatus.STATUS_SUCCEEDED
@@ -609,36 +633,33 @@ class EvaluationRunner(Node):
         self.timeout_s = goal_spec.timeout_s
         self.terminal_status = None
         self.terminal_received_s = None
-        if self.geometry_variant == "valid_fillet_r4":
-            poses, reference, _fillet = _fillet_geometry_for_goal(scenario.spawn, goal_spec)
-            self.geometry_reference = reference
-            if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
-                raise RuntimeError("NavigateThroughPoses action server is unavailable")
-            action_goal = NavigateThroughPoses.Goal()
-            stamp = self.get_clock().now().to_msg()
-            action_goal.poses = []
-            for x_y, yaw in poses:
-                pose = PoseStamped()
-                pose.header.frame_id = "map"
-                pose.header.stamp = stamp
-                pose.pose.position.x, pose.pose.position.y = x_y
-                pose.pose.orientation.z = math.sin(yaw / 2.0)
-                pose.pose.orientation.w = math.cos(yaw / 2.0)
-                action_goal.poses.append(pose)
-            self.goal_sent_s = _now_s(self)
-            self._direct_goal_client.send_goal_async(action_goal).add_done_callback(
-                self._on_direct_goal_response
-            )
-            return
-        self.goal_event_baseline = int(self.telemetry.nav_result_event_id)
-        message = PoseStamped()
-        message.header.frame_id = "map"
-        message.header.stamp = self.get_clock().now().to_msg()
-        message.pose.position.x, message.pose.position.y = self.goal.x_m, self.goal.y_m
-        message.pose.orientation.z = math.sin(self.goal.yaw_rad / 2.0)
-        message.pose.orientation.w = math.cos(self.goal.yaw_rad / 2.0)
-        self.goal_pub.publish(message)
-        self.goal_sent_s = self.get_clock().now().nanoseconds / 1e9
+        geometry = _experiment_geometry(
+            scenario.spawn, goal_spec, self.geometry_variant
+        )
+        self.common_geometry_reference = geometry["common_reference"]
+        self.arm_geometry_reference = geometry["arm_reference"]
+        self.geometry_reference = self.arm_geometry_reference
+        if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
+            raise RuntimeError("NavigateThroughPoses action server is unavailable")
+        action_goal = NavigateThroughPoses.Goal()
+        stamp = self.get_clock().now().to_msg()
+        action_goal.poses = []
+        self.dispatched_poses = tuple(
+            {"x_m": point[0], "y_m": point[1], "yaw_rad": yaw}
+            for point, yaw in geometry["poses"]
+        )
+        for (x_y, yaw) in geometry["poses"]:
+            pose = PoseStamped()
+            pose.header.frame_id = "map"
+            pose.header.stamp = stamp
+            pose.pose.position.x, pose.pose.position.y = x_y
+            pose.pose.orientation.z = math.sin(yaw / 2.0)
+            pose.pose.orientation.w = math.cos(yaw / 2.0)
+            action_goal.poses.append(pose)
+        self.goal_sent_s = _now_s(self)
+        self._direct_goal_client.send_goal_async(action_goal).add_done_callback(
+            self._on_direct_goal_response
+        )
 
     def _on_direct_goal_response(self, future):
         """Record the terminal result of the evaluation-only through-poses goal."""
@@ -781,22 +802,46 @@ class EvaluationRunner(Node):
                 (self.goal.x_m, self.goal.y_m),
             )
         geometry_quality = []
+        common_geometry_quality = []
+        arm_plan_geometry = []
+        common_plan_geometry = []
         plan_geometry = []
         for index, candidate in enumerate(self.plans):
             points = tuple((item.x_m, item.y_m) for item in candidate)
+            common_quality = quality_metrics(points, self.common_geometry_reference)
+            arm_quality = quality_metrics(points, self.arm_geometry_reference)
             geometry_quality.append({
                 "plan_index": index,
-                **quality_metrics(points, reference),
+                **arm_quality,
             })
-            geometry = path_geometry_metrics(points, reference or points)
-            plan_geometry.append({
+            common_geometry_quality.append({
                 "plan_index": index,
-                "length_m": geometry.length_m,
-                "direct_distance_m": geometry.direct_distance_m,
-                "detour_ratio": geometry.detour_ratio,
-                "max_deviation_m": geometry.max_deviation_m,
-                "self_intersections": geometry.self_intersections,
+                **common_quality,
             })
+            common_geometry = path_geometry_metrics(
+                points, self.common_geometry_reference or reference or points
+            )
+            arm_geometry = path_geometry_metrics(
+                points, self.arm_geometry_reference or reference or points
+            )
+            common_row = {
+                "plan_index": index,
+                "length_m": common_geometry.length_m,
+                "direct_distance_m": common_geometry.direct_distance_m,
+                "detour_ratio": common_geometry.detour_ratio,
+                "max_deviation_m": common_geometry.max_deviation_m,
+                "self_intersections": common_geometry.self_intersections,
+            }
+            common_plan_geometry.append(common_row)
+            arm_plan_geometry.append({
+                "plan_index": index,
+                "length_m": arm_geometry.length_m,
+                "direct_distance_m": arm_geometry.direct_distance_m,
+                "detour_ratio": arm_geometry.detour_ratio,
+                "max_deviation_m": arm_geometry.max_deviation_m,
+                "self_intersections": arm_geometry.self_intersections,
+            })
+            plan_geometry.append(common_row)
         summary = {"schema_version": 2, "reason": reason,
                    "geometry_variant": self.geometry_variant,
                    "terminal_status": self.terminal_status,
@@ -806,7 +851,11 @@ class EvaluationRunner(Node):
                    "localization": localization,
                    "localization_covariance": localization_covariance,
                    "geometry_quality": geometry_quality,
+                   "common_geometry_quality": common_geometry_quality,
                    "plan_geometry": plan_geometry,
+                   "common_plan_geometry": common_plan_geometry,
+                   "arm_plan_geometry": arm_plan_geometry,
+                   "dispatched_poses": self.dispatched_poses,
                    "sign": signs, "gates": gates,
                    "performance": [performance_gate(
                        "cross_track_p95_m",
@@ -830,6 +879,9 @@ class EvaluationRunner(Node):
                 "/controller/status", "/controller/telemetry", "/odom_raw",
                 "/odometry/local", "/odometry/global",
             ],
+            "geometry_variant": self.geometry_variant,
+            "dispatched_poses": self.dispatched_poses,
+            "reference_families": ("common_mission", "arm_target"),
         }
         streams = {"odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands,

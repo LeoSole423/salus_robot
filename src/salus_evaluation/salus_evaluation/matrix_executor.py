@@ -293,7 +293,9 @@ def _live_processes_in_group(pgid):
 
 
 def _trial_metadata(cell, scenario, isolation, source_sha):
-    geometry_variant = os.environ.get("SALUS_NAV_GEOMETRY_VARIANT", "current").strip()
+    geometry_variant = os.environ.get(
+        "SALUS_NAV_GEOMETRY_VARIANT", "hard_vertex_current"
+    ).strip()
     return {
         "matrix_id": cell.matrix_id,
         "trial_id": cell.trial_id,

@@ -24,11 +24,20 @@ def test_runner_only_publishes_goal_and_markers_not_control_or_tf_topics():
 
 def test_fillet_arm_is_explicitly_evaluation_only():
     contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
-    assert '"geometry_variant", "current"' in contents
-    assert '"valid_fillet_r4"' in contents
+    assert '"geometry_variant", "hard_vertex_current"' in contents
+    assert '"hard_vertex_current", "sparse_fillet_r4"' in contents
     assert "valid_fillet_r4(" in contents
     assert "NavigateThroughPoses" in contents
     assert "geometry_reference" in contents
+    assert "dispatched_poses" in contents
+
+
+def test_matched_arms_use_three_pose_through_poses():
+    contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
+    assert "action_goal.poses.append(pose)" in contents
+    assert "self.dispatched_poses = tuple" in contents
+    assert "arc_points" in contents
+    assert "action_goal.poses" in contents
 
 
 def test_tool_exposes_run_observe_and_matrix_modes():

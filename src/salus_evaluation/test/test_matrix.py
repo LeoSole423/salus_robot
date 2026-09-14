@@ -252,6 +252,45 @@ def test_aggregation_keeps_existing_per_plan_path_geometry_metrics():
     assert row["plan_geometry"]["detour_ratio"]["median"] == pytest.approx(2.5)
 
 
+def test_aggregation_keeps_common_and_arm_geometry_families_separate():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cells = expand_matrix(matrix)[:2]
+    summaries = {}
+    for cell in cells:
+        summary = _summary()
+        summary["common_geometry_quality"] = [{
+            "total_heading_variation_rad": .4,
+            "curvature_sign_changes": 0,
+        }]
+        summary["common_plan_geometry"] = [{
+            "length_m": 10.0,
+            "detour_ratio": 1.2,
+            "self_intersections": 0,
+        }]
+        summary["arm_plan_geometry"] = [{
+            "length_m": 12.0,
+            "detour_ratio": 1.4,
+            "self_intersections": 1,
+        }]
+        summaries[cell.trial_id] = summary
+    row = aggregate_trials(cells, summaries)[0]
+    assert row["common_plan_geometry"]["length_m"]["median"] == pytest.approx(10.0)
+    assert row["arm_plan_geometry"]["length_m"]["median"] == pytest.approx(12.0)
+    assert row["common_plan_geometry"]["self_intersections"]["max"] == 0
+    assert row["arm_plan_geometry"]["self_intersections"]["max"] == 1
+
+
+def test_aggregation_identifies_the_evaluation_geometry_arm():
+    matrix = ROOT / "config/matrices/ackermann_speed_curvature.yaml"
+    cell = expand_matrix(matrix)[0]
+    summary = _summary()
+    summary["matrix_trial"] = {
+        "result": "passed", "geometry_variant": "sparse_fillet_r4",
+    }
+    row = aggregate_trials([cell], {cell.trial_id: summary})[0]
+    assert row["geometry_variant"] == "sparse_fillet_r4"
+
+
 def test_one_continuous_sample_has_no_artificial_p95():
     assert continuous_summary([.2])["p95"] is None
 

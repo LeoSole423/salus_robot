@@ -20,7 +20,7 @@ def generate_launch_description():
             description="Report-only future arrival precision target in metres.",
         ),
         DeclareLaunchArgument("observe_timeout_s", default_value="90.0"),
-        DeclareLaunchArgument("geometry_variant", default_value="current"),
+        DeclareLaunchArgument("geometry_variant", default_value="hard_vertex_current"),
         Node(package="salus_evaluation", executable="navigation_evaluation",
              name="navigation_evaluation", output="screen", parameters=[{
                  "use_sim_time": True, "mode": LaunchConfiguration("mode"),

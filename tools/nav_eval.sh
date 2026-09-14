@@ -43,7 +43,7 @@ case "${mode}" in
     exec docker compose run --rm \
       -e "SALUS_NAV_EVAL_RUN_TOKEN=${matrix_run_token}" \
       -e "SALUS_NAV_EVAL_SOURCE_SHA=${source_sha}" \
-      -e "SALUS_NAV_GEOMETRY_VARIANT=${SALUS_NAV_GEOMETRY_VARIANT:-current}" \
+      -e "SALUS_NAV_GEOMETRY_VARIANT=${SALUS_NAV_GEOMETRY_VARIANT:-hard_vertex_current}" \
       -e SALUS_NAV_EVAL_LOCK_ROOT=/salus-nav-evaluation-domains \
       -e "FASTDDS_BUILTIN_TRANSPORTS=UDPv4" \
       -v "${eval_lock_root}:/salus-nav-evaluation-domains" \
@@ -76,12 +76,12 @@ case "${mode}" in
 esac
 mkdir -p "${output}"
 exec docker compose run --rm \
-  -e "SALUS_NAV_GEOMETRY_VARIANT=${SALUS_NAV_GEOMETRY_VARIANT:-current}" \
+  -e "SALUS_NAV_GEOMETRY_VARIANT=${SALUS_NAV_GEOMETRY_VARIANT:-hard_vertex_current}" \
   -v "${output}:/evaluation-artifacts" ros2 bash -lc "
   source /opt/ros/humble/setup.bash
   source /ros2_ws/install/setup.bash
   ros2 run salus_evaluation navigation_evaluation --ros-args \
     -p use_sim_time:=true -p mode:=${mode} -p scenario:=${scenario} \
     -p output_dir:=/evaluation-artifacts \
-    -p geometry_variant:=${SALUS_NAV_GEOMETRY_VARIANT:-current}
+    -p geometry_variant:=${SALUS_NAV_GEOMETRY_VARIANT:-hard_vertex_current}
 "

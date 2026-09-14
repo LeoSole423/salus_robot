@@ -303,11 +303,11 @@ def aggregate_trials(cells, trial_summaries):
                 found.append(current)
             return found
 
-        def geometry_values(name):
+        def geometry_values(name, source="geometry_quality"):
             """Collect one quality metric from every independent plan in trials."""
             found = []
             for _cell, item in entries:
-                plans = item.get("geometry_quality", [])
+                plans = item.get(source, [])
                 if isinstance(plans, list):
                     found.extend(
                         plan.get(name) for plan in plans
@@ -315,11 +315,11 @@ def aggregate_trials(cells, trial_summaries):
                     )
             return found
 
-        def plan_geometry_values(name):
+        def plan_geometry_values(name, source="plan_geometry"):
             """Collect existing geometry metrics from every independent plan."""
             found = []
             for _cell, item in entries:
-                plans = item.get("plan_geometry", [])
+                plans = item.get(source, [])
                 if isinstance(plans, list):
                     found.extend(
                         plan.get(name) for plan in plans
@@ -328,6 +328,9 @@ def aggregate_trials(cells, trial_summaries):
             return found
         result.append({
             "variant": variant,
+            "geometry_variant": entries[0][1].get("matrix_trial", {}).get(
+                "geometry_variant", "unknown"
+            ),
             "evaluation_mode": entries[0][0].evaluation_mode,
             "chunk_policy": entries[0][0].chunk_policy,
             "local_ekf_params_file": entries[0][0].local_ekf_params_file,
@@ -428,8 +431,32 @@ def aggregate_trials(cells, trial_summaries):
                     "lateral_error_sign_changes",
                 )
             },
+            "common_geometry_quality": {
+                name: continuous_summary(geometry_values(name, "common_geometry_quality"))
+                for name in (
+                    "total_heading_variation_rad", "curvature_sign_changes",
+                    "max_abs_curvature_per_m", "p95_abs_curvature_per_m",
+                    "max_equivalent_steering_rad", "p95_equivalent_steering_rad",
+                    "lateral_error_rms_m", "max_abs_lateral_error_m",
+                    "lateral_error_sign_changes",
+                )
+            },
             "plan_geometry": {
                 name: continuous_summary(plan_geometry_values(name))
+                for name in (
+                    "length_m", "direct_distance_m", "detour_ratio",
+                    "max_deviation_m", "self_intersections",
+                )
+            },
+            "common_plan_geometry": {
+                name: continuous_summary(plan_geometry_values(name, "common_plan_geometry"))
+                for name in (
+                    "length_m", "direct_distance_m", "detour_ratio",
+                    "max_deviation_m", "self_intersections",
+                )
+            },
+            "arm_plan_geometry": {
+                name: continuous_summary(plan_geometry_values(name, "arm_plan_geometry"))
                 for name in (
                     "length_m", "direct_distance_m", "detour_ratio",
                     "max_deviation_m", "self_intersections",
