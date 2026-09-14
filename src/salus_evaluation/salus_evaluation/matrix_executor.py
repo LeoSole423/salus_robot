@@ -296,6 +296,8 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
         "matrix_id": cell.matrix_id,
         "trial_id": cell.trial_id,
         "variant": cell.variant_id,
+        "evaluation_mode": cell.evaluation_mode,
+        "chunk_policy": cell.chunk_policy,
         "local_ekf_params_file": cell.local_ekf_params_file,
         "global_ekf_params_file": cell.global_ekf_params_file,
         "sim_sensor_profile": cell.sim_sensor_profile,
@@ -332,6 +334,16 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
     effective_params = None
     launch = None
     try:
+        planner_config = yaml.safe_load(base_params.read_text(encoding="utf-8"))
+        grid_based = planner_config["planner_server"]["ros__parameters"]["GridBased"]
+        metadata["planner_contract"] = {
+            "params_file": str(base_params),
+            "params_sha256": _sha256(base_params),
+            "motion_model_for_search": grid_based["motion_model_for_search"],
+            "minimum_turning_radius_m": grid_based["minimum_turning_radius"],
+            "costmap": "free_world/no_obstacle_detection (unchanged)",
+            "steering": "controller profile unchanged",
+        }
         if planner_minimum_turning_radius is not None:
             effective_params = write_candidate_nav2_params(
                 base_params, trial_dir.parent / f"{cell.trial_id}-nav2.yaml",
@@ -401,38 +413,60 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                         raise RuntimeError(
                             "Smac effective minimum_turning_radius does not match request"
                         )
-                set_result = _run(
-                    ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
-                     "set", "/controller_server", "FollowPath.desired_linear_vel",
-                     str(cell.speed_mps)],
-                    check=False, capture=True, env=environment,
-                )
-                get_result = _run(
-                    ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
-                     "get", "/controller_server", "FollowPath.desired_linear_vel"],
-                    check=False, capture=True, env=environment,
-                )
-                metadata["speed_parameter"] = _numeric_parameter_metadata(
-                    cell.speed_mps, get_result, setup_result=set_result,
-                    quantity="speed_mps", unit="m/s",
-                )
-                if set_result.returncode != 0 or get_result.returncode != 0:
-                    raise RuntimeError("FollowPath.desired_linear_vel runtime update was rejected")
-                if not metadata["speed_parameter"]["matches_requested"]:
-                    raise RuntimeError(
-                        "FollowPath.desired_linear_vel effective readback does not match request"
+                if cell.evaluation_mode == "chunk_continuity":
+                    metadata["speed_parameter"] = {
+                        "requested_speed_mps": cell.speed_mps,
+                        "unit": "m/s",
+                        "constant_across_policies": True,
+                        "runtime_update": "not_requested",
+                    }
+                else:
+                    set_result = _run(
+                        ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+                         "set", "/controller_server", "FollowPath.desired_linear_vel",
+                         str(cell.speed_mps)],
+                        check=False, capture=True, env=environment,
                     )
+                    get_result = _run(
+                        ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+                         "get", "/controller_server", "FollowPath.desired_linear_vel"],
+                        check=False, capture=True, env=environment,
+                    )
+                    metadata["speed_parameter"] = _numeric_parameter_metadata(
+                        cell.speed_mps, get_result, setup_result=set_result,
+                        quantity="speed_mps", unit="m/s",
+                    )
+                    if set_result.returncode != 0 or get_result.returncode != 0:
+                        raise RuntimeError(
+                            "FollowPath.desired_linear_vel runtime update was rejected"
+                        )
+                    if not metadata["speed_parameter"]["matches_requested"]:
+                        raise RuntimeError(
+                            "FollowPath.desired_linear_vel effective readback does not "
+                            "match request"
+                        )
+                evaluator = (
+                    "navigation_chunk_continuity"
+                    if cell.evaluation_mode == "chunk_continuity"
+                    else "navigation_evaluation"
+                )
                 evaluation = _run(
-                    ["ros2", "run", "salus_evaluation", "navigation_evaluation",
+                    ["ros2", "run", "salus_evaluation", evaluator,
                      "--ros-args",
                      "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
-                     f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}"],
+                     f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
+                     "-p", f"chunk_policy:={cell.chunk_policy}"],
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():
+                    trial_summary = json.loads(
+                        (trial_dir / "summary.json").read_text(encoding="utf-8")
+                    )
                     outcome = (
-                        "passed" if evaluation.returncode == 0
-                        else "functional_failure"
+                        "setup_failure"
+                        if trial_summary.get("reason") == "setup_failure"
+                        else ("passed" if evaluation.returncode == 0
+                              else "functional_failure")
                     )
                     metadata["result"] = outcome
                     _record_metadata(trial_dir, metadata)
@@ -476,6 +510,8 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
         _failure_bundle(trial_dir, str(exc), {
             "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
             "variant": cell.variant_id,
+            "evaluation_mode": cell.evaluation_mode,
+            "chunk_policy": cell.chunk_policy,
             "local_ekf_params_file": cell.local_ekf_params_file,
             "global_ekf_params_file": cell.global_ekf_params_file,
             "sim_sensor_profile": cell.sim_sensor_profile,
@@ -542,6 +578,8 @@ def main(argv=None):
                     trial_dir = root / "trials" / cell.trial_id
                     _failure_bundle(trial_dir, str(exc), {
                         "matrix_id": cell.matrix_id, "trial_id": cell.trial_id,
+                        "evaluation_mode": cell.evaluation_mode,
+                        "chunk_policy": cell.chunk_policy,
                         "sim_sensor_profile": cell.sim_sensor_profile,
                         "sim_sensor_seed": cell.repetition_seed,
                         "sim_sensor_seed_base": cell.sim_sensor_seed,
