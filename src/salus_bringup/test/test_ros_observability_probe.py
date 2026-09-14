@@ -1,6 +1,8 @@
 """Pure timestamp tests for the bounded read-only observability probe."""
 
 import importlib.util
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -137,6 +139,40 @@ def test_cli_records_default_low_impact_mode_and_explicit_full_mode() -> None:
         ["--json-out", "/tmp/probe.json", "--pointcloud-mode", "all"]
     )
     assert full.pointcloud_capture_topics == ("/scan_3d", "/obstacles_cloud")
+
+
+def test_main_initializes_and_shuts_down_rclpy_when_capture_fails(monkeypatch) -> None:
+    calls = []
+    fake_rclpy = types.ModuleType("rclpy")
+    fake_rclpy.init = lambda: calls.append("init")
+    fake_rclpy.ok = lambda: True
+    fake_rclpy.shutdown = lambda: calls.append("shutdown")
+
+    def fail_capture(_args):
+        raise RuntimeError("synthetic capture failure")
+
+    monkeypatch.setitem(sys.modules, "rclpy", fake_rclpy)
+    monkeypatch.setattr(probe, "run_capture", fail_capture)
+    with pytest.raises(RuntimeError, match="synthetic capture failure"):
+        probe.main(["--json-out", "/tmp/probe.json"])
+    assert calls == ["init", "shutdown"]
+
+
+def test_goal_status_array_has_no_source_stamp_in_humble() -> None:
+    status = types.SimpleNamespace(status=2)
+    message = types.SimpleNamespace(status_list=[status])
+    fields = probe.goal_status_record_fields("navigate_through_poses", message)
+    assert fields["source_stamp_ns"] is None
+    assert fields["action_name"] == "navigate_through_poses"
+    assert fields["action_statuses"] == [2]
+
+
+def test_transition_timestamp_accepts_humble_integer_and_time_compatibility() -> None:
+    assert probe.transition_timestamp_ns(1_234_567_890) == 1_234_567_890
+    assert probe.transition_timestamp_ns(0) is None
+    stamp = types.SimpleNamespace(sec=3, nanosec=25)
+    assert probe.transition_timestamp_ns(stamp) == 3_000_000_025
+    assert probe.transition_timestamp_ns(types.SimpleNamespace()) is None
 
 
 def test_report_writer_preserves_provenance_in_json_and_csv(tmp_path: Path) -> None:

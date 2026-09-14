@@ -305,6 +305,25 @@ def _path_signature(message: Any) -> str:
     return json.dumps([len(message.poses), points], separators=(",", ":"))
 
 
+def transition_timestamp_ns(value: Any) -> int | None:
+    """Normalize Humble's uint64 lifecycle timestamp without inventing time."""
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if hasattr(value, "sec") and hasattr(value, "nanosec"):
+        normalized = int(value.sec) * 1_000_000_000 + int(value.nanosec)
+        return normalized if normalized > 0 else None
+    return None
+
+
+def goal_status_record_fields(action_name: str, message: Any) -> dict[str, Any]:
+    """Return GoalStatusArray fields; Humble provides no source header stamp."""
+    return {
+        "source_stamp_ns": None,
+        "action_name": action_name,
+        "action_statuses": [int(status.status) for status in message.status_list],
+    }
+
+
 def run_capture(args: argparse.Namespace) -> dict[str, Any]:
     """Run exactly one bounded subscription window."""
     import rclpy
@@ -508,16 +527,14 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
             self.record(
                 f"/{action_name}/_action/status",
                 "GoalStatusArray",
-                stamp_ns(message.header.stamp),
-                action_name=action_name,
-                action_statuses=[int(status.status) for status in message.status_list],
+                **goal_status_record_fields(action_name, message),
             )
 
         def on_transition(self, node_name: str, message: Any) -> None:
             self.record(
                 f"/{node_name}/transition_event",
                 "TransitionEvent",
-                stamp_ns(message.timestamp),
+                transition_timestamp_ns(message.timestamp),
                 lifecycle_node=node_name,
                 lifecycle_start=message.start_state.label,
                 lifecycle_goal=message.goal_state.label,
@@ -674,7 +691,6 @@ def run_capture(args: argparse.Namespace) -> dict[str, Any]:
             "rows": rows,
         }
         node.destroy_node()
-        rclpy.shutdown()
     return report
 
 
@@ -714,15 +730,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    report = run_capture(args)
-    write_report(report, args.json_out, args.csv_out)
-    print(
-        json.dumps(
-            {"rows": report["window"]["rows"], "topics": report["topics"]},
-            sort_keys=True,
+    import rclpy
+
+    rclpy.init()
+    try:
+        report = run_capture(args)
+        write_report(report, args.json_out, args.csv_out)
+        print(
+            json.dumps(
+                {"rows": report["window"]["rows"], "topics": report["topics"]},
+                sort_keys=True,
+            )
         )
-    )
-    return 0
+        return 0
+    finally:
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":
