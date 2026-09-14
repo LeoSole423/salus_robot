@@ -20,12 +20,13 @@ from visualization_msgs.msg import Marker, MarkerArray
 from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
+from .chunk_continuity_runner import _transition_metrics as _chunk_transition_metrics
 from .gates import GateState, functional_gates, performance_gate
 from .geometry_quality import quality_metrics, valid_fillet_r4
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       command_stage_alignments, expected_turn_from_path,
                       first_divergent_stage, latest_prior,
-                      covariance_summary, localization_metrics,
+                      covariance_summary, localization_metrics, angle_delta,
                       saturation_intervals,
                       steering_margin_summary,
                       tracking_metrics, trial_data_finite)
@@ -74,7 +75,7 @@ def _map_yaw(spawn, yaw_rad):
 
 
 def _experiment_geometry(spawn, goal_spec, variant):
-    """Build the matched three-pose evaluation-only geometry experiment."""
+    """Build sparse evaluation geometry and its optional request partition."""
     p0 = (0.0, 0.0)
     vertex = (goal_spec.forward_m, 0.0)
     p2 = (goal_spec.forward_m, goal_spec.lateral_m)
@@ -83,6 +84,17 @@ def _experiment_geometry(spawn, goal_spec, variant):
         raise ValueError(f"VALID_FILLET_R4 cannot represent goal: {fillet['reason']}")
     tangent_entry = fillet["tangent_entry"]
     tangent_exit = fillet["tangent_exit"]
+    center = fillet["center"]
+    start_angle = math.atan2(
+        tangent_entry[1] - center[1], tangent_entry[0] - center[0]
+    )
+    turn_sign = 1.0 if fillet["deflection_rad"] > 0.0 else -1.0
+    midpoint_angle = start_angle + turn_sign * abs(fillet["deflection_rad"]) / 2.0
+    midpoint = (
+        center[0] + fillet["radius_m"] * math.cos(midpoint_angle),
+        center[1] + fillet["radius_m"] * math.sin(midpoint_angle),
+    )
+    midpoint_yaw = midpoint_angle + turn_sign * math.pi / 2.0
     final_yaw = goal_spec.yaw_offset_rad
     if variant == "hard_vertex_current":
         local_poses = (
@@ -91,26 +103,57 @@ def _experiment_geometry(spawn, goal_spec, variant):
             (p2, final_yaw),
         )
         arm_reference = (p0, tangent_entry, vertex, p2)
-    elif variant == "sparse_fillet_r4":
+        request_local_poses = (local_poses,)
+    elif variant in ("sparse_fillet_r4", "sparse_single_3"):
         local_poses = (
             (tangent_entry, 0.0),
             (tangent_exit, final_yaw),
             (p2, final_yaw),
         )
         arm_reference = (p0, *fillet["arc_points"], p2)
+        request_local_poses = (local_poses,)
+    elif variant == "sparse_single_4":
+        local_poses = (
+            (tangent_entry, 0.0),
+            (midpoint, midpoint_yaw),
+            (tangent_exit, final_yaw),
+            (p2, final_yaw),
+        )
+        arm_reference = (p0, *fillet["arc_points"], p2)
+        request_local_poses = (local_poses,)
+    elif variant == "sparse_boundary_exit":
+        local_poses = (
+            (tangent_entry, 0.0),
+            (tangent_exit, final_yaw),
+            (p2, final_yaw),
+        )
+        arm_reference = (p0, *fillet["arc_points"], p2)
+        request_local_poses = (local_poses[:2], (local_poses[2],))
+    elif variant == "sparse_boundary_midarc":
+        local_poses = (
+            (tangent_entry, 0.0),
+            (midpoint, midpoint_yaw),
+            (tangent_exit, final_yaw),
+            (p2, final_yaw),
+        )
+        arm_reference = (p0, *fillet["arc_points"], p2)
+        request_local_poses = (local_poses[:2], local_poses[2:])
     else:
         raise ValueError(f"unknown matched geometry variant: {variant}")
-    poses = tuple(
+    request_poses = tuple(tuple(
         (_map_xy(spawn, point), _map_yaw(spawn, heading))
-        for point, heading in local_poses
-    )
+        for point, heading in request
+    ) for request in request_local_poses)
+    poses = tuple(item for request in request_poses for item in request)
     common_reference = tuple(_map_xy(spawn, point) for point in (p0, vertex, p2))
     arm_reference = tuple(_map_xy(spawn, point) for point in arm_reference)
     return {
         "poses": poses,
+        "request_poses": request_poses,
         "common_reference": common_reference,
         "arm_reference": arm_reference,
         "fillet": fillet,
+        "midpoint": (_map_xy(spawn, midpoint), _map_yaw(spawn, midpoint_yaw)),
     }
 
 
@@ -123,6 +166,67 @@ def _finite_float(value):
     except OverflowError:
         return None
     return result if math.isfinite(result) else None
+
+
+def _boundary_transition_metrics(request_records, plan_records, reference):
+    """Measure the two-request boundary without joining independent plans."""
+    plans_by_request = {}
+    for record in plan_records:
+        request_index = record.get("request_index")
+        if request_index is not None:
+            plans_by_request.setdefault(request_index, []).append(record)
+    plans_a = plans_by_request.get(0, ())
+    plans_b = plans_by_request.get(1, ())
+    if not plans_a or not plans_b:
+        return {"available": False, "reason": "both request plans were not observed"}
+    first_plan = tuple(
+        (item.x_m, item.y_m) for item in plans_a[-1]["points"]
+    )
+    second_plan = tuple(
+        (item.x_m, item.y_m) for item in plans_b[0]["points"]
+    )
+    result = _chunk_transition_metrics(first_plan, second_plan, reference)
+    request_b = next(
+        (item for item in request_records if item["request_index"] == 1), None
+    )
+    robot_pose = None if request_b is None else request_b.get("robot_pose_at_dispatch")
+    first_constraint = None if request_b is None else request_b["poses"][0]
+    if robot_pose is not None and first_constraint is not None:
+        result["robot_to_first_constraint_B_m"] = math.hypot(
+            robot_pose["x_m"] - first_constraint["x_m"],
+            robot_pose["y_m"] - first_constraint["y_m"],
+        )
+        result["robot_yaw_at_dispatch_B_rad"] = robot_pose["yaw_rad"]
+        result["heading_final_A_to_robot_rad"] = abs(angle_delta(
+            result["heading_final_A_rad"], robot_pose["yaw_rad"]
+        ))
+        result["heading_robot_to_initial_B_rad"] = abs(angle_delta(
+            robot_pose["yaw_rad"], result["heading_initial_B_rad"]
+        ))
+    else:
+        result["robot_to_first_constraint_B_m"] = None
+        result["robot_yaw_at_dispatch_B_rad"] = None
+        result["heading_final_A_to_robot_rad"] = None
+        result["heading_robot_to_initial_B_rad"] = None
+    result["request_A_result_stamp_s"] = next(
+        (item.get("result_stamp_s") for item in request_records
+         if item["request_index"] == 0), None
+    )
+    result["request_B_dispatch_stamp_s"] = next(
+        (item.get("dispatch_stamp_s") for item in request_records
+         if item["request_index"] == 1), None
+    )
+    if (result["request_A_result_stamp_s"] is not None and
+            result["request_B_dispatch_stamp_s"] is not None):
+        result["terminal_A_to_dispatch_B_s"] = (
+            result["request_B_dispatch_stamp_s"]
+            - result["request_A_result_stamp_s"]
+        )
+    else:
+        result["terminal_A_to_dispatch_B_s"] = None
+    result["plan_count_A"] = len(plans_a)
+    result["plan_count_B"] = len(plans_b)
+    return result
 
 
 def _status_snapshot(stamp_s, payload):
@@ -431,9 +535,12 @@ class EvaluationRunner(Node):
             raise ValueError("output_dir is required")
         if self.mode not in ("run", "observe"):
             raise ValueError("mode must be run or observe")
-        if self.geometry_variant not in ("hard_vertex_current", "sparse_fillet_r4"):
+        if self.geometry_variant not in (
+                "hard_vertex_current", "sparse_fillet_r4", "sparse_single_3",
+                "sparse_single_4", "sparse_boundary_exit",
+                "sparse_boundary_midarc"):
             raise ValueError(
-                "geometry_variant must be hard_vertex_current or sparse_fillet_r4"
+                "unsupported evaluation geometry variant"
             )
         if self.mode == "run" and not self.scenario_path:
             raise ValueError("scenario is required in run mode")
@@ -460,6 +567,11 @@ class EvaluationRunner(Node):
         self.common_geometry_reference = None
         self.arm_geometry_reference = None
         self.dispatched_poses = ()
+        self.request_records = []
+        self.plan_records = []
+        self._request_pose_sets = ()
+        self._active_request_index = None
+        self._active_goal_generation = None
         self._direct_goal_client = (
             ActionClient(self, NavigateThroughPoses, "/navigate_through_poses")
             if self.mode == "run" else None
@@ -567,6 +679,12 @@ class EvaluationRunner(Node):
                        for item in message.poses)
         if points:
             self.plans.append(points)
+            self.plan_records.append({
+                "stamp_s": _stamp(message),
+                "request_index": self._active_request_index,
+                "goal_generation": self._active_goal_generation,
+                "points": points,
+            })
             if (self.mode == "observe" and self.goal is not None and
                     self.expected_turn == ExpectedTurn.ANY and
                     self.start_pose is not None):
@@ -641,14 +759,48 @@ class EvaluationRunner(Node):
         self.geometry_reference = self.arm_geometry_reference
         if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
             raise RuntimeError("NavigateThroughPoses action server is unavailable")
-        action_goal = NavigateThroughPoses.Goal()
-        stamp = self.get_clock().now().to_msg()
-        action_goal.poses = []
+        self._request_pose_sets = geometry["request_poses"]
         self.dispatched_poses = tuple(
             {"x_m": point[0], "y_m": point[1], "yaw_rad": yaw}
-            for point, yaw in geometry["poses"]
+            for request in self._request_pose_sets for point, yaw in request
         )
-        for (x_y, yaw) in geometry["poses"]:
+        self.goal_sent_s = _now_s(self)
+        self._send_request(0)
+
+    @staticmethod
+    def _pose_record(pose):
+        if pose is None:
+            return None
+        return {
+            "stamp_s": pose.stamp_s,
+            "x_m": pose.pose.x_m,
+            "y_m": pose.pose.y_m,
+            "yaw_rad": pose.pose.yaw_rad,
+        }
+
+    def _send_request(self, request_index):
+        """Send one evaluation request, preserving its causal provenance."""
+        poses = self._request_pose_sets[request_index]
+        generation = request_index + 1
+        dispatch_stamp = _now_s(self)
+        self._active_request_index = request_index
+        self._active_goal_generation = generation
+        self.request_records.append({
+            "request_index": request_index,
+            "goal_generation": generation,
+            "dispatch_stamp_s": dispatch_stamp,
+            "poses": tuple(
+                {"x_m": point[0], "y_m": point[1], "yaw_rad": yaw}
+                for point, yaw in poses
+            ),
+            "robot_pose_at_dispatch": self._pose_record(
+                self.global_poses[-1] if self.global_poses else None
+            ),
+            "result_status": None,
+        })
+        action_goal = NavigateThroughPoses.Goal()
+        stamp = self.get_clock().now().to_msg()
+        for (x_y, yaw) in poses:
             pose = PoseStamped()
             pose.header.frame_id = "map"
             pose.header.stamp = stamp
@@ -656,38 +808,54 @@ class EvaluationRunner(Node):
             pose.pose.orientation.z = math.sin(yaw / 2.0)
             pose.pose.orientation.w = math.cos(yaw / 2.0)
             action_goal.poses.append(pose)
-        self.goal_sent_s = _now_s(self)
-        self._direct_goal_client.send_goal_async(action_goal).add_done_callback(
-            self._on_direct_goal_response
+        self._direct_goal_client.send_goal_async(
+            action_goal
+        ).add_done_callback(
+            lambda future: self._on_direct_goal_response(future, request_index)
         )
 
-    def _on_direct_goal_response(self, future):
+    def _on_direct_goal_response(self, future, request_index):
         """Record the terminal result of the evaluation-only through-poses goal."""
         try:
             handle = future.result()
         except Exception as exc:  # pragma: no cover - exercised by ROS runtime
             self.get_logger().error(f"NavigateThroughPoses request failed: {exc}")
-            self.terminal_status = GoalStatus.STATUS_ABORTED
-            self.terminal_received_s = _now_s(self)
+            self._finish_request(request_index, GoalStatus.STATUS_ABORTED)
             return
         if not handle.accepted:
             self.get_logger().error("NavigateThroughPoses goal rejected")
-            self.terminal_status = GoalStatus.STATUS_ABORTED
-            self.terminal_received_s = _now_s(self)
+            self._finish_request(request_index, GoalStatus.STATUS_ABORTED)
             return
-        handle.get_result_async().add_done_callback(self._on_direct_goal_result)
+        handle.get_result_async().add_done_callback(
+            lambda result: self._on_direct_goal_result(result, request_index)
+        )
 
-    def _on_direct_goal_result(self, future):
-        """Record a direct Nav2 action result without relying on gateway telemetry."""
-        try:
-            response = future.result()
-            self.terminal_status = int(response.status)
-        except Exception as exc:  # pragma: no cover - exercised by ROS runtime
-            self.get_logger().error(f"NavigateThroughPoses result failed: {exc}")
-            self.terminal_status = GoalStatus.STATUS_ABORTED
+    def _finish_request(self, request_index, status):
+        for record in reversed(self.request_records):
+            if record["request_index"] == request_index:
+                record["result_status"] = int(status)
+                record["result_stamp_s"] = _now_s(self)
+                break
+        if status == GoalStatus.STATUS_SUCCEEDED and request_index + 1 < len(
+                self._request_pose_sets):
+            self._send_request(request_index + 1)
+            return
+        self.terminal_status = int(status)
         self.terminal_received_s = _now_s(self)
         if self.terminal_status == GoalStatus.STATUS_SUCCEEDED:
             self.success_s = self.terminal_received_s
+        self._active_request_index = None
+        self._active_goal_generation = None
+
+    def _on_direct_goal_result(self, future, request_index):
+        """Record a direct Nav2 action result without relying on gateway telemetry."""
+        try:
+            response = future.result()
+            status = int(response.status)
+        except Exception as exc:  # pragma: no cover - exercised by ROS runtime
+            self.get_logger().error(f"NavigateThroughPoses result failed: {exc}")
+            status = GoalStatus.STATUS_ABORTED
+        self._finish_request(request_index, status)
 
     def _tick(self):
         if self._finished:
@@ -751,6 +919,10 @@ class EvaluationRunner(Node):
         controller_json_errors = _trial_json_error_counts(
             self.controller_json_errors, self.goal_sent_s
         )
+        observed_plan_records = [
+            item for item in self.plan_records
+            if item["stamp_s"] >= self.goal_sent_s
+        ]
         plan = self.plans[-1] if self.plans else ()
         finite = trial_data_finite(
             self.goal, (global_poses, raw_poses, local_poses), commands, plan
@@ -807,11 +979,17 @@ class EvaluationRunner(Node):
         common_plan_geometry = []
         plan_geometry = []
         for index, candidate in enumerate(self.plans):
+            provenance = (
+                observed_plan_records[index]
+                if index < len(observed_plan_records) else {}
+            )
             points = tuple((item.x_m, item.y_m) for item in candidate)
             common_quality = quality_metrics(points, self.common_geometry_reference)
             arm_quality = quality_metrics(points, self.arm_geometry_reference)
             geometry_quality.append({
                 "plan_index": index,
+                "request_index": provenance.get("request_index"),
+                "goal_generation": provenance.get("goal_generation"),
                 **arm_quality,
             })
             common_geometry_quality.append({
@@ -826,6 +1004,8 @@ class EvaluationRunner(Node):
             )
             common_row = {
                 "plan_index": index,
+                "request_index": provenance.get("request_index"),
+                "goal_generation": provenance.get("goal_generation"),
                 "length_m": common_geometry.length_m,
                 "direct_distance_m": common_geometry.direct_distance_m,
                 "detour_ratio": common_geometry.detour_ratio,
@@ -835,6 +1015,8 @@ class EvaluationRunner(Node):
             common_plan_geometry.append(common_row)
             arm_plan_geometry.append({
                 "plan_index": index,
+                "request_index": provenance.get("request_index"),
+                "goal_generation": provenance.get("goal_generation"),
                 "length_m": arm_geometry.length_m,
                 "direct_distance_m": arm_geometry.direct_distance_m,
                 "detour_ratio": arm_geometry.detour_ratio,
@@ -856,6 +1038,12 @@ class EvaluationRunner(Node):
                    "common_plan_geometry": common_plan_geometry,
                    "arm_plan_geometry": arm_plan_geometry,
                    "dispatched_poses": self.dispatched_poses,
+                   "request_records": self.request_records,
+                   "plan_records": observed_plan_records,
+                   "boundary_transition": _boundary_transition_metrics(
+                       self.request_records, observed_plan_records,
+                       self.arm_geometry_reference or reference or ()
+                   ),
                    "sign": signs, "gates": gates,
                    "performance": [performance_gate(
                        "cross_track_p95_m",
@@ -881,6 +1069,8 @@ class EvaluationRunner(Node):
             ],
             "geometry_variant": self.geometry_variant,
             "dispatched_poses": self.dispatched_poses,
+            "request_count": len(self.request_records),
+            "request_records": self.request_records,
             "reference_families": ("common_mission", "arm_target"),
         }
         streams = {"odometry_global": global_poses, "odometry_raw": raw_poses,
@@ -890,6 +1080,8 @@ class EvaluationRunner(Node):
                    "drive_telemetry": drive_telemetry,
                    "controller_status": controller_status,
                    "controller_telemetry": controller_telemetry,
+                   "request_records": self.request_records,
+                   "plan_records": observed_plan_records,
                    "command_chain_alignment": (
                        command_chain["raw_safe"] + command_chain["safe_final"]
                        + command_chain["twist_to_ackermann"]

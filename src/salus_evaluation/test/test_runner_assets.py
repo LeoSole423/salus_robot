@@ -25,11 +25,24 @@ def test_runner_only_publishes_goal_and_markers_not_control_or_tf_topics():
 def test_fillet_arm_is_explicitly_evaluation_only():
     contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
     assert '"geometry_variant", "hard_vertex_current"' in contents
-    assert '"hard_vertex_current", "sparse_fillet_r4"' in contents
+    assert '"hard_vertex_current", "sparse_fillet_r4", "sparse_single_3"' in contents
     assert "valid_fillet_r4(" in contents
     assert "NavigateThroughPoses" in contents
     assert "geometry_reference" in contents
     assert "dispatched_poses" in contents
+
+
+def test_boundary_variants_are_evaluation_only_and_keep_request_provenance():
+    contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
+    for variant in (
+            "sparse_single_3", "sparse_single_4", "sparse_boundary_exit",
+            "sparse_boundary_midarc"):
+        assert f'"{variant}"' in contents
+    assert "request_index" in contents
+    assert "goal_generation" in contents
+    assert "request_records" in contents
+    assert "robot_pose_at_dispatch" in contents
+    assert "V=(8,0)" not in contents
 
 
 def test_matched_arms_use_three_pose_through_poses():

@@ -1,0 +1,12 @@
+schema_version: 1
+id: issue244_sparse_boundary_exit_v1
+repetitions: 5
+max_speed_mps: 0.8
+speeds_mps: [0.8]
+sim_sensor_profile: clean
+sim_sensor_seed: 6400
+cases:
+  - id: single_corner_90
+    scenario: scenarios/single_corner_90_r4.yaml
+    direction: left
+    requested_radius_m: 4.0
