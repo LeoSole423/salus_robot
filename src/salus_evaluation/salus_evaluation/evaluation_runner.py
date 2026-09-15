@@ -194,6 +194,22 @@ def _request_variant_from_replay(variant):
         indices = (1, 2, 3, 4)
         request_b = full5[1:]
         changed_fields = ("B0 removed",)
+    elif variant == "track3_request_b_add_b1":
+        indices = (0, 1, 4)
+        request_b = (full5[0], full5[1], full5[4])
+        changed_fields = ("B1 added to BASE",)
+    elif variant == "track3_request_b_add_b2":
+        indices = (0, 2, 4)
+        request_b = (full5[0], full5[2], full5[4])
+        changed_fields = ("B2 added to BASE",)
+    elif variant == "track3_request_b_add_b3":
+        indices = (0, 3, 4)
+        request_b = (full5[0], full5[3], full5[4])
+        changed_fields = ("B3 added to BASE",)
+    elif variant == "track3_request_b_full5_drop_b3":
+        indices = (0, 1, 2, 4)
+        request_b = (full5[0], full5[1], full5[2], full5[4])
+        changed_fields = ("B3 removed from FULL5",)
     else:
         raise ValueError(f"unknown productive replay delta variant: {variant}")
     assert request_a == source_requests[0]
@@ -205,8 +221,18 @@ def _request_variant_from_replay(variant):
         assert request_b[1:] == full5[1:]
     elif variant == "track3_request_b_drop_b0":
         assert request_b == full5[1:]
+    elif variant == "track3_request_b_add_b1":
+        assert request_b == (full5[0], full5[1], full5[4])
+    elif variant == "track3_request_b_add_b2":
+        assert request_b == (full5[0], full5[2], full5[4])
+    elif variant == "track3_request_b_add_b3":
+        assert request_b == (full5[0], full5[3], full5[4])
+    elif variant == "track3_request_b_full5_drop_b3":
+        assert request_b == (full5[0], full5[1], full5[2], full5[4])
     else:
         assert request_b == full5
+    base_indices = (0, 4)
+    base = (full5[0], full5[4])
     full5_diff = []
     for variant_index, pose in enumerate(request_b):
         full5_index = indices[variant_index]
@@ -223,6 +249,21 @@ def _request_variant_from_replay(variant):
         })
     retained = set(indices)
     removed = [index for index in range(len(full5)) if index not in retained]
+    base_diff = []
+    for variant_index, pose in enumerate(request_b):
+        full5_index = indices[variant_index]
+        base_index = base_indices.index(full5_index) if full5_index in base_indices else None
+        base_pose = None if base_index is None else base[base_index]
+        base_diff.append({
+            "full5_index": full5_index,
+            "base_index": base_index,
+            "variant_index": variant_index,
+            "relation": "added" if base_index is None else "retained",
+            "base_xy": None if base_pose is None else base_pose[0],
+            "variant_xy": pose[0],
+            "base_yaw_rad": None if base_pose is None else base_pose[1],
+            "variant_yaw_rad": pose[1],
+        })
     contract = {
         "source": "issue244_t0_rep02_chunk_b.json",
         "request_a_exact": True,
@@ -231,6 +272,8 @@ def _request_variant_from_replay(variant):
         "full5_indices_retained": list(indices),
         "full5_indices_removed": removed,
         "full5_structured_diff": full5_diff,
+        "base_indices": list(base_indices),
+        "base_structured_diff": base_diff,
         "changed_fields": list(changed_fields),
         "full5_xy_yaw_unchanged_except_allowed": True,
         "nav2_controller_safety_parameters_changed": False,
@@ -716,7 +759,10 @@ class EvaluationRunner(Node):
                 "sparse_boundary_midarc", "track3_current_boundary",
                 "track3_sparse_exit", "track3_exact_productive_replay",
                 "track3_request_b_full5", "track3_request_b_endpoints_only",
-                "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0"):
+                "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0",
+                "track3_request_b_add_b1", "track3_request_b_add_b2",
+                "track3_request_b_add_b3",
+                "track3_request_b_full5_drop_b3"):
             raise ValueError(
                 "unsupported evaluation geometry variant"
             )

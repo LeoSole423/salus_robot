@@ -269,3 +269,58 @@ def test_request_b_delta_debug_changes_only_the_allowed_contract():
     assert endpoints["delta_debug_contract"]["changed_fields"] == ["B1-B3 removed"]
     assert normalized["delta_debug_contract"]["changed_fields"] == ["B0.yaw := B1.yaw"]
     assert dropped["delta_debug_contract"]["changed_fields"] == ["B0 removed"]
+
+
+@pytest.mark.parametrize("variant, added_index", [
+    ("track3_request_b_add_b1", 1),
+    ("track3_request_b_add_b2", 2),
+    ("track3_request_b_add_b3", 3),
+])
+def test_request_b_single_additions_are_exact_subsets_of_full5(
+        variant, added_index):
+    base = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_request_b_endpoints_only"
+    )
+    full = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_request_b_full5"
+    )
+    candidate = _experiment_geometry(Pose2D(0.0, 0.0, 0.0), GOAL, variant)
+    assert candidate["request_poses"][0] == base["request_poses"][0]
+    assert candidate["request_poses"][0] == full["request_poses"][0]
+    assert candidate["request_poses"][1] == (
+        full["request_poses"][1][0],
+        full["request_poses"][1][added_index],
+        full["request_poses"][1][4],
+    )
+    contract = candidate["delta_debug_contract"]
+    assert contract["full5_indices_retained"] == [0, added_index, 4]
+    assert contract["full5_indices_removed"] == [
+        index for index in (1, 2, 3) if index != added_index
+    ]
+    assert [item["relation"] for item in contract["base_structured_diff"]] == [
+        "retained", "added", "retained"
+    ]
+    assert all(item["yaw_equal"] for item in contract["full5_structured_diff"])
+
+
+def test_request_b_full5_drop_b3_is_exact_confirmation_delta():
+    full = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_request_b_full5"
+    )
+    dropped = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL,
+        "track3_request_b_full5_drop_b3",
+    )
+    assert dropped["request_poses"][0] == full["request_poses"][0]
+    assert dropped["request_poses"][1] == (
+        full["request_poses"][1][0],
+        full["request_poses"][1][1],
+        full["request_poses"][1][2],
+        full["request_poses"][1][4],
+    )
+    contract = dropped["delta_debug_contract"]
+    assert contract["full5_indices_retained"] == [0, 1, 2, 4]
+    assert contract["full5_indices_removed"] == [3]
+    assert contract["changed_fields"] == ["B3 removed from FULL5"]
+    assert all(item["xy_equal"] and item["yaw_equal"]
+               for item in contract["full5_structured_diff"])

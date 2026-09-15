@@ -55,7 +55,9 @@ def test_exact_productive_replay_is_an_evaluation_only_five_pose_request():
     assert replay.is_file()
     for variant in (
             "track3_request_b_full5", "track3_request_b_endpoints_only",
-            "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0"):
+            "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0",
+            "track3_request_b_add_b1", "track3_request_b_add_b2",
+            "track3_request_b_add_b3", "track3_request_b_full5_drop_b3"):
         assert f'"{variant}"' in contents
 
 
