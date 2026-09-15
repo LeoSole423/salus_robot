@@ -53,6 +53,10 @@ def test_exact_productive_replay_is_an_evaluation_only_five_pose_request():
     assert '"track3_exact_productive_replay"' in contents
     replay = ROOT / "config" / "replays" / "issue244_t0_rep02_chunk_b.json"
     assert replay.is_file()
+    for variant in (
+            "track3_request_b_full5", "track3_request_b_endpoints_only",
+            "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0"):
+        assert f'"{variant}"' in contents
 
 
 def test_matched_arms_use_three_pose_through_poses():

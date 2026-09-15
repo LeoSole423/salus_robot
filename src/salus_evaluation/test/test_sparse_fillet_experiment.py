@@ -249,3 +249,23 @@ def test_exact_productive_replay_preserves_captured_poses_and_yaws():
     assert request_b[-1][1] == pytest.approx(math.radians(45.09330802155037))
     assert geometry["planner_minimum_turning_radius_m"] == pytest.approx(4.0)
     assert geometry["replay_source"]["chunk_id"] == "1"
+
+
+def test_request_b_delta_debug_changes_only_the_allowed_contract():
+    pose = Pose2D(0.0, 0.0, 0.0)
+    full = _experiment_geometry(pose, GOAL, "track3_request_b_full5")
+    endpoints = _experiment_geometry(pose, GOAL, "track3_request_b_endpoints_only")
+    normalized = _experiment_geometry(pose, GOAL, "track3_request_b_normalize_b0_yaw")
+    dropped = _experiment_geometry(pose, GOAL, "track3_request_b_drop_b0")
+    assert full["request_poses"][0] == endpoints["request_poses"][0]
+    assert full["request_poses"][0] == normalized["request_poses"][0]
+    assert full["request_poses"][0] == dropped["request_poses"][0]
+    full_b = full["request_poses"][1]
+    assert endpoints["request_poses"][1] == (full_b[0], full_b[4])
+    assert normalized["request_poses"][1][0][0] == full_b[0][0]
+    assert normalized["request_poses"][1][0][1] == full_b[1][1]
+    assert normalized["request_poses"][1][1:] == full_b[1:]
+    assert dropped["request_poses"][1] == full_b[1:]
+    assert endpoints["delta_debug_contract"]["changed_fields"] == ["B1-B3 removed"]
+    assert normalized["delta_debug_contract"]["changed_fields"] == ["B0.yaw := B1.yaw"]
+    assert dropped["delta_debug_contract"]["changed_fields"] == ["B0 removed"]

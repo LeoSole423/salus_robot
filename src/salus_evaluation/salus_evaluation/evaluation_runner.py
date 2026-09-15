@@ -171,10 +171,84 @@ def _exact_productive_replay_geometry():
     }
 
 
+def _request_variant_from_replay(variant):
+    """Build one allowed B delta while preserving replay request A exactly."""
+    replay = _exact_productive_replay_geometry()
+    source_requests = replay["request_poses"]
+    assert len(source_requests) == 2
+    request_a, full5 = source_requests
+    assert len(request_a) == 6 and len(full5) == 5
+    if variant == "track3_request_b_full5":
+        indices = (0, 1, 2, 3, 4)
+        request_b = full5
+        changed_fields = ()
+    elif variant == "track3_request_b_endpoints_only":
+        indices = (0, 4)
+        request_b = (full5[0], full5[4])
+        changed_fields = ("B1-B3 removed",)
+    elif variant == "track3_request_b_normalize_b0_yaw":
+        indices = (0, 1, 2, 3, 4)
+        request_b = ((full5[0][0], full5[1][1]),) + full5[1:]
+        changed_fields = ("B0.yaw := B1.yaw",)
+    elif variant == "track3_request_b_drop_b0":
+        indices = (1, 2, 3, 4)
+        request_b = full5[1:]
+        changed_fields = ("B0 removed",)
+    else:
+        raise ValueError(f"unknown productive replay delta variant: {variant}")
+    assert request_a == source_requests[0]
+    if variant == "track3_request_b_endpoints_only":
+        assert request_b == (full5[0], full5[4])
+    elif variant == "track3_request_b_normalize_b0_yaw":
+        assert tuple(item[0] for item in request_b) == tuple(item[0] for item in full5)
+        assert request_b[0][1] == full5[1][1]
+        assert request_b[1:] == full5[1:]
+    elif variant == "track3_request_b_drop_b0":
+        assert request_b == full5[1:]
+    else:
+        assert request_b == full5
+    full5_diff = []
+    for variant_index, pose in enumerate(request_b):
+        full5_index = indices[variant_index]
+        source_pose = full5[full5_index]
+        full5_diff.append({
+            "full5_index": full5_index,
+            "variant_index": variant_index,
+            "xy_equal": pose[0] == source_pose[0],
+            "yaw_equal": pose[1] == source_pose[1],
+            "full5_xy": source_pose[0],
+            "variant_xy": pose[0],
+            "full5_yaw_rad": source_pose[1],
+            "variant_yaw_rad": pose[1],
+        })
+    retained = set(indices)
+    removed = [index for index in range(len(full5)) if index not in retained]
+    contract = {
+        "source": "issue244_t0_rep02_chunk_b.json",
+        "request_a_exact": True,
+        "full5_pose_count": len(full5),
+        "variant": variant,
+        "full5_indices_retained": list(indices),
+        "full5_indices_removed": removed,
+        "full5_structured_diff": full5_diff,
+        "changed_fields": list(changed_fields),
+        "full5_xy_yaw_unchanged_except_allowed": True,
+        "nav2_controller_safety_parameters_changed": False,
+    }
+    return (request_a, request_b), contract
+
+
 def _experiment_geometry(spawn, goal_spec, variant):
     """Build sparse evaluation geometry and its optional request partition."""
     if variant == "track3_exact_productive_replay":
         return _exact_productive_replay_geometry()
+    if variant.startswith("track3_request_b_"):
+        requests, contract = _request_variant_from_replay(variant)
+        geometry = _exact_productive_replay_geometry()
+        geometry["request_poses"] = requests
+        geometry["poses"] = tuple(point for request in requests for point in request)
+        geometry["delta_debug_contract"] = contract
+        return geometry
     if variant in ("track3_current_boundary", "track3_sparse_exit"):
         return _track3_geometry(spawn, variant)
     p0 = (0.0, 0.0)
@@ -640,7 +714,9 @@ class EvaluationRunner(Node):
                 "hard_vertex_current", "sparse_fillet_r4", "sparse_single_3",
                 "sparse_single_4", "sparse_boundary_exit",
                 "sparse_boundary_midarc", "track3_current_boundary",
-                "track3_sparse_exit", "track3_exact_productive_replay"):
+                "track3_sparse_exit", "track3_exact_productive_replay",
+                "track3_request_b_full5", "track3_request_b_endpoints_only",
+                "track3_request_b_normalize_b0_yaw", "track3_request_b_drop_b0"):
             raise ValueError(
                 "unsupported evaluation geometry variant"
             )
@@ -672,6 +748,7 @@ class EvaluationRunner(Node):
         self.track3_nominal_radius_m = None
         self.planner_minimum_turning_radius_m = None
         self.replay_source = None
+        self.delta_debug_contract = None
         self.dispatched_poses = ()
         self.request_records = []
         self.plan_records = []
@@ -860,7 +937,8 @@ class EvaluationRunner(Node):
         geometry = _experiment_geometry(
             scenario.spawn, goal_spec, self.geometry_variant
         )
-        if self.geometry_variant == "track3_exact_productive_replay":
+        if self.geometry_variant.startswith("track3_request_b_") or (
+                self.geometry_variant == "track3_exact_productive_replay"):
             final_pose = geometry["request_poses"][-1][-1]
             self.goal = Pose2D(final_pose[0][0], final_pose[0][1], final_pose[1])
         self.common_geometry_reference = geometry["common_reference"]
@@ -872,6 +950,7 @@ class EvaluationRunner(Node):
             "planner_minimum_turning_radius_m"
         )
         self.replay_source = geometry.get("replay_source")
+        self.delta_debug_contract = geometry.get("delta_debug_contract")
         if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
             raise RuntimeError("NavigateThroughPoses action server is unavailable")
         self._request_pose_sets = geometry["request_poses"]
@@ -1156,6 +1235,7 @@ class EvaluationRunner(Node):
                            self.planner_minimum_turning_radius_m
                        ),
                        "replay_source": self.replay_source,
+                       "delta_debug_contract": self.delta_debug_contract,
                    },
                    "min_robot_distance_to_logical_P1_m": (
                        min_robot_distance_to_logical_p1_m
@@ -1209,6 +1289,7 @@ class EvaluationRunner(Node):
                     self.planner_minimum_turning_radius_m
                 ),
                 "replay_source": self.replay_source,
+                "delta_debug_contract": self.delta_debug_contract,
             },
             "min_robot_distance_to_logical_P1_m": min_robot_distance_to_logical_p1_m,
             "dispatched_poses": self.dispatched_poses,
