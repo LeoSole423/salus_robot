@@ -12,6 +12,7 @@ setup(
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/config/scenarios", glob("config/scenarios/*.yaml")),
         ("share/" + package_name + "/config/matrices", glob("config/matrices/*.yaml")),
+        ("share/" + package_name + "/config/replays", glob("config/replays/*.json")),
         ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
     ],
     install_requires=["setuptools", "PyYAML"],

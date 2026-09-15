@@ -1,0 +1,6 @@
+schema_version: 1
+id: track3_exact_productive_replay
+world: free
+spawn: {x_m: 0.0, y_m: 0.0, yaw_rad: 0.0}
+goals:
+  - {id: captured_chunk_b_terminal, forward_m: 4.5423540099, lateral_m: 2.4756934531, yaw_offset_rad: 0.5427601148, timeout_s: 90.0, expected_turn: left}

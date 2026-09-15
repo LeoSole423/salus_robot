@@ -232,3 +232,20 @@ def test_track3_matrix_contract_keeps_planner_radius_and_p1_measurement_metadata
     assert geometry["planner_minimum_turning_radius_m"] == 4.0
     assert geometry["track3_nominal_radius_m"] == 8.0
     assert geometry["logical_points"]["P1"]["x_m"] == pytest.approx(5.5)
+
+
+def test_exact_productive_replay_preserves_captured_poses_and_yaws():
+    geometry = _experiment_geometry(
+        Pose2D(5.274779424261093, 0.7033543116419798, 0.24426658083476302),
+        GOAL, "track3_exact_productive_replay"
+    )
+    assert tuple(len(request) for request in geometry["request_poses"]) == (6, 5)
+    request_a, request_b = geometry["request_poses"]
+    assert request_a[0][0] == pytest.approx((2.156815699476283, 0.20325882267206907))
+    assert request_a[0][1] == pytest.approx(math.radians(0.13465437977510875))
+    assert request_b[0][0] == pytest.approx((6.865496630217754, 1.9788015772680372))
+    assert request_b[0][1] == pytest.approx(math.radians(38.34738883114576))
+    assert request_b[-1][0] == pytest.approx((9.08356002620621, 4.204101139282841))
+    assert request_b[-1][1] == pytest.approx(math.radians(45.09330802155037))
+    assert geometry["planner_minimum_turning_radius_m"] == pytest.approx(4.0)
+    assert geometry["replay_source"]["chunk_id"] == "1"

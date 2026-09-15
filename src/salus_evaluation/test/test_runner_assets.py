@@ -48,6 +48,13 @@ def test_boundary_variants_are_evaluation_only_and_keep_request_provenance():
     assert "V=(8,0)" not in contents
 
 
+def test_exact_productive_replay_is_an_evaluation_only_five_pose_request():
+    contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
+    assert '"track3_exact_productive_replay"' in contents
+    replay = ROOT / "config" / "replays" / "issue244_t0_rep02_chunk_b.json"
+    assert replay.is_file()
+
+
 def test_matched_arms_use_three_pose_through_poses():
     contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
     assert "action_goal.poses.append(pose)" in contents

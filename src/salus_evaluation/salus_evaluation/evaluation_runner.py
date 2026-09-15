@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point, PoseStamped, Twist
@@ -140,8 +141,40 @@ def _track3_geometry(spawn, variant):
     }
 
 
+def _exact_productive_replay_geometry():
+    """Load captured productive poses without regenerating their geometry."""
+    replay = (
+        Path(get_package_share_directory("salus_evaluation"))
+        / "config" / "replays" / "issue244_t0_rep02_chunk_b.json"
+    )
+    payload = json.loads(replay.read_text(encoding="utf-8"))
+    requests = tuple(
+        tuple(
+            ((float(point[0]), float(point[1])), math.radians(float(yaw)))
+            for point, yaw in zip(item["poses_xy"], item["yaws_deg"])
+        )
+        for item in payload["requests"]
+    )
+    return {
+        "request_poses": requests,
+        "poses": tuple(point for request in requests for point in request),
+        "common_reference": tuple(
+            point for request in requests for point, _yaw in request
+        ),
+        "arm_reference": tuple(
+            point for request in requests for point, _yaw in request
+        ),
+        "track3_nominal_radius_m": None,
+        "planner_minimum_turning_radius_m": 4.0,
+        "logical_points": None,
+        "replay_source": payload,
+    }
+
+
 def _experiment_geometry(spawn, goal_spec, variant):
     """Build sparse evaluation geometry and its optional request partition."""
+    if variant == "track3_exact_productive_replay":
+        return _exact_productive_replay_geometry()
     if variant in ("track3_current_boundary", "track3_sparse_exit"):
         return _track3_geometry(spawn, variant)
     p0 = (0.0, 0.0)
@@ -607,7 +640,7 @@ class EvaluationRunner(Node):
                 "hard_vertex_current", "sparse_fillet_r4", "sparse_single_3",
                 "sparse_single_4", "sparse_boundary_exit",
                 "sparse_boundary_midarc", "track3_current_boundary",
-                "track3_sparse_exit"):
+                "track3_sparse_exit", "track3_exact_productive_replay"):
             raise ValueError(
                 "unsupported evaluation geometry variant"
             )
@@ -636,7 +669,9 @@ class EvaluationRunner(Node):
         self.common_geometry_reference = None
         self.arm_geometry_reference = None
         self.logical_points = None
+        self.track3_nominal_radius_m = None
         self.planner_minimum_turning_radius_m = None
+        self.replay_source = None
         self.dispatched_poses = ()
         self.request_records = []
         self.plan_records = []
@@ -825,13 +860,18 @@ class EvaluationRunner(Node):
         geometry = _experiment_geometry(
             scenario.spawn, goal_spec, self.geometry_variant
         )
+        if self.geometry_variant == "track3_exact_productive_replay":
+            final_pose = geometry["request_poses"][-1][-1]
+            self.goal = Pose2D(final_pose[0][0], final_pose[0][1], final_pose[1])
         self.common_geometry_reference = geometry["common_reference"]
         self.arm_geometry_reference = geometry["arm_reference"]
         self.geometry_reference = self.arm_geometry_reference
         self.logical_points = geometry.get("logical_points")
+        self.track3_nominal_radius_m = geometry.get("track3_nominal_radius_m")
         self.planner_minimum_turning_radius_m = geometry.get(
             "planner_minimum_turning_radius_m"
         )
+        self.replay_source = geometry.get("replay_source")
         if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
             raise RuntimeError("NavigateThroughPoses action server is unavailable")
         self._request_pose_sets = geometry["request_poses"]
@@ -1111,12 +1151,11 @@ class EvaluationRunner(Node):
                    "geometry_variant": self.geometry_variant,
                    "geometry_contract": {
                        "logical_points": self.logical_points,
-                       "track3_nominal_radius_m": (
-                           8.0 if self.geometry_variant.startswith("track3_") else None
-                       ),
+                       "track3_nominal_radius_m": self.track3_nominal_radius_m,
                        "planner_minimum_turning_radius_m": (
                            self.planner_minimum_turning_radius_m
                        ),
+                       "replay_source": self.replay_source,
                    },
                    "min_robot_distance_to_logical_P1_m": (
                        min_robot_distance_to_logical_p1_m
@@ -1165,12 +1204,11 @@ class EvaluationRunner(Node):
             "geometry_variant": self.geometry_variant,
             "geometry_contract": {
                 "logical_points": self.logical_points,
-                "track3_nominal_radius_m": (
-                    8.0 if self.geometry_variant.startswith("track3_") else None
-                ),
+                "track3_nominal_radius_m": self.track3_nominal_radius_m,
                 "planner_minimum_turning_radius_m": (
                     self.planner_minimum_turning_radius_m
                 ),
+                "replay_source": self.replay_source,
             },
             "min_robot_distance_to_logical_P1_m": min_robot_distance_to_logical_p1_m,
             "dispatched_poses": self.dispatched_poses,

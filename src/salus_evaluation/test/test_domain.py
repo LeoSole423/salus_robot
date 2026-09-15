@@ -266,7 +266,8 @@ def test_all_shipped_scenarios_are_strictly_valid():
     assert {item.scenario_id for item in scenarios} == {
         "straight_5m", "right_quarter", "left_quarter", "arrival_short",
         "left_gentle", "right_gentle", "left_tight_valid", "right_tight_valid",
-        "boundary_corner_90", "single_corner_90_r4", "track3_wide_r8"}
+        "boundary_corner_90", "single_corner_90_r4", "track3_wide_r8",
+        "track3_exact_productive_replay"}
 
 
 def test_schema_rejects_unknown_fields(tmp_path):
