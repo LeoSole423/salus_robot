@@ -1,0 +1,8 @@
+schema_version: 1
+id: track3_wide_r8
+world: free
+spawn: {x_m: 0.0, y_m: 0.0, yaw_rad: 0.0}
+goals:
+  # P2 of the frozen route-level fixture. The evaluator derives P0/P1/P2/P3
+  # and E1/X1/S1 from the shared fixture helper before dispatch.
+  - {id: track3_p2, forward_m: 8.4282032303, lateral_m: 4.0, yaw_offset_rad: 0.7853981634, timeout_s: 90.0, expected_turn: left}

@@ -169,3 +169,66 @@ def test_boundary_provenance_keeps_plans_separate_and_records_robot_dispatch_pos
     assert result["plan_count_A"] == result["plan_count_B"] == 1
     assert result["robot_yaw_at_dispatch_B_rad"] == pytest.approx(math.pi / 2)
     assert result["terminal_A_to_dispatch_B_s"] == pytest.approx(0.1)
+
+
+def test_track3_fixture_derives_the_frozen_points_and_fillet_contract():
+    current = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_current_boundary"
+    )
+    points = current["logical_points"]
+    assert points["P0"]["x_m"] == pytest.approx(1.5)
+    assert points["P0"]["y_m"] == pytest.approx(0.0)
+    assert points["P1"]["x_m"] == pytest.approx(5.5)
+    assert points["P1"]["y_m"] == pytest.approx(1.0717967697)
+    assert points["P2"]["x_m"] == pytest.approx(8.4282032303)
+    assert points["P2"]["y_m"] == pytest.approx(4.0)
+    assert points["E1"]["x_m"] == pytest.approx(4.4647238196)
+    assert points["E1"]["y_m"] == pytest.approx(0.7943953532)
+    assert points["X1"]["x_m"] == pytest.approx(6.2578747639)
+    assert points["X1"]["y_m"] == pytest.approx(1.8296715337)
+    assert points["S1"]["x_m"] == pytest.approx(6.2071067812)
+    assert points["S1"]["y_m"] == pytest.approx(1.7789035509)
+    assert current["fillet"]["radius_m"] == pytest.approx(4.0)
+    assert current["track3_nominal_radius_m"] == pytest.approx(8.0)
+    assert current["planner_minimum_turning_radius_m"] == pytest.approx(4.0)
+
+
+def test_track3_matched_requests_have_only_the_two_contractual_requests():
+    current = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_current_boundary"
+    )
+    sparse = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_sparse_exit"
+    )
+    assert tuple(len(request) for request in current["request_poses"]) == (2, 2)
+    assert tuple(len(request) for request in sparse["request_poses"]) == (2, 1)
+    _assert_pose(current["request_poses"][0][0], (4.4647238196, 0.7943953532), math.radians(15.0))
+    _assert_pose(current["request_poses"][0][1], (5.5, 1.0717967697), math.radians(15.0))
+    _assert_pose(current["request_poses"][1][0], (6.2071067812, 1.7789035509), math.radians(45.0))
+    _assert_pose(current["request_poses"][1][1], (8.4282032303, 4.0), math.radians(45.0))
+    assert sparse["request_poses"][0][0] == current["request_poses"][0][0]
+    _assert_pose(sparse["request_poses"][0][1], (6.2578747639, 1.8296715337), math.radians(45.0))
+    assert sparse["request_poses"][1] == (current["request_poses"][1][1],)
+
+
+def test_track3_sparse_never_dispatches_p1_m_or_dense_arc_samples():
+    sparse = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_sparse_exit"
+    )
+    dispatched = [item for request in sparse["request_poses"] for item in request]
+    p1 = sparse["logical_points"]["P1"]
+    m = sparse["fillet"]["arc_points"][len(sparse["fillet"]["arc_points"]) // 2]
+    assert all((point[0][0], point[0][1]) != (p1["x_m"], p1["y_m"])
+               for point in dispatched)
+    assert all((point[0][0], point[0][1]) != pytest.approx(m)
+               for point in dispatched)
+    assert len(dispatched) == 3
+
+
+def test_track3_matrix_contract_keeps_planner_radius_and_p1_measurement_metadata():
+    geometry = _experiment_geometry(
+        Pose2D(0.0, 0.0, 0.0), GOAL, "track3_sparse_exit"
+    )
+    assert geometry["planner_minimum_turning_radius_m"] == 4.0
+    assert geometry["track3_nominal_radius_m"] == 8.0
+    assert geometry["logical_points"]["P1"]["x_m"] == pytest.approx(5.5)

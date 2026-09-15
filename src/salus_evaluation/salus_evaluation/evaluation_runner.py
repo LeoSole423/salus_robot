@@ -20,7 +20,10 @@ from visualization_msgs.msg import Marker, MarkerArray
 from salus_navigation.route_geometry import path_geometry_metrics
 
 from .artifacts import write_artifacts
-from .chunk_continuity_runner import _transition_metrics as _chunk_transition_metrics
+from .chunk_continuity_runner import (
+    _transition_metrics as _chunk_transition_metrics,
+    _wide_turn_local_route,
+)
 from .gates import GateState, functional_gates, performance_gate
 from .geometry_quality import quality_metrics, valid_fillet_r4
 from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
@@ -74,8 +77,73 @@ def _map_yaw(spawn, yaw_rad):
     return spawn.yaw_rad + yaw_rad
 
 
+def _heading(first, second):
+    """Return the heading from one finite evaluation-local point to another."""
+    return math.atan2(second[1] - first[1], second[0] - first[0])
+
+
+def _track3_geometry(spawn, variant):
+    """Build the frozen TRACK3 T1 requests from the route-level fixture."""
+    p0, p1, p2, p3 = _wide_turn_local_route()
+    incoming_yaw = _heading(p0, p1)
+    outgoing_yaw = _heading(p1, p2)
+    fillet = valid_fillet_r4(p0, p1, p2, radius_m=4.0)
+    if not fillet["valid"]:
+        raise ValueError(f"TRACK3 R4 fillet is invalid: {fillet['reason']}")
+    entry = fillet["tangent_entry"]
+    exit_point = fillet["tangent_exit"]
+    # Exact first synthetic from route_preparation.expand for spacing 1.0 m.
+    leg_length = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+    spacing = 1.0
+    s1 = (
+        p1[0] + spacing * (p2[0] - p1[0]) / leg_length,
+        p1[1] + spacing * (p2[1] - p1[1]) / leg_length,
+    )
+    if variant == "track3_current_boundary":
+        request_local_poses = (
+            ((entry, incoming_yaw), (p1, incoming_yaw)),
+            ((s1, outgoing_yaw), (p2, outgoing_yaw)),
+        )
+    elif variant == "track3_sparse_exit":
+        request_local_poses = (
+            ((entry, incoming_yaw), (exit_point, outgoing_yaw)),
+            ((p2, outgoing_yaw),),
+        )
+    else:
+        raise ValueError(f"unknown TRACK3 variant: {variant}")
+    request_poses = tuple(tuple(
+        (_map_xy(spawn, point), _map_yaw(spawn, heading))
+        for point, heading in request
+    ) for request in request_local_poses)
+
+    def mapped(point):
+        xy = _map_xy(spawn, point)
+        return {"x_m": xy[0], "y_m": xy[1]}
+    logical_points = {
+        name: {**mapped(point), "yaw_rad": _map_yaw(spawn, heading)}
+        for name, point, heading in (
+            ("P0", p0, incoming_yaw), ("P1", p1, outgoing_yaw),
+            ("P2", p2, outgoing_yaw), ("P3", p3, outgoing_yaw),
+            ("E1", entry, incoming_yaw), ("X1", exit_point, outgoing_yaw),
+            ("S1", s1, outgoing_yaw),
+        )
+    }
+    return {
+        "request_poses": request_poses,
+        "poses": tuple(item for request in request_poses for item in request),
+        "common_reference": tuple(_map_xy(spawn, point) for point in (p0, p1, p2, p3)),
+        "arm_reference": tuple(_map_xy(spawn, point) for point in (p0, p1, p2, p3)),
+        "fillet": fillet,
+        "track3_nominal_radius_m": 8.0,
+        "planner_minimum_turning_radius_m": 4.0,
+        "logical_points": logical_points,
+    }
+
+
 def _experiment_geometry(spawn, goal_spec, variant):
     """Build sparse evaluation geometry and its optional request partition."""
+    if variant in ("track3_current_boundary", "track3_sparse_exit"):
+        return _track3_geometry(spawn, variant)
     p0 = (0.0, 0.0)
     vertex = (goal_spec.forward_m, 0.0)
     p2 = (goal_spec.forward_m, goal_spec.lateral_m)
@@ -538,7 +606,8 @@ class EvaluationRunner(Node):
         if self.geometry_variant not in (
                 "hard_vertex_current", "sparse_fillet_r4", "sparse_single_3",
                 "sparse_single_4", "sparse_boundary_exit",
-                "sparse_boundary_midarc"):
+                "sparse_boundary_midarc", "track3_current_boundary",
+                "track3_sparse_exit"):
             raise ValueError(
                 "unsupported evaluation geometry variant"
             )
@@ -566,6 +635,8 @@ class EvaluationRunner(Node):
         self.geometry_reference = None
         self.common_geometry_reference = None
         self.arm_geometry_reference = None
+        self.logical_points = None
+        self.planner_minimum_turning_radius_m = None
         self.dispatched_poses = ()
         self.request_records = []
         self.plan_records = []
@@ -757,6 +828,10 @@ class EvaluationRunner(Node):
         self.common_geometry_reference = geometry["common_reference"]
         self.arm_geometry_reference = geometry["arm_reference"]
         self.geometry_reference = self.arm_geometry_reference
+        self.logical_points = geometry.get("logical_points")
+        self.planner_minimum_turning_radius_m = geometry.get(
+            "planner_minimum_turning_radius_m"
+        )
         if not self._direct_goal_client.wait_for_server(timeout_sec=5.0):
             raise RuntimeError("NavigateThroughPoses action server is unavailable")
         self._request_pose_sets = geometry["request_poses"]
@@ -958,6 +1033,14 @@ class EvaluationRunner(Node):
             ),
             "state": "calibrating",
         }
+        logical_p1 = None if self.logical_points is None else self.logical_points.get("P1")
+        min_robot_distance_to_logical_p1_m = None
+        if logical_p1 is not None and global_poses:
+            min_robot_distance_to_logical_p1_m = min(
+                math.hypot(item.pose.x_m - logical_p1["x_m"],
+                           item.pose.y_m - logical_p1["y_m"])
+                for item in global_poses
+            )
         command_chain = _command_chain(
             commands, safe_commands, final_commands, vehicle_commands,
             drive_telemetry, controller_status, controller_telemetry,
@@ -1026,6 +1109,18 @@ class EvaluationRunner(Node):
             plan_geometry.append(common_row)
         summary = {"schema_version": 2, "reason": reason,
                    "geometry_variant": self.geometry_variant,
+                   "geometry_contract": {
+                       "logical_points": self.logical_points,
+                       "track3_nominal_radius_m": (
+                           8.0 if self.geometry_variant.startswith("track3_") else None
+                       ),
+                       "planner_minimum_turning_radius_m": (
+                           self.planner_minimum_turning_radius_m
+                       ),
+                   },
+                   "min_robot_distance_to_logical_P1_m": (
+                       min_robot_distance_to_logical_p1_m
+                   ),
                    "terminal_status": self.terminal_status,
                    "goal": self.goal, "metrics": metrics, "arrival": arrival,
                    "operational_tolerance_m": self.tolerance,
@@ -1068,6 +1163,16 @@ class EvaluationRunner(Node):
                 "/odometry/local", "/odometry/global",
             ],
             "geometry_variant": self.geometry_variant,
+            "geometry_contract": {
+                "logical_points": self.logical_points,
+                "track3_nominal_radius_m": (
+                    8.0 if self.geometry_variant.startswith("track3_") else None
+                ),
+                "planner_minimum_turning_radius_m": (
+                    self.planner_minimum_turning_radius_m
+                ),
+            },
+            "min_robot_distance_to_logical_P1_m": min_robot_distance_to_logical_p1_m,
             "dispatched_poses": self.dispatched_poses,
             "request_count": len(self.request_records),
             "request_records": self.request_records,

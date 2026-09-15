@@ -36,12 +36,15 @@ def test_boundary_variants_are_evaluation_only_and_keep_request_provenance():
     contents = (ROOT / "salus_evaluation" / "evaluation_runner.py").read_text()
     for variant in (
             "sparse_single_3", "sparse_single_4", "sparse_boundary_exit",
-            "sparse_boundary_midarc"):
+            "sparse_boundary_midarc", "track3_current_boundary",
+            "track3_sparse_exit"):
         assert f'"{variant}"' in contents
     assert "request_index" in contents
     assert "goal_generation" in contents
     assert "request_records" in contents
     assert "robot_pose_at_dispatch" in contents
+    assert "logical_points" in contents
+    assert "min_robot_distance_to_logical_p1_m" in contents
     assert "V=(8,0)" not in contents
 
 

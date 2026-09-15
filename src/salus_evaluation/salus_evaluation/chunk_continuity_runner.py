@@ -70,12 +70,17 @@ def _wide_turn_route(origin):
     # The first chunk ends at the 30-degree checkpoint. Its successor segment
     # is still inside the broad turn, making the boundary causal rather than a
     # separate straight-line goal experiment.
+    points = _wide_turn_local_route()
+    return [_body_to_map(origin, forward, lateral) for forward, lateral in points]
+
+
+def _wide_turn_local_route():
+    """Return the frozen TRACK3 R8 fixture in spawn-local coordinates."""
     center_forward = 1.5
     points = []
     for degrees in (-90.0, -60.0, -30.0, 0.0):
         theta = math.radians(degrees)
-        points.append(_body_to_map(
-            origin,
+        points.append((
             center_forward + TURN_RADIUS_M * math.cos(theta),
             TURN_RADIUS_M + TURN_RADIUS_M * math.sin(theta),
         ))

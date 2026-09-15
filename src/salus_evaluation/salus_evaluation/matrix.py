@@ -393,6 +393,9 @@ def aggregate_trials(cells, trial_summaries):
                 )),
             },
             "final_xy_error_m": continuous_summary(values("arrival", "final_distance_m")),
+            "min_robot_distance_to_logical_P1_m": continuous_summary(
+                values("min_robot_distance_to_logical_P1_m")
+            ),
             "overshoot_m": continuous_summary(values("arrival", "overshoot_m")),
             "replans": continuous_summary(values("replans")),
             "steering_saturation_intervals": continuous_summary(
