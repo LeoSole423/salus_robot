@@ -1,5 +1,6 @@
-from math import nan
+from math import ceil, nan
 from types import SimpleNamespace
+import pytest
 from salus_navigation.route_model import PreparedRoute, RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
@@ -15,6 +16,71 @@ def test_expansion_marks_synthetic_points_and_resolves_yaw():
     route = resolve_yaws(expand([point(0, 0), point(10, 1)], 2.0, False), False)
     assert len(route) == 6 and route[1].key is False and route[0].yaw_deg == 0.0
     assert route[-1].key is True and route[-1].input_index == 1
+
+
+def test_expansion_balances_nonintegral_leg_without_moving_checkpoints():
+    first = RouteWaypoint(
+        1.0, 2.0, 15.0, 7, action_json='[{"type":"brake_hold"}]',
+        role="normal", map_x=0.0, map_y=0.0, yaw_explicit=True,
+    )
+    second = RouteWaypoint(
+        3.0, 4.0, 75.0, 8, action_json='[{"type":"pause"}]',
+        role="normal", map_x=3.14, map_y=0.0, yaw_explicit=False,
+    )
+
+    expanded = expand([first, second], 1.0, False)
+
+    assert len(expanded) == 5
+    assert expanded[0] is first and expanded[-1] is second
+    assert [point.key for point in expanded] == [True, False, False, False, True]
+    assert [point.input_index for point in expanded] == [7, 7, 7, 7, 8]
+    assert [point.yaw_deg for point in expanded] == [15.0] * 4 + [75.0]
+    assert [point.map_x for point in expanded[1:-1]] == [
+        0.785, 1.57, 2.355,
+    ]
+    distances = [expanded[index].distance_to(expanded[index + 1])
+                 for index in range(len(expanded) - 1)]
+    assert distances == pytest.approx([3.14 / 4.0] * 4)
+    assert first.action_json == '[{"type":"brake_hold"}]'
+    assert second.action_json == '[{"type":"pause"}]'
+    assert first.yaw_explicit and not second.yaw_explicit
+
+
+def test_expansion_balances_exact_multiple_without_extra_synthetic():
+    expanded = expand([point(0.0, 0), point(3.0, 1)], 1.0, False)
+
+    assert len(expanded) == 4
+    assert [item.map_x for item in expanded] == [0.0, 1.0, 2.0, 3.0]
+    assert [expanded[index].distance_to(expanded[index + 1])
+            for index in range(3)] == pytest.approx([1.0, 1.0, 1.0])
+
+
+def test_expansion_does_not_create_synthetic_for_short_leg():
+    expanded = expand([point(0.0, 0), point(0.9, 1)], 1.0, False)
+
+    assert len(expanded) == 2
+    assert all(item.key for item in expanded)
+
+
+@pytest.mark.parametrize("distance", [0.1, 0.9, 1.0, 1.1, 2.0, 2.9, 3.0, 3.14, 4.1])
+def test_expansion_has_uniform_segments_and_preserves_spacing_bound(
+        distance):
+    expanded = expand([point(0.0, 0), point(distance, 1)], 1.0, False)
+    segment_count = max(1, ceil(distance / 1.0))
+    segments = [expanded[index].distance_to(expanded[index + 1])
+                for index in range(len(expanded) - 1)]
+
+    assert len(expanded) - 2 == segment_count - 1
+    assert max(segments) <= 1.0 + 1e-12
+    assert segments == pytest.approx([distance / segment_count] * segment_count)
+
+
+def test_loop_expansion_keeps_original_checkpoints_in_order():
+    originals = [point(0.0, 0), point(3.0, 1), point(3.0, 2)]
+    expanded = expand(originals, 1.0, True)
+
+    assert [item.input_index for item in expanded if item.key] == [0, 1, 2]
+    assert all(item.input_index in (0, 1, 2) for item in expanded)
 
 
 def test_open_route_final_automatic_yaw_follows_its_incoming_leg():

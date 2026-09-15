@@ -1,6 +1,6 @@
 """Validation, yaw resolution and expansion; deliberately free of ROS."""
 from __future__ import annotations
-from math import atan2, degrees, hypot, isfinite
+from math import atan2, ceil, degrees, hypot, isfinite
 from .route_model import PreparedRoute, RouteWaypoint
 from .route_actions import parse_actions
 
@@ -82,10 +82,10 @@ def expand(points: list[RouteWaypoint], spacing_m: float, loop: bool) -> list[Ro
     pairs = list(zip(points, points[1:] + ([points[0]] if loop else [])))
     for first, second in pairs:
         result.append(first)
-        distance = first.distance_to(second); count = int(distance // spacing_m)
-        for step in range(1, count + 1):
-            fraction = step * spacing_m / distance
-            if fraction >= 1.0: break
+        distance = first.distance_to(second)
+        segment_count = max(1, ceil(distance / spacing_m))
+        for step in range(1, segment_count):
+            fraction = step / segment_count
             result.append(RouteWaypoint(first.lat + (second.lat-first.lat)*fraction, first.lon + (second.lon-first.lon)*fraction, first.yaw_deg, first.input_index, False, map_x=(first.map_x or 0.0)+((second.map_x or 0.0)-(first.map_x or 0.0))*fraction, map_y=(first.map_y or 0.0)+((second.map_y or 0.0)-(first.map_y or 0.0))*fraction))
     if not loop:
         # ``pairs`` contributes each segment origin.  Preserve the final
