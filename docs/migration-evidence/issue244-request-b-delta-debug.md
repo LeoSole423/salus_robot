@@ -33,15 +33,20 @@ The strongest conclusion supported by this cut is therefore that the
 intermediate pose set B1–B3 is causally relevant as a group.  This does not yet
 identify the smallest subset or justify a production change.
 
-All dispatched request records, robot pose at dispatch, exact pose/yaw values,
-and structured diffs against FULL5 are retained in the trial `summary.json`
-files and the per-arm `delta-debug-audit.json` artifacts:
+All dispatched request records, robot pose at dispatch, and exact pose/yaw
+values are retained in the trial `summary.json` files.  Each D1–D3 arm also
+has a `delta-debug-audit.json` with the structured diff against FULL5 derived
+from those recorded requests; D0 was generated with the final structured-diff
+field in the harness.  The artifacts are:
 
 - `issue244-request-b-d0-full5-20260915-1`
 - `issue244-request-b-d1-endpoints-20260915-1`
 - `issue244-request-b-d2-normalize-20260915-1`
 - `issue244-request-b-d3-drop-b0-20260915-1`
 
-The three post-run audit files were derived only from the recorded dispatched
-requests and the frozen replay source.  No Jetson, hardware, or production
-runtime was used.
+The three post-run audit files were derived only from recorded dispatched
+requests and the frozen replay source.  The D1–D3 matrix metadata records the
+parent source SHA because those runs used the uncommitted equivalent harness
+before the final artifact-field commit; no request or planning behavior
+changed in that documentation-only addition.  No Jetson, hardware, or
+production runtime was used.
