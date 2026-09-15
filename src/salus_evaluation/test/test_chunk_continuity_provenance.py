@@ -1,6 +1,16 @@
+import math
+
+import pytest
+
 from salus_evaluation.chunk_continuity_runner import (
+    ROUTE_CHUNK_MAX_WAYPOINTS,
+    ROUTE_CHUNK_SPAN_M,
+    TURN_RADIUS_M,
     _chunk_windows,
     _transition_metrics,
+    _validated_route_spacing,
+    _wide_turn_local_route,
+    ChunkContinuityRunner,
 )
 
 
@@ -76,3 +86,45 @@ def test_plan_metrics_include_geometry_quality_without_changing_topology_metric(
                             ((0.0, 0.0), (2.0, 0.0)))
     assert metrics["self_intersections"] == 0
     assert metrics["geometry_quality"]["total_heading_variation_rad"] == 0.0
+
+
+def test_track3_spacing_contract_has_dense_only_one_metre_synthetics():
+    from salus_navigation.route_model import RouteWaypoint
+    from salus_navigation.route_preparation import expand
+
+    points = _wide_turn_local_route()
+    assert TURN_RADIUS_M == 8.0
+    assert math.dist(points[0], points[1]) == pytest.approx(4.1411047216)
+    assert math.dist(points[1], points[2]) == pytest.approx(4.1411047216)
+    assert math.dist(points[2], points[3]) == pytest.approx(4.1411047216)
+    waypoints = [
+        RouteWaypoint(0.0, 0.0, 0.0, index, map_x=x, map_y=y)
+        for index, (x, y) in enumerate(points)
+    ]
+    synthetic_counts = {
+        spacing: sum(
+            not point.key
+            for point in expand(waypoints, spacing, loop=False)
+        )
+        for spacing in (1.0, 5.0, 35.0)
+    }
+
+    assert synthetic_counts == {1.0: 12, 5.0: 0, 35.0: 0}
+
+
+@pytest.mark.parametrize("value", (0.0, -1.0, float("nan"), float("inf")))
+def test_route_spacing_rejects_non_finite_or_non_positive_values(value):
+    with pytest.raises(ValueError, match="finite and positive"):
+        _validated_route_spacing(value)
+
+
+def test_route_runner_request_uses_selected_spacing_without_changing_fixed_fields():
+    runner = object.__new__(ChunkContinuityRunner)
+    runner.route_spacing_m = 5.0
+    request = runner._request(((0.0, 0.0), (4.0, 0.0)))
+
+    assert request.leg_spacing_m == 5.0
+    assert request.chunk_span_m == ROUTE_CHUNK_SPAN_M
+    assert request.chunk_max_waypoints == ROUTE_CHUNK_MAX_WAYPOINTS
+    assert request.loop is False
+    assert all(math.isnan(value) for value in request.yaws_deg)

@@ -6,6 +6,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -292,7 +293,10 @@ def _live_processes_in_group(pgid):
     return False
 
 
-def _trial_metadata(cell, scenario, isolation, source_sha):
+DEFAULT_ROUTE_SPACING_M = 1.0
+
+
+def _trial_metadata(cell, scenario, isolation, source_sha, route_spacing_m=None):
     geometry_variant = os.environ.get(
         "SALUS_NAV_GEOMETRY_VARIANT", "hard_vertex_current"
     ).strip()
@@ -313,6 +317,12 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
         "direction": cell.case.direction,
         "requested_radius_m": cell.case.requested_radius_m,
         "geometry_variant": geometry_variant,
+        "route_spacing_m": (
+            None if cell.evaluation_mode != "chunk_continuity"
+            else (DEFAULT_ROUTE_SPACING_M if route_spacing_m is None
+                  else route_spacing_m)
+        ),
+        "route_spacing_override_m": route_spacing_m,
         "scenario": str(scenario),
         "isolation": "fresh_simulation",
         "isolation_id": isolation.partition,
@@ -325,10 +335,29 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
     }
 
 
+def _build_evaluation_command(*, evaluator, scenario, trial_dir, chunk_policy,
+                              geometry_variant, evaluation_mode,
+                              route_spacing_m=None):
+    """Build one evaluator command, with spacing scoped to route evaluation."""
+    command = [
+        "ros2", "run", "salus_evaluation", evaluator, "--ros-args",
+        "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
+        f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
+        "-p", f"chunk_policy:={chunk_policy}", "-p",
+        f"geometry_variant:={geometry_variant}",
+    ]
+    if evaluation_mode == "chunk_continuity" and route_spacing_m is not None:
+        command.extend(["-p", f"route_spacing_m:={route_spacing_m}"])
+    return command
+
+
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
-                         planner_minimum_turning_radius, isolation, source_sha):
+                         planner_minimum_turning_radius, isolation, source_sha,
+                         route_spacing_m):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
-    metadata = _trial_metadata(cell, scenario, isolation, source_sha)
+    metadata = _trial_metadata(
+        cell, scenario, isolation, source_sha, route_spacing_m
+    )
     trial_dir.mkdir(parents=True, exist_ok=True)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
@@ -456,12 +485,15 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                     else "navigation_evaluation"
                 )
                 evaluation = _run(
-                    ["ros2", "run", "salus_evaluation", evaluator,
-                     "--ros-args",
-                     "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
-                     f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
-                     "-p", f"chunk_policy:={cell.chunk_policy}", "-p",
-                     f"geometry_variant:={metadata['geometry_variant']}"],
+                    _build_evaluation_command(
+                        evaluator=evaluator,
+                        scenario=scenario,
+                        trial_dir=trial_dir,
+                        chunk_policy=cell.chunk_policy,
+                        geometry_variant=metadata["geometry_variant"],
+                        evaluation_mode=cell.evaluation_mode,
+                        route_spacing_m=route_spacing_m,
+                    ),
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():
@@ -498,7 +530,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
 
 
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
-              planner_minimum_turning_radius, run_token, source_sha):
+              planner_minimum_turning_radius, run_token, source_sha,
+              route_spacing_m):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -511,6 +544,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 startup_timeout_s=startup_timeout_s,
                 planner_minimum_turning_radius=planner_minimum_turning_radius,
                 isolation=isolation, source_sha=source_sha,
+                route_spacing_m=route_spacing_m,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
@@ -536,6 +570,10 @@ def main(argv=None):
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
     parser.add_argument("--planner-minimum-turning-radius", type=float)
+    parser.add_argument(
+        "--route-spacing-m", type=float,
+        help="leg spacing override for chunk_continuity evaluation only",
+    )
     parser.add_argument("--jobs", type=int, default=1,
                         help="maximum number of concurrent trials (default: 1)")
     parser.add_argument(
@@ -551,6 +589,9 @@ def main(argv=None):
     if (args.planner_minimum_turning_radius is not None and
             args.planner_minimum_turning_radius <= 0.0):
         parser.error("--planner-minimum-turning-radius must be positive")
+    if (args.route_spacing_m is not None and
+            (not math.isfinite(args.route_spacing_m) or args.route_spacing_m <= 0.0)):
+        parser.error("--route-spacing-m must be finite and positive")
     cells = expand_matrix(args.matrix)
     matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -568,6 +609,7 @@ def main(argv=None):
         "planner_minimum_turning_radius": args.planner_minimum_turning_radius,
         "run_token": run_token,
         "source_sha": _repository_sha(),
+        "route_spacing_m": args.route_spacing_m,
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in selected_cells]
@@ -589,6 +631,7 @@ def main(argv=None):
                         "sim_sensor_profile": cell.sim_sensor_profile,
                         "sim_sensor_seed": cell.repetition_seed,
                         "sim_sensor_seed_base": cell.sim_sensor_seed,
+                        "route_spacing_m": args.route_spacing_m,
                         "repetition": cell.repetition, "isolation": "worker_exception",
                     })
                     outcomes.append("setup_failure")

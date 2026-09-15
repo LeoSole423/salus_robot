@@ -377,6 +377,30 @@ def test_sensor_launch_arguments_are_explicit_and_selected_per_trial(tmp_path):
     assert "sim_sensor_seed:=6402" in args
 
 
+def test_route_spacing_override_is_scoped_to_chunk_continuity_command():
+    from salus_evaluation.matrix_executor import _build_evaluation_command
+
+    common = {
+        "evaluator": "navigation_chunk_continuity",
+        "scenario": "/tmp/track3.yaml",
+        "trial_dir": "/tmp/trial",
+        "chunk_policy": "terminal_incoming",
+        "geometry_variant": "hard_vertex_current",
+    }
+    baseline = _build_evaluation_command(
+        **common, evaluation_mode="chunk_continuity"
+    )
+    spacing_five = _build_evaluation_command(
+        **common, evaluation_mode="chunk_continuity", route_spacing_m=5.0
+    )
+    regular = _build_evaluation_command(
+        **common, evaluation_mode="run", route_spacing_m=5.0
+    )
+
+    assert spacing_five == baseline + ["-p", "route_spacing_m:=5.0"]
+    assert regular == baseline
+
+
 def test_trial_metadata_records_variant_yaml_sha_scenario_and_isolation(tmp_path):
     from salus_evaluation import matrix_executor
     from salus_evaluation.isolation import make_trial_isolation

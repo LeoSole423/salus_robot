@@ -34,6 +34,17 @@ ROUTE_CHUNK_SPAN_M = 100.0
 ROUTE_CHUNK_MAX_WAYPOINTS = 20
 
 
+def _validated_route_spacing(value):
+    """Return a finite positive evaluation spacing or reject the setup."""
+    try:
+        spacing = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("route_spacing_m must be finite and positive") from exc
+    if not math.isfinite(spacing) or spacing <= 0.0:
+        raise ValueError("route_spacing_m must be finite and positive")
+    return spacing
+
+
 def _yaw(quaternion):
     """Extract planar yaw from a quaternion."""
     return math.atan2(
@@ -351,9 +362,13 @@ class ChunkContinuityRunner(Node):
         self.declare_parameter("output_dir", "")
         self.declare_parameter("chunk_policy", CURRENT_POLICY)
         self.declare_parameter("scenario", "")
+        self.declare_parameter("route_spacing_m", ROUTE_SPACING_M)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.policy = str(self.get_parameter("chunk_policy").value)
         self.scenario = str(self.get_parameter("scenario").value)
+        self.route_spacing_m = _validated_route_spacing(
+            self.get_parameter("route_spacing_m").value
+        )
         if not self.output_dir:
             raise ValueError("output_dir is required")
         if self.policy != CURRENT_POLICY:
@@ -484,7 +499,7 @@ class ChunkContinuityRunner(Node):
         request.waypoint_action_jsons = []
         request.waypoint_roles = []
         request.loop = False
-        request.leg_spacing_m = ROUTE_SPACING_M
+        request.leg_spacing_m = self.route_spacing_m
         request.chunk_span_m = ROUTE_CHUNK_SPAN_M
         request.chunk_max_waypoints = ROUTE_CHUNK_MAX_WAYPOINTS
         return request
@@ -581,7 +596,9 @@ class ChunkContinuityRunner(Node):
                 "route_request": {
                     "input_waypoints": len(self.reference),
                     "loop": False,
-                    "leg_spacing_m": ROUTE_SPACING_M,
+                    "leg_spacing_m": self.route_spacing_m,
+                    "requested_route_spacing_m": self.route_spacing_m,
+                    "sent_leg_spacing_m": float(self.route_request.leg_spacing_m),
                     "chunk_span_m": ROUTE_CHUNK_SPAN_M,
                     "chunk_max_waypoints": ROUTE_CHUNK_MAX_WAYPOINTS,
                     "yaws_are_automatic_nan": True,
@@ -617,6 +634,7 @@ class ChunkContinuityRunner(Node):
             "schema_version": 3,
             "mode": "chunk_continuity",
             "policy": self.policy,
+            "route_spacing_m": self.route_spacing_m,
             "scenario": self.scenario or "wide_90deg_turn_boundary_inside",
             "route_executor_service": "/route_executor/set_route_mission_ll",
             "manual_navigate_through_poses_action": False,
