@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": {
+    "artifact": "issue244-spacing-35m",
+    "trial": "terminal_incoming-wide_turn_boundary-left-r8-v0p8-rep01",
+    "note": "Captured productive route_executor chunk B; reused as the frozen P0 case."
+  },
+  "scenario": "TRACK3 wide 90 degree turn, leg_spacing_m=35.0",
+  "planner": {
+    "plugin": "SmacPlannerHybrid",
+    "motion_model": "DUBIN",
+    "minimum_turning_radius_m": 4.0,
+    "world": "free",
+    "costmap": "same as issue244 spacing sweep"
+  },
+  "chunk_id": "1",
+  "goal_generation": 2,
+  "synthetic_count": 0,
+  "robot_pose_at_dispatch": {
+    "stamp_s": 19.95,
+    "x_m": 5.091762228855333,
+    "y_m": 0.7887169524831236,
+    "yaw_rad": 0.27333163095765123
+  },
+  "request": {
+    "poses_xy": [
+      [9.089059493038803, 4.202746189199388],
+      [10.161517988424748, 8.185966026037931]
+    ],
+    "yaws_deg": [40.50012307023268, 74.93079892633094],
+    "input_indices": [2, 3],
+    "keys": [true, true],
+    "roles": ["normal", "normal"],
+    "actions": ["", ""],
+    "yaw_explicit": [false, false],
+    "action_type": "NavigateThroughPoses"
+  },
+  "path_metrics": {
+    "length_m": 34.33219777906788,
+    "direct_distance_m": 8.806957476904268,
+    "detour_ratio": 3.8983040248692093,
+    "max_deviation_m": 8.06218066146515,
+    "self_intersections": 1
+  }
+}
