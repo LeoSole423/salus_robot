@@ -45,8 +45,10 @@ def test_wide_ninety_degree_route_has_finite_forward_chunks():
     first = build_chunk(route, 0)
     second = build_chunk(route, next_start(route, first))
 
-    assert [point.input_index for point in first.waypoints] == [0, 1]
-    assert [point.input_index for point in second.waypoints] == [2]
+    assert [point.input_index for point in first.waypoints] == [0]
+    assert [point.input_index for point in second.waypoints] == [1]
+    third = build_chunk(route, next_start(route, second))
+    assert [point.input_index for point in third.waypoints] == [2]
     assert path_geometry_metrics(
         [(point.map_x, point.map_y) for point in first.waypoints],
         [(0.0, 0.0), (8.0, 0.0)],
@@ -68,8 +70,8 @@ def test_wide_loop_dispatches_progressively_without_a_second_full_circuit():
         starts.append(start)
         start = next_start(route, chunk)
 
-    assert starts == [0, 2, 0, 2]
-    assert all(len(build_chunk(route, start).waypoints) <= 2 for start in starts)
+    assert starts == [0, 1, 2, 3]
+    assert all(len(build_chunk(route, start).waypoints) == 1 for start in starts)
 
 
 def test_intersection_metric_exposes_a_problematic_route_instead_of_hiding_it():
@@ -95,6 +97,6 @@ def test_compact_dubins_incompatible_fixture_is_measured_without_a_new_heuristic
         [(point.map_x, point.map_y) for point in chunk.waypoints],
     )
 
-    assert len(chunk.waypoints) == 2
-    assert metrics.length_m == 1.0
+    assert len(chunk.waypoints) == 1
+    assert metrics.length_m == 0.0
     assert metrics.self_intersections == 0

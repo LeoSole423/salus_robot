@@ -114,43 +114,26 @@ def resolve_dispatch_start(
 def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteChunk | None:
     points = route.waypoints; total = len(points)
     if not points or (not route.loop and start >= total): return None
-    start %= total; selected = []; distance = 0.0; index = start
-    maximum = max(1, route.chunk_max_waypoints)
-    limit = max(0.1, route.chunk_span_m)
-    limit_reached = False
+    start %= total; selected = []; index = start
     while not route.loop or len(selected) < max(1, total - 1):
         point = points[index]
-        if selected:
-            next_distance = selected[-1].distance_to(point)
-            distance += next_distance
         selected.append(point)
-        # Programmed actions are hard mission boundaries.  They execute only
-        # after Nav2 has completed the finite chunk ending at that checkpoint.
-        if point.key and point.action_json and len(selected) >= 1:
+        # Every original checkpoint is the terminal of its finite request.
+        # Synthetic samples may precede it to provide reach/horizon geometry,
+        # but a future checkpoint must never become another hard pose in the
+        # same NavigateThroughPoses goal.  This also makes a chunk that starts
+        # directly on a key contain exactly that one key.
+        if point.key:
             index += 1
             if route.loop:
                 index %= total
             break
-        # Match the physically validated legacy contract: a finite chunk may
-        # contain every synthetic sample along one leg, but it ends at the
-        # next original checkpoint.  Sending several original checkpoints in
-        # one NavigateThroughPoses goal forces the Dubins planner to satisfy
-        # several independent headings at once and can create large loops on
-        # otherwise short route legs.
-        if point.key and len(selected) > 1:
-            index += 1
-            if route.loop:
-                index %= total
-            break
-        limit_reached = len(selected) >= maximum or distance >= limit
         index += 1
         if not route.loop and index >= total: break
         index %= total
         # Count/span are soft limits.  Once crossed, retain synthetic geometry
         # until the next original checkpoint so a synthetic point never
         # becomes a success, brake or action boundary.
-        if limit_reached and point.key and len(selected) > 1:
-            break
     if route.loop and selected and not selected[-1].key:
         last_checkpoint = max(
             (offset for offset, point in enumerate(selected) if point.key),

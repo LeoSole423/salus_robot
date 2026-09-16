@@ -46,7 +46,7 @@ def dispatch_yaws(
     input contract and is never changed here.
     """
     yaws = [float(point.yaw_deg) for point in points]
-    if len(points) < 2:
+    if not points:
         return yaws
 
     first = points[0]
@@ -57,6 +57,9 @@ def dispatch_yaws(
             dy = float(first.map_y) - float(approach_xy[1])
             if hypot(dx, dy) > 1e-9:
                 yaws[0] = degrees(atan2(dy, dx))
+
+    if len(points) < 2:
+        return yaws
 
     if points[-1].yaw_explicit:
         return yaws
