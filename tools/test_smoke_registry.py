@@ -94,6 +94,27 @@ class SmokeRegistryTest(unittest.TestCase):
         self.assertEqual(BY_ID["sim_operational"]["timeouts_s"]["nightly"], 180)
         self.assertEqual(BY_ID["operational_persistence"]["timeouts_s"]["nightly"], 180)
 
+    def test_navigation_nightly_budgets_cover_probe_and_cleanup_envelopes(self):
+        # Evidence from available local smoke reports: failed route cleanup reached
+        # 20 s and failed patrol cleanup reached 21 s. The remaining 20 s is an
+        # explicit allowance for compose/runner staging outside report.json.
+        requirements = {
+            "routes": {"probe_s": 210, "cleanup_s": 20, "runner_s": 20},
+            "patrol_battery": {"probe_s": 220, "cleanup_s": 21, "runner_s": 20},
+        }
+        for scenario_id, envelope in requirements.items():
+            with self.subTest(scenario=scenario_id):
+                timeout_s = BY_ID[scenario_id]["timeouts_s"]["nightly"]
+                minimum = (
+                    envelope["probe_s"]
+                    + envelope["cleanup_s"]
+                    + envelope["runner_s"]
+                )
+                self.assertGreaterEqual(timeout_s, minimum)
+
+        self.assertEqual(BY_ID["routes"]["timeouts_s"]["nightly"], 250)
+        self.assertEqual(BY_ID["patrol_battery"]["timeouts_s"]["nightly"], 270)
+
 
 if __name__ == "__main__":
     unittest.main()
