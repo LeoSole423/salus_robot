@@ -75,8 +75,8 @@ def test_chunk_request_uses_terminal_incoming_yaw_for_automatic_checkpoints():
     )
     automatic_chunk = build_chunk(automatic_route, 0)
 
-    assert [point.yaw_deg for point in automatic_chunk.waypoints] == [0.0, 90.0]
-    assert list(chunk_goal_request(automatic_chunk, automatic_route).yaws_deg) == [0.0, 0.0]
+    assert [point.yaw_deg for point in automatic_chunk.waypoints] == [0.0]
+    assert list(chunk_goal_request(automatic_chunk, automatic_route).yaws_deg) == [0.0]
 
     explicit_route = prepare(
         [
@@ -89,7 +89,7 @@ def test_chunk_request_uses_terminal_incoming_yaw_for_automatic_checkpoints():
     )
     explicit_chunk = build_chunk(explicit_route, 0)
 
-    assert list(chunk_goal_request(explicit_chunk, explicit_route).yaws_deg) == [0.0, 90.0]
+    assert list(chunk_goal_request(explicit_chunk, explicit_route).yaws_deg) == [0.0]
 
 
 def test_chunk_request_does_not_mutate_first_yaw_from_robot_approach():
@@ -104,7 +104,7 @@ def test_chunk_request_does_not_mutate_first_yaw_from_robot_approach():
     )
     chunk = build_chunk(route, 0)
 
-    assert list(chunk_goal_request(chunk, route).yaws_deg) == [0.0, 0.0]
+    assert list(chunk_goal_request(chunk, route).yaws_deg) == [0.0]
 
 
 def test_chunk_request_uses_current_pose_for_automatic_first_yaw():
@@ -120,7 +120,7 @@ def test_chunk_request_uses_current_pose_for_automatic_first_yaw():
 
     assert list(chunk_goal_request(
         chunk, route, approach_xy=(0.0, -10.0)
-    ).yaws_deg) == [90.0, 0.0]
+    ).yaws_deg) == [90.0]
 
 
 def test_chunk_request_preserves_explicit_first_yaw_with_current_pose():
@@ -139,7 +139,7 @@ def test_chunk_request_preserves_explicit_first_yaw_with_current_pose():
 
     assert list(chunk_goal_request(
         chunk, route, approach_xy=(0.0, -10.0)
-    ).yaws_deg) == [-30.0, 0.0]
+    ).yaws_deg) == [-30.0]
 
 
 def test_chunk_request_keeps_terminal_incoming_yaw_for_automatic_pose():
@@ -153,9 +153,7 @@ def test_chunk_request_keeps_terminal_incoming_yaw_for_automatic_pose():
     )
     chunk = build_chunk(route, 0)
 
-    assert list(chunk_goal_request(
-        chunk, route, approach_xy=(0.0, -10.0)
-    ).yaws_deg)[-1] == 0.0
+    assert list(chunk_goal_request(chunk, route).yaws_deg)[-1] == 0.0
 
 
 def test_chunk_request_preserves_explicit_terminal_yaw_with_current_pose():
@@ -174,7 +172,24 @@ def test_chunk_request_preserves_explicit_terminal_yaw_with_current_pose():
 
     assert list(chunk_goal_request(
         chunk, route, approach_xy=(0.0, -10.0)
-    ).yaws_deg) == [90.0, 90.0]
+    ).yaws_deg) == [90.0]
+
+
+def test_single_automatic_pose_uses_approach_yaw_without_changing_fallback():
+    automatic = RouteWaypoint(
+        0, 0, 90.0, 1, map_x=10.0, map_y=0.0,
+    )
+
+    assert dispatch_yaws((automatic,), approach_xy=(0.0, -10.0)) == [45.0]
+    assert dispatch_yaws((automatic,)) == [90.0]
+
+
+def test_single_explicit_pose_keeps_yaw_with_approach():
+    explicit = RouteWaypoint(
+        0, 0, 15.0, 1, map_x=10.0, map_y=0.0, yaw_explicit=True,
+    )
+
+    assert dispatch_yaws((explicit,), approach_xy=(0.0, -10.0)) == [15.0]
 
 
 def test_chunk_request_falls_back_when_current_pose_is_invalid():
@@ -190,7 +205,7 @@ def test_chunk_request_falls_back_when_current_pose_is_invalid():
 
     assert list(chunk_goal_request(
         chunk, route, approach_xy=(float("nan"), -10.0)
-    ).yaws_deg) == [0.0, 0.0]
+    ).yaws_deg) == [0.0]
 
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)
@@ -238,7 +253,28 @@ def test_loop_anchor_respects_configured_segment_tolerance():
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():
     route = prepare([point(0,0),point(2,1),point(4,2),point(6,3)], loop=True,input_count=4,spacing_m=0,chunk_span_m=100,chunk_max_waypoints=10)
-    chunk=build_chunk(route,0); assert len(chunk.waypoints)==2 and next_start(route,chunk)==2
+    chunk = build_chunk(route, 0)
+    assert len(chunk.waypoints) == 1 and next_start(route, chunk) == 1
+
+
+def test_each_finite_chunk_has_at_most_one_terminal_key_and_advances():
+    route = prepare(
+        [point(0, 0), point(10, 1), point(20, 2)], loop=False,
+        input_count=3, spacing_m=2, chunk_span_m=3, chunk_max_waypoints=2,
+    )
+    start = 0
+    chunks = []
+    while start < len(route.waypoints):
+        chunk = build_chunk(route, start)
+        chunks.append(chunk)
+        start = next_start(route, chunk)
+
+    assert all(
+        sum(point.key for point in chunk.waypoints) <= 1
+        and chunk.waypoints[-1].key
+        for chunk in chunks
+    )
+    assert [chunk.waypoints[-1].input_index for chunk in chunks] == [0, 1, 2]
 
 
 def test_chunk_ends_at_next_original_checkpoint_like_legacy():
@@ -250,9 +286,9 @@ def test_chunk_ends_at_next_original_checkpoint_like_legacy():
 
     chunk = build_chunk(route, 0)
 
-    assert [waypoint.input_index for waypoint in chunk.waypoints] == [0, 1]
-    assert chunk.checkpoint_offsets == (0, 1)
-    assert next_start(route, chunk) == 2
+    assert [waypoint.input_index for waypoint in chunk.waypoints] == [0]
+    assert chunk.checkpoint_offsets == (0,)
+    assert next_start(route, chunk) == 1
 
 
 def test_chunk_soft_limits_never_promote_synthetic_point_to_boundary():
@@ -260,12 +296,12 @@ def test_chunk_soft_limits_never_promote_synthetic_point_to_boundary():
         [point(0, 0), point(10, 1), point(20, 2)], loop=False,
         input_count=3, spacing_m=2, chunk_span_m=3, chunk_max_waypoints=2,
     )
-    chunk = build_chunk(route, 0)
+    chunk = build_chunk(route, 1)
 
     assert chunk.waypoints[-1].key is True
     assert chunk.waypoints[-1].input_index == 1
     assert len(chunk.waypoints) > route.chunk_max_waypoints
-    assert chunk.checkpoint_offsets == (0, len(chunk.waypoints) - 1)
+    assert chunk.checkpoint_offsets == (len(chunk.waypoints) - 1,)
 
 
 def test_chunk_started_on_synthetic_geometry_dispatches_only_next_checkpoint():
@@ -285,10 +321,10 @@ def test_synthetic_points_never_count_as_dispatchable_checkpoints():
         [point(0, 0), point(12, 1)], loop=False,
         input_count=2, spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
     )
-    chunk = build_chunk(route, 0)
+    chunk = build_chunk(route, 1)
 
     dispatched = [chunk.waypoints[index] for index in chunk.checkpoint_offsets]
-    assert [waypoint.input_index for waypoint in dispatched] == [0, 1]
+    assert [waypoint.input_index for waypoint in dispatched] == [1]
     assert all(waypoint.key for waypoint in dispatched)
 
 
@@ -306,17 +342,19 @@ def test_expanded_loop_chunk_ends_at_checkpoint_without_full_circuit():
 
 
 def test_progress_projects_onto_segment_instead_of_nearest_vertex():
+    from salus_navigation.route_model import RouteChunk
+
     route = prepare(
         [point(0, 0), point(10, 1), point(20, 2)], loop=False,
         input_count=3, spacing_m=0, chunk_span_m=100, chunk_max_waypoints=3,
     )
-    chunk = build_chunk(route, 0)
+    chunk = RouteChunk(route.waypoints, 0, 2, 0)
 
     progress = project(chunk, 5.0, 2.0)
 
     assert progress.expanded_index == 0
     assert progress.checkpoint_index == 0
-    assert progress.ratio == 0.5
+    assert progress.ratio == 0.25
     assert progress.cross_track_error_m == 2.0
     assert progress.distance_to_target_m > 5.0
 
@@ -347,7 +385,7 @@ def test_action_checkpoint_is_a_hard_chunk_boundary():
         chunk_span_m=1000, chunk_max_waypoints=100,
     )
 
-    chunk = build_chunk(route, 0)
+    chunk = build_chunk(route, 1)
 
     assert chunk.waypoints[-1].key
     assert chunk.waypoints[-1].input_index == 1
@@ -359,13 +397,13 @@ def test_chunk_request_sends_synthetic_geometry_but_counts_only_checkpoint_bound
         [point(0, 0), point(12, 1)], loop=False, input_count=2,
         spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
     )
-    chunk = build_chunk(route, 0)
+    chunk = build_chunk(route, 1)
 
     request = chunk_goal_request(chunk, route)
 
     assert list(request.lats) == [point.lat for point in chunk.waypoints]
     assert len(request.lats) > len(chunk.checkpoint_offsets)
-    assert chunk.checkpoint_offsets == (0, len(chunk.waypoints) - 1)
+    assert chunk.checkpoint_offsets == (len(chunk.waypoints) - 1,)
     assert request.loop is False
     assert request.suppress_success_brake is False
 
@@ -394,7 +432,7 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
         [point(0, 0), point(12, 1)], loop=False, input_count=2,
         spacing_m=2, chunk_span_m=100, chunk_max_waypoints=20,
     )
-    chunk = build_chunk(route, 0)
+    chunk = build_chunk(route, 1)
     events = []
     advanced = []
     fake = SimpleNamespace(
@@ -408,10 +446,10 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
 
     RouteExecutorNode._complete_current_chunk(fake, "nav2_succeeded")
 
-    assert fake._mission.reached == 2
-    assert [event[1]["input_index"] for event in events] == [0, 1]
+    assert fake._mission.reached == 1
+    assert [event[1]["input_index"] for event in events] == [1]
     assert len(events) == len(chunk.checkpoint_offsets)
-    assert len(events) < len(chunk.waypoints)
+    assert len(events) <= len(chunk.waypoints)
     assert advanced == [True]
 
 
