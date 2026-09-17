@@ -58,6 +58,17 @@ This removes the former single 90-minute runner that owned all nightly repetitio
 
 Nightly hard timeouts remain scenario metadata rather than a workflow-wide override. Most current nightly scenarios retain the existing 120-second bound. `sim_operational` and `operational_persistence` use 180 seconds because historical healthy executions can consume roughly 90–130 seconds before cleanup, while the previous 120-second global hard wall produced kills around 133–134 seconds. The larger bound is limited to these heavy compositions and reflects their observed execution envelope; it does not add retries or relax functional assertions.
 
+`routes` uses 250 seconds: its probe owns a 210-second deadline, failed route
+cleanup has reached 20 seconds in local reports, and 20 seconds is reserved for
+compose/runner staging outside the probe report. `patrol_battery` uses 270
+seconds: its probe owns a 220-second deadline, failed patrol cleanup has reached
+21 seconds, and the same 20-second staging allowance is rounded up to the next
+10-second boundary. Report/diagnostic generation is part of harness cleanup;
+GitHub artifact upload happens after the smoke wrapper and is covered by the
+per-scenario reliability job timeout. These values preserve the internal probe
+deadlines and do not change assertions, participation, or the global runner
+timeout.
+
 ## Compiled workspace artifact experiment
 
 CI v2 evaluated sharing an exact-SHA compiled `build/` + `install/` artifact between matrix runners instead of rebuilding the ROS workspace independently.
@@ -88,4 +99,6 @@ Coverage ownership after decomposition:
 
 The persistence contract intentionally does not require Gazebo, localization, Nav2, keepout, routes, or patrol. Failures in those systems therefore cannot invalidate a persistence assertion.
 
-The existing nightly hard-timeout metadata is left unchanged by this decomposition. After runtime measurements from the focused scenarios are available, budgets may be tightened in a separate evidence-based adjustment.
+Other nightly hard-timeout metadata is left unchanged by this adjustment. The
+`routes` and `patrol_battery` values above are the focused, evidence-based
+exception; further tightening requires new external-duration measurements.
