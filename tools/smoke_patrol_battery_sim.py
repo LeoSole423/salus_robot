@@ -105,7 +105,7 @@ def classify_unexecuted_plan(
         "result_succeeded": False,
         "succeeded_immediate": False,
         "controller_status_available": False,
-        "positive_controller_order": None,
+        "nonzero_controller_order": None,
         "odometry_available": False,
         "displacement_m": None,
         "no_significant_displacement": False,
@@ -162,17 +162,17 @@ def classify_unexecuted_plan(
         valid_statuses = [sample for sample in statuses if sample.get("valid", True)]
         checks["controller_status_available"] = bool(valid_statuses)
         if valid_statuses:
-            positive = any(
-                float(sample.get("requested_linear_x_mps", 0.0))
+            nonzero = any(
+                abs(float(sample.get("requested_linear_x_mps", 0.0)))
                 > POSITIVE_COMMAND_EPSILON_MPS
                 for sample in valid_statuses
             )
-            checks["positive_controller_order"] = positive
+            checks["nonzero_controller_order"] = nonzero
 
     complete = all((checks["goal_associated"], checks["initial_pose_available"],
                     checks["initial_within_xy_tolerance"], checks["result_succeeded"],
                     checks["succeeded_immediate"], checks["controller_status_available"],
-                    checks["positive_controller_order"] is False,
+                    checks["nonzero_controller_order"] is False,
                     checks["odometry_available"], checks["no_significant_displacement"]))
     return {
         "classification": (
@@ -314,6 +314,57 @@ def assert_plan_topology(plans, chunks, **evidence):
     if failures:
         raise RuntimeError(f"unnecessary planner loop detected: {failures}")
     return observations
+
+
+FUNCTIONAL_PHASE_SEQUENCE = (
+    "JOIN_LOOP", "PATROL", "EXIT_LOOP", "RETURN_HOME", "AT_HOME",
+)
+
+
+def battery_phase_sequence(events):
+    """Recover the functional phase sequence from coordinator events.
+
+    Polling can miss short-lived phases such as RETURN_HOME.  The coordinator
+    events are the durable evidence for this smoke; the polled history remains
+    useful diagnostic context but is not the phase gate.
+    """
+    sequence = []
+    active = False
+
+    def append(phase):
+        if not sequence or sequence[-1] != phase:
+            sequence.append(phase)
+
+    for event in events:
+        if event.get("component") != "patrol_mission_coordinator":
+            continue
+        code = event.get("code")
+        details = event.get("details", {})
+        if code == "PATROL_MISSION_STARTED" and details.get("phase") == "JOIN_LOOP":
+            active = True
+            append("JOIN_LOOP")
+        elif not active:
+            continue
+        elif code == "PATROL_LOOP_JOINED":
+            append("PATROL")
+        elif code == "BATTERY_RETURN_LATCHED" and details.get("phase") == "EXIT_LOOP":
+            append("EXIT_LOOP")
+        elif code == "PATROL_PHASE_DISPATCHED" and details.get("phase") == "RETURN_HOME":
+            append("RETURN_HOME")
+        elif code == "PATROL_AT_HOME":
+            append("AT_HOME")
+            break
+    return sequence
+
+
+def assert_battery_phase_sequence(events):
+    actual = tuple(battery_phase_sequence(events))
+    if actual != FUNCTIONAL_PHASE_SEQUENCE:
+        raise RuntimeError(
+            "battery phase sequence mismatch: "
+            f"expected {list(FUNCTIONAL_PHASE_SEQUENCE)}, got {list(actual)}"
+        )
+    return list(actual)
 
 
 class Smoke(Node):
@@ -522,6 +573,7 @@ def main():
             "phase_history": node.phase_history,
             "guard_publications": node.guard_publications,
             "events": event_history(),
+            "functional_phase_sequence": battery_phase_sequence(event_history()),
             "odometry": pose_summary(),
             "join_loop_odometry": pose_summary(join_odom_start),
             "route_executor": None if route is None else {
@@ -725,10 +777,7 @@ def main():
                         "brake_pct": node.final_commands[-1].brake_pct,
                     }),
             })
-        required = {"PATROL", "EXIT_LOOP", "RETURN_HOME", "AT_HOME"}
-        if not required.issubset(set(node.phase_history)):
-            raise RuntimeError(
-                f"incomplete battery return phases: {node.phase_history}")
+        assert_battery_phase_sequence(event_history())
         success = True
         runtime.report.evidence = diagnostic_evidence()
     except Exception as exc:

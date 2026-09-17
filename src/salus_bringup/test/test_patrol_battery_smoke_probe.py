@@ -126,6 +126,19 @@ def test_pathology_with_positive_controller_command_still_fails():
         assert False, "a plan with a positive controller command was ignored"
 
 
+def test_pathology_with_reverse_controller_command_still_fails():
+    plan, chunks, events, odometry, status = _pathology_evidence()
+    status[0]["requested_linear_x_mps"] = -0.5
+    try:
+        probe.assert_plan_topology(
+            [plan], chunks, events=events, odometry=odometry,
+            controller_status=status)
+    except RuntimeError as exc:
+        assert "unnecessary planner loop" in str(exc)
+    else:
+        assert False, "a plan with a reverse controller command was ignored"
+
+
 def test_pathology_with_incomplete_execution_evidence_still_fails():
     plan, chunks, events, odometry, status = _pathology_evidence(
         controller_status=False)
@@ -137,3 +150,39 @@ def test_pathology_with_incomplete_execution_evidence_still_fails():
         assert "unnecessary planner loop" in str(exc)
     else:
         assert False, "incomplete execution evidence was treated as a pass"
+
+
+def test_battery_phase_sequence_uses_durable_events_not_polling_history():
+    events = [
+        {"component": "patrol_mission_coordinator", "code": "PATROL_MISSION_STARTED",
+         "details": {"phase": "JOIN_LOOP"}},
+        {"component": "patrol_mission_coordinator", "code": "PATROL_LOOP_JOINED",
+         "details": {}},
+        {"component": "patrol_mission_coordinator", "code": "BATTERY_RETURN_LATCHED",
+         "details": {"phase": "EXIT_LOOP"}},
+        {"component": "patrol_mission_coordinator", "code": "PATROL_PHASE_DISPATCHED",
+         "details": {"phase": "RETURN_HOME"}},
+        {"component": "patrol_mission_coordinator", "code": "PATROL_AT_HOME",
+         "details": {}},
+    ]
+    assert probe.battery_phase_sequence(events) == list(
+        probe.FUNCTIONAL_PHASE_SEQUENCE)
+
+
+def test_battery_phase_sequence_rejects_missing_return_home_event():
+    events = [
+        {"component": "patrol_mission_coordinator", "code": "PATROL_MISSION_STARTED",
+         "details": {"phase": "JOIN_LOOP"}},
+        {"component": "patrol_mission_coordinator", "code": "PATROL_LOOP_JOINED",
+         "details": {}},
+        {"component": "patrol_mission_coordinator", "code": "BATTERY_RETURN_LATCHED",
+         "details": {"phase": "EXIT_LOOP"}},
+        {"component": "patrol_mission_coordinator", "code": "PATROL_AT_HOME",
+         "details": {}},
+    ]
+    try:
+        probe.assert_battery_phase_sequence(events)
+    except RuntimeError as exc:
+        assert "battery phase sequence mismatch" in str(exc)
+    else:
+        assert False, "a phase sequence without RETURN_HOME was accepted"
