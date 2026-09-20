@@ -5,6 +5,9 @@ from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, r
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
 from salus_navigation.route_chunker import build_chunk, next_start, resolve_dispatch_start
+from salus_navigation.route_checkpoint_tracker import (
+    CheckpointOccurrence, IntermediateCheckpointTracker,
+)
 from salus_navigation.route_progress import project
 from salus_navigation.route_executor_node import RouteExecutorNode, chunk_goal_request
 from salus_navigation.patrol_domain import PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute
@@ -439,6 +442,8 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
         _chunk=chunk,
         _target_offset=chunk.checkpoint_offsets[-1],
         _mission=SimpleNamespace(reached=0, mission_id="mission", chunk_id=0, loop_iteration=0),
+        _checkpoint_tracker=None,
+        _reached_occurrences=set(),
         _event=lambda *args, **kwargs: events.append((args, kwargs)),
         _start_actions=lambda *_args: None,
         _advance=lambda: advanced.append(True),
@@ -451,6 +456,80 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
     assert len(events) == len(chunk.checkpoint_offsets)
     assert len(events) <= len(chunk.waypoints)
     assert advanced == [True]
+
+
+def test_terminal_success_with_pending_soft_checkpoint_fails_closed():
+    route = prepare(
+        [point(0, 0), point(10, 1)], loop=False, input_count=2,
+        spacing_m=0, chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0, mode="legacy_pair")
+    tracker = IntermediateCheckpointTracker((
+        CheckpointOccurrence(0, 0, 0.0, 0.0),
+    ))
+    events, paused, brakes = [], [], []
+
+    class PendingFuture:
+        def add_done_callback(self, _callback):
+            return None
+
+    fake = SimpleNamespace(
+        _chunk=chunk,
+        _target_offset=chunk.checkpoint_offsets[-1],
+        _mission=SimpleNamespace(
+            reached=0, mission_id="mission", chunk_id=0, loop_iteration=0),
+        _checkpoint_tracker=tracker,
+        _reached_occurrences=set(),
+        _pause=lambda reason: paused.append(reason),
+        _brake=SimpleNamespace(
+            call_async=lambda request: (
+                brakes.append((request.duration_s, request.brake_pct))
+                or PendingFuture()
+            )),
+        _log_failed_brake=lambda _future: None,
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+    )
+
+    RouteExecutorNode._complete_current_chunk(fake, "nav2_succeeded")
+
+    assert paused == ["ROUTE_CHECKPOINT_SEQUENCE_INCOMPLETE"]
+    assert brakes == [(0.25, 100)]
+    assert fake._mission.reached == 0
+    assert events[-1][0][1] == "ROUTE_CHECKPOINT_SEQUENCE_INCOMPLETE"
+
+
+def test_retry_of_the_same_chunk_preserves_soft_checkpoint_evidence():
+    route = prepare(
+        [point(0, 0), point(10, 1)], loop=False, input_count=2,
+        spacing_m=0, chunk_span_m=120, chunk_max_waypoints=5,
+    )
+    chunk = build_chunk(route, 0, mode="legacy_pair")
+    fake = SimpleNamespace(
+        _chunk=chunk,
+        _mission=SimpleNamespace(mission_id="mission", chunk_id=3),
+        _checkpoint_tracker=None,
+        _checkpoint_tracker_key=None,
+        _route_progress_pose_max_age_s=0.5,
+    )
+    RouteExecutorNode._prepare_checkpoint_tracker(fake)
+    tracker = fake._checkpoint_tracker
+    tracker.observe(
+        SimpleNamespace(
+            x=0.0, y=0.0, source_stamp_s=10.0, received_steady_s=10.0),
+        now_ros_s=10.1,
+        now_steady_s=10.1,
+    )
+
+    RouteExecutorNode._prepare_checkpoint_tracker(fake)
+
+    assert fake._checkpoint_tracker is tracker
+    assert fake._checkpoint_tracker.complete
+
+
+def test_route_input_accepts_hard_role_but_rejects_unknown_roles():
+    values = ([0.0], [0.0], [nan], [""])
+    assert validate_inputs(*values, ["hard"]) == ""
+    assert "normal or hard" in validate_inputs(*values, ["home"])
 
 
 def test_dispatch_start_skips_passed_synthetics_without_moving_backwards():

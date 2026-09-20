@@ -10,7 +10,7 @@ def validate_inputs(lats, lons, yaws, actions, roles) -> str:
     if actions and len(actions) != len(lats): return "waypoint_action_jsons length must match lats/lons when provided"
     if roles and len(roles) != len(lats): return "waypoint_roles length must match lats/lons when provided"
     if any(not isfinite(float(v)) for values in (lats, lons) for v in values): return "coordinates must be finite"
-    if any(value not in ("", "normal") for value in roles): return "waypoint roles other than normal belong to a future missions cut"
+    if any(value not in ("", "normal", "hard") for value in roles): return "waypoint roles must be normal or hard"
     for index, value in enumerate(actions):
         if parse_actions(value, index)[2]: return parse_actions(value, index)[2]
     return ""

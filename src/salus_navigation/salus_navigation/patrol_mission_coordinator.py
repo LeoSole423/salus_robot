@@ -500,8 +500,11 @@ class PatrolMissionCoordinator(Node):
             p.lon for p in route.waypoints]
         request.yaws_deg, request.waypoint_action_jsons = [
             p.yaw_deg if p.yaw_explicit else nan for p in route.waypoints], list(route.actions)
+        # Patrol/HOME checkpoint events drive the mission state machine.  Keep
+        # every delegated checkpoint terminal even when generic routes opt in
+        # to legacy-pair continuity.
         request.waypoint_roles, request.loop = [
-            "normal"] * len(route.waypoints), loop
+            "hard"] * len(route.waypoints), loop
         request.leg_spacing_m = machine.spec.leg_spacing_m
         request.chunk_span_m = machine.spec.chunk_span_m
         request.chunk_max_waypoints = machine.spec.chunk_max_waypoints

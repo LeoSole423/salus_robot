@@ -28,8 +28,16 @@ def test_patrol_coordinator_exposes_legacy_endpoints_without_nav2_or_velocity_cl
 def test_route_executor_emits_an_unambiguous_checkpoint_event():
     source = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
     assert '"ROUTE_CHECKPOINT_REACHED"' in source
-    assert "input_index=point.input_index" in source
-    assert "mission_id=self._mission.mission_id" in source
+    assert '"input_index": occurrence.input_index' in source
+    assert '"mission_id": self._mission.mission_id' in source
+    assert '"loop_iteration": occurrence.loop_iteration' in source
+
+
+def test_patrol_and_home_routes_remain_hard_checkpoint_boundaries():
+    source = (ROOT / "salus_navigation" / "patrol_mission_coordinator.py").read_text()
+    dispatch = source[source.index("    def _dispatch_phase"):source.index(
+        "    def _on_route_dispatched")]
+    assert '"hard"] * len(route.waypoints)' in dispatch
 
 
 def test_patrol_battery_inputs_are_configurable_and_do_not_command_motion():
