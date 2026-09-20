@@ -1,6 +1,7 @@
 from math import nan
+from contextlib import nullcontext
 from types import SimpleNamespace
-from salus_navigation.route_model import PreparedRoute, RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RoutePhase, RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
@@ -524,6 +525,45 @@ def test_retry_of_the_same_chunk_preserves_soft_checkpoint_evidence():
 
     assert fake._checkpoint_tracker is tracker
     assert fake._checkpoint_tracker.complete
+
+
+def test_pose_callback_accounts_for_time_waiting_before_tracker_evaluation():
+    observations = []
+
+    class Tracker:
+        def observe(self, sample, *, now_ros_s, now_steady_s):
+            observations.append((sample, now_ros_s, now_steady_s))
+            return SimpleNamespace(accepted=False, occurrence=None)
+
+    steady_times = iter((10.0, 10.7))
+    fake = SimpleNamespace(
+        _steady_now=lambda: next(steady_times),
+        get_clock=lambda: SimpleNamespace(
+            now=lambda: SimpleNamespace(nanoseconds=100_200_000_000)
+        ),
+        _lock=nullcontext(),
+        _mission=SimpleNamespace(phase=RoutePhase.ACTIVE),
+        _checkpoint_tracker=Tracker(),
+        _goal_request_pending=False,
+        _record_checkpoint_reached=lambda *_args, **_kwargs: None,
+        _pose=None,
+        _pose_sample=None,
+    )
+    message = SimpleNamespace(
+        header=SimpleNamespace(
+            stamp=SimpleNamespace(sec=100, nanosec=0),
+        ),
+        pose=SimpleNamespace(
+            pose=SimpleNamespace(position=SimpleNamespace(x=1.0, y=2.0)),
+        ),
+    )
+
+    RouteExecutorNode._on_pose(fake, message)
+
+    sample, now_ros_s, now_steady_s = observations[0]
+    assert sample.received_steady_s == 10.0
+    assert now_steady_s == 10.7
+    assert now_ros_s == 100.2
 
 
 def test_route_input_accepts_hard_role_but_rejects_unknown_roles():

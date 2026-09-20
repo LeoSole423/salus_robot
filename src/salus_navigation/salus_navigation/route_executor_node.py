@@ -215,7 +215,6 @@ class RouteExecutorNode(Node):
 
     def _on_pose(self, message: Odometry) -> None:
         received_steady_s = self._steady_now()
-        now_ros_s = self.get_clock().now().nanoseconds * 1.0e-9
         source_stamp_s = (
             float(message.header.stamp.sec)
             + float(message.header.stamp.nanosec) * 1.0e-9
@@ -226,6 +225,11 @@ class RouteExecutorNode(Node):
             source_stamp_s, received_steady_s,
         )
         with self._lock:
+            # Evaluate receipt freshness after waiting for the mission lock.
+            # Reusing ``received_steady_s`` here would make the steady-clock
+            # age identically zero and hide callback/lock backlog.
+            now_steady_s = self._steady_now()
+            now_ros_s = self.get_clock().now().nanoseconds * 1.0e-9
             self._pose = position
             self._pose_sample = sample
             tracker = self._checkpoint_tracker
@@ -238,7 +242,7 @@ class RouteExecutorNode(Node):
             evidence = tracker.observe(
                 sample,
                 now_ros_s=now_ros_s,
-                now_steady_s=received_steady_s,
+                now_steady_s=now_steady_s,
             )
             if evidence.accepted and evidence.occurrence is not None:
                 self._record_checkpoint_reached(
