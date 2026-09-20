@@ -53,7 +53,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert '"sim_sensor_profile"' in contents
     assert '"sim_sensor_seed"' in contents
     assert '"route_execution_mode"' in contents
-    assert 'default_value="single_checkpoint"' in contents
+    assert 'default_value="legacy_pair"' in contents
     assert '"route_execution_mode": route_execution_mode' in contents
     assert '"route_progress_pose_max_age_s": route_progress_pose_max_age_s' in contents
     assert "no_obstacle_detection" in contents
