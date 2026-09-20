@@ -76,3 +76,22 @@ def test_route_smoke_can_pair_with_production_chunk_defaults():
     assert 'SMOKE_ROUTE_CHUNK_MAX_WAYPOINTS' in source
     assert 'SMOKE_ROUTE_AUTO_YAWS' in source
     assert 'request.chunk_span_m, request.chunk_max_waypoints' in source
+
+
+def test_route_smoke_has_opt_in_legacy_pair_contract_scenarios():
+    source = PROBE.read_text(encoding="utf-8")
+    assert 'SMOKE_ROUTE_SCENARIO' in source
+    assert 'scenario == "loop"' in source
+    assert 'scenario == "action"' in source
+    assert 'scenario == "takeover"' in source
+    assert 'scenario == "cancel"' in source
+    assert 'mission_started_second_loop_or_raise' in source
+    assert 'ROUTE_WAYPOINT_ACTION_STARTED' in source
+    assert 'SetManualMode.Request(enabled=True)' in source
+
+
+def test_route_smoke_shell_propagates_legacy_pair_scenario():
+    shell = (PROBE.parent / "smoke_route_executor_sim.sh").read_text(encoding="utf-8")
+    assert 'SMOKE_ROUTE_EXECUTION_MODE' in shell
+    assert 'route_execution_mode:=' in shell
+    assert 'skipped:navigation_profiles:mission_remains_paused_after_takeover' in shell

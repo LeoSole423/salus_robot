@@ -24,7 +24,8 @@ from rclpy.time import Time
 from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth
 from salus_interfaces.srv import (
-    CancelRouteMission, GetRouteMissionState, SetNavGoalLL, SetRouteMissionLL,
+    CancelRouteMission, GetRouteMissionState, SetManualMode, SetNavGoalLL,
+    SetRouteMissionLL,
 )
 from salus_navigation.route_geometry import path_geometry_metrics
 from salus_navigation.route_model import RouteWaypoint
@@ -105,6 +106,7 @@ class Smoke(Node):
         self.set = self.create_client(SetRouteMissionLL, "/route_executor/set_route_mission_ll")
         self.state = self.create_client(GetRouteMissionState, "/route_executor/get_route_mission_state")
         self.cancel = self.create_client(CancelRouteMission, "/route_executor/cancel_route_mission")
+        self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
         self.nav_goal = self.create_client(SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.fromll = self.create_client(FromLL, "/fromLL")
         self.navigate_action = ActionClient(self, NavigateToPose, "/navigate_to_pose")
@@ -597,15 +599,35 @@ def request_from_pose(pose, *, loop=False):
     automatic_yaws = os.environ.get("SMOKE_ROUTE_AUTO_YAWS", "0").lower() in (
         "1", "true", "yes"
     )
+    scenario = os.environ.get("SMOKE_ROUTE_SCENARIO", "open").lower()
+    loop = loop or scenario == "loop"
     yaw = math.atan2(2 * pose.orientation.w * pose.orientation.z, 1 - 2 * pose.orientation.z ** 2)
     x, y = pose.position.x, pose.position.y
-    values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw)) for distance in (3, 6, 9)]
+    if loop:
+        # Broad Ackermann-compatible loop: the smoke stops after the first
+        # causal dispatch of the second lap.  It is intentionally opt-in so
+        # the historical open-route smoke remains unchanged.
+        local_values = [(6.0, 0.0), (20.0, -14.0), (34.0, 0.0), (20.0, 14.0)]
+        values = [
+            (
+                x + forward * math.cos(yaw) - lateral * math.sin(yaw),
+                y + forward * math.sin(yaw) + lateral * math.cos(yaw),
+            )
+            for forward, lateral in local_values
+        ]
+    else:
+        values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw)) for distance in (3, 6, 9)]
+    action_index = int(os.environ.get("SMOKE_ROUTE_ACTION_INDEX", "-1"))
+    actions = ["" for _ in values]
+    if 0 <= action_index < len(actions):
+        actions[action_index] = '[{"type":"brake_hold","duration_s":0.5,"brake_pct":20}]'
     request = SetRouteMissionLL.Request()
     request.lats = [LAT + point_y / 111_320.0 for _, point_y in values]
     request.lons = [LON + point_x / (111_320.0 * math.cos(math.radians(LAT))) for point_x, _ in values]
     request.yaws_deg = ([float("nan")] * len(values)
                         if automatic_yaws else [math.degrees(yaw)] * len(values))
     request.loop, request.leg_spacing_m = loop, leg_spacing_m
+    request.waypoint_action_jsons = actions
     request.chunk_span_m, request.chunk_max_waypoints = (
         chunk_span_m, chunk_max_waypoints
     )
@@ -632,6 +654,34 @@ def mission_crossed_chunk_transition_or_raise(poller):
     return poller.latest.chunk_id >= 1 and poller.latest.reached_checkpoint_count >= 2
 
 
+def mission_started_second_loop_or_raise(node, poller):
+    if poller.latest is None:
+        return False
+    if poller.latest.status in ("PAUSED", "ABORTED", "CANCELLED"):
+        raise RuntimeError(
+            f"loop entered {poller.latest.status}: {poller.latest.blocked_reason_text}"
+        )
+    dispatches = node.dispatch_evidence()
+    return (
+        poller.latest.loop_iteration >= 1
+        and poller.latest.reached_checkpoint_count >= 4
+        and any(int(item.get("loop_iteration", -1)) >= 1 for item in dispatches)
+    )
+
+
+def route_event(node, code, input_index=None):
+    for event in node.events:
+        if event.code != code:
+            continue
+        if input_index is None:
+            return event
+        details = {item.key: item.value for item in event.details}
+        event_index = details.get("input_index", details.get("waypoint_index", ""))
+        if str(event_index) == str(input_index):
+            return event
+    return None
+
+
 def main():
     rclpy.init(); node = Smoke()
     runtime = SmokeRuntime(
@@ -643,6 +693,7 @@ def main():
     success = False
     failure = None
     rpp_branch_evidence = {}
+    scenario_cancelled = False
     state_poller = AsyncServicePoller(
         node.state, GetRouteMissionState.Request, interval_s=0.5, response_timeout_s=8.0
     )
@@ -744,12 +795,28 @@ def main():
         progress_started_at = time.monotonic()
         node.progress_trace.clear()
         node.next_progress_sample_at = 0.0
+        scenario = os.environ.get("SMOKE_ROUTE_SCENARIO", "open").lower()
+        if scenario == "loop":
+            predicate = lambda: mission_started_second_loop_or_raise(node, state_poller)
+            timeout_s = 120
+            description = "route did not enter the second loop iteration"
+        elif scenario in ("takeover", "cancel"):
+            predicate = lambda: (
+                route_event(node, "ROUTE_CHECKPOINT_REACHED", 0) is not None
+                or mission_is_active_or_raise(state_poller) is False
+            )
+            timeout_s = 50
+            description = "route did not acknowledge the soft checkpoint before takeover"
+        else:
+            predicate = lambda: mission_crossed_chunk_transition_or_raise(state_poller)
+            timeout_s = 50
+            description = "route did not cross a real multi-pose chunk transition"
         try:
             wait(
                 node,
-                lambda: mission_crossed_chunk_transition_or_raise(state_poller),
-                50,
-                "route did not cross a real multi-pose chunk transition",
+                predicate,
+                timeout_s,
+                description,
                 stimulate=lambda: node.sample_route_progress(
                     state_poller,
                     global_progress_start,
@@ -758,22 +825,61 @@ def main():
                 ),
                 observe=lambda: {
                     **state_poller.evidence(),
-                    "status": getattr(
-                        state_poller.latest, "status", "unavailable"
-                    ),
-                    "reached": getattr(
-                        state_poller.latest,
-                        "reached_checkpoint_count",
-                        -1,
-                    ),
+                    "scenario": scenario,
+                    "status": getattr(state_poller.latest, "status", "unavailable"),
+                    "reached": getattr(state_poller.latest, "reached_checkpoint_count", -1),
+                    "loop_iteration": getattr(state_poller.latest, "loop_iteration", -1),
+                    "dispatches": node.dispatch_evidence(),
                     "progress_samples": len(node.progress_trace),
-                    "latest_progress": (
-                        node.progress_trace[-1]
-                        if node.progress_trace
-                        else None
-                    ),
+                    "latest_progress": node.progress_trace[-1] if node.progress_trace else None,
                 },
             )
+            if scenario == "action":
+                wait(
+                    node,
+                    lambda: route_event(node, "ROUTE_WAYPOINT_ACTION_STARTED", 1) is not None,
+                    10,
+                    "action checkpoint did not start",
+                )
+                wait(
+                    node,
+                    lambda: route_event(node, "ROUTE_WAYPOINT_ACTION_FINISHED", 1) is not None,
+                    10,
+                    "action checkpoint did not finish",
+                )
+            elif scenario == "takeover":
+                wait(
+                    node,
+                    lambda: route_event(node, "ROUTE_CHECKPOINT_REACHED", 0) is not None,
+                    20,
+                    "soft checkpoint was not acknowledged before takeover",
+                )
+                takeover = call(node, node.manual, SetManualMode.Request(enabled=True))
+                if not takeover.ok:
+                    raise RuntimeError(f"manual takeover was rejected: {takeover.error}")
+                wait(
+                    node,
+                    lambda: state_poller.latest is not None and state_poller.latest.status == "PAUSED",
+                    10,
+                    "manual takeover did not pause the route",
+                    stimulate=state_poller.poll,
+                )
+                release = call(node, node.manual, SetManualMode.Request(enabled=False))
+                if not release.ok:
+                    raise RuntimeError(f"manual takeover release was rejected: {release.error}")
+            elif scenario == "cancel":
+                result = call(node, node.cancel, CancelRouteMission.Request())
+                if not result.ok:
+                    raise RuntimeError(f"pair cancellation failed: {result.error}")
+                scenario_cancelled = True
+                wait(
+                    node,
+                    lambda: state_poller.latest is not None
+                    and state_poller.latest.status == "CANCELLED",
+                    10,
+                    "pair cancellation did not reach CANCELLED",
+                    stimulate=state_poller.poll,
+                )
         except RuntimeError as exc:
             state = state_poller.latest or initial_state
             health = node.path_health[-1].reason if node.path_health else "unavailable"
@@ -794,25 +900,26 @@ def main():
             message.source == CmdVelFinal.SOURCE_AUTO for message in node.final
         ):
             raise RuntimeError("route did not reach command chain")
-        if any(
+        if scenario not in ("action", "takeover", "cancel") and any(
             message.source == CmdVelFinal.SOURCE_SAFETY
             and message.brake_pct > 0
             for message in node.final
         ):
             raise RuntimeError("route braked between contiguous chunks")
-        result = call(node, node.cancel, CancelRouteMission.Request())
-        if not result.ok: raise RuntimeError(result.error)
-        wait(
-            node,
-            lambda: state_poller.latest is not None and state_poller.latest.status == "CANCELLED",
-            5,
-            "route was not cancelled",
-            stimulate=state_poller.poll,
-            observe=lambda: {
-                **state_poller.evidence(),
-                "status": getattr(state_poller.latest, "status", "unavailable"),
-            },
-        )
+        if not scenario_cancelled and scenario != "takeover":
+            result = call(node, node.cancel, CancelRouteMission.Request())
+            if not result.ok: raise RuntimeError(result.error)
+            wait(
+                node,
+                lambda: state_poller.latest is not None and state_poller.latest.status == "CANCELLED",
+                5,
+                "route was not cancelled",
+                stimulate=state_poller.poll,
+                observe=lambda: {
+                    **state_poller.evidence(),
+                    "status": getattr(state_poller.latest, "status", "unavailable"),
+                },
+            )
         print("Route executor simulation smoke test passed")
         success = True
         return 0
@@ -830,6 +937,11 @@ def main():
             "rpp_branch_selection": rpp_branch_evidence,
             "yaw_policy_comparison": locals().get("yaw_policy_evidence", {}),
             "dispatches": node.dispatch_evidence(),
+            "scenario": os.environ.get("SMOKE_ROUTE_SCENARIO", "open"),
+            "action_events": [
+                event.code for event in node.events
+                if event.code.startswith("ROUTE_WAYPOINT_ACTION_")
+            ],
             "final_commands": len(node.final),
             "first_checkpoint_progress_trace": node.progress_trace,
             "last_course_heading": (
