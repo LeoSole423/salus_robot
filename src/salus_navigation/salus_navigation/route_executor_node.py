@@ -32,6 +32,9 @@ from salus_interfaces.srv import (
 )
 
 from .route_anchor import select_anchor
+from .route_checkpoint_tracker import (
+    CheckpointOccurrence, IntermediateCheckpointTracker, PoseSample,
+)
 from .route_chunker import build_chunk, next_start, resolve_dispatch_start
 from .route_model import RouteMission, RoutePhase, RouteWaypoint
 from .route_preparation import dispatch_yaws, prepare, validate_inputs
@@ -103,6 +106,8 @@ class RouteExecutorNode(Node):
     def __init__(self) -> None:
         super().__init__("route_executor")
         self.declare_parameter("waypoint_reached_tolerance_m", 1.2)
+        self.declare_parameter("route_execution_mode", "single_checkpoint")
+        self.declare_parameter("route_progress_pose_max_age_s", 0.5)
         self.declare_parameter("fromll_timeout_s", 2.0)
         self.declare_parameter("blocked_persistence_s", 1.5)
         self.declare_parameter("blocked_retry_wait_s", 5.0)
@@ -118,7 +123,11 @@ class RouteExecutorNode(Node):
         self._preparation = None
         self._preparation_epoch = 0
         self._pose = None
+        self._pose_sample = None
         self._chunk = None
+        self._checkpoint_tracker = None
+        self._checkpoint_tracker_key = None
+        self._reached_occurrences = set()
         self._target_offset = 0
         self._goal_epoch = 0
         self._goal_request_pending = False
@@ -142,6 +151,18 @@ class RouteExecutorNode(Node):
         self._nav_cancel_timeout_s = max(
             0.1, float(self.get_parameter("nav_cancel_timeout_s").value)
         )
+        self._route_execution_mode = str(
+            self.get_parameter("route_execution_mode").value
+        )
+        if self._route_execution_mode not in ("single_checkpoint", "legacy_pair"):
+            raise ValueError(
+                "route_execution_mode must be single_checkpoint or legacy_pair"
+            )
+        self._route_progress_pose_max_age_s = float(
+            self.get_parameter("route_progress_pose_max_age_s").value
+        )
+        if not 0.0 < self._route_progress_pose_max_age_s <= 2.0:
+            raise ValueError("route_progress_pose_max_age_s must be in (0, 2]")
         self._set_goal = self.create_client(
             SetNavGoalLL, "/nav_command_server/set_goal_ll"
         )
@@ -193,7 +214,42 @@ class RouteExecutorNode(Node):
         self.create_timer(0.05, self._tick_action)
 
     def _on_pose(self, message: Odometry) -> None:
-        self._pose = message.pose.pose.position
+        received_steady_s = self._steady_now()
+        source_stamp_s = (
+            float(message.header.stamp.sec)
+            + float(message.header.stamp.nanosec) * 1.0e-9
+        )
+        position = message.pose.pose.position
+        sample = PoseSample(
+            float(position.x), float(position.y),
+            source_stamp_s, received_steady_s,
+        )
+        with self._lock:
+            # Evaluate receipt freshness after waiting for the mission lock.
+            # Reusing ``received_steady_s`` here would make the steady-clock
+            # age identically zero and hide callback/lock backlog.
+            now_steady_s = self._steady_now()
+            now_ros_s = self.get_clock().now().nanoseconds * 1.0e-9
+            self._pose = position
+            self._pose_sample = sample
+            tracker = self._checkpoint_tracker
+            if (
+                self._mission.phase != RoutePhase.ACTIVE
+                or tracker is None
+                or self._goal_request_pending
+            ):
+                return
+            evidence = tracker.observe(
+                sample,
+                now_ros_s=now_ros_s,
+                now_steady_s=now_steady_s,
+            )
+            if evidence.accepted and evidence.occurrence is not None:
+                self._record_checkpoint_reached(
+                    evidence.occurrence,
+                    "fresh_odometry_radius",
+                    distance_m=evidence.distance_m,
+                )
 
     def _set(self, request, response):
         lats, lons, yaws = list(request.lats), list(request.lons), list(request.yaws_deg)
@@ -205,10 +261,11 @@ class RouteExecutorNode(Node):
             return response
         canonical_actions = [parse_actions(value, index)[1]
                              for index, value in enumerate(actions or [""] * len(lats))]
+        role_values = roles or ["normal"] * len(lats)
         raw = tuple(
             RouteWaypoint(float(lat), float(lon), float(yaw), index, True,
                           canonical_actions[index],
-                          (roles or ["normal"] * len(lats))[index],
+                          role_values[index] or "normal",
                           yaw_explicit=isfinite(float(yaw)))
             for index, (lat, lon, yaw) in enumerate(zip(lats, lons, yaws))
         )
@@ -293,6 +350,9 @@ class RouteExecutorNode(Node):
         transition(mission, RoutePhase.ACTIVE)
         self._recovery.reset()
         self._recovery_clears = None
+        self._checkpoint_tracker = None
+        self._checkpoint_tracker_key = None
+        self._reached_occurrences = set()
         self._mission, self._preparation = mission, None
         self._dispatch()
 
@@ -504,7 +564,12 @@ class RouteExecutorNode(Node):
             return
         self._mission.target_index = start.index
         self._last_dispatch_start = start
-        self._chunk = build_chunk(route, self._mission.target_index, self._mission.loop_iteration)
+        self._chunk = build_chunk(
+            route,
+            self._mission.target_index,
+            self._mission.loop_iteration,
+            mode=self._route_execution_mode,
+        )
         if self._chunk is None:
             transition(self._mission, RoutePhase.COMPLETED)
             return
@@ -573,6 +638,7 @@ class RouteExecutorNode(Node):
             self._pause("route chunk contains no original checkpoint")
             return
         self._target_offset = offsets[-1]
+        self._prepare_checkpoint_tracker()
         self._recovery_checkpoint_reached = False
         approach_xy = None
         if self._pose is not None:
@@ -616,6 +682,18 @@ class RouteExecutorNode(Node):
                 else [float(self._pose.x), float(self._pose.y)],
                 separators=(",", ":"),
             ),
+            checkpoint_occurrences=json.dumps(
+                [
+                    {
+                        "offset": offset,
+                        "input_index": input_index,
+                        "loop_iteration": loop_iteration,
+                    }
+                    for offset, input_index, loop_iteration
+                    in self._chunk.checkpoint_occurrences
+                ],
+                separators=(",", ":"),
+            ),
             skipped_reached=(
                 0
                 if self._last_dispatch_start is None
@@ -654,21 +732,109 @@ class RouteExecutorNode(Node):
                 else:
                     self._pause(f"NAV_GOAL_REJECTED: {exc}")
 
-    def _complete_current_chunk(self, completion_source: str) -> None:
-        offsets = self._chunk.checkpoint_offsets
-        for offset in offsets:
-            point = self._chunk.waypoints[offset]
-            self._event(
-                DiagnosticStatus.OK,
-                "ROUTE_CHECKPOINT_REACHED",
-                "route checkpoint reached",
-                mission_id=self._mission.mission_id,
-                input_index=point.input_index,
-                chunk_id=self._mission.chunk_id,
-                loop_iteration=self._mission.loop_iteration,
-                completion_source=completion_source,
+    def _prepare_checkpoint_tracker(self) -> None:
+        occurrences = self._chunk.checkpoint_occurrences
+        soft = tuple(
+            CheckpointOccurrence(
+                input_index=input_index,
+                loop_iteration=loop_iteration,
+                x=float(self._chunk.waypoints[offset].map_x),
+                y=float(self._chunk.waypoints[offset].map_y),
             )
-        self._mission.reached += len(offsets)
+            for offset, input_index, loop_iteration in occurrences[:-1]
+        )
+        key = (
+            self._mission.mission_id,
+            self._mission.chunk_id,
+            tuple(
+                (
+                    input_index,
+                    loop_iteration,
+                    float(self._chunk.waypoints[offset].map_x),
+                    float(self._chunk.waypoints[offset].map_y),
+                )
+                for offset, input_index, loop_iteration in occurrences
+            ),
+        )
+        if key == self._checkpoint_tracker_key:
+            return
+        self._checkpoint_tracker_key = key
+        self._checkpoint_tracker = IntermediateCheckpointTracker(
+            soft,
+            radius_m=2.5,
+            max_age_s=self._route_progress_pose_max_age_s,
+        )
+
+    def _record_checkpoint_reached(
+        self,
+        occurrence: CheckpointOccurrence,
+        completion_source: str,
+        *,
+        distance_m=None,
+    ) -> bool:
+        identity = (
+            self._mission.mission_id,
+            occurrence.loop_iteration,
+            occurrence.input_index,
+        )
+        if identity in self._reached_occurrences:
+            return False
+        self._reached_occurrences.add(identity)
+        self._mission.reached += 1
+        details = {
+            "mission_id": self._mission.mission_id,
+            "input_index": occurrence.input_index,
+            "chunk_id": self._mission.chunk_id,
+            "loop_iteration": occurrence.loop_iteration,
+            "completion_source": completion_source,
+        }
+        if distance_m is not None:
+            details["distance_m"] = f"{float(distance_m):.6f}"
+        self._event(
+            DiagnosticStatus.OK,
+            "ROUTE_CHECKPOINT_REACHED",
+            "route checkpoint reached",
+            **details,
+        )
+        return True
+
+    def _complete_current_chunk(self, completion_source: str) -> None:
+        tracker = self._checkpoint_tracker
+        if tracker is not None and not tracker.complete:
+            pending = [
+                {
+                    "input_index": item.input_index,
+                    "loop_iteration": item.loop_iteration,
+                }
+                for item in tracker.pending
+            ]
+            reason = "ROUTE_CHECKPOINT_SEQUENCE_INCOMPLETE"
+            self._pause(reason)
+            self._brake.call_async(
+                BrakeNav.Request(duration_s=0.25, brake_pct=100)
+            ).add_done_callback(self._log_failed_brake)
+            self._event(
+                DiagnosticStatus.ERROR,
+                reason,
+                "terminal Nav2 success arrived before an intermediate checkpoint",
+                mission_id=self._mission.mission_id,
+                chunk_id=self._mission.chunk_id,
+                pending=json.dumps(pending, separators=(",", ":")),
+            )
+            return
+        terminal = self._chunk.checkpoint_occurrences[-1]
+        terminal_occurrence = CheckpointOccurrence(
+            input_index=terminal[1],
+            loop_iteration=terminal[2],
+            x=float(self._chunk.waypoints[terminal[0]].map_x),
+            y=float(self._chunk.waypoints[terminal[0]].map_y),
+        )
+        RouteExecutorNode._record_checkpoint_reached(
+            self,
+            terminal_occurrence,
+            completion_source,
+        )
+        self._mission.loop_iteration = terminal_occurrence.loop_iteration
         endpoint = self._chunk.waypoints[self._target_offset]
         actions = parse_actions(endpoint.action_json, endpoint.input_index)[0]
         if endpoint.key and actions:
@@ -679,7 +845,11 @@ class RouteExecutorNode(Node):
     def _advance(self) -> None:
         self._mission.target_index = next_start(self._mission.prepared, self._chunk)
         self._mission.chunk_id += 1
-        if self._mission.prepared.loop and self._mission.target_index == 0:
+        if (
+            self._mission.prepared.loop
+            and self._mission.target_index == 0
+            and self._chunk.end != 0
+        ):
             self._mission.loop_iteration += 1
         self._dispatch()
 
@@ -703,6 +873,9 @@ class RouteExecutorNode(Node):
             self._recovery.reset()
             self._recovery_clears = None
             self._recovery_checkpoint_reached = False
+            self._checkpoint_tracker = None
+            self._checkpoint_tracker_key = None
+            self._reached_occurrences = set()
             if self._action is not None:
                 self._action.cancel("mission cancelled")
             self._action = self._action_future = None

@@ -111,7 +111,81 @@ def resolve_dispatch_start(
     return DispatchStart(current, skipped_reached, skipped_synthetic)
 
 
-def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteChunk | None:
+def _legacy_pair_eligible(point) -> bool:
+    """Return whether a real point may be the soft first pose of a pair."""
+    return bool(
+        point.key
+        and point.role == "normal"
+        and not point.action_json
+        and not point.yaw_explicit
+    )
+
+
+def _build_legacy_pair_chunk(
+    route: PreparedRoute, start: int, iteration: int
+) -> RouteChunk | None:
+    points = route.waypoints
+    total = len(points)
+    if not points or (not route.loop and start >= total):
+        return None
+    start %= total
+    selected = []
+    checkpoint_iterations = []
+    index = start
+    current_iteration = int(iteration)
+    first = points[index]
+    first_is_pairable = _legacy_pair_eligible(first)
+
+    while True:
+        point = points[index]
+        selected.append(point)
+        if point.key:
+            checkpoint_iterations.append(current_iteration)
+            # A hard starting checkpoint is a singleton.  A normal starting
+            # checkpoint may continue until the next real checkpoint.
+            if len(selected) == 1 and not first_is_pairable:
+                break
+            if len(selected) > 1 or not first_is_pairable:
+                break
+        next_index = index + 1
+        if route.loop:
+            next_index %= total
+            if next_index == start:
+                break
+            if next_index == 0 and index != 0:
+                current_iteration += 1
+        elif next_index >= total:
+            break
+        index = next_index
+
+    if not any(point.key for point in selected):
+        raise ValueError("route chunk has no original checkpoint")
+    if not selected[-1].key:
+        # An open route always has a final key, but keep the invariant explicit
+        # for malformed prepared routes and loop closure edge cases.
+        last_key = max(
+            (offset for offset, point in enumerate(selected) if point.key),
+            default=-1,
+        )
+        selected = selected[:last_key + 1]
+        checkpoint_iterations = checkpoint_iterations[:1]
+    end = (start + len(selected) - 1) % total if route.loop else start + len(selected) - 1
+    return RouteChunk(
+        tuple(selected), start, end, iteration, tuple(checkpoint_iterations)
+    )
+
+
+def build_chunk(
+    route: PreparedRoute,
+    start: int,
+    iteration: int = 0,
+    *,
+    mode: str = "single_checkpoint",
+) -> RouteChunk | None:
+    if mode == "legacy_pair":
+        return _build_legacy_pair_chunk(route, start, iteration)
+    if mode != "single_checkpoint":
+        raise ValueError("mode must be 'single_checkpoint' or 'legacy_pair'")
     points = route.waypoints; total = len(points)
     if not points or (not route.loop and start >= total): return None
     start %= total; selected = []; index = start

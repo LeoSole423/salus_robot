@@ -15,6 +15,9 @@ def generate_launch_description() -> LaunchDescription:
     patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
+    route_execution_mode = LaunchConfiguration("route_execution_mode")
+    route_progress_pose_max_age_s = LaunchConfiguration(
+        "route_progress_pose_max_age_s")
     zones_launch = PathJoinSubstitution([
         package_share, "launch", "navigation_zones_real.launch.py",
     ])
@@ -41,6 +44,13 @@ def generate_launch_description() -> LaunchDescription:
             "patrol_battery_guard_topic", default_value="/battery_mission_guard"),
         DeclareLaunchArgument(
             "patrol_battery_state_topic", default_value="/battery_state"),
+        DeclareLaunchArgument(
+            "route_execution_mode",
+            default_value="single_checkpoint",
+            choices=["single_checkpoint", "legacy_pair"],
+        ),
+        DeclareLaunchArgument(
+            "route_progress_pose_max_age_s", default_value="0.5"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(zones_launch),
             launch_arguments={
@@ -56,7 +66,11 @@ def generate_launch_description() -> LaunchDescription:
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(route_launch),
-            launch_arguments={"use_sim_time": "false"}.items(),
+            launch_arguments={
+                "use_sim_time": "false",
+                "route_execution_mode": route_execution_mode,
+                "route_progress_pose_max_age_s": route_progress_pose_max_age_s,
+            }.items(),
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(patrol_launch),
