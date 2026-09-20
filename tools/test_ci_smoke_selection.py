@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+import contextlib
+import io
 import json
+import sys
 import unittest
+from unittest import mock
 
-from tools.ci_select_smokes import ALL_SMOKES, classify, outputs
+from tools.ci_select_smokes import ALL_SMOKES, classify, main, outputs
 from tools.smoke_registry import ids
 
 
@@ -168,6 +172,53 @@ class ChangeAwareCiSelectionTest(unittest.TestCase):
             context="full",
         )
         self.assertEqual(set(selection.smokes), set(ids(participation="full")))
+
+    def test_cli_full_json_and_stdout_use_effective_universe(self):
+        stdout = io.StringIO()
+        argv = [
+            "ci_select_smokes.py",
+            "--context",
+            "full",
+            "--full-reason",
+            "workflow dispatch",
+            "--json",
+        ]
+        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(stdout):
+            self.assertEqual(main(), 0)
+
+        rendered = stdout.getvalue()
+        payload = json.loads(rendered[rendered.index("{\n"):])
+        effective = list(ids(participation="full"))
+        matrix_ids = [entry["id"] for entry in json.loads(payload["smoke_matrix"])["include"]]
+        selected_block = rendered.split(
+            "[ci-selector] selected smokes:\n", 1
+        )[1].split("[ci-selector] skipped smokes:\n", 1)[0]
+        stdout_ids = [line[4:] for line in selected_block.splitlines() if line.startswith("  - ")]
+
+        self.assertEqual(matrix_ids, effective)
+        self.assertEqual(payload["selected_smokes"], effective)
+        self.assertEqual(payload["skipped_smokes"], [])
+        self.assertEqual(stdout_ids, effective)
+
+    def test_cli_lists_follow_matrix_in_each_context(self):
+        for context in ("pr", "main", "full"):
+            with self.subTest(context=context):
+                stdout = io.StringIO()
+                argv = [
+                    "ci_select_smokes.py",
+                    "--context",
+                    context,
+                    "--full-reason",
+                    "test",
+                    "--json",
+                ]
+                with mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(stdout):
+                    self.assertEqual(main(), 0)
+                payload = json.loads(stdout.getvalue()[stdout.getvalue().index("{\n"):])
+                matrix_ids = [
+                    entry["id"] for entry in json.loads(payload["smoke_matrix"])["include"]
+                ]
+                self.assertEqual(payload["selected_smokes"], matrix_ids)
 
     def test_targeted_selection_emits_only_selected_matrix_ids(self):
         selection = classify(["src/salus_web/salus_web/bridge.py"])

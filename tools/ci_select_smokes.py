@@ -125,6 +125,13 @@ class Selection:
         )
 
 
+def _smoke_lists(selection: Selection) -> tuple[list[str], list[str]]:
+    """Return selected/skipped smoke ids in the effective context order."""
+    selected = [name for name in selection.universe if name in selection.smokes]
+    skipped = [name for name in selection.universe if name not in selection.smokes]
+    return selected, skipped
+
+
 def _clean_paths(paths: Iterable[str]) -> tuple[str, ...]:
     cleaned = []
     for raw in paths:
@@ -248,6 +255,7 @@ def classify(
 
 
 def outputs(selection: Selection) -> dict[str, str]:
+    selected, _ = _smoke_lists(selection)
     data = {
         "classification": selection.classification,
         "full_ci": str(selection.full_ci).lower(),
@@ -256,11 +264,7 @@ def outputs(selection: Selection) -> dict[str, str]:
         "run_smokes": str(bool(selection.smokes)).lower(),
         "smoke_matrix": json.dumps(
             {
-                "include": [
-                    {"id": smoke}
-                    for smoke in selection.universe
-                    if smoke in selection.smokes
-                ]
+                "include": [{"id": smoke} for smoke in selected]
             },
             separators=(",", ":"),
         ),
@@ -277,16 +281,14 @@ def _write_github_output(path: str, selection: Selection) -> None:
 
 
 def _write_summary(path: str, selection: Selection) -> None:
-    selected = [name for name in selection.universe if name in selection.smokes]
-    skipped = [name for name in selection.universe if name not in selection.smokes]
+    selected, skipped = _smoke_lists(selection)
     with open(path, "a", encoding="utf-8") as handle:
         handle.write("## Change-aware CI selection\n\n")
         handle.write(f"- Classification: {selection.classification}\n")
         handle.write(f"- FULL CI fallback: {str(selection.full_ci).lower()}\n")
         handle.write(
             "- Jobs: build-unit always; "
-            + ("simulation-core " if selection.run_simulation_core else "simulation-core skipped ")
-            + (f"{len(selection.smokes)} isolated smoke job(s)" if selection.smokes else "smoke matrix skipped")
+            + (f"{len(selected)} smoke matrix job(s)" if selected else "smoke matrix skipped")
             + "\n"
         )
         handle.write("- Selected smokes: " + (", ".join(selected) or "_none_") + "\n")
@@ -328,11 +330,10 @@ def main() -> int:
     for path in selection.changed_files or ("<none>",):
         print(f"  - {path}")
     print("[ci-selector] selected smokes:")
-    selected = [name for name in ALL_SMOKES if name in selection.smokes]
+    selected, skipped = _smoke_lists(selection)
     for name in selected or ["<none>"]:
         print(f"  - {name}")
     print("[ci-selector] skipped smokes:")
-    skipped = [name for name in selection.universe if name not in selection.smokes]
     for name in skipped or ["<none>"]:
         print(f"  - {name}")
     print("[ci-selector] reasons:")

@@ -20,9 +20,11 @@ incluye:
 - lint y tests registrados por `colcon test`;
 - `tools/test_smoke_harness.sh`.
 
-Los smokes seleccionados no dependen de que `build-unit` termine. Cada job de
-smoke conserva su propio build aislado, por lo que `build-unit`,
-`simulation-core` y `navigation-missions` pueden empezar en paralelo después de
+Los smokes seleccionados no dependen de que `build-unit` termine. El workflow
+actual tiene tres tipos de job: `classify-changes`, `build-unit` y el job
+dinámico `smoke`, cuyo nombre visible es `smoke / <id>` para cada entrada de la
+matriz. Cada job de smoke conserva su propio build aislado, por lo que
+`build-unit` y los jobs `smoke / <id>` pueden empezar en paralelo después de
 `classify-changes`. Un fallo del fast gate sigue fallando el workflow completo.
 
 ## Matriz de selección
@@ -72,7 +74,11 @@ projection y WebSocket server) y en el smoke `integration`.
 
 ## Fronteras que fuerzan FULL CI
 
-Cualquiera de estas rutas ejecuta todos los smokes:
+Cualquiera de estas rutas fuerza la clasificación `FULL`. La matriz efectiva
+depende del contexto: `pull_request` usa el universo `pr`, `push` a `main` usa
+el universo `main` y `workflow_dispatch` usa el universo `full`. Por eso `FULL`
+selecciona todos los escenarios habilitados para ese contexto, no toda la
+matriz registrada:
 
 - `src/salus_interfaces/**`;
 - `src/salus_bringup/**`;
@@ -93,11 +99,10 @@ por defecto. El diff desactiva la detección de renames para clasificar tanto la
 ruta eliminada como la nueva; mover un archivo no puede ocultar su frontera de
 origen.
 
-El selector recibe explícitamente el contexto de participación: `pull_request`
-usa `pr`, `push` a `main` usa `main` y `workflow_dispatch` usa `full`. Una
-clasificación `FULL` selecciona todos los escenarios habilitados para ese
-contexto, no toda la matriz registrada. El nightly conserva su workflow y
-repeticiones existentes.
+El nightly conserva su workflow y repeticiones existentes. El listado de smokes
+que imprime el selector, el Job Summary y el JSON se deriva del mismo universo
+efectivo que alimenta `smoke_matrix`; así, un contexto `full` puede mostrar los
+escenarios pesados que realmente ejecutará.
 
 ## Agregación de resultados
 
@@ -108,9 +113,10 @@ como fallo.
 
 ## Builds duplicados
 
-Este cambio no cachea ni transfiere `build/`, `install/` o `log/`. En un FULL
-CI todavía pueden existir hasta tres builds del workspace: fast gate,
-`simulation-core` y `navigation-missions`.
+Este cambio no cachea ni transfiere `build/`, `install/` o `log/`. El workflow
+actual tiene un build del `build-unit` y un build propio por cada job
+`smoke / <id>` seleccionado; no existen jobs llamados `simulation-core` ni
+`navigation-missions`.
 
 Se prioriza primero el ahorro por selección y paralelismo porque compartir
 `install/` exige una clave de invalidación y un formato de artifact

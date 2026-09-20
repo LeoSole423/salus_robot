@@ -48,6 +48,9 @@ def generate_launch_description() -> LaunchDescription:
     orientation_source = LaunchConfiguration("orientation_source")
     sim_sensor_profile = LaunchConfiguration("sim_sensor_profile")
     sim_sensor_seed = LaunchConfiguration("sim_sensor_seed")
+    route_execution_mode = LaunchConfiguration("route_execution_mode")
+    route_progress_pose_max_age_s = LaunchConfiguration(
+        "route_progress_pose_max_age_s")
     obstacle_detection_enabled = PythonExpression([
         "'", capability_profile, "' == 'obstacle_detection'",
     ])
@@ -114,6 +117,13 @@ def generate_launch_description() -> LaunchDescription:
                     "and timing; no effect on real launches."
                 ),
             ),
+            DeclareLaunchArgument(
+                "route_execution_mode",
+                default_value="legacy_pair",
+                choices=["single_checkpoint", "legacy_pair"],
+            ),
+            DeclareLaunchArgument(
+                "route_progress_pose_max_age_s", default_value="0.5"),
             DeclareLaunchArgument(
                 "gz_args",
                 default_value="-r -s",
@@ -322,7 +332,11 @@ def generate_launch_description() -> LaunchDescription:
                 ])),
             ),
             _include(
-                "salus_navigation", "route_executor_sim.launch.py", common,
+                "salus_navigation", "route_executor_sim.launch.py", {
+                    **common,
+                    "route_execution_mode": route_execution_mode,
+                    "route_progress_pose_max_age_s": route_progress_pose_max_age_s,
+                },
                 condition=IfCondition(launch_routes),
             ),
             _include(

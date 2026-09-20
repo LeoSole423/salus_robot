@@ -30,6 +30,7 @@ from salus_interfaces.srv import (
 from .nav_command_server import diagnostic_level
 from .patrol_domain import (
     PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute,
+    route_roles_for_phase,
 )
 from .patrol_battery_input import PatrolBatteryInputPolicy
 from .patrol_store import write_atomic
@@ -500,8 +501,14 @@ class PatrolMissionCoordinator(Node):
             p.lon for p in route.waypoints]
         request.yaws_deg, request.waypoint_action_jsons = [
             p.yaw_deg if p.yaw_explicit else nan for p in route.waypoints], list(route.actions)
-        request.waypoint_roles, request.loop = [
-            "normal"] * len(route.waypoints), loop
+        # The route executor reports both odometry-confirmed intermediate
+        # checkpoints and strict terminal checkpoints exactly once.  Normal
+        # patrol points can therefore retain legacy-pair continuity, while
+        # actions, explicit headings and finite phase/HOME endpoints remain
+        # hard boundaries.
+        request.waypoint_roles = list(route_roles_for_phase(
+            machine.state.phase, route))
+        request.loop = loop
         request.leg_spacing_m = machine.spec.leg_spacing_m
         request.chunk_span_m = machine.spec.chunk_span_m
         request.chunk_max_waypoints = machine.spec.chunk_max_waypoints

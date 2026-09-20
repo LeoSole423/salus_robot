@@ -87,6 +87,7 @@ class PerceptionRuntimeHarness(Node):
         self.cloud_pub = self.create_publisher(
             PointCloud2, "/scan_3d", qos_profile_sensor_data
         )
+        self.input_stamps: list[tuple[int, int]] = []
         self.obstacle_clouds: list[PointCloud2] = []
         self.scans: list[LaserScan] = []
         self.clean_scans: list[LaserScan] = []
@@ -127,6 +128,7 @@ class PerceptionRuntimeHarness(Node):
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = frame_id
+        self.input_stamps.append((header.stamp.sec, header.stamp.nanosec))
         # Build points in lidar_link from their desired post-TF coordinates.
         # The physical static TF is base_link -> lidar_link; the adapter applies
         # the lookup result to the cloud, so invert that rigid transform here.
@@ -244,6 +246,8 @@ def test_synthetic_cloud_produces_fresh_plausible_clean_scan(tmp_path: Path) -> 
         ]
         assert stamps == sorted(stamps)
         assert stamps[-1] > stamps[0]
+        assert (harness.obstacle_clouds[-1].header.stamp.sec,
+                harness.obstacle_clouds[-1].header.stamp.nanosec) == harness.input_stamps[-1]
     finally:
         _finish_runtime_probe(harness)
 

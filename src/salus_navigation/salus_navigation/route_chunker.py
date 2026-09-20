@@ -111,46 +111,103 @@ def resolve_dispatch_start(
     return DispatchStart(current, skipped_reached, skipped_synthetic)
 
 
-def build_chunk(route: PreparedRoute, start: int, iteration: int = 0) -> RouteChunk | None:
+def _legacy_pair_eligible(point) -> bool:
+    """Return whether a real point may be the soft first pose of a pair."""
+    return bool(
+        point.key
+        and point.role == "normal"
+        and not point.action_json
+        and not point.yaw_explicit
+    )
+
+
+def _build_legacy_pair_chunk(
+    route: PreparedRoute, start: int, iteration: int
+) -> RouteChunk | None:
+    points = route.waypoints
+    total = len(points)
+    if not points or (not route.loop and start >= total):
+        return None
+    start %= total
+    selected = []
+    checkpoint_iterations = []
+    index = start
+    current_iteration = int(iteration)
+    first = points[index]
+    first_is_pairable = _legacy_pair_eligible(first)
+
+    while True:
+        point = points[index]
+        selected.append(point)
+        if point.key:
+            checkpoint_iterations.append(current_iteration)
+            # A hard starting checkpoint is a singleton.  A normal starting
+            # checkpoint may continue until the next real checkpoint.
+            if len(selected) == 1 and not first_is_pairable:
+                break
+            if len(selected) > 1 or not first_is_pairable:
+                break
+        next_index = index + 1
+        if route.loop:
+            next_index %= total
+            if next_index == start:
+                break
+            if next_index == 0 and index != 0:
+                current_iteration += 1
+        elif next_index >= total:
+            break
+        index = next_index
+
+    if not any(point.key for point in selected):
+        raise ValueError("route chunk has no original checkpoint")
+    if not selected[-1].key:
+        # An open route always has a final key, but keep the invariant explicit
+        # for malformed prepared routes and loop closure edge cases.
+        last_key = max(
+            (offset for offset, point in enumerate(selected) if point.key),
+            default=-1,
+        )
+        selected = selected[:last_key + 1]
+        checkpoint_iterations = checkpoint_iterations[:1]
+    end = (start + len(selected) - 1) % total if route.loop else start + len(selected) - 1
+    return RouteChunk(
+        tuple(selected), start, end, iteration, tuple(checkpoint_iterations)
+    )
+
+
+def build_chunk(
+    route: PreparedRoute,
+    start: int,
+    iteration: int = 0,
+    *,
+    mode: str = "single_checkpoint",
+) -> RouteChunk | None:
+    if mode == "legacy_pair":
+        return _build_legacy_pair_chunk(route, start, iteration)
+    if mode != "single_checkpoint":
+        raise ValueError("mode must be 'single_checkpoint' or 'legacy_pair'")
     points = route.waypoints; total = len(points)
     if not points or (not route.loop and start >= total): return None
-    start %= total; selected = []; distance = 0.0; index = start
-    maximum = max(1, route.chunk_max_waypoints)
-    limit = max(0.1, route.chunk_span_m)
-    limit_reached = False
+    start %= total; selected = []; index = start
     while not route.loop or len(selected) < max(1, total - 1):
         point = points[index]
-        if selected:
-            next_distance = selected[-1].distance_to(point)
-            distance += next_distance
         selected.append(point)
-        # Programmed actions are hard mission boundaries.  They execute only
-        # after Nav2 has completed the finite chunk ending at that checkpoint.
-        if point.key and point.action_json and len(selected) >= 1:
+        # Every original checkpoint is the terminal of its finite request.
+        # Synthetic samples may precede it to provide reach/horizon geometry,
+        # but a future checkpoint must never become another hard pose in the
+        # same NavigateThroughPoses goal.  This also makes a chunk that starts
+        # directly on a key contain exactly that one key.
+        if point.key:
             index += 1
             if route.loop:
                 index %= total
             break
-        # Match the physically validated legacy contract: a finite chunk may
-        # contain every synthetic sample along one leg, but it ends at the
-        # next original checkpoint.  Sending several original checkpoints in
-        # one NavigateThroughPoses goal forces the Dubins planner to satisfy
-        # several independent headings at once and can create large loops on
-        # otherwise short route legs.
-        if point.key and len(selected) > 1:
-            index += 1
-            if route.loop:
-                index %= total
-            break
-        limit_reached = len(selected) >= maximum or distance >= limit
         index += 1
         if not route.loop and index >= total: break
         index %= total
         # Count/span are soft limits.  Once crossed, retain synthetic geometry
         # until the next original checkpoint so a synthetic point never
         # becomes a success, brake or action boundary.
-        if limit_reached and point.key and len(selected) > 1:
-            break
     if route.loop and selected and not selected[-1].key:
         last_checkpoint = max(
             (offset for offset, point in enumerate(selected) if point.key),

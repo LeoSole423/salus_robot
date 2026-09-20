@@ -10,7 +10,7 @@ def validate_inputs(lats, lons, yaws, actions, roles) -> str:
     if actions and len(actions) != len(lats): return "waypoint_action_jsons length must match lats/lons when provided"
     if roles and len(roles) != len(lats): return "waypoint_roles length must match lats/lons when provided"
     if any(not isfinite(float(v)) for values in (lats, lons) for v in values): return "coordinates must be finite"
-    if any(value not in ("", "normal") for value in roles): return "waypoint roles other than normal belong to a future missions cut"
+    if any(value not in ("", "normal", "hard") for value in roles): return "waypoint roles must be normal or hard"
     for index, value in enumerate(actions):
         if parse_actions(value, index)[2]: return parse_actions(value, index)[2]
     return ""
@@ -46,7 +46,7 @@ def dispatch_yaws(
     input contract and is never changed here.
     """
     yaws = [float(point.yaw_deg) for point in points]
-    if len(points) < 2:
+    if not points:
         return yaws
 
     first = points[0]
@@ -57,6 +57,9 @@ def dispatch_yaws(
             dy = float(first.map_y) - float(approach_xy[1])
             if hypot(dx, dy) > 1e-9:
                 yaws[0] = degrees(atan2(dy, dx))
+
+    if len(points) < 2:
+        return yaws
 
     if points[-1].yaw_explicit:
         return yaws
