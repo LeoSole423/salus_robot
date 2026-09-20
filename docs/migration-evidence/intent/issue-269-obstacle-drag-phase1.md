@@ -28,16 +28,19 @@ geometría consumida por el evaluador. El frame fijo de la medición es `odom`.
 `base_footprint` y la pose de `/odom_raw`. Para cada haz transforma el origen y
 la dirección al frame fijo `odom`, calcula la primera intersección con una caja
 conocida y puntúa el error absoluto de rango. Haces que no deberían intersectar
-una caja no se consideran error. El resultado expone:
-
-- `scan_static_error_rmse_m`;
-- `scan_static_error_p95_m`.
+una caja no se consideran error. El fixture geométrico permanece en
+`schema_version: 1`; únicamente el artefacto `obstacle_drag_metrics.json`
+usa `schema_version: 2`.
 
 En la ejecución con movimiento, cada scan se conserva con su timestamp ROS y
 se asocia mediante interpolación a `/odom_raw` (yaw por el arco más corto), sin
 usar la última pose recibida ni extrapolar. El bundle incluye además
-`max_error_m`, el conteo de muestras y los índices/errores de los tres haces con
-mayor error por scan, para distinguir outliers de un sesgo global.
+`max_m`, el conteo de muestras y los índices/errores de los tres haces con mayor
+error por scan, para distinguir outliers de un sesgo global. El artefacto
+v2 conserva provenance, pairing, conteos y `worst_outliers`; sus agregados son
+`max_scan_static_error_rmse_m`, `max_scan_static_error_p95_m` y
+`max_beam_static_error_m`. `per_scan_metrics` queda ordenado por `stamp_s` y
+contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
 
 El smoke ejecuta una maniobra open-loop única a través del `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
@@ -59,7 +62,9 @@ La ejecución de esta fase usa por defecto `ROS_DOMAIN_ID=49`, profile `clean` y
 seed `6400`; pueden cambiarse con `SMOKE_ROS_DOMAIN_ID`,
 `SMOKE_GZ_PARTITION`, `SMOKE_SENSOR_PROFILE` y `SMOKE_SENSOR_SEED`.
 
-## Inspección gráfica
+## Inspección gráfica en dos terminales
+
+En el primer terminal, levantar el world con Gazebo y RViz:
 
 ```bash
 docker compose run --rm \
@@ -71,7 +76,19 @@ docker compose run --rm \
       gz_args:="-r" rviz:=true sim_sensor_profile:=clean sim_sensor_seed:=6400'
 ```
 
-En RViz se deben revisar el robot, `/scan_clean`,
+En el segundo terminal, ejecutar la misma maniobra open-loop usada por el smoke,
+con el mismo dominio ROS y `use_sim_time=true`:
+
+```bash
+docker compose run --rm \
+  -e ROS_DOMAIN_ID=49 -e GZ_PARTITION=salus-obstacle-drag-gui \
+  -e IGN_PARTITION=salus-obstacle-drag-gui \
+  ros2 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && \
+    python3 /ros2_ws/tools/obstacle_drag_maneuver.py \
+      --ros-args -p use_sim_time:=true'
+```
+
+En RViz se deben revisar durante la maniobra el robot, `/scan_clean`,
 `/local_costmap/costmap` y `/global_costmap/costmap`. Para esta comparación,
 usar `odom` como Fixed Frame. La selección de Fixed Frame es una acción visual
 del operador; no se persiste ni cambia ningún archivo de producción.

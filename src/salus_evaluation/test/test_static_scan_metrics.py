@@ -6,8 +6,8 @@ import pytest
 
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
-    StaticObstacle, interpolate_pose, load_obstacle_geometry, ray_box_intersection,
-    scan_static_error_metrics,
+    StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
+    ray_box_intersection, scan_static_error_metrics, summarize_scan_metrics,
 )
 
 
@@ -109,3 +109,40 @@ def test_obstacle_geometry_fixture_is_versioned_and_known() -> None:
     assert [(obstacle.x_m, obstacle.y_m) for obstacle in obstacles] == [
         (2.5, 1.5), (7.5, -2.5), (14.0, 5.0),
     ]
+
+
+def test_scan_summary_perfect_control_is_zero_and_schema_is_explicit() -> None:
+    summary = summarize_scan_metrics([
+        (12.0, StaticScanMetrics(3, 0.0, 0.0, 0.0)),
+    ])
+
+    assert summary == {
+        "samples_per_scan": [3],
+        "max_scan_static_error_rmse_m": 0.0,
+        "max_scan_static_error_p95_m": 0.0,
+        "max_beam_static_error_m": 0.0,
+        "per_scan_metrics": [{
+            "stamp_s": 12.0,
+            "sample_count": 3,
+            "rmse_m": 0.0,
+            "p95_m": 0.0,
+            "max_m": 0.0,
+        }],
+    }
+
+
+def test_scan_summary_orders_scans_and_preserves_distinct_maxima() -> None:
+    summary = summarize_scan_metrics([
+        (20.0, StaticScanMetrics(2, 0.4, 0.6, 0.9)),
+        (10.0, StaticScanMetrics(4, 0.1, 0.2, 0.3)),
+    ])
+
+    assert summary["samples_per_scan"] == [4, 2]
+    assert summary["max_scan_static_error_rmse_m"] == pytest.approx(0.4)
+    assert summary["max_scan_static_error_p95_m"] == pytest.approx(0.6)
+    assert summary["max_beam_static_error_m"] == pytest.approx(0.9)
+    assert [entry["stamp_s"] for entry in summary["per_scan_metrics"]] == [
+        10.0, 20.0,
+    ]
+    assert summary["per_scan_metrics"][0]["max_m"] == pytest.approx(0.3)
+    assert summary["per_scan_metrics"][1]["max_m"] == pytest.approx(0.9)

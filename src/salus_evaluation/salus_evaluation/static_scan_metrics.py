@@ -35,6 +35,55 @@ class StaticScanMetrics:
     worst_errors_m: tuple[float, ...] = ()
 
 
+def summarize_scan_metrics(
+    timed_metrics: Iterable[tuple[float, StaticScanMetrics]],
+) -> dict[str, object]:
+    """
+    Build the version-2 report fields for timestamped scan measurements.
+
+    The input is sorted by ROS timestamp so that the per-scan sequence remains
+    deterministic even when callback delivery order differs from message time.
+    All entries are expected to contain at least one scored beam; an empty
+    sequence is a measurement failure rather than a reportable zero.
+    """
+    ordered = sorted(
+        ((float(stamp_s), metrics) for stamp_s, metrics in timed_metrics),
+        key=lambda item: item[0],
+    )
+    if not ordered:
+        raise ValueError("at least one scan metric is required")
+    if any(not math.isfinite(stamp_s) for stamp_s, _ in ordered):
+        raise ValueError("scan metric timestamps must be finite")
+    if any(metrics.sample_count <= 0 for _, metrics in ordered):
+        raise ValueError("scan metrics must contain at least one sample")
+
+    per_scan_metrics = [
+        {
+            "stamp_s": stamp_s,
+            "sample_count": metrics.sample_count,
+            "rmse_m": metrics.scan_static_error_rmse_m,
+            "p95_m": metrics.scan_static_error_p95_m,
+            "max_m": metrics.max_error_m,
+        }
+        for stamp_s, metrics in ordered
+    ]
+    return {
+        "samples_per_scan": [
+            entry["sample_count"] for entry in per_scan_metrics
+        ],
+        "max_scan_static_error_rmse_m": max(
+            entry["rmse_m"] for entry in per_scan_metrics
+        ),
+        "max_scan_static_error_p95_m": max(
+            entry["p95_m"] for entry in per_scan_metrics
+        ),
+        "max_beam_static_error_m": max(
+            entry["max_m"] for entry in per_scan_metrics
+        ),
+        "per_scan_metrics": per_scan_metrics,
+    }
+
+
 def interpolate_pose(
     pose_samples: Sequence[tuple[float, Pose2D]], stamp_s: float,
 ) -> Pose2D | None:

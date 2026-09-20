@@ -21,6 +21,7 @@ from sensor_msgs.msg import LaserScan
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
     interpolate_pose, load_obstacle_geometry, scan_static_error_metrics,
+    summarize_scan_metrics,
 )
 from smoke_runtime import SmokeRuntime
 
@@ -113,7 +114,7 @@ def main() -> int:
     )
     success = False
     failure: Exception | None = None
-    measured = []
+    timed_metrics = []
     outlier_records = []
     try:
         runtime.wait(
@@ -149,18 +150,19 @@ def main() -> int:
                 range_min_m=max(0.0, scan.range_min), range_max_m=scan.range_max,
             )
             if metrics.sample_count:
-                measured.append(metrics)
+                timed_metrics.append((timed_scan.stamp_s, metrics))
                 outlier_records.append({
                     "scan_stamp_s": timed_scan.stamp_s,
                     "beam_indices": list(metrics.worst_beam_indices),
                     "errors_m": list(metrics.worst_errors_m),
                 })
-        if len(measured) < 2:
+        if len(timed_metrics) < 2:
             raise RuntimeError(
                 "/scan_clean did not contain known near/mid/far obstacle hits"
             )
+        summary = summarize_scan_metrics(timed_metrics)
         report = {
-            "schema_version": 1,
+            "schema_version": 2,
             "source_sha": _source_sha(),
             "world": "obstacle_drag.world",
             "geometry_fixture": str(args.geometry),
@@ -174,16 +176,7 @@ def main() -> int:
             "odom_count": node.odom_received,
             "pose_matched_scan_count": pose_matched,
             "pose_unmatched_scan_count": pose_unmatched,
-            "samples_per_scan": [metric.sample_count for metric in measured],
-            "scan_static_error_rmse_m": max(
-                metric.scan_static_error_rmse_m for metric in measured
-            ),
-            "scan_static_error_p95_m": max(
-                metric.scan_static_error_p95_m for metric in measured
-            ),
-            "scan_static_error_max_m": max(
-                metric.max_error_m for metric in measured if metric.max_error_m is not None
-            ),
+            **summary,
             "worst_outliers": sorted(
                 outlier_records,
                 key=lambda item: max(item["errors_m"]),
@@ -205,7 +198,9 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "scan_count": len(node.scans), "odom_count": node.odom_received,
             "pose_count": len(node.poses),
-            "metric_samples": [metric.sample_count for metric in measured],
+            "metric_samples": [
+                metrics.sample_count for _, metrics in timed_metrics
+            ],
         })
         node.destroy_node()
         rclpy.shutdown()

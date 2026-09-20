@@ -30,10 +30,16 @@ iniciar navegación.
 `salus_evaluation.static_scan_metrics.scan_static_error_metrics` transforma cada
 haz de `/scan_clean` desde `base_footprint` a `odom` usando la pose de `/odom_raw`
 interpolada en el timestamp ROS del scan, calcula la intersección esperada con
-las cajas conocidas y reporta `scan_static_error_rmse_m`,
-`scan_static_error_p95_m`, `max_error_m` y los índices/errores de los tres peores
-haces. Sólo se puntúan haces que deberían intersectar una caja; el espacio libre
-no se considera error.
+las cajas conocidas y reporta el error por scan y los índices/errores de los tres
+peores haces. Sólo se puntúan haces que deberían intersectar una caja; el espacio
+libre no se considera error.
+
+El artefacto `obstacle_drag_metrics.json` usa `schema_version: 2` (el fixture
+geométrico sigue en v1). Conserva provenance, pairing, conteos y
+`worst_outliers`; sus agregados inequívocos son
+`max_scan_static_error_rmse_m`, `max_scan_static_error_p95_m` y
+`max_beam_static_error_m`. `per_scan_metrics` está ordenado por `stamp_s` y
+contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
 
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
@@ -41,8 +47,8 @@ y stop. Esto mantiene la medición reproducible sin añadir otro controller.
 Esto es instrumentación base, no un diagnóstico ni un cambio del pipeline de
 LiDAR, TF, EKF, costmaps o Nav2.
 
-Para inspección gráfica, ejecutar desde el repo (con el entorno ROS del
-compose) una única vez:
+Para inspección gráfica, usar dos terminales con el entorno ROS del compose. En
+el primero, levantar el world con RViz:
 
 ```bash
 docker compose run --rm \
@@ -54,7 +60,19 @@ docker compose run --rm \
       gz_args:="-r" rviz:=true sim_sensor_profile:=clean sim_sensor_seed:=6400'
 ```
 
-En RViz, seleccionar `odom` como Fixed Frame para esta medición y verificar
+En el segundo, ejecutar la misma maniobra con el mismo dominio y
+`use_sim_time=true`:
+
+```bash
+docker compose run --rm \
+  -e ROS_DOMAIN_ID=49 -e GZ_PARTITION=salus-obstacle-drag-gui \
+  -e IGN_PARTITION=salus-obstacle-drag-gui \
+  ros2 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && \
+    python3 /ros2_ws/tools/obstacle_drag_maneuver.py \
+      --ros-args -p use_sim_time:=true'
+```
+
+En RViz, seleccionar `odom` como Fixed Frame y verificar durante la maniobra
 `/scan_clean`, `/local_costmap/costmap`, `/global_costmap/costmap` y el robot.
 
 El bundle v2 conserva `commands.csv` como la solicitud Nav2 en `/cmd_vel` y

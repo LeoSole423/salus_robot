@@ -32,6 +32,7 @@ def test_world_poses_and_dimensions_match_geometry_fixture() -> None:
             encoding="utf-8"
         )
     )
+    assert data["schema_version"] == 1
     assert data["fixed_frame"] == "odom"
     for obstacle in data["obstacles"]:
         model = root.find(f"./world/model[@name='{obstacle['name']}']")
@@ -61,6 +62,8 @@ def test_obstacle_drag_smoke_reuses_existing_integration_launch() -> None:
     assert "smoke_harness.sh" in smoke
     assert "/scan_clean" in probe
     assert "--metrics-path" in probe
+    assert '"schema_version": 2' in probe
+    assert "summarize_scan_metrics" in probe
     assert "obstacle_drag_maneuver.py" in smoke
     maneuver = (root / "tools" / "obstacle_drag_maneuver.py").read_text(
         encoding="utf-8"
