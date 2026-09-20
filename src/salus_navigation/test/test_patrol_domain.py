@@ -1,12 +1,15 @@
+from dataclasses import replace
 from math import nan
 
 import pytest
 
 from salus_navigation.patrol_domain import (
     BatteryReturnDisposition, PatrolMachine, PatrolMissionSpec, PatrolPhase,
-    PatrolRoute, select_return_exit, validate_mission,
+    PatrolRoute, route_roles_for_phase, select_return_exit, validate_mission,
 )
 from salus_navigation.route_model import RouteWaypoint
+from salus_navigation.route_chunker import build_chunk, next_start
+from salus_navigation.route_preparation import prepare
 
 
 def point(index, x):
@@ -112,3 +115,82 @@ def test_pause_preserves_battery_latch_without_automatic_resume():
     assert recovered.disposition is BatteryReturnDisposition.HELD_INACTIVE
     assert machine.state.phase is PatrolPhase.PAUSED
     assert machine.state.low_battery_active
+
+
+def test_patrol_loop_uses_normal_roles_for_legacy_pair_continuity():
+    route = spec().loop
+
+    assert route_roles_for_phase(PatrolPhase.JOIN_LOOP, route) == (
+        "normal", "normal", "normal")
+    assert route_roles_for_phase(PatrolPhase.PATROL, route) == (
+        "normal", "normal", "normal")
+    assert route_roles_for_phase(PatrolPhase.EXIT_LOOP, route) == (
+        "normal", "normal", "normal")
+
+
+def test_actions_and_explicit_yaws_remain_hard_patrol_boundaries():
+    automatic = point(0, 0)
+    explicit = RouteWaypoint(**{
+        **point(1, 10).__dict__, "yaw_explicit": True,
+    })
+    route = PatrolRoute(
+        (automatic, explicit, point(2, 20)),
+        ('[{"type":"brake_hold","duration_s":1.0,"brake_pct":30}]', "", ""),
+    )
+
+    assert route_roles_for_phase(PatrolPhase.PATROL, route) == (
+        "hard", "hard", "normal")
+
+
+def test_departure_and_return_home_keep_strict_terminal_boundaries():
+    connector = PatrolRoute(
+        (point(0, 0), point(1, 10), point(2, 20)),
+        ("", "", ""),
+    )
+
+    assert route_roles_for_phase(PatrolPhase.DEPART_HOME, connector) == (
+        "normal", "normal", "hard")
+    assert route_roles_for_phase(PatrolPhase.RETURN_HOME, connector) == (
+        "normal", "normal", "hard")
+
+
+def test_phase_roles_compose_with_legacy_pair_without_softening_home():
+    loop = spec().loop
+    loop_roles = route_roles_for_phase(PatrolPhase.PATROL, loop)
+    prepared_loop = prepare(
+        [replace(point, role=role) for point, role in zip(
+            loop.waypoints, loop_roles)],
+        loop=True,
+        input_count=len(loop.waypoints),
+        spacing_m=35.0,
+        chunk_span_m=120.0,
+        chunk_max_waypoints=5,
+    )
+    first = build_chunk(prepared_loop, 0, mode="legacy_pair")
+    second = build_chunk(
+        prepared_loop,
+        next_start(prepared_loop, first),
+        mode="legacy_pair",
+    )
+
+    assert [point.input_index for point in first.waypoints] == [0, 1]
+    assert [point.input_index for point in second.waypoints] == [2, 0]
+
+    returning = PatrolRoute(
+        (point(3, 12), spec().home),
+        ("", ""),
+    )
+    return_roles = route_roles_for_phase(PatrolPhase.RETURN_HOME, returning)
+    prepared_return = prepare(
+        [replace(point, role=role) for point, role in zip(
+            returning.waypoints, return_roles)],
+        loop=False,
+        input_count=len(returning.waypoints),
+        spacing_m=35.0,
+        chunk_span_m=120.0,
+        chunk_max_waypoints=5,
+    )
+    home_chunk = build_chunk(prepared_return, 0, mode="legacy_pair")
+
+    assert [point.input_index for point in home_chunk.waypoints] == [3, 9]
+    assert home_chunk.waypoints[-1].role == "hard"

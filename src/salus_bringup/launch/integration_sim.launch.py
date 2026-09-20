@@ -119,7 +119,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "route_execution_mode",
-                default_value="single_checkpoint",
+                default_value="legacy_pair",
                 choices=["single_checkpoint", "legacy_pair"],
             ),
             DeclareLaunchArgument(

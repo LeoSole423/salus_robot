@@ -119,7 +119,7 @@ def test_real_route_and_patrol_launches_reuse_one_safe_existing_node_each():
     assert route.count('executable="route_executor"') == 1
     assert patrol.count('executable="patrol_mission_coordinator"') == 1
     assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in route
-    assert 'default_value="single_checkpoint"' in route
+    assert 'default_value="legacy_pair"' in route
     assert '"route_execution_mode": route_execution_mode' in route
     assert 'default_value="0.5"' in route
     assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in patrol

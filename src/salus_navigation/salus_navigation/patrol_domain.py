@@ -168,6 +168,29 @@ def select_return_exit(loop: Iterable[RouteWaypoint], reference: RouteWaypoint) 
     return ReturnExit(index, waypoint, _distance(waypoint, reference))
 
 
+def route_roles_for_phase(
+    phase: PatrolPhase,
+    route: PatrolRoute,
+) -> tuple[str, ...]:
+    """Classify patrol checkpoints without sacrificing route continuity.
+
+    Normal loop checkpoints may be observed as the intermediate occurrence of
+    a ``legacy_pair`` chunk.  Actions and operator-supplied headings remain
+    strict boundaries.  Finite departure/return connectors also retain a
+    strict terminal so phase completion and HOME can never be inferred from an
+    intermediate checkpoint.
+    """
+    if len(route.waypoints) != len(route.actions):
+        raise ValueError("patrol route actions length must match waypoints")
+    roles = [
+        "hard" if action or point.yaw_explicit else "normal"
+        for point, action in zip(route.waypoints, route.actions)
+    ]
+    if roles and phase in (PatrolPhase.DEPART_HOME, PatrolPhase.RETURN_HOME):
+        roles[-1] = "hard"
+    return tuple(roles)
+
+
 class PatrolMachine:
     """Small deterministic state machine; no ROS clients, timers or files."""
 

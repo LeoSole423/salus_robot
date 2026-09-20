@@ -46,7 +46,7 @@ def generate_launch_description() -> LaunchDescription:
             "patrol_battery_state_topic", default_value="/battery_state"),
         DeclareLaunchArgument(
             "route_execution_mode",
-            default_value="single_checkpoint",
+            default_value="legacy_pair",
             choices=["single_checkpoint", "legacy_pair"],
         ),
         DeclareLaunchArgument(
