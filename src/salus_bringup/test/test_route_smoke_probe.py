@@ -67,3 +67,12 @@ def test_first_checkpoint_trace_compares_local_and_global_progress():
     assert "self.next_progress_sample_at" in source
     assert "now < self.next_progress_sample_at" in source
     assert "self.next_progress_sample_at = now + 0.5" in source
+
+
+def test_route_smoke_can_pair_with_production_chunk_defaults():
+    source = PROBE.read_text(encoding="utf-8")
+    assert 'SMOKE_ROUTE_LEG_SPACING_M' in source
+    assert 'SMOKE_ROUTE_CHUNK_SPAN_M' in source
+    assert 'SMOKE_ROUTE_CHUNK_MAX_WAYPOINTS' in source
+    assert 'SMOKE_ROUTE_AUTO_YAWS' in source
+    assert 'request.chunk_span_m, request.chunk_max_waypoints' in source

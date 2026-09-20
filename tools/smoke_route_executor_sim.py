@@ -589,15 +589,26 @@ def rpp_branch_selection_gate(node, runtime):
 
 
 def request_from_pose(pose, *, loop=False):
+    leg_spacing_m = float(os.environ.get("SMOKE_ROUTE_LEG_SPACING_M", "2.0"))
+    chunk_span_m = float(os.environ.get("SMOKE_ROUTE_CHUNK_SPAN_M", "4.5"))
+    chunk_max_waypoints = int(
+        os.environ.get("SMOKE_ROUTE_CHUNK_MAX_WAYPOINTS", "3")
+    )
+    automatic_yaws = os.environ.get("SMOKE_ROUTE_AUTO_YAWS", "0").lower() in (
+        "1", "true", "yes"
+    )
     yaw = math.atan2(2 * pose.orientation.w * pose.orientation.z, 1 - 2 * pose.orientation.z ** 2)
     x, y = pose.position.x, pose.position.y
     values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw)) for distance in (3, 6, 9)]
     request = SetRouteMissionLL.Request()
     request.lats = [LAT + point_y / 111_320.0 for _, point_y in values]
     request.lons = [LON + point_x / (111_320.0 * math.cos(math.radians(LAT))) for point_x, _ in values]
-    request.yaws_deg = [math.degrees(yaw)] * len(values)
-    request.loop, request.leg_spacing_m = loop, 2.0
-    request.chunk_span_m, request.chunk_max_waypoints = 4.5, 3
+    request.yaws_deg = ([float("nan")] * len(values)
+                        if automatic_yaws else [math.degrees(yaw)] * len(values))
+    request.loop, request.leg_spacing_m = loop, leg_spacing_m
+    request.chunk_span_m, request.chunk_max_waypoints = (
+        chunk_span_m, chunk_max_waypoints
+    )
     return request
 
 

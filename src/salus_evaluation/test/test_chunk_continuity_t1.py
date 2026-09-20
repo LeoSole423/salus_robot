@@ -1,6 +1,9 @@
 """Pure regression tests for the complete route continuity observation."""
 
 from salus_evaluation.chunk_continuity_runner import (
+    ROUTE_CHUNK_MAX_WAYPOINTS,
+    ROUTE_CHUNK_SPAN_M,
+    ROUTE_SPACING_M,
     _chunk_windows,
     _trajectory_metrics,
 )
@@ -63,3 +66,9 @@ def test_executed_trajectory_is_measured_separately_from_planner_path():
     assert result["length_m"] == 2.0
     assert result["final_error_m"] == 0.0
     assert result["final_yaw_error_rad"] == 0.0
+
+
+def test_route_runner_uses_production_chunk_defaults_for_both_modes():
+    assert ROUTE_SPACING_M == 35.0
+    assert ROUTE_CHUNK_SPAN_M == 120.0
+    assert ROUTE_CHUNK_MAX_WAYPOINTS == 5
