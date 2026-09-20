@@ -17,7 +17,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument(
             "route_execution_mode",
-            default_value="single_checkpoint",
+            default_value="legacy_pair",
             choices=["single_checkpoint", "legacy_pair"],
         ),
         DeclareLaunchArgument(
