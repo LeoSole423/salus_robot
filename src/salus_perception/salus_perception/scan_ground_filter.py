@@ -1,6 +1,5 @@
 """Conservative 3D ground removal before the cloud is projected to a LaserScan."""
 from __future__ import annotations
-import math
 import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -11,7 +10,7 @@ from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformException, TransformListener
-from .scan_filters import obstacle_points
+from .scan_filters import filter_cloud_points, rotate_translate_point
 
 
 def ground_filter_input_qos() -> QoSProfile:
@@ -20,11 +19,16 @@ def ground_filter_input_qos() -> QoSProfile:
                       reliability=ReliabilityPolicy.BEST_EFFORT,
                       durability=DurabilityPolicy.VOLATILE)
 
-def rotate_translate(point: tuple[float,float,float], transform) -> tuple[float,float,float]:
-    x,y,z=point; q=transform.rotation; t=transform.translation
-    # Quaternion rotation, followed by translation.
-    ix=q.w*x+q.y*z-q.z*y; iy=q.w*y+q.z*x-q.x*z; iz=q.w*z+q.x*y-q.y*x; iw=-q.x*x-q.y*y-q.z*z
-    return (ix*q.w+iw*-q.x+iy*-q.z-iz*-q.y+t.x, iy*q.w+iw*-q.y+iz*-q.x-ix*-q.z+t.y, iz*q.w+iw*-q.z+ix*-q.y-iy*-q.x+t.z)
+
+def rotate_translate(point: tuple[float, float, float], transform) -> tuple[float, float, float]:
+    """Compatibility wrapper for the historical scalar transform helper."""
+    return rotate_translate_point(
+        point,
+        quaternion_xyzw=(transform.rotation.x, transform.rotation.y,
+                         transform.rotation.z, transform.rotation.w),
+        translation_xyz=(transform.translation.x, transform.translation.y,
+                         transform.translation.z),
+    )
 
 class ScanGroundFilter(Node):
     def __init__(self)->None:
@@ -48,10 +52,23 @@ class ScanGroundFilter(Node):
         try: transform=self.buffer.lookup_transform(self.target,msg.header.frame_id,rclpy.time.Time(),timeout=Duration(seconds=0.05))
         except TransformException as error:
             self.get_logger().warn("LiDAR cloud rejected: missing transform to %s (%s)"%(self.target,error),throttle_duration_sec=2.0);return
-        points=[]
-        for row in point_cloud2.read_points(msg,field_names=("x","y","z"),skip_nans=True): points.append(rotate_translate((float(row[0]),float(row[1]),float(row[2])),transform.transform))
+        points = [
+            (float(row[0]), float(row[1]), float(row[2]))
+            for row in point_cloud2.read_points(
+                msg, field_names=("x", "y", "z"), skip_nans=True
+            )
+        ]
+        rotation = transform.transform.rotation
+        translation = transform.transform.translation
+        obstacles = filter_cloud_points(
+            points,
+            quaternion_xyzw=(rotation.x, rotation.y, rotation.z, rotation.w),
+            translation_xyz=(translation.x, translation.y, translation.z),
+            ground_tolerance_m=self.tolerance,
+            max_range_m=self.range_max,
+        )
         header=Header();header.stamp=msg.header.stamp;header.frame_id=self.target
-        self.pub.publish(point_cloud2.create_cloud_xyz32(header,obstacle_points(points,ground_tolerance_m=self.tolerance,max_range_m=self.range_max)))
+        self.pub.publish(point_cloud2.create_cloud_xyz32(header, obstacles.tolist()))
 def main(args=None)->None:
     rclpy.init(args=args);node=ScanGroundFilter()
     try:rclpy.spin(node)
