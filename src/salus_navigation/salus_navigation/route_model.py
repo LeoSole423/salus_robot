@@ -38,6 +38,10 @@ class PreparedRoute:
 @dataclass(frozen=True)
 class RouteChunk:
     waypoints: tuple[RouteWaypoint, ...]; start: int; end: int; iteration: int
+    # One loop iteration per real checkpoint occurrence.  A loop chunk may
+    # cross the closure (for example [last, first]), so one chunk-level
+    # iteration is not enough to identify both events.
+    checkpoint_iterations: tuple[int, ...] = ()
 
     @property
     def checkpoint_offsets(self) -> tuple[int, ...]:
@@ -47,6 +51,18 @@ class RouteChunk:
         diagnostics, but are never dispatched as independent Nav2 goals.
         """
         return tuple(index for index, point in enumerate(self.waypoints) if point.key)
+
+    @property
+    def checkpoint_occurrences(self) -> tuple[tuple[int, int, int], ...]:
+        """Return ``(offset, input_index, loop_iteration)`` occurrences."""
+        offsets = self.checkpoint_offsets
+        iterations = self.checkpoint_iterations
+        if len(iterations) != len(offsets):
+            iterations = (self.iteration,) * len(offsets)
+        return tuple(
+            (offset, self.waypoints[offset].input_index, iterations[index])
+            for index, offset in enumerate(offsets)
+        )
 
 
 @dataclass(frozen=True)
