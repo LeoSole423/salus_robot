@@ -11,8 +11,9 @@ import rclpy
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from robot_localization.srv import FromLL
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry
-from salus_interfaces.srv import GetRouteMissionState, SetRouteMissionLL
+from salus_interfaces.srv import GetRouteMissionState, SetNavGoalLL, SetRouteMissionLL
 from std_msgs.msg import String
 
 from salus_navigation.route_geometry import path_geometry_metrics
@@ -29,8 +30,8 @@ BASE_LON = -64.2410570
 TURN_RADIUS_M = 8.0
 BOUNDARY_TURN_DEG = 30.0
 ROUTE_SPACING_M = 35.0
-ROUTE_CHUNK_SPAN_M = 100.0
-ROUTE_CHUNK_MAX_WAYPOINTS = 20
+ROUTE_CHUNK_SPAN_M = 120.0
+ROUTE_CHUNK_MAX_WAYPOINTS = 5
 
 
 def _validated_route_spacing(value):
@@ -397,10 +398,14 @@ class ChunkContinuityRunner(Node):
         self.declare_parameter("output_dir", "")
         self.declare_parameter("yaw_policy", CURRENT_POLICY)
         self.declare_parameter("scenario", "")
+        self.declare_parameter("route_execution_mode", "single_checkpoint")
         self.declare_parameter("route_spacing_m", ROUTE_SPACING_M)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.policy = str(self.get_parameter("yaw_policy").value)
         self.scenario = str(self.get_parameter("scenario").value)
+        self.route_execution_mode = str(
+            self.get_parameter("route_execution_mode").value
+        )
         self.route_spacing_m = _validated_route_spacing(
             self.get_parameter("route_spacing_m").value
         )
@@ -408,6 +413,10 @@ class ChunkContinuityRunner(Node):
             raise ValueError("output_dir is required")
         if self.policy not in (CURRENT_POLICY, APPROACH_25_POLICY):
             raise ValueError("T1 runner accepts terminal_incoming or approach_25")
+        if self.route_execution_mode not in ("single_checkpoint", "legacy_pair"):
+            raise ValueError(
+                "route_execution_mode must be single_checkpoint or legacy_pair"
+            )
 
         self.odom = []
         self.raw_odom = []
@@ -424,6 +433,10 @@ class ChunkContinuityRunner(Node):
         )
         self.get_state = self.create_client(
             GetRouteMissionState, "/route_executor/get_route_mission_state"
+        )
+        self.fromll = self.create_client(FromLL, "/fromLL")
+        self.nav_goal = self.create_client(
+            SetNavGoalLL, "/nav_command_server/set_goal_ll"
         )
         self.reference = None
         self.route_request = None
@@ -604,6 +617,16 @@ class ChunkContinuityRunner(Node):
     def run(self):
         self._spin_wait(lambda: bool(self.odom), 30.0,
                         "global odometry unavailable")
+        self._spin_wait(
+            self.fromll.service_is_ready,
+            30.0,
+            "fromLL service unavailable before route dispatch",
+        )
+        self._spin_wait(
+            self.nav_goal.service_is_ready,
+            30.0,
+            "nav goal service unavailable before route dispatch",
+        )
         origin_sample = self.odom[-1]
         origin = (origin_sample["x_m"], origin_sample["y_m"], origin_sample["yaw_rad"])
         self.reference = _route_for_scenario(origin, self.scenario)
@@ -615,9 +638,11 @@ class ChunkContinuityRunner(Node):
         final_state = self._wait_for_completion()
         if any(item.get("synthetic_offsets") for item in self.dispatches):
             raise RuntimeError("T1 spacing=35 unexpectedly dispatched synthetic poses")
-        if len(self.dispatches) < 3:
+        minimum_dispatches = 2 if self.route_execution_mode == "legacy_pair" else 3
+        if len(self.dispatches) < minimum_dispatches:
             raise RuntimeError(
-                f"complete T1 route did not dispatch P1-P2-P3: {len(self.dispatches)} dispatches"
+                f"complete route did not dispatch the expected chunks: "
+                f"mode={self.route_execution_mode}, count={len(self.dispatches)}"
             )
         self.last_state = final_state
         return self._summary(origin)
@@ -700,6 +725,7 @@ class ChunkContinuityRunner(Node):
                     "sent_leg_spacing_m": float(self.route_request.leg_spacing_m),
                     "chunk_span_m": ROUTE_CHUNK_SPAN_M,
                     "chunk_max_waypoints": ROUTE_CHUNK_MAX_WAYPOINTS,
+                    "route_execution_mode": self.route_execution_mode,
                     "yaws_are_automatic_nan": all(
                         not math.isfinite(float(value))
                         for value in self.route_request.yaws_deg
@@ -752,6 +778,7 @@ class ChunkContinuityRunner(Node):
             "schema_version": 3,
             "mode": "chunk_continuity",
             "policy": self.policy,
+            "route_execution_mode": self.route_execution_mode,
             "route_spacing_m": self.route_spacing_m,
             "scenario": self.scenario or "wide_90deg_turn_boundary_inside",
             "route_executor_service": "/route_executor/set_route_mission_ll",
@@ -820,6 +847,7 @@ def main():
                 "schema_version": 3,
                 "mode": "chunk_continuity",
                 "policy": node.policy,
+                "route_execution_mode": node.route_execution_mode,
                 "route_executor_service": "/route_executor/set_route_mission_ll",
                 "manual_navigate_through_poses_action": False,
             },
