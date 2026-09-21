@@ -80,6 +80,12 @@ def generate_launch_description() -> LaunchDescription:
                 / "worlds" / "empty.world"
             ),
         ),
+        DeclareLaunchArgument("spawn_x", default_value="0.0"),
+        DeclareLaunchArgument("spawn_y", default_value="0.0"),
+        DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
+        DeclareLaunchArgument("datum_lat", default_value="-31.4858037"),
+        DeclareLaunchArgument("datum_lon", default_value="-64.2410570"),
+        DeclareLaunchArgument("datum_yaw_deg", default_value="0.0"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
         DeclareLaunchArgument("launch_web", default_value="true"),
         DeclareLaunchArgument("launch_camera", default_value="true"),
@@ -88,6 +94,11 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "runtime_dir", default_value="runtime/sim_operational",
             description="Single writable root for this profile's persistent state.",
+        ),
+        DeclareLaunchArgument(
+            "web_waypoints_file",
+            default_value=PathJoinSubstitution([runtime_dir, "web", "waypoints.yaml"]),
+            description="Optional persisted Cockpit waypoint file for this simulation.",
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(integration)),
@@ -103,6 +114,12 @@ def generate_launch_description() -> LaunchDescription:
                 "sim_sensor_seed": LaunchConfiguration("sim_sensor_seed"),
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
+                "spawn_x": LaunchConfiguration("spawn_x"),
+                "spawn_y": LaunchConfiguration("spawn_y"),
+                "spawn_yaw": LaunchConfiguration("spawn_yaw"),
+                "datum_lat": LaunchConfiguration("datum_lat"),
+                "datum_lon": LaunchConfiguration("datum_lon"),
+                "datum_yaw_deg": LaunchConfiguration("datum_yaw_deg"),
                 "rviz": LaunchConfiguration("rviz"),
                 "launch_navigation": "true",
                 "use_keepout": LaunchConfiguration("use_keepout"),
@@ -113,9 +130,7 @@ def generate_launch_description() -> LaunchDescription:
                 "launch_web": LaunchConfiguration("launch_web"),
                 "launch_camera": LaunchConfiguration("launch_camera"),
                 "web_ws_port": LaunchConfiguration("web_ws_port"),
-                "web_waypoints_file": PathJoinSubstitution([
-                    runtime_dir, "web", "waypoints.yaml"
-                ]),
+                "web_waypoints_file": LaunchConfiguration("web_waypoints_file"),
                 "web_telemetry_profile": LaunchConfiguration("web_telemetry_profile"),
                 "camera_presets_file": PathJoinSubstitution([
                     runtime_dir, "camera", "presets.json"

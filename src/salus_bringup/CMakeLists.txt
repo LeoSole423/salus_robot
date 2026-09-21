@@ -7,6 +7,8 @@ install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_integration_sim_launch test/test_integration_sim_launch.py)
+  ament_add_pytest_test(
+    test_georeferenced_patrol_tool test/test_georeferenced_patrol_tool.py)
   ament_add_pytest_test(test_sim_operational_launch test/test_sim_operational_launch.py)
   ament_add_pytest_test(test_integration_probe test/test_integration_probe.py)
   ament_add_pytest_test(test_lifecycle_readiness_probe test/test_lifecycle_readiness_probe.py)

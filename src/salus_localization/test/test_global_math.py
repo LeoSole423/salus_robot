@@ -10,6 +10,12 @@ def test_project_fix_uses_enu_axes() -> None:
     assert abs(x_m) < 0.01 and math.isclose(y_m, 1.0, abs_tol=0.01)
 
 
+def test_project_fix_rotates_into_the_datum_aligned_map_frame() -> None:
+    x_m, y_m = project_fix(0.0, 0.0001, 0.0, 0.0, datum_yaw_deg=90.0)
+    assert math.isclose(x_m, 0.0, abs_tol=0.01)
+    assert math.isclose(y_m, -11.132, abs_tol=0.02)
+
+
 def test_gps_heading_is_east_for_increasing_longitude() -> None:
     first = NavSatFix(); first.latitude = -31.48; first.longitude = -64.24
     second = NavSatFix(); second.latitude = first.latitude; second.longitude = first.longitude + 10.0 / (111_320.0 * math.cos(math.radians(first.latitude)))

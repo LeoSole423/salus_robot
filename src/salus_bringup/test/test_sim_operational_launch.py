@@ -38,6 +38,19 @@ def test_operational_profile_has_full_remote_defaults() -> None:
         'DeclareLaunchArgument(\n            "sim_sensor_seed"',
         '"sim_sensor_profile": LaunchConfiguration("sim_sensor_profile")',
         '"sim_sensor_seed": LaunchConfiguration("sim_sensor_seed")',
+        'DeclareLaunchArgument("spawn_x", default_value="0.0")',
+        'DeclareLaunchArgument("spawn_y", default_value="0.0")',
+        'DeclareLaunchArgument("spawn_yaw", default_value="0.0")',
+        'DeclareLaunchArgument("datum_lat", default_value="-31.4858037")',
+        'DeclareLaunchArgument("datum_lon", default_value="-64.2410570")',
+        'DeclareLaunchArgument("datum_yaw_deg", default_value="0.0")',
+        '"spawn_x": LaunchConfiguration("spawn_x")',
+        '"spawn_y": LaunchConfiguration("spawn_y")',
+        '"spawn_yaw": LaunchConfiguration("spawn_yaw")',
+        '"datum_lat": LaunchConfiguration("datum_lat")',
+        '"datum_lon": LaunchConfiguration("datum_lon")',
+        '"datum_yaw_deg": LaunchConfiguration("datum_yaw_deg")',
+        '"web_waypoints_file": LaunchConfiguration("web_waypoints_file")',
     ):
         assert fragment in contents
 

@@ -23,6 +23,12 @@ def generate_launch_description() -> LaunchDescription:
     use_sim_time = LaunchConfiguration("use_sim_time")
     gz_args = LaunchConfiguration("gz_args")
     world = LaunchConfiguration("world")
+    spawn_x = LaunchConfiguration("spawn_x")
+    spawn_y = LaunchConfiguration("spawn_y")
+    spawn_yaw = LaunchConfiguration("spawn_yaw")
+    datum_lat = LaunchConfiguration("datum_lat")
+    datum_lon = LaunchConfiguration("datum_lon")
+    datum_yaw_deg = LaunchConfiguration("datum_yaw_deg")
     rviz = LaunchConfiguration("rviz")
     launch_navigation = LaunchConfiguration("launch_navigation")
     use_keepout = LaunchConfiguration("use_keepout")
@@ -139,6 +145,36 @@ def generate_launch_description() -> LaunchDescription:
                 description="Gazebo world used by this composed simulation.",
             ),
             DeclareLaunchArgument(
+                "spawn_x",
+                default_value="0.0",
+                description="Simulation-only Gazebo spawn X in map/world metres.",
+            ),
+            DeclareLaunchArgument(
+                "spawn_y",
+                default_value="0.0",
+                description="Simulation-only Gazebo spawn Y in map/world metres.",
+            ),
+            DeclareLaunchArgument(
+                "spawn_yaw",
+                default_value="0.0",
+                description="Simulation-only Gazebo spawn yaw in radians.",
+            ),
+            DeclareLaunchArgument(
+                "datum_lat",
+                default_value="-31.4858037",
+                description="Simulation-only WGS84 map datum latitude in degrees.",
+            ),
+            DeclareLaunchArgument(
+                "datum_lon",
+                default_value="-64.2410570",
+                description="Simulation-only WGS84 map datum longitude in degrees.",
+            ),
+            DeclareLaunchArgument(
+                "datum_yaw_deg",
+                default_value="0.0",
+                description="Simulation-only WGS84 map datum yaw in degrees.",
+            ),
+            DeclareLaunchArgument(
                 "rviz",
                 default_value="false",
                 description="Start RViz diagnostics with guarded 2D goal control.",
@@ -229,7 +265,14 @@ def generate_launch_description() -> LaunchDescription:
             _include(
                 "salus_simulation",
                 "motion_sim.launch.py",
-                {"use_sim_time": use_sim_time, "gz_args": gz_args, "world": world},
+                {
+                    "use_sim_time": use_sim_time,
+                    "gz_args": gz_args,
+                    "world": world,
+                    "spawn_x": spawn_x,
+                    "spawn_y": spawn_y,
+                    "spawn_yaw": spawn_yaw,
+                },
             ),
             _include(
                 "salus_control",
@@ -274,6 +317,9 @@ def generate_launch_description() -> LaunchDescription:
                     "sim_sensor_profile": sim_sensor_profile,
                     "sim_sensor_seed": sim_sensor_seed,
                     "global_ekf_params_file": global_ekf_params_file,
+                    "datum_lat": datum_lat,
+                    "datum_lon": datum_lon,
+                    "datum_yaw_deg": datum_yaw_deg,
                 },
             ),
             _include(

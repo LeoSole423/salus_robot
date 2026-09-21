@@ -56,6 +56,18 @@ def test_global_launch_exposes_a_simulation_only_ekf_override() -> None:
     assert "global_ekf_params_file," in launch
 
 
+def test_global_sim_datum_is_explicit_and_shared_by_fromll_and_navsat() -> None:
+    launch = (PACKAGE / "launch" / "global_localization_sim.launch.py").read_text(
+        encoding="utf-8"
+    )
+    for argument in ("datum_lat", "datum_lon", "datum_yaw_deg"):
+        assert f'DeclareLaunchArgument("{argument}"' in launch
+    assert "validate_datum_override" in launch
+    assert '"datum_yaw_deg": datum_yaw_deg' in launch
+    assert '"datum": [datum_lat, datum_lon, math.radians(datum_yaw_deg)]' in launch
+    assert "OpaqueFunction(function=_build_datum_nodes)" in launch
+
+
 def test_global_yaw_authority_variants_have_exact_masks() -> None:
     baseline = _global_ekf_parameters("localization_global_sim_baseline_duplicate.yaml")
     local = _global_ekf_parameters("localization_global_sim_local_odom_yaw_rate.yaml")
