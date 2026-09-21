@@ -91,4 +91,7 @@ def test_costmap_drag_measurement_has_repeated_maneuver_and_no_reset() -> None:
     assert "/local_costmap/costmap_raw" in probe
     assert "/global_costmap/costmap_raw" in probe
     assert '"costmap_reset": False' in probe
+    assert 'common_cohort_phase = f"turn_{args.repetitions}"' in probe
+    assert 'common_local["status"] != "measured"' in probe
+    assert "message.header.frame_id" in probe
     assert '"/obstacle_drag/phase"' in maneuver

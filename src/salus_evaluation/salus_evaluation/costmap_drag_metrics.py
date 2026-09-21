@@ -155,6 +155,7 @@ def summarize_costmap_observations(
     required_phases: Sequence[str] = (),
     cohort_phase: str | None = None,
     horizon_s: float | None = None,
+    horizon_tolerance_s: float = 0.0,
     require_scan_support: bool = False,
 ) -> dict[str, object]:
     """
@@ -197,6 +198,9 @@ def summarize_costmap_observations(
             "scan_support_count": len(scan_support),
             "scan_supported_point_count": 0,
             "horizon_s": horizon_s,
+            "measurement_start_s": None,
+            "measurement_end_s": None,
+            "measurement_coverage_s": 0.0,
             "trail_width_p95_m": None,
             "ghost_persistence_s": None,
             "centroids": [],
@@ -206,6 +210,12 @@ def summarize_costmap_observations(
         raise ValueError("metric bounds must be non-negative")
     if horizon_s is not None and (not math.isfinite(horizon_s) or horizon_s <= 0.0):
         raise ValueError("horizon_s must be finite and positive")
+    if (
+        not math.isfinite(horizon_tolerance_s)
+        or horizon_tolerance_s < 0.0
+        or (horizon_s is not None and horizon_tolerance_s >= horizon_s)
+    ):
+        raise ValueError("horizon_tolerance_s must be finite and shorter than horizon")
     centroids = []
     for observation in ordered:
         centroid_odom = _centroid(observation.odom_points)
@@ -217,21 +227,66 @@ def summarize_costmap_observations(
             "base_xy": list(centroid_base) if centroid_base else None,
             "occupied_count": len(observation.odom_points),
         })
+    all_support_by_stamp = sorted(
+        ((float(stamp), tuple(points)) for stamp, points in scan_support),
+        key=lambda item: item[0],
+    )
+
+    def supported_points(
+        observation: CostmapObservation,
+    ) -> tuple[tuple[float, float], ...]:
+        return tuple(
+            point for point in observation.odom_points
+            if any(
+                abs(stamp - observation.stamp_s) <= 0.25
+                and _nearest_point_distance(point, scan_points)
+                <= support_tolerance_m
+                for stamp, scan_points in all_support_by_stamp
+            )
+        )
+
     valid_occupied = [item for item in ordered if item.odom_points]
     cohort = [
         item for item in valid_occupied
         if cohort_phase is None or item.phase == cohort_phase
     ]
-    seed_observation = cohort[-1] if cohort else None
-    seed_points = seed_observation.odom_points if seed_observation else ()
+    supported_cohort = [
+        (item, supported_points(item)) for item in cohort
+    ]
+    supported_cohort = [
+        (item, points) for item, points in supported_cohort if points
+    ]
+    if require_scan_support:
+        seed_observation, seed_points = (
+            supported_cohort[-1] if supported_cohort else (None, ())
+        )
+    else:
+        seed_observation = cohort[-1] if cohort else None
+        seed_points = seed_observation.odom_points if seed_observation else ()
+    measurement_start_s = (
+        seed_observation.stamp_s
+        if seed_observation is not None and horizon_s is not None else None
+    )
     measurement_end_s = (
         seed_observation.stamp_s + horizon_s
         if seed_observation is not None and horizon_s is not None else None
     )
-    measurement_observations = [
-        item for item in ordered
-        if measurement_end_s is None or item.stamp_s <= measurement_end_s
-    ]
+    measurement_observations = (
+        [
+            item for item in ordered
+            if measurement_start_s <= item.stamp_s <= measurement_end_s
+        ]
+        if measurement_start_s is not None and measurement_end_s is not None
+        else ([] if horizon_s is not None else list(ordered))
+    )
+    measurement_coverage_s = (
+        max(0.0, measurement_observations[-1].stamp_s - measurement_start_s)
+        if measurement_start_s is not None and measurement_observations else 0.0
+    )
+    coverage_ready = (
+        horizon_s is None
+        or measurement_coverage_s >= horizon_s - horizon_tolerance_s
+    )
     measurement_phase_occupied_counts = {
         phase: sum(
             1 for item in measurement_observations
@@ -255,9 +310,13 @@ def summarize_costmap_observations(
             )
             if distance <= neighborhood_m:
                 widths.append(distance)
-    support_by_stamp = sorted(
-        ((float(stamp), tuple(points)) for stamp, points in scan_support),
-        key=lambda item: item[0],
+    support_by_stamp = (
+        [
+            item for item in all_support_by_stamp
+            if measurement_start_s <= item[0] <= measurement_end_s
+        ]
+        if measurement_start_s is not None and measurement_end_s is not None
+        else all_support_by_stamp
     )
     scan_supported_point_count = sum(
         1 for _, scan_points in support_by_stamp
@@ -303,32 +362,34 @@ def summarize_costmap_observations(
         if unsupported_start is not None and last_unsupported is not None:
             ghost_persistence.append(last_unsupported - unsupported_start)
 
-    seed_supported_cell_count = sum(
-        1 for point in seed_points
-        if seed_observation is not None and any(
-            abs(stamp - seed_observation.stamp_s) <= 0.25
-            and _nearest_point_distance(point, scan_points) <= support_tolerance_m
-            for stamp, scan_points in support_by_stamp
-        )
+    seed_supported_cell_count = (
+        len(seed_points) if require_scan_support
+        else len(supported_points(seed_observation))
+        if seed_observation is not None else 0
     )
     # The scan stream is an independent temporal witness for the capture.  A
     # particular lethal cell can legitimately miss that witness because the
     # rolling costmap and the scan are sampled at different instants, so the
     # measurement gate requires a timestamped scan stream that sees the known
     # obstacle while retaining per-cell support as diagnostic evidence.
-    support_ready = scan_supported_point_count > 0
+    support_ready = seed_supported_cell_count > 0
     measurement_ready = (
         bool(widths)
         and bool(measurement_valid_occupied)
         and not measurement_missing_occupied_phases
         and (cohort_phase is None or seed_observation is not None)
+        and coverage_ready
         and (not require_scan_support or support_ready)
     )
     classification = "insufficient_data"
     nonempty = [item for item in measurement_observations if item.base_points]
     if required_phases:
         nonempty = [item for item in nonempty if item.phase in required_phases]
-    if len(nonempty) >= 1 and not measurement_observations[-1].odom_points:
+    if (
+        len(nonempty) >= 1
+        and measurement_observations
+        and not measurement_observations[-1].odom_points
+    ):
         classification = "cleared"
     elif len(nonempty) >= 2:
         first, last = nonempty[0], nonempty[-1]
@@ -366,8 +427,12 @@ def summarize_costmap_observations(
         "cohort_observation_count": len(cohort),
         "cohort_supported_cell_count": seed_supported_cell_count,
         "scan_support_count": len(support_by_stamp),
+        "total_scan_support_count": len(all_support_by_stamp),
         "scan_supported_point_count": scan_supported_point_count,
         "horizon_s": horizon_s,
+        "measurement_start_s": measurement_start_s,
+        "measurement_end_s": measurement_end_s,
+        "measurement_coverage_s": measurement_coverage_s,
         "trail_width_p95_m": _percentile(widths, 0.95) if widths else None,
         "trail_width_sample_count": len(widths),
         "ghost_persistence_s": max(ghost_persistence) if ghost_persistence else 0.0,

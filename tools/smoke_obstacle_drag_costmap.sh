@@ -75,6 +75,19 @@ comparison = {
 }
 control_map = control["local_costmap_common_window"]
 repeated_map = repeated["local_costmap_common_window"]
+carryover = repeated["local_costmap_first_turn_carryover"]
+if control_map["status"] != "measured" or repeated_map["status"] != "measured":
+    raise SystemExit("common comparison window is not measured in both cases")
+if control_map["horizon_s"] != repeated_map["horizon_s"]:
+    raise SystemExit("control and repeated horizons differ")
+if control_map["cohort_phase"] != "turn_1":
+    raise SystemExit("control comparison is not anchored to turn_1")
+if repeated_map["cohort_phase"] != "turn_2":
+    raise SystemExit("repeated comparison is not anchored to turn_2")
+if carryover["status"] != "measured" or carryover["cohort_phase"] != "turn_1":
+    raise SystemExit("first-turn cohort is not measured through the second turn")
+if carryover["measurement_phase_occupied_counts"].get("turn_2", 0) == 0:
+    raise SystemExit("first-turn carryover window does not include occupied turn_2")
 comparison["comparison"]["metrics"]["local_costmap_common_window"] = {
         "trail_width_delta_m": (
             repeated_map["trail_width_p95_m"] - control_map["trail_width_p95_m"]
@@ -87,6 +100,14 @@ comparison["comparison"]["metrics"]["local_costmap_common_window"] = {
             and control_map["ghost_persistence_s"] is not None else None
         ),
     }
+comparison["comparison"]["first_turn_carryover"] = {
+    "horizon_s": carryover["horizon_s"],
+    "measurement_coverage_s": carryover["measurement_coverage_s"],
+    "trail_width_p95_m": carryover["trail_width_p95_m"],
+    "ghost_persistence_s": carryover["ghost_persistence_s"],
+    "ghost_cell_count": carryover["ghost_cell_count"],
+    "cohort_supported_cell_count": carryover["cohort_supported_cell_count"],
+}
 with open(output_path, "w", encoding="utf-8") as stream:
     json.dump(comparison, stream, indent=2)
     stream.write("\n")

@@ -24,8 +24,7 @@ from tf2_ros import Buffer, TransformListener
 
 from salus_evaluation.costmap_drag_metrics import (
     CostmapObservation, CostmapSnapshot, occupied_grid_points,
-    summarize_costmap_observations, transform_costmap_points_to_odom,
-    transform_odom_points_to_base,
+    summarize_costmap_observations, transform_odom_points_to_base,
 )
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
@@ -37,6 +36,15 @@ from salus_evaluation.static_scan_metrics import (
 class TimedGrid:
     snapshot: CostmapSnapshot
     received_monotonic_ns: int
+
+
+@dataclass(frozen=True)
+class TimedScan:
+    """One scan retained in its declared sensor frame."""
+
+    stamp_s: float
+    frame_id: str
+    points: tuple[tuple[float, float], ...]
 
 
 def _stamp_s(message) -> float:
@@ -72,7 +80,7 @@ class CostmapDragProbe(Node):
         self.repetitions = repetitions
         self.local_grids: list[TimedGrid] = []
         self.global_grids: list[TimedGrid] = []
-        self.scans: list[tuple[float, tuple[tuple[float, float], ...]]] = []
+        self.scans: list[TimedScan] = []
         self.poses: list[tuple[float, Pose2D]] = []
         self.phases: list[tuple[float, str]] = []
         self.dropped_observations = {
@@ -80,6 +88,7 @@ class CostmapDragProbe(Node):
             "local_pose": 0,
             "global_transform": 0,
             "global_pose": 0,
+            "scan_transform": 0,
         }
         self.tf_buffer = Buffer(cache_time=Duration(seconds=180.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -132,9 +141,6 @@ class CostmapDragProbe(Node):
 
     def _on_scan(self, message: LaserScan) -> None:
         stamp_s = _stamp_s(message)
-        pose = interpolate_pose(self.poses, stamp_s)
-        if pose is None:
-            return
         points = []
         for index, raw_range in enumerate(message.ranges):
             range_m = float(raw_range)
@@ -144,10 +150,14 @@ class CostmapDragProbe(Node):
                 continue
             angle = message.angle_min + index * message.angle_increment
             points.append((
-                pose.x_m + math.cos(pose.yaw_rad + angle) * range_m,
-                pose.y_m + math.sin(pose.yaw_rad + angle) * range_m,
+                math.cos(angle) * range_m,
+                math.sin(angle) * range_m,
             ))
-        self.scans.append((stamp_s, tuple(points)))
+        self.scans.append(TimedScan(
+            stamp_s=stamp_s,
+            frame_id=message.header.frame_id,
+            points=tuple(points),
+        ))
 
     @property
     def done(self) -> bool:
@@ -158,11 +168,8 @@ class CostmapDragProbe(Node):
         return "done" in names and required.issubset(names)
 
     def _map_to_odom(self, points, frame_id: str, stamp_s: float):
-        if frame_id in ("odom", "base_footprint"):
-            pose = interpolate_pose(self.poses, stamp_s)
-            if pose is None:
-                return None
-            return transform_costmap_points_to_odom(points, frame_id, pose)
+        if frame_id == "odom":
+            return tuple((float(x), float(y)) for x, y in points)
         try:
             transform = self.tf_buffer.lookup_transform(
                 "odom", frame_id, rclpy.time.Time(seconds=stamp_s)
@@ -175,6 +182,21 @@ class CostmapDragProbe(Node):
             transform.translation.x + cosine * x - sine * y,
             transform.translation.y + sine * x + cosine * y,
         ) for x, y in points)
+
+    def scan_support(
+        self,
+    ) -> list[tuple[float, tuple[tuple[float, float], ...]]]:
+        """Transform retained scans from their declared frames into odom."""
+        output = []
+        for scan in self.scans:
+            points = self._map_to_odom(
+                scan.points, scan.frame_id, scan.stamp_s
+            )
+            if points is None:
+                self.dropped_observations["scan_transform"] += 1
+                continue
+            output.append((scan.stamp_s, tuple(points)))
+        return output
 
     def observations(
         self, grids: list[TimedGrid], label: str,
@@ -236,9 +258,10 @@ def main() -> int:
         )
         local_observations = node.observations(node.local_grids, "local")
         global_observations = node.observations(node.global_grids, "global")
+        scan_support = node.scan_support()
         local = summarize_costmap_observations(
             local_observations, obstacles,
-            scan_support=node.scans, required_phases=required_phases,
+            scan_support=scan_support, required_phases=required_phases,
             cohort_phase="turn_1", require_scan_support=True,
         )
         # The static global map may publish only on map changes, so it cannot
@@ -247,23 +270,60 @@ def main() -> int:
         # repeated-turn gate.
         global_ = summarize_costmap_observations(
             global_observations, obstacles,
-            scan_support=node.scans, require_scan_support=True,
+            scan_support=scan_support,
         )
         if local["status"] != "measured" or global_["status"] != "measured":
             raise RuntimeError(
                 "local/global costmap did not yield measurable occupied cells: "
                 f"local={local['status']} valid={local['valid_occupied_observation_count']} "
-                f"phases={local['phase_counts']} missing={local['missing_phases']}; "
+                f"phases={local['phase_counts']} missing={local['missing_phases']} "
+                f"supported={local['cohort_supported_cell_count']} "
+                f"scans={local['scan_support_count']}; "
                 f"global={global_['status']} valid={global_['valid_occupied_observation_count']} "
-                f"phases={global_['phase_counts']} missing={global_['missing_phases']}"
+                f"phases={global_['phase_counts']} missing={global_['missing_phases']} "
+                f"drops={node.dropped_observations}"
             )
-        common_phases = ("turn_1", "pause_1")
+        common_cohort_phase = f"turn_{args.repetitions}"
+        common_phases = (
+            common_cohort_phase, f"pause_{args.repetitions}"
+        )
         common_local = summarize_costmap_observations(
             local_observations, obstacles,
-            scan_support=node.scans, required_phases=common_phases,
-            cohort_phase="turn_1", horizon_s=10.0,
+            scan_support=scan_support, required_phases=common_phases,
+            cohort_phase=common_cohort_phase, horizon_s=8.0,
+            horizon_tolerance_s=1.25,
             require_scan_support=True,
         )
+        if common_local["status"] != "measured":
+            raise RuntimeError(
+                "common local costmap window is not measurable: "
+                f"cohort={common_cohort_phase} "
+                f"valid={common_local['valid_occupied_observation_count']} "
+                f"occupied_phases={common_local['measurement_phase_occupied_counts']} "
+                f"missing={common_local['missing_occupied_phases']} "
+                f"coverage={common_local['measurement_coverage_s']} "
+                f"supported={common_local['cohort_supported_cell_count']}"
+            )
+        first_turn_carryover = None
+        if args.repetitions == 2:
+            first_turn_carryover = summarize_costmap_observations(
+                local_observations, obstacles,
+                scan_support=scan_support,
+                required_phases=("turn_1", "pause_1", "turn_2", "pause_2"),
+                cohort_phase="turn_1", horizon_s=29.0,
+                horizon_tolerance_s=1.25,
+                require_scan_support=True,
+            )
+            if first_turn_carryover["status"] != "measured":
+                raise RuntimeError(
+                    "first-turn cohort was not measurable through turn_2: "
+                    f"occupied_phases="
+                    f"{first_turn_carryover['measurement_phase_occupied_counts']} "
+                    f"missing={first_turn_carryover['missing_occupied_phases']} "
+                    f"coverage={first_turn_carryover['measurement_coverage_s']} "
+                    f"supported="
+                    f"{first_turn_carryover['cohort_supported_cell_count']}"
+                )
         report = {
             "schema_version": 1,
             "source_sha": _source_sha(),
@@ -280,8 +340,10 @@ def main() -> int:
                 "costmap_reset": False,
                 "required_phases": list(required_phases),
                 "phase_samples": len(node.phases),
-                "comparison_horizon_s": 10.0,
+                "comparison_horizon_s": 8.0,
+                "comparison_cohort_phase": common_cohort_phase,
                 "comparison_phases": list(common_phases),
+                "first_turn_carryover_horizon_s": 29.0,
             },
             "topics": {
                 "scan": "/scan_clean",
@@ -292,12 +354,14 @@ def main() -> int:
             "counts": {
                 "local_costmaps": len(node.local_grids),
                 "global_costmaps": len(node.global_grids),
-                "scan_support": len(node.scans),
+                "scan_messages": len(node.scans),
+                "scan_support": len(scan_support),
                 "odom": len(node.poses),
                 "dropped_observations": dict(node.dropped_observations),
             },
             "local_costmap": local,
             "local_costmap_common_window": common_local,
+            "local_costmap_first_turn_carryover": first_turn_carryover,
             "global_costmap": global_,
         }
         args.metrics_path.parent.mkdir(parents=True, exist_ok=True)

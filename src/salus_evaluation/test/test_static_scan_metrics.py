@@ -384,6 +384,17 @@ def test_costmap_drag_metrics_reject_empty_cohort_or_scan_support() -> None:
     )
     assert unrelated_scan["status"] == "insufficient_data"
     assert unrelated_scan["scan_supported_point_count"] == 0
+    unrelated_cohort = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+            CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        ], [obstacle],
+        required_phases=("turn_1", "pause_1"), cohort_phase="turn_1",
+        scan_support=[(1.0, ((4.0, 0.4),))], require_scan_support=True,
+    )
+    assert unrelated_cohort["scan_supported_point_count"] == 1
+    assert unrelated_cohort["cohort_supported_cell_count"] == 0
+    assert unrelated_cohort["status"] == "insufficient_data"
 
 
 def test_costmap_drag_metrics_horizon_limits_comparison_window() -> None:
@@ -400,7 +411,27 @@ def test_costmap_drag_metrics_horizon_limits_comparison_window() -> None:
         scan_support=[(1.0, ((4.0, 0.0),))],
     )
     assert result["horizon_s"] == pytest.approx(5.0)
+    assert result["measurement_start_s"] == pytest.approx(1.0)
+    assert result["measurement_end_s"] == pytest.approx(6.0)
+    assert result["measurement_coverage_s"] == pytest.approx(5.0)
     assert result["ghost_persistence_s"] == pytest.approx(4.0)
+
+
+def test_costmap_drag_metrics_exclude_pre_cohort_and_require_horizon_coverage() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    observations = [
+        CostmapObservation(0.0, "entry_1", ((1.0, 0.0),), ((1.0, 0.0),)),
+        CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+    ]
+    result = summarize_costmap_observations(
+        observations, [obstacle], required_phases=("turn_1", "pause_1"),
+        cohort_phase="turn_1", horizon_s=5.0,
+        scan_support=[(1.0, ((4.0, 0.0),))], require_scan_support=True,
+    )
+    assert result["trail_width_sample_count"] == 2
+    assert result["measurement_coverage_s"] == pytest.approx(1.0)
+    assert result["status"] == "insufficient_data"
 
 
 def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:
