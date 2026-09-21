@@ -7,7 +7,7 @@ Visualization Manager:
   Class: ""
   Global Options:
     Background Color: 35; 40; 48
-    Fixed Frame: map
+    Fixed Frame: odom
     Frame Rate: 30
   Displays:
     - Class: rviz_default_plugins/Grid

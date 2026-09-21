@@ -90,3 +90,4 @@ def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
     assert "rviz_default_plugins/SetGoal" in diagnostics
     assert "rviz_default_plugins/Path" in diagnostics
     assert "Name: Global plan" in diagnostics
+    assert "Fixed Frame: odom" in diagnostics
