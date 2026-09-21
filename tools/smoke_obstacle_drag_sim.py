@@ -15,13 +15,17 @@ from pathlib import Path
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data,
+)
 from sensor_msgs.msg import LaserScan
+from tf2_msgs.msg import TFMessage
 
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
     interpolate_pose, load_obstacle_geometry, scan_static_error_metrics,
-    summarize_scan_metrics, summarize_temporal_offset_sweep,
+    summarize_pose_divergence, summarize_scan_metrics,
+    summarize_temporal_offset_sweep,
 )
 from smoke_runtime import SmokeRuntime
 
@@ -42,6 +46,14 @@ class TimedLocalPose:
     pose: Pose2D
 
 
+@dataclass(frozen=True)
+class TimedTfPose:
+    """Dynamic odom-to-base pose retained from the authoritative TF stream."""
+
+    stamp_s: float
+    pose: Pose2D
+
+
 def _stamp_s(message) -> float:
     stamp = message.header.stamp
     return float(stamp.sec) + float(stamp.nanosec) * 1.0e-9
@@ -55,12 +67,19 @@ class ObstacleDragProbe(Node):
         self.scans: list[TimedScan] = []
         self.poses: list[tuple[float, Pose2D]] = []
         self.local_poses: list[TimedLocalPose] = []
+        self.tf_poses: list[TimedTfPose] = []
         self.odom_received = 0
         self.create_subscription(
             LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data
         )
         self.create_subscription(Odometry, "/odom_raw", self._on_odom, 10)
         self.create_subscription(Odometry, "/odometry/local", self._on_local_odom, 10)
+        tf_qos = QoSProfile(
+            depth=100,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+        )
+        self.create_subscription(TFMessage, "/tf", self._on_tf, tf_qos)
 
     def _on_scan(self, message: LaserScan) -> None:
         self.scans.append(TimedScan(_stamp_s(message), message))
@@ -93,6 +112,30 @@ class ObstacleDragProbe(Node):
             stamp_s,
             Pose2D(message.pose.pose.position.x, message.pose.pose.position.y, yaw),
         ))
+
+    def _on_tf(self, message: TFMessage) -> None:
+        for transform in message.transforms:
+            if (
+                transform.header.frame_id != "odom"
+                or transform.child_frame_id != "base_footprint"
+            ):
+                continue
+            rotation = transform.transform.rotation
+            yaw = math.atan2(
+                2.0 * (rotation.w * rotation.z + rotation.x * rotation.y),
+                1.0 - 2.0 * (rotation.y * rotation.y + rotation.z * rotation.z),
+            )
+            stamp_s = _stamp_s(transform)
+            if self.tf_poses and stamp_s <= self.tf_poses[-1].stamp_s:
+                continue
+            self.tf_poses.append(TimedTfPose(
+                stamp_s,
+                Pose2D(
+                    transform.transform.translation.x,
+                    transform.transform.translation.y,
+                    yaw,
+                ),
+            ))
 
     @property
     def motion_observed(self) -> bool:
@@ -129,53 +172,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def _pose_divergence(
-    local_poses: list[TimedLocalPose], raw_poses: list[tuple[float, Pose2D]],
+    local_poses: list[TimedLocalPose | TimedTfPose],
+    raw_poses: list[tuple[float, Pose2D]],
+    *,
+    pose_count_key: str = "local_pose_count",
 ) -> dict[str, object]:
-    """Summarize local-EKF versus raw simulation pose divergence."""
-    position_errors: list[float] = []
-    yaw_errors: list[float] = []
-    for sample in local_poses:
-        raw = interpolate_pose(raw_poses, sample.stamp_s)
-        if raw is None:
-            continue
-        position_errors.append(math.hypot(
-            sample.pose.x_m - raw.x_m, sample.pose.y_m - raw.y_m,
-        ))
-        yaw_errors.append(abs(math.atan2(
-            math.sin(sample.pose.yaw_rad - raw.yaw_rad),
-            math.cos(sample.pose.yaw_rad - raw.yaw_rad),
-        )))
-    if not position_errors:
-        return {
-            "status": "insufficient_data",
-            "local_pose_count": len(local_poses),
-            "paired_count": 0,
-            "p95_position_error_m": None,
-            "max_position_error_m": None,
-            "p95_yaw_error_rad": None,
-            "max_yaw_error_rad": None,
-        }
-    position_errors.sort()
-    yaw_errors.sort()
-    p95_index = (len(position_errors) - 1) * 0.95
-    low, high = math.floor(p95_index), math.ceil(p95_index)
-    position_p95 = position_errors[low] + (position_errors[high] - position_errors[low]) * (
-        p95_index - low
+    """Summarize a timestamped pose stream versus raw simulation odometry."""
+    summary = summarize_pose_divergence(
+        [(sample.stamp_s, sample.pose) for sample in local_poses], raw_poses,
     )
-    yaw_p95_index = (len(yaw_errors) - 1) * 0.95
-    low, high = math.floor(yaw_p95_index), math.ceil(yaw_p95_index)
-    yaw_p95 = yaw_errors[low] + (yaw_errors[high] - yaw_errors[low]) * (
-        yaw_p95_index - low
-    )
-    return {
-        "status": "measured",
-        "local_pose_count": len(local_poses),
-        "paired_count": len(position_errors),
-        "p95_position_error_m": position_p95,
-        "max_position_error_m": max(position_errors),
-        "p95_yaw_error_rad": yaw_p95,
-        "max_yaw_error_rad": max(yaw_errors),
-    }
+    summary[pose_count_key] = summary.pop("pose_count")
+    return summary
 
 
 def main() -> int:
@@ -250,10 +257,31 @@ def main() -> int:
             entry for entry in temporal_sweep
             if entry["median_rmse_m"] is not None
         ]
+        baseline_sweep = next(
+            (entry for entry in measured_sweep if entry["offset_s"] == 0.0),
+            None,
+        )
+        comparable_sweep = []
+        if baseline_sweep is not None:
+            support = (
+                baseline_sweep["paired_scan_count"],
+                baseline_sweep["scored_scan_count"],
+                baseline_sweep["scored_beam_count"],
+                baseline_sweep["scored_beam_support"],
+            )
+            comparable_sweep = [
+                entry for entry in measured_sweep
+                if (
+                    entry["paired_scan_count"],
+                    entry["scored_scan_count"],
+                    entry["scored_beam_count"],
+                    entry["scored_beam_support"],
+                ) == support
+            ]
         best_temporal_offset_s = None
-        if measured_sweep:
+        if comparable_sweep:
             best_temporal_offset_s = min(
-                measured_sweep,
+                comparable_sweep,
                 key=lambda entry: (
                     float(entry["median_rmse_m"]), abs(float(entry["offset_s"])),
                 ),
@@ -269,6 +297,9 @@ def main() -> int:
             "scan_topic": "/scan_clean",
             "scan_frame": node.scans[-1].message.header.frame_id,
             "odom_topic": "/odom_raw",
+            "tf_topic": "/tf",
+            "tf_parent_frame": "odom",
+            "tf_child_frame": "base_footprint",
             "scan_count": len(node.scans),
             "odom_count": node.odom_received,
             "localization_vs_raw": _pose_divergence(node.local_poses, node.poses),
@@ -276,7 +307,19 @@ def main() -> int:
             "pose_unmatched_scan_count": pose_unmatched,
             "temporal_offset_sweep_s": temporal_offsets_s,
             "best_temporal_offset_s": best_temporal_offset_s,
+            "best_temporal_offset_support": (
+                {
+                    "paired_scan_count": baseline_sweep["paired_scan_count"],
+                    "scored_scan_count": baseline_sweep["scored_scan_count"],
+                    "scored_beam_count": baseline_sweep["scored_beam_count"],
+                    "scored_beam_support": baseline_sweep["scored_beam_support"],
+                }
+                if baseline_sweep is not None else None
+            ),
             "temporal_offset_sweep": temporal_sweep,
+            "tf_vs_raw": _pose_divergence(
+                node.tf_poses, node.poses, pose_count_key="tf_pose_count"
+            ),
             **summary,
             "worst_outliers": sorted(
                 outlier_records,
@@ -300,6 +343,7 @@ def main() -> int:
             "scan_count": len(node.scans), "odom_count": node.odom_received,
             "pose_count": len(node.poses),
             "local_pose_count": len(node.local_poses),
+            "tf_pose_count": len(node.tf_poses),
             "metric_samples": [
                 metrics.sample_count for _, metrics in timed_metrics
             ],

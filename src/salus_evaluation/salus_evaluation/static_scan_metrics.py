@@ -33,6 +33,7 @@ class StaticScanMetrics:
     max_error_m: float | None = None
     worst_beam_indices: tuple[int, ...] = ()
     worst_errors_m: tuple[float, ...] = ()
+    scored_beam_indices: tuple[int, ...] = ()
 
 
 def summarize_temporal_offset_sweep(
@@ -43,6 +44,7 @@ def summarize_temporal_offset_sweep(
     *,
     range_min_m: float = 0.0,
     range_max_m: float = math.inf,
+    beam_indices: Iterable[int] | None = None,
 ) -> list[dict[str, object]]:
     """
     Report scan geometry error for a bounded pose timestamp sweep.
@@ -52,22 +54,35 @@ def summarize_temporal_offset_sweep(
     select or apply a runtime correction and it never extrapolates a pose.
     ``timed_scans`` contains ``(stamp_s, LaserScan-like message)`` pairs so the
     pure metric remains independent of ROS node state.
+
+    Every offset is evaluated on the same scan set and the same per-scan beam
+    intersection.  This prevents a candidate offset from looking better only
+    because its pose makes a different subset of beams scoreable.
     """
     scans = tuple((float(stamp_s), scan) for stamp_s, scan in timed_scans)
     obstacles = tuple(obstacles)
-    results: list[dict[str, object]] = []
-    for raw_offset_s in offsets_s:
-        offset_s = float(raw_offset_s)
-        if not math.isfinite(offset_s):
-            raise ValueError("temporal offsets must be finite")
-        metrics: list[StaticScanMetrics] = []
-        paired_count = 0
-        for stamp_s, scan in scans:
-            pose = interpolate_pose(pose_samples, stamp_s + offset_s)
-            if pose is None:
-                continue
-            paired_count += 1
-            current = scan_static_error_metrics(
+    offsets = tuple(float(raw_offset_s) for raw_offset_s in offsets_s)
+    if any(not math.isfinite(offset_s) for offset_s in offsets):
+        raise ValueError("temporal offsets must be finite")
+    selected_beams = None if beam_indices is None else frozenset(
+        int(index) for index in beam_indices
+    )
+
+    # Restrict every offset to the same scans and the intersection of the
+    # beams that are valid for every pose.  Otherwise a timestamp sweep can
+    # appear to improve merely by scoring a different subset of the cloud.
+    comparable_scans: list[tuple[float, object, tuple[int, ...]]] = []
+    for stamp_s, scan in scans:
+        poses = [
+            interpolate_pose(pose_samples, stamp_s + offset_s)
+            for offset_s in offsets
+        ]
+        if any(pose is None for pose in poses):
+            continue
+        supports = []
+        for pose in poses:
+            assert pose is not None
+            metric = scan_static_error_metrics(
                 scan.ranges,
                 scan.angle_min,
                 scan.angle_increment,
@@ -76,13 +91,42 @@ def summarize_temporal_offset_sweep(
                 range_min_m=range_min_m,
                 range_max_m=range_max_m,
             )
+            supports.append(set(metric.scored_beam_indices))
+        common_beams = set.intersection(*supports) if supports else set()
+        if selected_beams is not None:
+            common_beams.intersection_update(selected_beams)
+        comparable_scans.append((stamp_s, scan, tuple(sorted(common_beams))))
+
+    results: list[dict[str, object]] = []
+    for offset_s in offsets:
+        metrics: list[StaticScanMetrics] = []
+        for stamp_s, scan, common_beams in comparable_scans:
+            pose = interpolate_pose(pose_samples, stamp_s + offset_s)
+            assert pose is not None
+            current = scan_static_error_metrics(
+                scan.ranges,
+                scan.angle_min,
+                scan.angle_increment,
+                pose,
+                obstacles,
+                range_min_m=range_min_m,
+                range_max_m=range_max_m,
+                beam_indices=common_beams,
+            )
             if current.sample_count:
                 metrics.append(current)
+        support = [
+            {"stamp_s": stamp_s, "beam_indices": list(common_beams)}
+            for stamp_s, _, common_beams in comparable_scans
+            if common_beams
+        ]
         if not metrics:
             results.append({
                 "offset_s": offset_s,
-                "paired_scan_count": paired_count,
+                "paired_scan_count": len(comparable_scans),
                 "scored_scan_count": 0,
+                "scored_beam_count": 0,
+                "scored_beam_support": support,
                 "median_rmse_m": None,
                 "max_rmse_m": None,
                 "max_p95_m": None,
@@ -99,8 +143,10 @@ def summarize_temporal_offset_sweep(
         )
         results.append({
             "offset_s": offset_s,
-            "paired_scan_count": paired_count,
+            "paired_scan_count": len(comparable_scans),
             "scored_scan_count": len(metrics),
+            "scored_beam_count": sum(metric.sample_count for metric in metrics),
+            "scored_beam_support": support,
             "median_rmse_m": median_rmse,
             "max_rmse_m": max(
                 float(metric.scan_static_error_rmse_m) for metric in metrics
@@ -201,6 +247,45 @@ def interpolate_pose(
     return None
 
 
+def summarize_pose_divergence(
+    estimated_poses: Sequence[tuple[float, Pose2D]],
+    raw_poses: Sequence[tuple[float, Pose2D]],
+) -> dict[str, object]:
+    """Compare a timestamped pose stream with raw odometry by interpolation."""
+    position_errors: list[float] = []
+    yaw_errors: list[float] = []
+    for stamp_s, estimated in estimated_poses:
+        raw = interpolate_pose(raw_poses, stamp_s)
+        if raw is None:
+            continue
+        position_errors.append(math.hypot(
+            estimated.x_m - raw.x_m, estimated.y_m - raw.y_m,
+        ))
+        yaw_errors.append(abs(math.atan2(
+            math.sin(estimated.yaw_rad - raw.yaw_rad),
+            math.cos(estimated.yaw_rad - raw.yaw_rad),
+        )))
+    if not position_errors:
+        return {
+            "status": "insufficient_data",
+            "pose_count": len(estimated_poses),
+            "paired_count": 0,
+            "p95_position_error_m": None,
+            "max_position_error_m": None,
+            "p95_yaw_error_rad": None,
+            "max_yaw_error_rad": None,
+        }
+    return {
+        "status": "measured",
+        "pose_count": len(estimated_poses),
+        "paired_count": len(position_errors),
+        "p95_position_error_m": _percentile(position_errors, 0.95),
+        "max_position_error_m": max(position_errors),
+        "p95_yaw_error_rad": _percentile(yaw_errors, 0.95),
+        "max_yaw_error_rad": max(yaw_errors),
+    }
+
+
 def _finite_positive(value: object, label: str) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0.0:
@@ -272,6 +357,7 @@ def scan_static_error_metrics(
     ranges: Iterable[float], angle_min_rad: float, angle_increment_rad: float,
     robot_pose: Pose2D, obstacles: Iterable[StaticObstacle], *,
     range_min_m: float = 0.0, range_max_m: float = math.inf,
+    beam_indices: Iterable[int] | None = None,
 ) -> StaticScanMetrics:
     """
     Compare scan ranges with known boxes after transforming rays into ``odom``.
@@ -286,7 +372,12 @@ def scan_static_error_metrics(
     obstacles = tuple(obstacles)
     errors: list[tuple[float, int]] = []
     origin_x, origin_y = robot_pose.x_m, robot_pose.y_m
+    selected_beams = None if beam_indices is None else frozenset(
+        int(index) for index in beam_indices
+    )
     for index, observed in enumerate(ranges):
+        if selected_beams is not None and index not in selected_beams:
+            continue
         observed = float(observed)
         if not math.isfinite(observed) or observed < range_min_m or observed > range_max_m:
             continue
@@ -315,4 +406,5 @@ def scan_static_error_metrics(
         max_error_m=max(error_values),
         worst_beam_indices=tuple(index for _, index in worst),
         worst_errors_m=tuple(error for error, _ in worst),
+        scored_beam_indices=tuple(index for _, index in errors),
     )

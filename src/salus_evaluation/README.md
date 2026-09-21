@@ -41,13 +41,18 @@ geométrico sigue en v1). Conserva provenance, pairing, conteos y
 `max_beam_static_error_m`. `per_scan_metrics` está ordenado por `stamp_s` y
 contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
 
-El mismo artefacto agrega dos diagnósticos report-only para separar causas:
+El mismo artefacto agrega diagnósticos report-only para separar causas:
 `temporal_offset_sweep` reevalúa los últimos scans con poses de `/odom_raw`
 desplazadas entre `-0.30` y `+0.30` s, sin extrapolar ni aplicar el offset al
-runtime; `best_temporal_offset_s` sólo identifica el mínimo de la mediana RMSE
-observada. `localization_vs_raw` compara `/odometry/local` con `/odom_raw`
-por timestamp e informa divergencia de posición y yaw. Ninguno de estos
-campos es un umbral de aceptación ni modifica TF, EKF, LiDAR o costmaps.
+runtime. Todos los offsets usan exactamente el mismo conjunto de scans y la
+intersección de haces scoreables; `scored_beam_support` y
+`best_temporal_offset_support` dejan esa población explícita. Por eso
+`best_temporal_offset_s` sólo identifica el mínimo de la mediana RMSE entre
+entradas realmente comparables. `localization_vs_raw` compara
+`/odometry/local` con `/odom_raw`, y `tf_vs_raw` compara el TF dinámico
+`odom -> base_footprint` de `/tf` con `/odom_raw`, siempre por timestamp, e
+informa divergencia de posición y yaw. Ninguno de estos campos es un umbral de
+aceptación ni modifica TF, EKF, LiDAR o costmaps.
 
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta

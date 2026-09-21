@@ -8,7 +8,7 @@ from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
     StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
     ray_box_intersection, scan_static_error_metrics, summarize_scan_metrics,
-    summarize_temporal_offset_sweep,
+    summarize_pose_divergence, summarize_temporal_offset_sweep,
 )
 
 
@@ -32,6 +32,7 @@ def test_ray_box_intersection_and_perfect_scan_have_zero_error() -> None:
     assert metrics.sample_count > 0
     assert metrics.scan_static_error_rmse_m == pytest.approx(0.0)
     assert metrics.scan_static_error_p95_m == pytest.approx(0.0)
+    assert metrics.scored_beam_indices
 
 
 def test_scan_metrics_transform_robot_pose_and_measure_error() -> None:
@@ -152,7 +153,7 @@ def test_scan_summary_orders_scans_and_preserves_distinct_maxima() -> None:
 def test_temporal_offset_sweep_finds_known_pose_shift() -> None:
     obstacle = StaticObstacle("box", 5.0, 0.0, 1.0, 1.0)
     poses = [
-        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (9.0, Pose2D(-1.0, 0.0, 0.0)),
         (11.0, Pose2D(1.0, 0.0, 0.0)),
     ]
     scan_pose = Pose2D(0.2, 0.0, 0.0)
@@ -178,3 +179,49 @@ def test_temporal_offset_sweep_finds_known_pose_shift() -> None:
     by_offset = {entry["offset_s"]: entry for entry in result}
     assert by_offset[0.2]["median_rmse_m"] == pytest.approx(0.0)
     assert by_offset[0.0]["median_rmse_m"] > 0.0
+    assert by_offset[-0.2]["paired_scan_count"] == 1
+    assert by_offset[0.2]["scored_beam_support"] == by_offset[0.0][
+        "scored_beam_support"
+    ]
+    assert by_offset[0.2]["scored_beam_count"] == by_offset[0.0][
+        "scored_beam_count"
+    ]
+
+
+def test_scan_metrics_can_pin_a_beam_support_for_comparison() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    ranges = []
+    for index in range(181):
+        angle = -math.pi / 2.0 + index * math.pi / 180.0
+        hit = ray_box_intersection(0.0, 0.0, angle, obstacle)
+        ranges.append(float("inf") if hit is None else hit + 0.1)
+
+    baseline = scan_static_error_metrics(
+        ranges, -math.pi / 2.0, math.pi / 180.0, Pose2D(0.0, 0.0, 0.0),
+        [obstacle], range_max_m=20.0,
+    )
+    pinned = scan_static_error_metrics(
+        ranges, -math.pi / 2.0, math.pi / 180.0, Pose2D(0.0, 0.0, 0.0),
+        [obstacle], range_max_m=20.0,
+        beam_indices=baseline.scored_beam_indices[:2],
+    )
+    assert pinned.scored_beam_indices == baseline.scored_beam_indices[:2]
+    assert pinned.sample_count == 2
+
+
+def test_pose_divergence_has_zero_and_positive_controls() -> None:
+    raw = [
+        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (11.0, Pose2D(1.0, 0.0, math.pi / 2.0)),
+    ]
+    identical = summarize_pose_divergence(raw, raw)
+    divergent = summarize_pose_divergence([
+        (10.0, Pose2D(0.1, 0.0, 0.0)),
+        (11.0, Pose2D(1.1, 0.0, math.pi / 2.0 + 0.1)),
+    ], raw)
+
+    assert identical["status"] == "measured"
+    assert identical["p95_position_error_m"] == pytest.approx(0.0)
+    assert identical["p95_yaw_error_rad"] == pytest.approx(0.0)
+    assert divergent["p95_position_error_m"] == pytest.approx(0.1)
+    assert divergent["p95_yaw_error_rad"] == pytest.approx(0.095)

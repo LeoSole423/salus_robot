@@ -43,12 +43,19 @@ v2 conserva provenance, pairing, conteos y `worst_outliers`; sus agregados son
 contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
 
 El corte de instrumentación también conserva `temporal_offset_sweep`, un
-barrido report-only de poses de `/odom_raw` entre `-0.30` y `+0.30` s, y
-`localization_vs_raw`, una comparación temporal de `/odometry/local` contra
-`/odom_raw`. `best_temporal_offset_s` es sólo el mínimo observado de mediana
-RMSE; no constituye una corrección ni un gate. Un mínimo estrecho y estable
-sería evidencia de desfase temporal constante; la ausencia de mejora en toda
-la grilla mantiene abierta la hipótesis de distorsión geométrica o de barrido.
+barrido report-only de poses de `/odom_raw` entre `-0.30` y `+0.30` s. Todos
+los offsets reutilizan el mismo conjunto de scans y la intersección de haces
+scoreables por scan; `scored_beam_support` registra esa población y evita que
+un candidato gane por evaluar menos o distintos haces. `best_temporal_offset_s`
+es sólo el mínimo observado de mediana RMSE entre entradas con soporte idéntico
+y `best_temporal_offset_support` conserva el soporte usado. El artefacto
+incluye además `localization_vs_raw` (`/odometry/local` frente a
+`/odom_raw`) y `tf_vs_raw` (el TF dinámico `odom -> base_footprint` de `/tf`
+frente a `/odom_raw`), ambos comparados por timestamp. Ninguno de estos
+diagnósticos constituye una corrección ni un gate. Un mínimo estrecho y
+estable sería evidencia de desfase temporal constante; la ausencia de mejora
+en toda la grilla mantiene abierta la hipótesis de distorsión geométrica o de
+barrido.
 
 El smoke ejecuta una maniobra open-loop única a través del `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
