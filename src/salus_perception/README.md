@@ -17,6 +17,20 @@ display `Raw 3D` queda apagado por defecto. `/scan_3d` normaliza ese frame a
 Ejecutar: `ros2 launch salus_perception lidar_sim.launch.py`.
 Para registrar un bag externo: `python3 tools/replay_lidar_report.py /ruta/al/bag`.
 
+## Diagnóstico visual en RViz
+
+`lidar_diagnostics.rviz` usa `odom` como `Fixed Frame` y conserva las nubes,
+el scan, TF, odometrías y costmaps. Es una elección de visualización para
+percepción local: durante un giro, la localización global puede corregir
+`map -> odom`; anclar RViz en `map` hace que esas correcciones desplacen o roten
+en pantalla datos que son estables en `odom`. El perfil en `odom` evita que ese
+efecto se confunda con una estela del LiDAR o una celda adherida al robot.
+
+Esto no cambia los frames de Nav2 ni sustituye `map` para rutas, GPS u objetivos
+globales. Si se necesita investigar la localización global, se puede seleccionar
+`map` temporalmente desde RViz y observar explícitamente el transformador
+`map -> odom`.
+
 El perfil real aislado se ejecuta con
 `ros2 launch salus_perception perception_real.launch.py`. Consume la nube
 `/scan_3d` del owner RS16 en `lidar_link` y compone exactamente

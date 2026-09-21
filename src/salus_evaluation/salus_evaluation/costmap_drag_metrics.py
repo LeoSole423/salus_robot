@@ -144,6 +144,214 @@ def _voxel(point: tuple[float, float], resolution_m: float) -> tuple[int, int]:
     return (round(point[0] / resolution_m), round(point[1] / resolution_m))
 
 
+def summarize_cohort_frame_tracking(
+    observations: Sequence[CostmapObservation],
+    *,
+    scan_support: Sequence[tuple[float, Sequence[tuple[float, float]]]],
+    target_obstacle: StaticObstacle,
+    cohort_phase: str,
+    measurement_phases: Sequence[str],
+    witness_phase: str | None = None,
+    support_tolerance_m: float = 0.20,
+    stamp_tolerance_s: float = 0.25,
+    dominance_fraction: float = 0.25,
+    roi_margin_m: float = 0.50,
+    minimum_seed_cells: int = 5,
+) -> dict[str, object]:
+    """
+    Test whether a lethal-cell cohort follows odom or base.
+
+    The target region is fixed by scenario geometry before measurement. The
+    seed is the last observation in ``cohort_phase`` with enough lethal cells
+    inside that region. By default those cells require a contemporaneous scan;
+    when ``witness_phase`` is set, the scan witness must instead exist in that
+    earlier phase. Matching exactly that seed in odom tests the world-fixed
+    hypothesis; matching its paired base-frame coordinates tests the
+    robot-attached hypothesis. A later mark is never substituted for the seed.
+
+    The matching radius is the same measured support tolerance used to decide
+    whether a cell has a sensor witness.  Classification additionally requires
+    at least half of the seed and a 25 percentage-point advantage, keeping an
+    ambiguous result reportable rather than forcing a causal conclusion.
+    """
+    if support_tolerance_m <= 0.0 or stamp_tolerance_s < 0.0:
+        raise ValueError("tracking tolerances must be positive")
+    if not 0.0 <= dominance_fraction <= 1.0:
+        raise ValueError("dominance_fraction must be between zero and one")
+    if roi_margin_m < 0.0 or minimum_seed_cells <= 0:
+        raise ValueError("ROI margin and minimum seed size must be valid")
+    ordered = sorted(observations, key=lambda item: float(item.stamp_s))
+    support = sorted(
+        ((float(stamp), tuple(points)) for stamp, points in scan_support),
+        key=lambda item: item[0],
+    )
+
+    def contemporaneous_points(stamp_s: float) -> tuple[tuple[float, float], ...]:
+        return tuple(
+            point
+            for scan_stamp, scan_points in support
+            if abs(scan_stamp - stamp_s) <= stamp_tolerance_s
+            for point in scan_points
+        )
+
+    witness_ready = witness_phase is None
+    if witness_phase is not None:
+        for observation in ordered:
+            if observation.phase != witness_phase:
+                continue
+            scan_points = contemporaneous_points(observation.stamp_s)
+            if any(
+                _distance_outside_obstacle(point, target_obstacle) <= roi_margin_m
+                and scan_points
+                and _nearest_point_distance(point, scan_points)
+                <= support_tolerance_m
+                for point in observation.odom_points
+            ):
+                witness_ready = True
+                break
+    seed_observation = None
+    seed_indices: tuple[int, ...] = ()
+    for observation in ordered:
+        if observation.phase != cohort_phase:
+            continue
+        if len(observation.odom_points) != len(observation.base_points):
+            raise ValueError("odom/base costmap point arrays must stay aligned")
+        scan_points = contemporaneous_points(observation.stamp_s)
+        indices = tuple(
+            index for index, point in enumerate(observation.odom_points)
+            if (
+                _distance_outside_obstacle(point, target_obstacle) <= roi_margin_m
+                and (
+                    witness_phase is not None
+                    or (
+                        scan_points
+                        and _nearest_point_distance(point, scan_points)
+                        <= support_tolerance_m
+                    )
+                )
+            )
+        )
+        if len(indices) >= minimum_seed_cells:
+            seed_observation, seed_indices = observation, indices
+
+    empty = {
+        "status": "insufficient_data",
+        "classification": "insufficient_data",
+        "matched_frame_before_clear": None,
+        "target_obstacle": target_obstacle.name,
+        "witness_phase": witness_phase,
+        "cohort_phase": cohort_phase,
+        "measurement_phases": list(measurement_phases),
+        "seed_stamp_s": None,
+        "seed_cell_count": 0,
+        "usable_observation_count": 0,
+        "unsupported_observation_count": 0,
+        "world_fixed_match_fraction_median": None,
+        "base_attached_match_fraction_median": None,
+        "samples": [],
+    }
+    if seed_observation is None or not witness_ready:
+        return empty
+    seed_odom = tuple(
+        seed_observation.odom_points[index] for index in seed_indices
+    )
+    seed_base = tuple(
+        seed_observation.base_points[index] for index in seed_indices
+    )
+    target_phases = frozenset(measurement_phases)
+    minimum_match_fraction = 0.50
+    samples = []
+    for observation in ordered:
+        if observation.stamp_s <= seed_observation.stamp_s:
+            continue
+        if observation.phase not in target_phases or not observation.odom_points:
+            continue
+        if len(observation.odom_points) != len(observation.base_points):
+            raise ValueError("odom/base costmap point arrays must stay aligned")
+        world_distances = tuple(
+            _nearest_point_distance(point, observation.odom_points)
+            for point in seed_odom
+        )
+        base_distances = tuple(
+            _nearest_point_distance(point, observation.base_points)
+            for point in seed_base
+        )
+        world_fraction = sum(
+            distance <= support_tolerance_m for distance in world_distances
+        ) / len(seed_odom)
+        base_fraction = sum(
+            distance <= support_tolerance_m for distance in base_distances
+        ) / len(seed_base)
+        state = "unmatched"
+        if (
+            world_fraction >= minimum_match_fraction
+            and world_fraction - base_fraction >= dominance_fraction
+        ):
+            state = "world_fixed"
+        elif (
+            base_fraction >= minimum_match_fraction
+            and base_fraction - world_fraction >= dominance_fraction
+        ):
+            state = "base_attached"
+        elif max(world_fraction, base_fraction) >= minimum_match_fraction:
+            state = "ambiguous"
+        samples.append({
+            "stamp_s": float(observation.stamp_s),
+            "phase": observation.phase,
+            "state": state,
+            "world_fixed_match_fraction": world_fraction,
+            "base_attached_match_fraction": base_fraction,
+            "world_fixed_residual_p95_m": _percentile(world_distances, 0.95),
+            "base_attached_residual_p95_m": _percentile(base_distances, 0.95),
+        })
+    if not samples:
+        return {
+            **empty,
+            "seed_stamp_s": float(seed_observation.stamp_s),
+            "seed_cell_count": len(seed_indices),
+        }
+    matched_states = [
+        item["state"] for item in samples
+        if item["state"] in ("world_fixed", "base_attached")
+    ]
+    matched_frame = (
+        max(set(matched_states), key=matched_states.count)
+        if matched_states else None
+    )
+    terminal_cleared = samples[-1]["state"] == "unmatched" and bool(matched_states)
+    classification = "cleared" if terminal_cleared else (
+        matched_frame or samples[-1]["state"]
+    )
+    world_median = _percentile(
+        [float(item["world_fixed_match_fraction"]) for item in samples], 0.50
+    )
+    base_median = _percentile(
+        [float(item["base_attached_match_fraction"]) for item in samples], 0.50
+    )
+    return {
+        "status": "measured",
+        "classification": classification,
+        "matched_frame_before_clear": matched_frame,
+        "target_obstacle": target_obstacle.name,
+        "witness_phase": witness_phase,
+        "cohort_phase": cohort_phase,
+        "measurement_phases": list(measurement_phases),
+        "support_tolerance_m": support_tolerance_m,
+        "stamp_tolerance_s": stamp_tolerance_s,
+        "roi_margin_m": roi_margin_m,
+        "minimum_seed_cells": minimum_seed_cells,
+        "minimum_match_fraction": minimum_match_fraction,
+        "dominance_fraction": dominance_fraction,
+        "seed_stamp_s": float(seed_observation.stamp_s),
+        "seed_cell_count": len(seed_indices),
+        "seed_centroid_odom": list(_centroid(seed_odom) or ()),
+        "usable_observation_count": len(samples),
+        "world_fixed_match_fraction_median": world_median,
+        "base_attached_match_fraction_median": base_median,
+        "samples": samples,
+    }
+
+
 def summarize_costmap_observations(
     observations: Sequence[CostmapObservation],
     obstacles: Sequence[StaticObstacle],
