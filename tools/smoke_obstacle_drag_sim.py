@@ -27,7 +27,8 @@ from tf2_ros import Buffer, TransformListener
 from salus_evaluation.models import Pose2D
 from salus_evaluation.stage_metrics import (
     beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
-    summarize_point_geometry, transform_points_to_odom, validate_stage_lineage,
+    compare_scan_projection, project_pointcloud_to_scan, summarize_point_geometry,
+    transform_points_to_odom, validate_stage_lineage,
 )
 from salus_evaluation.static_scan_metrics import (
     interpolate_pose, load_obstacle_geometry, scan_static_error_metrics,
@@ -428,6 +429,118 @@ def _stage_scan_summary(samples, stamps, raw_poses, obstacles, common_support):
     }
 
 
+def _metric_record(metric):
+    """Serialize a static geometry metric for a shared beam population."""
+    return {
+        "sample_count": metric.sample_count,
+        "rmse_m": metric.scan_static_error_rmse_m,
+        "p95_m": metric.scan_static_error_p95_m,
+        "max_m": metric.max_error_m,
+        "beam_indices": list(metric.scored_beam_indices),
+    }
+
+
+def _projection_oracle(node, stamps, obstacles):
+    """Compare the upstream projection semantics with each runtime /scan."""
+    obstacle_clouds = _latest_by_stamp(node.obstacle_clouds)
+    scans = _latest_by_stamp(node.scan_input)
+    records = []
+    all_deltas = []
+    all_worst = []
+    finite_infinite_mismatches = 0
+    invalid_actual_count = 0
+    common_finite_support_count = 0
+    for stamp_ns in stamps:
+        cloud = obstacle_clouds.get(stamp_ns)
+        scan = scans.get(stamp_ns)
+        if cloud is None or scan is None:
+            continue
+        points = _cloud_points_in_base(node, cloud.message)
+        if points is None:
+            continue
+        message = scan.message
+        oracle_ranges = project_pointcloud_to_scan(
+            points,
+            angle_min=message.angle_min,
+            angle_max=message.angle_max,
+            angle_increment=message.angle_increment,
+            range_min=message.range_min,
+            range_max=message.range_max,
+            min_height=-0.1,
+            max_height=1.6,
+            use_inf=True,
+            inf_epsilon=1.0,
+        )
+        comparison = compare_scan_projection(oracle_ranges, message.ranges)
+        pose = interpolate_pose(node.poses, stamp_ns / 1.0e9)
+        common_support = comparison["common_finite_support"]
+        common_finite_support_count += len(common_support)
+        oracle_geometry = None
+        actual_geometry = None
+        if pose is not None and common_support:
+            oracle_geometry = _metric_record(scan_static_error_metrics(
+                oracle_ranges, message.angle_min, message.angle_increment, pose,
+                obstacles, range_min_m=max(0.0, message.range_min),
+                range_max_m=message.range_max, beam_indices=common_support,
+            ))
+            actual_geometry = _metric_record(scan_static_error_metrics(
+                message.ranges, message.angle_min, message.angle_increment, pose,
+                obstacles, range_min_m=max(0.0, message.range_min),
+                range_max_m=message.range_max, beam_indices=common_support,
+            ))
+        for index, (expected, actual) in enumerate(
+            zip(oracle_ranges, message.ranges)
+        ):
+            if math.isfinite(float(expected)) and math.isfinite(float(actual)):
+                all_deltas.append(abs(float(expected) - float(actual)))
+                all_worst.append({
+                    "stamp_ns": stamp_ns,
+                    "beam_index": index,
+                    "abs_delta_m": abs(float(expected) - float(actual)),
+                })
+        finite_infinite_mismatches += comparison[
+            "finite_infinite_mismatch_count"
+        ]
+        invalid_actual_count += comparison["invalid_actual_count"]
+        records.append({
+            "stamp_ns": stamp_ns,
+            "point_count": len(points),
+            "comparison": comparison,
+            "common_finite_support_count": len(common_support),
+            "oracle_geometry": oracle_geometry,
+            "actual_geometry": actual_geometry,
+        })
+    all_worst.sort(key=lambda item: float(item["abs_delta_m"]), reverse=True)
+    return {
+        "status": "measured" if records else "insufficient_data",
+        "algorithm": {
+            "name": "pointcloud_to_laserscan_projection",
+            "upstream_repository": "ros-perception/pointcloud_to_laserscan",
+            "upstream_ref": "humble",
+            "installed_package_version": "2.0.1",
+        },
+        "parameters": {
+            "min_height": -0.1,
+            "max_height": 1.6,
+            "use_inf": True,
+            "inf_epsilon": 1.0,
+            "coordinate_frame": "base_footprint",
+        },
+        "paired_count": len(records),
+        "finite_infinite_mismatch_count": finite_infinite_mismatches,
+        "invalid_actual_count": invalid_actual_count,
+        "common_finite_support_count": common_finite_support_count,
+        "range_delta_m": {
+            "status": "measured" if all_deltas else "insufficient_data",
+            "median": _percentile(all_deltas, 0.50) if all_deltas else None,
+            "p95": _percentile(all_deltas, 0.95) if all_deltas else None,
+            "max": max(all_deltas) if all_deltas else None,
+        },
+        "worst_bins": all_worst[:10],
+        "per_stamp": records,
+    }
+
+
 def _stage_lineage(node, obstacles, complete_stamps):
     """Build a bounded, report-only record for the complete perception chain."""
     selected_stamps = tuple(sorted(complete_stamps)[-20:])
@@ -538,8 +651,9 @@ def _stage_lineage(node, obstacles, complete_stamps):
             ),
         },
     }
+    projection_oracle = _projection_oracle(node, selected_stamps, obstacles)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "topic_order": [
             "/scan_3d_raw", "/scan_3d", "/obstacles_cloud", "/scan", "/scan_clean",
         ],
@@ -569,6 +683,7 @@ def _stage_lineage(node, obstacles, complete_stamps):
             str(stamp): list(raw_support.get(stamp, ()))
             for stamp in selected_stamps
         },
+        "projection_oracle": projection_oracle,
         "stages": stage_data,
     }
 

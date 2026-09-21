@@ -58,7 +58,7 @@ de estos campos es un umbral de aceptación ni modifica TF, EKF, LiDAR o
 costmaps.
 
 La captura de lineage del mismo smoke escribe además
-`obstacle_drag_stage_metrics.json` (`schema_version: 1`). Sólo considera
+`obstacle_drag_stage_metrics.json` (`schema_version: 2`). Sólo considera
 cadenas completas emparejadas por igualdad exacta de `header.stamp` y exige al
 menos diez antes de declarar la ejecución válida. Conserva los conteos de
 pérdida por cada arista de
@@ -75,7 +75,14 @@ timestamps se preservaron; stamps, payload raw→normalizado, metadatos y
 disponibilidad geométrica son invariantes del smoke y hacen fallar la captura
 si no se cumplen. El soporte de haces común se publica para evitar comparar
 conjuntos distintos, pero su igualdad entre `/scan` y `/scan_clean` queda como
-diagnóstico porque el filtro puede cambiarlo. Este artefacto es evidencia de
+diagnóstico porque el filtro puede cambiarlo. `projection_oracle` reproyecta
+`/obstacles_cloud` con la semántica de `pointcloud_to_laserscan` Humble 2.0.1
+y compara haz por haz contra `/scan` con el mismo `header.stamp`. Conserva la
+provenance y parámetros efectivos, acuerdo finito/infinito, soporte común,
+deltas de rango mediana/p95/máximo, peores haces y geometría conocida de
+oracle y scan sobre exactamente ese soporte. La discordancia es diagnóstica y
+no un gate numérico; la captura sí falla si no puede construir al menos diez
+pares completos o falta la comparación. Este artefacto es evidencia de
 simulación y no cierra #269 ni establece un umbral de aceptación.
 
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
