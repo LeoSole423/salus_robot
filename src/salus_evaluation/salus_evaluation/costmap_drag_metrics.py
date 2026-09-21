@@ -42,16 +42,16 @@ class CostmapObservation:
 
 
 def occupied_grid_points(
-    snapshot: CostmapSnapshot, *, occupied_costs: Sequence[int] = (253, 254),
+    snapshot: CostmapSnapshot, *, occupied_costs: Sequence[int] = (254,),
 ) -> tuple[tuple[float, float], ...]:
     """
     Return centers of lethal cells in the costmap frame.
 
     ``nav2_msgs/Costmap`` stores unsigned Nav2 costs: 253 is an inscribed or
-    inflated occupied cell, 254 is a lethal obstacle and 255 is unknown.  The
-    default includes the two occupied values and excludes unknown space.  The
-    distinction matters because the simulation can represent a static box
-    with 253 cells without producing a 254 cell at the sampled grid center.
+    inflated cell, 254 is a lethal obstacle and 255 is unknown. The default
+    selects only the lethal value so inflated geometry is not mistaken for a
+    sensor mark. Callers may explicitly select another cost for a separate
+    diagnostic, but unknown space must never be selected implicitly.
     """
     if snapshot.width <= 0 or snapshot.height <= 0:
         return ()
@@ -154,6 +154,8 @@ def summarize_costmap_observations(
     voxel_resolution_m: float = 0.10,
     required_phases: Sequence[str] = (),
     cohort_phase: str | None = None,
+    horizon_s: float | None = None,
+    require_scan_support: bool = False,
 ) -> dict[str, object]:
     """
     Summarize trail width, persistence and frame-attached motion.
@@ -171,6 +173,15 @@ def summarize_costmap_observations(
     missing_phases = [
         phase for phase in required_phases if phase_counts.get(phase, 0) == 0
     ]
+    phase_occupied_counts = {
+        phase: sum(1 for item in ordered
+                   if item.phase == phase and item.odom_points)
+        for phase in phase_counts
+    }
+    missing_occupied_phases = [
+        phase for phase in required_phases
+        if phase_occupied_counts.get(phase, 0) == 0
+    ]
     if not ordered or not obstacles:
         return {
             "status": "insufficient_data",
@@ -178,6 +189,14 @@ def summarize_costmap_observations(
             "valid_occupied_observation_count": 0,
             "phase_counts": phase_counts,
             "missing_phases": missing_phases,
+            "phase_occupied_counts": phase_occupied_counts,
+            "missing_occupied_phases": missing_occupied_phases,
+            "cohort_phase": cohort_phase,
+            "cohort_observation_count": 0,
+            "cohort_supported_cell_count": 0,
+            "scan_support_count": len(scan_support),
+            "scan_supported_point_count": 0,
+            "horizon_s": horizon_s,
             "trail_width_p95_m": None,
             "ghost_persistence_s": None,
             "centroids": [],
@@ -185,7 +204,8 @@ def summarize_costmap_observations(
         }
     if neighborhood_m <= 0.0 or support_tolerance_m < 0.0:
         raise ValueError("metric bounds must be non-negative")
-    widths = []
+    if horizon_s is not None and (not math.isfinite(horizon_s) or horizon_s <= 0.0):
+        raise ValueError("horizon_s must be finite and positive")
     centroids = []
     for observation in ordered:
         centroid_odom = _centroid(observation.odom_points)
@@ -197,14 +217,6 @@ def summarize_costmap_observations(
             "base_xy": list(centroid_base) if centroid_base else None,
             "occupied_count": len(observation.odom_points),
         })
-        for point in observation.odom_points:
-            distance = min(
-                _distance_outside_obstacle(point, obstacle)
-                for obstacle in obstacles
-            )
-            if distance <= neighborhood_m:
-                widths.append(distance)
-
     valid_occupied = [item for item in ordered if item.odom_points]
     cohort = [
         item for item in valid_occupied
@@ -212,16 +224,55 @@ def summarize_costmap_observations(
     ]
     seed_observation = cohort[-1] if cohort else None
     seed_points = seed_observation.odom_points if seed_observation else ()
+    measurement_end_s = (
+        seed_observation.stamp_s + horizon_s
+        if seed_observation is not None and horizon_s is not None else None
+    )
+    measurement_observations = [
+        item for item in ordered
+        if measurement_end_s is None or item.stamp_s <= measurement_end_s
+    ]
+    measurement_phase_occupied_counts = {
+        phase: sum(
+            1 for item in measurement_observations
+            if item.phase == phase and item.odom_points
+        )
+        for phase in phase_counts
+    }
+    measurement_missing_occupied_phases = [
+        phase for phase in required_phases
+        if measurement_phase_occupied_counts.get(phase, 0) == 0
+    ]
+    measurement_valid_occupied = [
+        item for item in measurement_observations if item.odom_points
+    ]
+    widths = []
+    for observation in measurement_observations:
+        for point in observation.odom_points:
+            distance = min(
+                _distance_outside_obstacle(point, obstacle)
+                for obstacle in obstacles
+            )
+            if distance <= neighborhood_m:
+                widths.append(distance)
     support_by_stamp = sorted(
         ((float(stamp), tuple(points)) for stamp, points in scan_support),
         key=lambda item: item[0],
+    )
+    scan_supported_point_count = sum(
+        1 for _, scan_points in support_by_stamp
+        for point in scan_points
+        if min(
+            _distance_outside_obstacle(point, obstacle)
+            for obstacle in obstacles
+        ) <= support_tolerance_m
     )
     ghost_persistence = []
     for point in seed_points:
         key = _voxel(point, voxel_resolution_m)
         unsupported_start: float | None = None
         last_unsupported: float | None = None
-        for observation in ordered:
+        for observation in measurement_observations:
             if seed_observation and observation.stamp_s <= seed_observation.stamp_s:
                 continue
             occupied_keys = {
@@ -252,11 +303,32 @@ def summarize_costmap_observations(
         if unsupported_start is not None and last_unsupported is not None:
             ghost_persistence.append(last_unsupported - unsupported_start)
 
+    seed_supported_cell_count = sum(
+        1 for point in seed_points
+        if seed_observation is not None and any(
+            abs(stamp - seed_observation.stamp_s) <= 0.25
+            and _nearest_point_distance(point, scan_points) <= support_tolerance_m
+            for stamp, scan_points in support_by_stamp
+        )
+    )
+    # The scan stream is an independent temporal witness for the capture.  A
+    # particular lethal cell can legitimately miss that witness because the
+    # rolling costmap and the scan are sampled at different instants, so the
+    # measurement gate requires a timestamped scan stream that sees the known
+    # obstacle while retaining per-cell support as diagnostic evidence.
+    support_ready = scan_supported_point_count > 0
+    measurement_ready = (
+        bool(widths)
+        and bool(measurement_valid_occupied)
+        and not measurement_missing_occupied_phases
+        and (cohort_phase is None or seed_observation is not None)
+        and (not require_scan_support or support_ready)
+    )
     classification = "insufficient_data"
-    nonempty = [item for item in valid_occupied if item.base_points]
+    nonempty = [item for item in measurement_observations if item.base_points]
     if required_phases:
         nonempty = [item for item in nonempty if item.phase in required_phases]
-    if len(nonempty) >= 1 and not ordered[-1].odom_points:
+    if len(nonempty) >= 1 and not measurement_observations[-1].odom_points:
         classification = "cleared"
     elif len(nonempty) >= 2:
         first, last = nonempty[0], nonempty[-1]
@@ -280,15 +352,22 @@ def summarize_costmap_observations(
     return {
         "status": (
             "measured"
-            if widths and valid_occupied and not missing_phases
+            if measurement_ready
             else "insufficient_data"
         ),
         "observation_count": len(ordered),
         "valid_occupied_observation_count": len(valid_occupied),
         "phase_counts": phase_counts,
         "missing_phases": missing_phases,
+        "phase_occupied_counts": phase_occupied_counts,
+        "missing_occupied_phases": measurement_missing_occupied_phases,
+        "measurement_phase_occupied_counts": measurement_phase_occupied_counts,
         "cohort_phase": cohort_phase,
         "cohort_observation_count": len(cohort),
+        "cohort_supported_cell_count": seed_supported_cell_count,
+        "scan_support_count": len(support_by_stamp),
+        "scan_supported_point_count": scan_supported_point_count,
+        "horizon_s": horizon_s,
         "trail_width_p95_m": _percentile(widths, 0.95) if widths else None,
         "trail_width_sample_count": len(widths),
         "ghost_persistence_s": max(ghost_persistence) if ghost_persistence else 0.0,

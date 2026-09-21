@@ -100,21 +100,25 @@ con una maniobra y un caso repetido con dos maniobras idénticas separadas por
 una pausa de 6 s. El probe sólo observa
 `/scan_clean`, `/local_costmap/costmap_raw`, `/global_costmap/costmap_raw`,
 `/odom_raw` y TF. Guarda un artefacto por caso y una comparación
-`obstacle_drag_costmap_comparison.json` en el caso repetido, incluyendo las
-diferencias de `trail_width_p95_m` y `ghost_persistence_s` entre ambos casos.
+`obstacle_drag_costmap_comparison.json` en el caso repetido. La comparación usa
+únicamente el costmap local y una ventana común de 10 s anclada al último
+costmap ocupado de `turn_1`; no resta métricas de capturas con distinta
+duración. El costmap global queda como evidencia diagnóstica independiente.
 
-El análisis puro en `costmap_drag_metrics.py` transforma celdas ocupadas con
-coste Nav2 `253` (inscribed/inflated) o `254` (lethal) a `odom`; excluye
-estrictamente `255` (unknown), y conserva también sus coordenadas en
-`base_footprint`. Reporta
+El análisis puro en `costmap_drag_metrics.py` transforma por defecto sólo
+celdas con coste Nav2 `254` (lethal) a `odom`; `253` (inscribed/inflated) y
+`255` (unknown) quedan fuera de la medición principal. Conserva también las
+coordenadas en `base_footprint`. Reporta
 `trail_width_p95_m`, `ghost_persistence_s`, centroides y la clasificación
 diagnóstica `world_fixed`, `base_attached`, `cleared` o `insufficient_data`.
-El estado sólo es `measured` cuando hay celdas letales válidas y todas las
-fases requeridas del caso observado.
+El estado sólo es `measured` cuando hay celdas letales válidas, fases requeridas
+con ocupación, una cohorte ocupada y soporte temporal válido de `/scan_clean`.
 Las marcas sin respaldo en el scan se etiquetan como evidencia report-only:
 una celda puede salir del campo de visión sin ser un fallo de seguridad. El
 artefacto es una medición de simulación; no cambia frecuencias, tolerancias,
-clearing, TF ni parámetros del costmap y no cierra #269 por sí solo.
+clearing, TF ni parámetros del costmap y no cierra #269 por sí solo. El probe
+conserva 180 s de TF para transformar costmaps globales retrospectivamente y
+reporta las observaciones descartadas por falta de TF o pose.
 
 Para inspección gráfica, usar dos terminales con el entorno ROS del compose. En
 el primero, levantar el world con RViz:

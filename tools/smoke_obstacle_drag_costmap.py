@@ -15,6 +15,7 @@ from pathlib import Path
 import rclpy
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Odometry
+from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
@@ -74,7 +75,13 @@ class CostmapDragProbe(Node):
         self.scans: list[tuple[float, tuple[tuple[float, float], ...]]] = []
         self.poses: list[tuple[float, Pose2D]] = []
         self.phases: list[tuple[float, str]] = []
-        self.tf_buffer = Buffer()
+        self.dropped_observations = {
+            "local_transform": 0,
+            "local_pose": 0,
+            "global_transform": 0,
+            "global_pose": 0,
+        }
+        self.tf_buffer = Buffer(cache_time=Duration(seconds=180.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.create_subscription(
             Costmap, "/local_costmap/costmap_raw", self._on_local, 10
@@ -169,7 +176,9 @@ class CostmapDragProbe(Node):
             transform.translation.y + sine * x + cosine * y,
         ) for x, y in points)
 
-    def observations(self, grids: list[TimedGrid]) -> list[CostmapObservation]:
+    def observations(
+        self, grids: list[TimedGrid], label: str,
+    ) -> list[CostmapObservation]:
         output = []
         phase_by_stamp = sorted(self.phases)
         for timed in grids:
@@ -178,6 +187,7 @@ class CostmapDragProbe(Node):
                 points, timed.snapshot.frame_id, timed.snapshot.stamp_s
             )
             if odom_points is None:
+                self.dropped_observations[f"{label}_transform"] += 1
                 continue
             phase = "unknown"
             for phase_stamp, name in phase_by_stamp:
@@ -187,6 +197,7 @@ class CostmapDragProbe(Node):
                     break
             pose = interpolate_pose(self.poses, timed.snapshot.stamp_s)
             if pose is None:
+                self.dropped_observations[f"{label}_pose"] += 1
                 continue
             output.append(CostmapObservation(
                 stamp_s=timed.snapshot.stamp_s,
@@ -223,18 +234,20 @@ def main() -> int:
         required_phases = ("turn_1",) if args.repetitions == 1 else (
             "turn_1", "pause_1", "turn_2"
         )
+        local_observations = node.observations(node.local_grids, "local")
+        global_observations = node.observations(node.global_grids, "global")
         local = summarize_costmap_observations(
-            node.observations(node.local_grids), obstacles,
+            local_observations, obstacles,
             scan_support=node.scans, required_phases=required_phases,
-            cohort_phase="turn_1",
+            cohort_phase="turn_1", require_scan_support=True,
         )
         # The static global map may publish only on map changes, so it cannot
         # be required to contain every maneuver phase.  It still must have
         # valid occupied samples; local rolling-map phases remain the strict
         # repeated-turn gate.
         global_ = summarize_costmap_observations(
-            node.observations(node.global_grids), obstacles,
-            scan_support=node.scans,
+            global_observations, obstacles,
+            scan_support=node.scans, require_scan_support=True,
         )
         if local["status"] != "measured" or global_["status"] != "measured":
             raise RuntimeError(
@@ -244,6 +257,13 @@ def main() -> int:
                 f"global={global_['status']} valid={global_['valid_occupied_observation_count']} "
                 f"phases={global_['phase_counts']} missing={global_['missing_phases']}"
             )
+        common_phases = ("turn_1", "pause_1")
+        common_local = summarize_costmap_observations(
+            local_observations, obstacles,
+            scan_support=node.scans, required_phases=common_phases,
+            cohort_phase="turn_1", horizon_s=10.0,
+            require_scan_support=True,
+        )
         report = {
             "schema_version": 1,
             "source_sha": _source_sha(),
@@ -260,6 +280,8 @@ def main() -> int:
                 "costmap_reset": False,
                 "required_phases": list(required_phases),
                 "phase_samples": len(node.phases),
+                "comparison_horizon_s": 10.0,
+                "comparison_phases": list(common_phases),
             },
             "topics": {
                 "scan": "/scan_clean",
@@ -272,8 +294,10 @@ def main() -> int:
                 "global_costmaps": len(node.global_grids),
                 "scan_support": len(node.scans),
                 "odom": len(node.poses),
+                "dropped_observations": dict(node.dropped_observations),
             },
             "local_costmap": local,
+            "local_costmap_common_window": common_local,
             "global_costmap": global_,
         }
         args.metrics_path.parent.mkdir(parents=True, exist_ok=True)

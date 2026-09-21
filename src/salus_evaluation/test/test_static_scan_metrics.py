@@ -285,16 +285,21 @@ def test_costmap_cells_and_frame_transforms_have_known_controls() -> None:
         data=(0, 253, 255, 0, 0, 254),
     )
     points = occupied_grid_points(snapshot)
-    assert points[0] == pytest.approx((0.5, -0.5))
-    assert points[1] == pytest.approx((1.5, 0.5))
-    assert len(points) == 2
+    assert len(points) == 1
+    assert points[0] == pytest.approx((1.5, 0.5))
+    inflated_and_lethal = occupied_grid_points(
+        snapshot, occupied_costs=(253, 254)
+    )
+    assert inflated_and_lethal[0] == pytest.approx((0.5, -0.5))
+    assert inflated_and_lethal[1] == pytest.approx((1.5, 0.5))
+    assert len(inflated_and_lethal) == 2
     odom = transform_costmap_points_to_odom(
-        points, "base_footprint", Pose2D(10.0, 2.0, math.pi / 2.0)
+        inflated_and_lethal, "base_footprint", Pose2D(10.0, 2.0, math.pi / 2.0)
     )
     assert odom[0] == pytest.approx((10.5, 2.5))
     round_trip = transform_odom_points_to_base(odom, Pose2D(10.0, 2.0, math.pi / 2.0))
-    assert round_trip[0] == pytest.approx(points[0])
-    assert round_trip[1] == pytest.approx(points[1])
+    assert round_trip[0] == pytest.approx(inflated_and_lethal[0])
+    assert round_trip[1] == pytest.approx(inflated_and_lethal[1])
 
 
 def test_costmap_drag_metrics_distinguish_world_and_base_controls() -> None:
@@ -355,6 +360,47 @@ def test_costmap_drag_metrics_require_phases_and_reset_support_interval() -> Non
     assert result["status"] == "measured"
     assert result["cohort_observation_count"] == 1
     assert result["ghost_persistence_s"] == pytest.approx(1.0)
+
+
+def test_costmap_drag_metrics_reject_empty_cohort_or_scan_support() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    result = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", (), ()),
+            CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        ], [obstacle],
+        required_phases=("turn_1", "pause_1"), cohort_phase="turn_1",
+        require_scan_support=True,
+    )
+    assert result["status"] == "insufficient_data"
+    assert result["missing_occupied_phases"] == ["turn_1"]
+    unrelated_scan = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+            CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        ], [obstacle],
+        required_phases=("turn_1", "pause_1"), cohort_phase="turn_1",
+        scan_support=[(1.0, ((0.0, 0.0),))], require_scan_support=True,
+    )
+    assert unrelated_scan["status"] == "insufficient_data"
+    assert unrelated_scan["scan_supported_point_count"] == 0
+
+
+def test_costmap_drag_metrics_horizon_limits_comparison_window() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    observations = [
+        CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(6.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(20.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+    ]
+    result = summarize_costmap_observations(
+        observations, [obstacle], required_phases=("turn_1", "pause_1"),
+        cohort_phase="turn_1", horizon_s=5.0,
+        scan_support=[(1.0, ((4.0, 0.0),))],
+    )
+    assert result["horizon_s"] == pytest.approx(5.0)
+    assert result["ghost_persistence_s"] == pytest.approx(4.0)
 
 
 def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:

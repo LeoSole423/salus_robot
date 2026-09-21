@@ -69,13 +69,13 @@ comparison = {
         "control_repetitions": control["maneuver"]["repetitions"],
         "repeated_repetitions": repeated["maneuver"]["repetitions"],
         "costmap_reset_in_repeated": repeated["maneuver"]["costmap_reset"],
+        "metric_source": "local_costmap_common_window",
         "metrics": {},
     },
 }
-for map_name in ("local_costmap", "global_costmap"):
-    control_map = control[map_name]
-    repeated_map = repeated[map_name]
-    comparison["comparison"]["metrics"][map_name] = {
+control_map = control["local_costmap_common_window"]
+repeated_map = repeated["local_costmap_common_window"]
+comparison["comparison"]["metrics"]["local_costmap_common_window"] = {
         "trail_width_delta_m": (
             repeated_map["trail_width_p95_m"] - control_map["trail_width_p95_m"]
             if repeated_map["trail_width_p95_m"] is not None
