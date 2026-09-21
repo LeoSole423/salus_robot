@@ -329,12 +329,17 @@ def main() -> int:
             first_turn_frame_tracking = summarize_cohort_frame_tracking(
                 local_observations,
                 scan_support=scan_support,
-                cohort_phase="turn_1",
+                target_obstacle=next(
+                    obstacle for obstacle in obstacles
+                    if obstacle.name == "obstacle_far_box"
+                ),
+                cohort_phase="pause_1",
                 measurement_phases=("turn_2",),
+                witness_phase="turn_1",
             )
             if first_turn_frame_tracking["status"] != "measured":
                 raise RuntimeError(
-                    "first-turn frame tracking was not measurable during turn_2: "
+                    "pre-turn frame tracking was not measurable during turn_2: "
                     f"seed={first_turn_frame_tracking['seed_cell_count']} "
                     f"usable={first_turn_frame_tracking['usable_observation_count']}"
                 )

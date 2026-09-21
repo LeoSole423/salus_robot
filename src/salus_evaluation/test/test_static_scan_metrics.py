@@ -341,7 +341,9 @@ def test_costmap_cohort_tracking_distinguishes_world_fixed_control() -> None:
             (1.0, ((4.0, 0.0), (4.0, 0.1))),
             (2.0, ((8.0, 8.0),)),
         ],
+        target_obstacle=StaticObstacle("target", 4.0, 0.0, 0.4, 0.4),
         cohort_phase="turn_1", measurement_phases=("turn_2",),
+        minimum_seed_cells=2,
     )
     assert result["status"] == "measured"
     assert result["classification"] == "world_fixed"
@@ -367,7 +369,9 @@ def test_costmap_cohort_tracking_distinguishes_base_attached_control() -> None:
             (1.0, ((4.0, 0.0), (4.0, 0.1))),
             (2.0, ((8.0, 8.0),)),
         ],
+        target_obstacle=StaticObstacle("target", 4.0, 0.0, 0.4, 0.4),
         cohort_phase="turn_1", measurement_phases=("turn_2",),
+        minimum_seed_cells=2,
     )
     assert result["classification"] == "base_attached"
     assert result["world_fixed_match_fraction_median"] == pytest.approx(0.0)
@@ -386,7 +390,9 @@ def test_costmap_cohort_tracking_rejects_new_cluster() -> None:
     result = summarize_cohort_frame_tracking(
         observations,
         scan_support=[(1.0, ((4.0, 0.0),)), (2.0, ((0.0, 9.0),))],
+        target_obstacle=StaticObstacle("target", 4.0, 0.0, 0.4, 0.4),
         cohort_phase="turn_1", measurement_phases=("turn_2",),
+        minimum_seed_cells=1,
     )
     assert result["status"] == "measured"
     assert result["classification"] == "unmatched"
@@ -404,14 +410,16 @@ def test_costmap_cohort_tracking_geometry_does_not_require_later_scan() -> None:
             ),
         ],
         scan_support=[(1.0, ((4.0, 0.0),))],
+        target_obstacle=StaticObstacle("target", 4.0, 0.0, 0.4, 0.4),
         cohort_phase="turn_1", measurement_phases=("turn_2",),
+        minimum_seed_cells=1,
     )
     assert result["classification"] == "world_fixed"
     assert result["usable_observation_count"] == 1
-    assert result["samples"][0]["unsupported_cell_count"] is None
+    assert result["samples"][0]["state"] == "world_fixed"
 
 
-def test_costmap_cohort_tracking_keeps_multiple_seed_clusters() -> None:
+def test_costmap_cohort_tracking_preselects_target_region() -> None:
     result = summarize_cohort_frame_tracking(
         [
             CostmapObservation(
@@ -424,13 +432,13 @@ def test_costmap_cohort_tracking_keeps_multiple_seed_clusters() -> None:
             ),
         ],
         scan_support=[(1.0, ((4.0, 0.0), (8.0, 0.0)))],
+        target_obstacle=StaticObstacle("selected", 4.0, 0.0, 0.4, 0.4),
         cohort_phase="turn_1", measurement_phases=("turn_2",),
+        minimum_seed_cells=1,
     )
-    assert result["cohort_count"] == 2
-    assert any(
-        cohort["classification"] == "world_fixed"
-        for cohort in result["cohorts"]
-    )
+    assert result["target_obstacle"] == "selected"
+    assert result["seed_cell_count"] == 1
+    assert result["seed_centroid_odom"] == pytest.approx((4.0, 0.0))
 
 
 def test_costmap_drag_metrics_report_unsupported_persistence() -> None:
