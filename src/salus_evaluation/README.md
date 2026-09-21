@@ -94,16 +94,23 @@ LiDAR, TF, EKF, costmaps o Nav2.
 
 ### Corte 3 — medición directa del costmap
 
-`tools/smoke_obstacle_drag_costmap.sh` levanta el mismo world con Nav2 activo,
-ejecuta una maniobra de control y una segunda maniobra idéntica después de una
-pausa de 6 s, sin invocar ningún servicio de limpieza. El probe sólo observa
+`tools/smoke_obstacle_drag_costmap.sh` levanta el mismo world con Nav2 activo y
+ejecuta dos casos limpios, sin invocar ningún servicio de limpieza: un control
+con una maniobra y un caso repetido con dos maniobras idénticas separadas por
+una pausa de 6 s. El probe sólo observa
 `/scan_clean`, `/local_costmap/costmap_raw`, `/global_costmap/costmap_raw`,
-`/odom_raw` y TF, y guarda `obstacle_drag_costmap_metrics.json`.
+`/odom_raw` y TF. Guarda un artefacto por caso y una comparación
+`obstacle_drag_costmap_comparison.json` en el caso repetido, incluyendo las
+diferencias de `trail_width_p95_m` y `ghost_persistence_s` entre ambos casos.
 
-El análisis puro en `costmap_drag_metrics.py` transforma celdas letales a
-`odom`, conserva también sus coordenadas en `base_footprint` y reporta
+El análisis puro en `costmap_drag_metrics.py` transforma celdas ocupadas con
+coste Nav2 `253` (inscribed/inflated) o `254` (lethal) a `odom`; excluye
+estrictamente `255` (unknown), y conserva también sus coordenadas en
+`base_footprint`. Reporta
 `trail_width_p95_m`, `ghost_persistence_s`, centroides y la clasificación
 diagnóstica `world_fixed`, `base_attached`, `cleared` o `insufficient_data`.
+El estado sólo es `measured` cuando hay celdas letales válidas y todas las
+fases requeridas del caso observado.
 Las marcas sin respaldo en el scan se etiquetan como evidencia report-only:
 una celda puede salir del campo de visión sin ser un fallo de seguridad. El
 artefacto es una medición de simulación; no cambia frecuencias, tolerancias,

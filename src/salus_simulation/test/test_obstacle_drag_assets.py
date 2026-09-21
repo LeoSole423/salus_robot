@@ -84,7 +84,10 @@ def test_costmap_drag_measurement_has_repeated_maneuver_and_no_reset() -> None:
     )
     assert "launch_navigation:=true" in smoke
     assert "use_keepout:=false" in smoke
-    assert "--repetitions 2 --pause-s 6.0" in smoke
+    assert "run_case control 1" in smoke
+    assert "run_case repeated 2" in smoke
+    assert "--repetitions ${repetitions} --pause-s 6.0" in smoke
+    assert "--ros-args -p use_sim_time:=true" in smoke
     assert "/local_costmap/costmap_raw" in probe
     assert "/global_costmap/costmap_raw" in probe
     assert '"costmap_reset": False' in probe

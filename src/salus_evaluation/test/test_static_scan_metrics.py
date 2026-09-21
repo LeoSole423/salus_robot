@@ -282,11 +282,12 @@ def test_costmap_cells_and_frame_transforms_have_known_controls() -> None:
     snapshot = CostmapSnapshot(
         stamp_s=1.0, frame_id="base_footprint", resolution_m=1.0,
         origin_x_m=-1.0, origin_y_m=-1.0, width=3, height=2,
-        data=(0, 254, -1, 0, 0, 253),
+        data=(0, 253, 255, 0, 0, 254),
     )
     points = occupied_grid_points(snapshot)
     assert points[0] == pytest.approx((0.5, -0.5))
     assert points[1] == pytest.approx((1.5, 0.5))
+    assert len(points) == 2
     odom = transform_costmap_points_to_odom(
         points, "base_footprint", Pose2D(10.0, 2.0, math.pi / 2.0)
     )
@@ -325,10 +326,35 @@ def test_costmap_drag_metrics_report_unsupported_persistence() -> None:
             CostmapObservation(2.0, "pause", ((4.0, 0.0),), ((4.0, 0.0),)),
             CostmapObservation(7.0, "turn_2", ((4.0, 0.0),), ((4.0, 0.0),)),
         ], [obstacle],
+        cohort_phase="turn_1",
         scan_support=[(1.0, ((4.0, 0.0),))],
     )
     assert result["ghost_cell_count"] == 1
     assert result["ghost_persistence_s"] == pytest.approx(5.0)
+
+
+def test_costmap_drag_metrics_require_phases_and_reset_support_interval() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    observations = [
+        CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(2.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(3.0, "pause_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+        CostmapObservation(4.0, "turn_2", ((4.0, 0.0),), ((4.0, 0.0),)),
+    ]
+    insufficient = summarize_costmap_observations(
+        observations[:1], [obstacle], required_phases=("turn_1", "turn_2"),
+        cohort_phase="turn_1",
+    )
+    assert insufficient["status"] == "insufficient_data"
+    result = summarize_costmap_observations(
+        observations, [obstacle],
+        required_phases=("turn_1", "pause_1", "turn_2"),
+        cohort_phase="turn_1",
+        scan_support=[(2.0, ((4.0, 0.0),))],
+    )
+    assert result["status"] == "measured"
+    assert result["cohort_observation_count"] == 1
+    assert result["ghost_persistence_s"] == pytest.approx(1.0)
 
 
 def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:

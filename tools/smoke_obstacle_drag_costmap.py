@@ -66,8 +66,9 @@ def _source_sha() -> str:
 class CostmapDragProbe(Node):
     """Retain costmaps, scans, phases and poses without publishing anything."""
 
-    def __init__(self) -> None:
+    def __init__(self, repetitions: int) -> None:
         super().__init__("obstacle_drag_costmap_probe")
+        self.repetitions = repetitions
         self.local_grids: list[TimedGrid] = []
         self.global_grids: list[TimedGrid] = []
         self.scans: list[tuple[float, tuple[tuple[float, float], ...]]] = []
@@ -113,6 +114,7 @@ class CostmapDragProbe(Node):
             origin_y_m=float(info.origin.position.y),
             width=int(info.size_x), height=int(info.size_y),
             data=tuple(int(value) for value in message.data),
+            origin_yaw_rad=_yaw_from_quaternion(info.origin.orientation),
         ), time.monotonic_ns()))
 
     def _on_local(self, message: Costmap) -> None:
@@ -143,7 +145,10 @@ class CostmapDragProbe(Node):
     @property
     def done(self) -> bool:
         names = {name for _, name in self.phases}
-        return "done" in names and {"turn_1", "turn_2"}.issubset(names)
+        required = {"turn_1"}
+        if self.repetitions == 2:
+            required.update(("pause_1", "turn_2"))
+        return "done" in names and required.issubset(names)
 
     def _map_to_odom(self, points, frame_id: str, stamp_s: float):
         if frame_id in ("odom", "base_footprint"):
@@ -196,32 +201,48 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--geometry", type=Path, required=True)
     parser.add_argument("--metrics-path", type=Path, required=True)
+    parser.add_argument("--repetitions", type=int, choices=(1, 2), required=True)
     parser.add_argument("--timeout", type=float, default=90.0)
-    return parser.parse_args()
+    args, _ = parser.parse_known_args()
+    return args
 
 
 def main() -> int:
     args = parse_args()
     _, obstacles = load_obstacle_geometry(args.geometry)
     rclpy.init()
-    node = CostmapDragProbe()
+    node = CostmapDragProbe(args.repetitions)
     started = time.monotonic()
     try:
         while time.monotonic() - started < args.timeout and not node.done:
             rclpy.spin_once(node, timeout_sec=0.2)
         if not node.done:
             raise RuntimeError(
-                "did not observe both repeated turn phases and the maneuver stop"
+                "did not observe the required maneuver phases and stop"
             )
-        local = summarize_costmap_observations(
-            node.observations(node.local_grids), obstacles, scan_support=node.scans
+        required_phases = ("turn_1",) if args.repetitions == 1 else (
+            "turn_1", "pause_1", "turn_2"
         )
+        local = summarize_costmap_observations(
+            node.observations(node.local_grids), obstacles,
+            scan_support=node.scans, required_phases=required_phases,
+            cohort_phase="turn_1",
+        )
+        # The static global map may publish only on map changes, so it cannot
+        # be required to contain every maneuver phase.  It still must have
+        # valid occupied samples; local rolling-map phases remain the strict
+        # repeated-turn gate.
         global_ = summarize_costmap_observations(
-            node.observations(node.global_grids), obstacles, scan_support=node.scans
+            node.observations(node.global_grids), obstacles,
+            scan_support=node.scans,
         )
         if local["status"] != "measured" or global_["status"] != "measured":
             raise RuntimeError(
-                "local/global costmap did not yield measurable occupied cells"
+                "local/global costmap did not yield measurable occupied cells: "
+                f"local={local['status']} valid={local['valid_occupied_observation_count']} "
+                f"phases={local['phase_counts']} missing={local['missing_phases']}; "
+                f"global={global_['status']} valid={global_['valid_occupied_observation_count']} "
+                f"phases={global_['phase_counts']} missing={global_['missing_phases']}"
             )
         report = {
             "schema_version": 1,
@@ -229,10 +250,15 @@ def main() -> int:
             "world": "obstacle_drag.world",
             "geometry_fixture": str(args.geometry),
             "fixed_frame": "odom",
+            "simulation_sensors": {
+                "profile": os.environ.get("SMOKE_SENSOR_PROFILE", ""),
+                "seed": int(os.environ.get("SMOKE_SENSOR_SEED", "6400")),
+            },
             "maneuver": {
-                "repetitions": 2,
+                "repetitions": args.repetitions,
                 "pause_s": 6.0,
                 "costmap_reset": False,
+                "required_phases": list(required_phases),
                 "phase_samples": len(node.phases),
             },
             "topics": {

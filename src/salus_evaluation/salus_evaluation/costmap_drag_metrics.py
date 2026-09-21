@@ -18,7 +18,7 @@ from .static_scan_metrics import StaticObstacle, _percentile
 
 @dataclass(frozen=True)
 class CostmapSnapshot:
-    """One ``OccupancyGrid`` snapshot reduced to its measurement fields."""
+    """One ``nav2_msgs/Costmap`` snapshot reduced to its fields."""
 
     stamp_s: float
     frame_id: str
@@ -28,6 +28,7 @@ class CostmapSnapshot:
     width: int
     height: int
     data: tuple[int, ...]
+    origin_yaw_rad: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -41,14 +42,16 @@ class CostmapObservation:
 
 
 def occupied_grid_points(
-    snapshot: CostmapSnapshot, *, lethal_threshold: int = 253,
+    snapshot: CostmapSnapshot, *, occupied_costs: Sequence[int] = (253, 254),
 ) -> tuple[tuple[float, float], ...]:
     """
     Return centers of lethal cells in the costmap frame.
 
-    Unknown cells (normally ``-1`` in ``OccupancyGrid``) are excluded.  The
-    threshold is explicit because this metric is diagnostic and must not infer
-    Nav2's internal cost semantics from a visual rendering.
+    ``nav2_msgs/Costmap`` stores unsigned Nav2 costs: 253 is an inscribed or
+    inflated occupied cell, 254 is a lethal obstacle and 255 is unknown.  The
+    default includes the two occupied values and excludes unknown space.  The
+    distinction matters because the simulation can represent a static box
+    with 253 cells without producing a 254 cell at the sampled grid center.
     """
     if snapshot.width <= 0 or snapshot.height <= 0:
         return ()
@@ -57,14 +60,20 @@ def occupied_grid_points(
     expected = snapshot.width * snapshot.height
     if len(snapshot.data) != expected:
         raise ValueError(f"costmap data length {len(snapshot.data)} != {expected}")
+    selected_costs = frozenset(int(cost) for cost in occupied_costs)
+    if not selected_costs or any(cost < 0 or cost > 255 for cost in selected_costs):
+        raise ValueError("occupied_costs must contain unsigned byte values")
     points = []
+    cosine, sine = math.cos(snapshot.origin_yaw_rad), math.sin(snapshot.origin_yaw_rad)
     for index, raw_value in enumerate(snapshot.data):
-        if int(raw_value) < lethal_threshold:
+        if int(raw_value) not in selected_costs:
             continue
         row, column = divmod(index, snapshot.width)
+        local_x = (column + 0.5) * snapshot.resolution_m
+        local_y = (row + 0.5) * snapshot.resolution_m
         points.append((
-            snapshot.origin_x_m + (column + 0.5) * snapshot.resolution_m,
-            snapshot.origin_y_m + (row + 0.5) * snapshot.resolution_m,
+            snapshot.origin_x_m + cosine * local_x - sine * local_y,
+            snapshot.origin_y_m + sine * local_x + cosine * local_y,
         ))
     return tuple(points)
 
@@ -143,6 +152,8 @@ def summarize_costmap_observations(
     neighborhood_m: float = 3.0,
     support_tolerance_m: float = 0.20,
     voxel_resolution_m: float = 0.10,
+    required_phases: Sequence[str] = (),
+    cohort_phase: str | None = None,
 ) -> dict[str, object]:
     """
     Summarize trail width, persistence and frame-attached motion.
@@ -153,10 +164,20 @@ def summarize_costmap_observations(
     scan, so this function never labels a cell as a safety failure.
     """
     ordered = sorted(observations, key=lambda item: float(item.stamp_s))
+    phase_counts = {
+        phase: sum(1 for item in ordered if item.phase == phase)
+        for phase in sorted({item.phase for item in ordered})
+    }
+    missing_phases = [
+        phase for phase in required_phases if phase_counts.get(phase, 0) == 0
+    ]
     if not ordered or not obstacles:
         return {
             "status": "insufficient_data",
             "observation_count": len(ordered),
+            "valid_occupied_observation_count": 0,
+            "phase_counts": phase_counts,
+            "missing_phases": missing_phases,
             "trail_width_p95_m": None,
             "ghost_persistence_s": None,
             "centroids": [],
@@ -184,22 +205,34 @@ def summarize_costmap_observations(
             if distance <= neighborhood_m:
                 widths.append(distance)
 
-    first_points = ordered[0].odom_points
+    valid_occupied = [item for item in ordered if item.odom_points]
+    cohort = [
+        item for item in valid_occupied
+        if cohort_phase is None or item.phase == cohort_phase
+    ]
+    seed_observation = cohort[-1] if cohort else None
+    seed_points = seed_observation.odom_points if seed_observation else ()
     support_by_stamp = sorted(
         ((float(stamp), tuple(points)) for stamp, points in scan_support),
         key=lambda item: item[0],
     )
     ghost_persistence = []
-    for point in first_points:
+    for point in seed_points:
         key = _voxel(point, voxel_resolution_m)
-        first_unsupported: float | None = None
-        last_occupied: float | None = None
-        for observation in ordered[1:]:
+        unsupported_start: float | None = None
+        last_unsupported: float | None = None
+        for observation in ordered:
+            if seed_observation and observation.stamp_s <= seed_observation.stamp_s:
+                continue
             occupied_keys = {
                 _voxel(candidate, voxel_resolution_m)
                 for candidate in observation.odom_points
             }
             if key not in occupied_keys:
+                if unsupported_start is not None and last_unsupported is not None:
+                    ghost_persistence.append(last_unsupported - unsupported_start)
+                    unsupported_start = None
+                    last_unsupported = None
                 continue
             supported = any(
                 stamp <= observation.stamp_s
@@ -207,15 +240,22 @@ def summarize_costmap_observations(
                 for stamp, scan_points in support_by_stamp
                 if abs(stamp - observation.stamp_s) <= 0.25
             )
-            if not supported and first_unsupported is None:
-                first_unsupported = float(observation.stamp_s)
-            if first_unsupported is not None:
-                last_occupied = float(observation.stamp_s)
-        if first_unsupported is not None and last_occupied is not None:
-            ghost_persistence.append(last_occupied - first_unsupported)
+            if supported:
+                if unsupported_start is not None and last_unsupported is not None:
+                    ghost_persistence.append(last_unsupported - unsupported_start)
+                unsupported_start = None
+                last_unsupported = None
+            else:
+                if unsupported_start is None:
+                    unsupported_start = float(observation.stamp_s)
+                last_unsupported = float(observation.stamp_s)
+        if unsupported_start is not None and last_unsupported is not None:
+            ghost_persistence.append(last_unsupported - unsupported_start)
 
     classification = "insufficient_data"
-    nonempty = [item for item in ordered if item.odom_points and item.base_points]
+    nonempty = [item for item in valid_occupied if item.base_points]
+    if required_phases:
+        nonempty = [item for item in nonempty if item.phase in required_phases]
     if len(nonempty) >= 1 and not ordered[-1].odom_points:
         classification = "cleared"
     elif len(nonempty) >= 2:
@@ -238,8 +278,17 @@ def summarize_costmap_observations(
         else:
             classification = "insufficient_data"
     return {
-        "status": "measured" if widths or centroids else "insufficient_data",
+        "status": (
+            "measured"
+            if widths and valid_occupied and not missing_phases
+            else "insufficient_data"
+        ),
         "observation_count": len(ordered),
+        "valid_occupied_observation_count": len(valid_occupied),
+        "phase_counts": phase_counts,
+        "missing_phases": missing_phases,
+        "cohort_phase": cohort_phase,
+        "cohort_observation_count": len(cohort),
         "trail_width_p95_m": _percentile(widths, 0.95) if widths else None,
         "trail_width_sample_count": len(widths),
         "ghost_persistence_s": max(ghost_persistence) if ghost_persistence else 0.0,
