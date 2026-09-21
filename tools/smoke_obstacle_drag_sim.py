@@ -21,7 +21,7 @@ from sensor_msgs.msg import LaserScan
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
     interpolate_pose, load_obstacle_geometry, scan_static_error_metrics,
-    summarize_scan_metrics,
+    summarize_scan_metrics, summarize_temporal_offset_sweep,
 )
 from smoke_runtime import SmokeRuntime
 
@@ -32,6 +32,14 @@ class TimedScan:
 
     stamp_s: float
     message: LaserScan
+
+
+@dataclass(frozen=True)
+class TimedLocalPose:
+    """EKF pose retained for comparison against simulation odometry."""
+
+    stamp_s: float
+    pose: Pose2D
 
 
 def _stamp_s(message) -> float:
@@ -46,11 +54,13 @@ class ObstacleDragProbe(Node):
         super().__init__("obstacle_drag_smoke")
         self.scans: list[TimedScan] = []
         self.poses: list[tuple[float, Pose2D]] = []
+        self.local_poses: list[TimedLocalPose] = []
         self.odom_received = 0
         self.create_subscription(
             LaserScan, "/scan_clean", self._on_scan, qos_profile_sensor_data
         )
         self.create_subscription(Odometry, "/odom_raw", self._on_odom, 10)
+        self.create_subscription(Odometry, "/odometry/local", self._on_local_odom, 10)
 
     def _on_scan(self, message: LaserScan) -> None:
         self.scans.append(TimedScan(_stamp_s(message), message))
@@ -69,6 +79,20 @@ class ObstacleDragProbe(Node):
             return
         self.poses.append((stamp_s, pose))
         self.odom_received += 1
+
+    def _on_local_odom(self, message: Odometry) -> None:
+        orientation = message.pose.pose.orientation
+        yaw = math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z),
+        )
+        stamp_s = _stamp_s(message)
+        if self.local_poses and stamp_s <= self.local_poses[-1].stamp_s:
+            return
+        self.local_poses.append(TimedLocalPose(
+            stamp_s,
+            Pose2D(message.pose.pose.position.x, message.pose.pose.position.y, yaw),
+        ))
 
     @property
     def motion_observed(self) -> bool:
@@ -102,6 +126,56 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=30.0)
     return parser.parse_args()
+
+
+def _pose_divergence(
+    local_poses: list[TimedLocalPose], raw_poses: list[tuple[float, Pose2D]],
+) -> dict[str, object]:
+    """Summarize local-EKF versus raw simulation pose divergence."""
+    position_errors: list[float] = []
+    yaw_errors: list[float] = []
+    for sample in local_poses:
+        raw = interpolate_pose(raw_poses, sample.stamp_s)
+        if raw is None:
+            continue
+        position_errors.append(math.hypot(
+            sample.pose.x_m - raw.x_m, sample.pose.y_m - raw.y_m,
+        ))
+        yaw_errors.append(abs(math.atan2(
+            math.sin(sample.pose.yaw_rad - raw.yaw_rad),
+            math.cos(sample.pose.yaw_rad - raw.yaw_rad),
+        )))
+    if not position_errors:
+        return {
+            "status": "insufficient_data",
+            "local_pose_count": len(local_poses),
+            "paired_count": 0,
+            "p95_position_error_m": None,
+            "max_position_error_m": None,
+            "p95_yaw_error_rad": None,
+            "max_yaw_error_rad": None,
+        }
+    position_errors.sort()
+    yaw_errors.sort()
+    p95_index = (len(position_errors) - 1) * 0.95
+    low, high = math.floor(p95_index), math.ceil(p95_index)
+    position_p95 = position_errors[low] + (position_errors[high] - position_errors[low]) * (
+        p95_index - low
+    )
+    yaw_p95_index = (len(yaw_errors) - 1) * 0.95
+    low, high = math.floor(yaw_p95_index), math.ceil(yaw_p95_index)
+    yaw_p95 = yaw_errors[low] + (yaw_errors[high] - yaw_errors[low]) * (
+        yaw_p95_index - low
+    )
+    return {
+        "status": "measured",
+        "local_pose_count": len(local_poses),
+        "paired_count": len(position_errors),
+        "p95_position_error_m": position_p95,
+        "max_position_error_m": max(position_errors),
+        "p95_yaw_error_rad": yaw_p95,
+        "max_yaw_error_rad": max(yaw_errors),
+    }
 
 
 def main() -> int:
@@ -161,6 +235,29 @@ def main() -> int:
                 "/scan_clean did not contain known near/mid/far obstacle hits"
             )
         summary = summarize_scan_metrics(timed_metrics)
+        temporal_offsets_s = [
+            round(-0.30 + 0.02 * index, 2) for index in range(31)
+        ]
+        temporal_sweep = summarize_temporal_offset_sweep(
+            [(timed_scan.stamp_s, timed_scan.message) for timed_scan in node.scans[-20:]],
+            node.poses,
+            obstacles,
+            temporal_offsets_s,
+            range_min_m=0.0,
+            range_max_m=20.0,
+        )
+        measured_sweep = [
+            entry for entry in temporal_sweep
+            if entry["median_rmse_m"] is not None
+        ]
+        best_temporal_offset_s = None
+        if measured_sweep:
+            best_temporal_offset_s = min(
+                measured_sweep,
+                key=lambda entry: (
+                    float(entry["median_rmse_m"]), abs(float(entry["offset_s"])),
+                ),
+            )["offset_s"]
         report = {
             "schema_version": 2,
             "source_sha": _source_sha(),
@@ -174,8 +271,12 @@ def main() -> int:
             "odom_topic": "/odom_raw",
             "scan_count": len(node.scans),
             "odom_count": node.odom_received,
+            "localization_vs_raw": _pose_divergence(node.local_poses, node.poses),
             "pose_matched_scan_count": pose_matched,
             "pose_unmatched_scan_count": pose_unmatched,
+            "temporal_offset_sweep_s": temporal_offsets_s,
+            "best_temporal_offset_s": best_temporal_offset_s,
+            "temporal_offset_sweep": temporal_sweep,
             **summary,
             "worst_outliers": sorted(
                 outlier_records,
@@ -198,6 +299,7 @@ def main() -> int:
         runtime.finish(success, error=failure, evidence={
             "scan_count": len(node.scans), "odom_count": node.odom_received,
             "pose_count": len(node.poses),
+            "local_pose_count": len(node.local_poses),
             "metric_samples": [
                 metrics.sample_count for _, metrics in timed_metrics
             ],

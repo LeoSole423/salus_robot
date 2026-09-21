@@ -35,6 +35,85 @@ class StaticScanMetrics:
     worst_errors_m: tuple[float, ...] = ()
 
 
+def summarize_temporal_offset_sweep(
+    timed_scans: Iterable[tuple[float, object]],
+    pose_samples: Sequence[tuple[float, Pose2D]],
+    obstacles: Iterable[StaticObstacle],
+    offsets_s: Iterable[float],
+    *,
+    range_min_m: float = 0.0,
+    range_max_m: float = math.inf,
+) -> list[dict[str, object]]:
+    """Report scan geometry error for a bounded pose timestamp sweep.
+
+    Positive offsets evaluate the pose after the scan timestamp; negative
+    offsets evaluate it before.  This is deliberately diagnostic: it does not
+    select or apply a runtime correction and it never extrapolates a pose.
+    ``timed_scans`` contains ``(stamp_s, LaserScan-like message)`` pairs so the
+    pure metric remains independent of ROS node state.
+    """
+    scans = tuple((float(stamp_s), scan) for stamp_s, scan in timed_scans)
+    obstacles = tuple(obstacles)
+    results: list[dict[str, object]] = []
+    for raw_offset_s in offsets_s:
+        offset_s = float(raw_offset_s)
+        if not math.isfinite(offset_s):
+            raise ValueError("temporal offsets must be finite")
+        metrics: list[StaticScanMetrics] = []
+        paired_count = 0
+        for stamp_s, scan in scans:
+            pose = interpolate_pose(pose_samples, stamp_s + offset_s)
+            if pose is None:
+                continue
+            paired_count += 1
+            current = scan_static_error_metrics(
+                scan.ranges,
+                scan.angle_min,
+                scan.angle_increment,
+                pose,
+                obstacles,
+                range_min_m=range_min_m,
+                range_max_m=range_max_m,
+            )
+            if current.sample_count:
+                metrics.append(current)
+        if not metrics:
+            results.append({
+                "offset_s": offset_s,
+                "paired_scan_count": paired_count,
+                "scored_scan_count": 0,
+                "median_rmse_m": None,
+                "max_rmse_m": None,
+                "max_p95_m": None,
+                "max_beam_m": None,
+            })
+            continue
+        rmse_values = sorted(
+            float(metric.scan_static_error_rmse_m) for metric in metrics
+        )
+        middle = (len(rmse_values) - 1) * 0.5
+        low, high = math.floor(middle), math.ceil(middle)
+        median_rmse = rmse_values[low] + (rmse_values[high] - rmse_values[low]) * (
+            middle - low
+        )
+        results.append({
+            "offset_s": offset_s,
+            "paired_scan_count": paired_count,
+            "scored_scan_count": len(metrics),
+            "median_rmse_m": median_rmse,
+            "max_rmse_m": max(
+                float(metric.scan_static_error_rmse_m) for metric in metrics
+            ),
+            "max_p95_m": max(
+                float(metric.scan_static_error_p95_m) for metric in metrics
+            ),
+            "max_beam_m": max(
+                float(metric.max_error_m) for metric in metrics
+            ),
+        })
+    return results
+
+
 def summarize_scan_metrics(
     timed_metrics: Iterable[tuple[float, StaticScanMetrics]],
 ) -> dict[str, object]:

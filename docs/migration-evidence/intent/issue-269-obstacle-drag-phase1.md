@@ -42,6 +42,14 @@ v2 conserva provenance, pairing, conteos y `worst_outliers`; sus agregados son
 `max_beam_static_error_m`. `per_scan_metrics` queda ordenado por `stamp_s` y
 contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
 
+El corte de instrumentación también conserva `temporal_offset_sweep`, un
+barrido report-only de poses de `/odom_raw` entre `-0.30` y `+0.30` s, y
+`localization_vs_raw`, una comparación temporal de `/odometry/local` contra
+`/odom_raw`. `best_temporal_offset_s` es sólo el mínimo observado de mediana
+RMSE; no constituye una corrección ni un gate. Un mínimo estrecho y estable
+sería evidencia de desfase temporal constante; la ausencia de mejora en toda
+la grilla mantiene abierta la hipótesis de distorsión geométrica o de barrido.
+
 El smoke ejecuta una maniobra open-loop única a través del `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
 y stop. No agrega otro controller ni modifica la navegación productiva.
@@ -97,5 +105,7 @@ del operador; no se persiste ni cambia ningún archivo de producción.
 
 Esta fase no implementa todavía `trail_width_p95_m` ni
 `ghost_persistence_s`, no rastrea obstáculos en el tiempo y no cambia ninguna
-configuración para corregir el arrastre. El world permite inspección y una
+configuración para corregir el arrastre. Tampoco usa el signo de dirección como
+diagnóstico aislado: el perfil simulado conserva la inversión del backend y su
+compensación en la odometría legacy. El world permite inspección y una
 curva estacionaria/segura en simulación, pero no constituye validación física.

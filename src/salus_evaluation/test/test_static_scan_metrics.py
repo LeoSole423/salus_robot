@@ -8,6 +8,7 @@ from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
     StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
     ray_box_intersection, scan_static_error_metrics, summarize_scan_metrics,
+    summarize_temporal_offset_sweep,
 )
 
 
@@ -146,3 +147,34 @@ def test_scan_summary_orders_scans_and_preserves_distinct_maxima() -> None:
     ]
     assert summary["per_scan_metrics"][0]["max_m"] == pytest.approx(0.3)
     assert summary["per_scan_metrics"][1]["max_m"] == pytest.approx(0.9)
+
+
+def test_temporal_offset_sweep_finds_known_pose_shift() -> None:
+    obstacle = StaticObstacle("box", 5.0, 0.0, 1.0, 1.0)
+    poses = [
+        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (11.0, Pose2D(1.0, 0.0, 0.0)),
+    ]
+    scan_pose = Pose2D(0.2, 0.0, 0.0)
+    ranges = []
+    for index in range(181):
+        angle = -math.pi / 2.0 + index * math.pi / 180.0
+        hit = ray_box_intersection(scan_pose.x_m, scan_pose.y_m, angle, obstacle)
+        ranges.append(float("inf") if hit is None else hit)
+
+    class ScanLike:
+        angle_min = -math.pi / 2.0
+        angle_increment = math.pi / 180.0
+        range_min = 0.0
+        range_max = 20.0
+
+        def __init__(self, values: list[float]) -> None:
+            self.ranges = values
+
+    result = summarize_temporal_offset_sweep(
+        [(10.0, ScanLike(ranges))], poses, [obstacle], [-0.2, 0.0, 0.2],
+        range_max_m=20.0,
+    )
+    by_offset = {entry["offset_s"]: entry for entry in result}
+    assert by_offset[0.2]["median_rmse_m"] == pytest.approx(0.0)
+    assert by_offset[0.0]["median_rmse_m"] > 0.0
