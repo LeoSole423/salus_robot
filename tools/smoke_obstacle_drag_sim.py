@@ -450,6 +450,7 @@ def _projection_oracle(node, stamps, obstacles):
     finite_infinite_mismatches = 0
     invalid_actual_count = 0
     common_finite_support_count = 0
+    geometry_paired_count = 0
     for stamp_ns in stamps:
         cloud = obstacle_clouds.get(stamp_ns)
         scan = scans.get(stamp_ns)
@@ -488,6 +489,8 @@ def _projection_oracle(node, stamps, obstacles):
                 obstacles, range_min_m=max(0.0, message.range_min),
                 range_max_m=message.range_max, beam_indices=common_support,
             ))
+            if oracle_geometry["sample_count"] and actual_geometry["sample_count"]:
+                geometry_paired_count += 1
         for index, (expected, actual) in enumerate(
             zip(oracle_ranges, message.ranges)
         ):
@@ -517,7 +520,7 @@ def _projection_oracle(node, stamps, obstacles):
             "name": "pointcloud_to_laserscan_projection",
             "upstream_repository": "ros-perception/pointcloud_to_laserscan",
             "upstream_ref": "humble",
-            "installed_package_version": "2.0.1",
+            "validated_against_version": "2.0.1",
         },
         "parameters": {
             "min_height": -0.1,
@@ -530,6 +533,7 @@ def _projection_oracle(node, stamps, obstacles):
         "finite_infinite_mismatch_count": finite_infinite_mismatches,
         "invalid_actual_count": invalid_actual_count,
         "common_finite_support_count": common_finite_support_count,
+        "geometry_paired_count": geometry_paired_count,
         "range_delta_m": {
             "status": "measured" if all_deltas else "insufficient_data",
             "median": _percentile(all_deltas, 0.50) if all_deltas else None,

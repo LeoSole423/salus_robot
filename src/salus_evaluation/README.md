@@ -76,7 +76,8 @@ disponibilidad geométrica son invariantes del smoke y hacen fallar la captura
 si no se cumplen. El soporte de haces común se publica para evitar comparar
 conjuntos distintos, pero su igualdad entre `/scan` y `/scan_clean` queda como
 diagnóstico porque el filtro puede cambiarlo. `projection_oracle` reproyecta
-`/obstacles_cloud` con la semántica de `pointcloud_to_laserscan` Humble 2.0.1
+`/obstacles_cloud` con la semántica de `pointcloud_to_laserscan` Humble validada
+contra la versión 2.0.1
 y compara haz por haz contra `/scan` con el mismo `header.stamp`. Conserva la
 provenance y parámetros efectivos, acuerdo finito/infinito, soporte común,
 deltas de rango mediana/p95/máximo, peores haces y geometría conocida de

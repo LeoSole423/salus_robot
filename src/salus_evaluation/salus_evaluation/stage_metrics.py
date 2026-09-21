@@ -193,6 +193,18 @@ def validate_stage_lineage(
         or projection_oracle["paired_count"] < minimum_chains
     ):
         errors.append(f"projection_oracle_pairs<{minimum_chains}")
+    else:
+        common_support = projection_oracle.get("common_finite_support_count")
+        if not isinstance(common_support, int) or common_support <= 0:
+            errors.append("projection_oracle_support<=0")
+        geometry_pairs = projection_oracle.get("geometry_paired_count")
+        if not isinstance(geometry_pairs, int) or geometry_pairs < minimum_chains:
+            errors.append(f"projection_oracle_geometry_pairs<{minimum_chains}")
+        range_delta = projection_oracle.get("range_delta_m")
+        if not isinstance(range_delta, Mapping) or range_delta.get(
+            "status"
+        ) != "measured":
+            errors.append("projection_oracle_delta_unmeasured")
 
     stages = lineage.get("stages")
     expected_topics = (

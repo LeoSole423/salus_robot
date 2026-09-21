@@ -365,7 +365,13 @@ def _valid_stage_lineage() -> dict[str, object]:
         "raw_to_normalized_content_equal": True,
         "scan_to_clean_metadata_equal": True,
         "common_scan_beam_count": 10,
-        "projection_oracle": {"status": "measured", "paired_count": 10},
+        "projection_oracle": {
+            "status": "measured",
+            "paired_count": 10,
+            "common_finite_support_count": 10,
+            "geometry_paired_count": 10,
+            "range_delta_m": {"status": "measured"},
+        },
         "stages": {
             "/scan_3d_raw": {"geometry": cloud_geometry},
             "/scan_3d": {"geometry": cloud_geometry},
@@ -392,6 +398,20 @@ def test_stage_lineage_validator_rejects_invariant_mutations() -> None:
     del missing_stage["stages"]["/scan_clean"]
     with pytest.raises(ValueError, match="stage_missing"):
         validate_stage_lineage(missing_stage)
+
+
+def test_stage_lineage_validator_rejects_empty_projection_evidence() -> None:
+    empty_oracle = _valid_stage_lineage()
+    empty_oracle["projection_oracle"]["common_finite_support_count"] = 0
+    with pytest.raises(ValueError, match="projection_oracle_support"):
+        validate_stage_lineage(empty_oracle)
+
+    unmeasured_delta = _valid_stage_lineage()
+    unmeasured_delta["projection_oracle"]["range_delta_m"] = {
+        "status": "insufficient_data",
+    }
+    with pytest.raises(ValueError, match="projection_oracle_delta"):
+        validate_stage_lineage(unmeasured_delta)
 
     insufficient_geometry = _valid_stage_lineage()
     insufficient_geometry["stages"]["/scan_3d"]["geometry"]["status"] = (
