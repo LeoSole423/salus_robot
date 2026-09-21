@@ -225,3 +225,20 @@ def test_pose_divergence_has_zero_and_positive_controls() -> None:
     assert identical["p95_yaw_error_rad"] == pytest.approx(0.0)
     assert divergent["p95_position_error_m"] == pytest.approx(0.1)
     assert divergent["p95_yaw_error_rad"] == pytest.approx(0.095)
+
+
+def test_pose_divergence_reports_insufficient_data_without_tf_samples() -> None:
+    summary = summarize_pose_divergence([], [
+        (10.0, Pose2D(0.0, 0.0, 0.0)),
+        (11.0, Pose2D(1.0, 0.0, 0.0)),
+    ])
+
+    assert summary == {
+        "status": "insufficient_data",
+        "pose_count": 0,
+        "paired_count": 0,
+        "p95_position_error_m": None,
+        "max_position_error_m": None,
+        "p95_yaw_error_rad": None,
+        "max_yaw_error_rad": None,
+    }

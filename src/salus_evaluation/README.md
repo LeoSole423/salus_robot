@@ -51,8 +51,11 @@ intersección de haces scoreables; `scored_beam_support` y
 entradas realmente comparables. `localization_vs_raw` compara
 `/odometry/local` con `/odom_raw`, y `tf_vs_raw` compara el TF dinámico
 `odom -> base_footprint` de `/tf` con `/odom_raw`, siempre por timestamp, e
-informa divergencia de posición y yaw. Ninguno de estos campos es un umbral de
-aceptación ni modifica TF, EKF, LiDAR o costmaps.
+informa divergencia de posición y yaw. El smoke requiere al menos dos muestras
+TF emparejadas para considerar válida la captura; una ausencia de TF queda como
+fallo de instrumentación, no como una conclusión de baja divergencia. Ninguno
+de estos campos es un umbral de aceptación ni modifica TF, EKF, LiDAR o
+costmaps.
 
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta

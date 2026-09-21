@@ -52,10 +52,11 @@ y `best_temporal_offset_support` conserva el soporte usado. El artefacto
 incluye además `localization_vs_raw` (`/odometry/local` frente a
 `/odom_raw`) y `tf_vs_raw` (el TF dinámico `odom -> base_footprint` de `/tf`
 frente a `/odom_raw`), ambos comparados por timestamp. Ninguno de estos
-diagnósticos constituye una corrección ni un gate. Un mínimo estrecho y
-estable sería evidencia de desfase temporal constante; la ausencia de mejora
-en toda la grilla mantiene abierta la hipótesis de distorsión geométrica o de
-barrido.
+diagnósticos constituye una corrección ni un gate de producto; el smoke sí
+exige al menos dos muestras TF emparejadas para no declarar exitosa una captura
+sin instrumentación. Un mínimo estrecho y estable sería evidencia de desfase
+temporal constante; la ausencia de mejora en toda la grilla mantiene abierta la
+hipótesis de distorsión geométrica o de barrido.
 
 El smoke ejecuta una maniobra open-loop única a través del `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta

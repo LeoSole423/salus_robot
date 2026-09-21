@@ -286,6 +286,18 @@ def main() -> int:
                     float(entry["median_rmse_m"]), abs(float(entry["offset_s"])),
                 ),
             )["offset_s"]
+        tf_summary = _pose_divergence(
+            node.tf_poses, node.poses, pose_count_key="tf_pose_count"
+        )
+        if (
+            tf_summary["status"] != "measured"
+            or int(tf_summary["tf_pose_count"]) < 2
+            or int(tf_summary["paired_count"]) < 2
+        ):
+            raise RuntimeError(
+                "dynamic TF odom -> base_footprint did not provide "
+                "at least two timestamp-paired samples"
+            )
         report = {
             "schema_version": 2,
             "source_sha": _source_sha(),
@@ -317,9 +329,7 @@ def main() -> int:
                 if baseline_sweep is not None else None
             ),
             "temporal_offset_sweep": temporal_sweep,
-            "tf_vs_raw": _pose_divergence(
-                node.tf_poses, node.poses, pose_count_key="tf_pose_count"
-            ),
+            "tf_vs_raw": tf_summary,
             **summary,
             "worst_outliers": sorted(
                 outlier_records,
