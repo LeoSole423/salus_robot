@@ -326,19 +326,30 @@ def test_stage_lineage_validator_rejects_invariant_mutations() -> None:
     with pytest.raises(ValueError, match="geometry_unmeasured"):
         validate_stage_lineage(insufficient_geometry)
 
+    insufficient_pairs = _valid_stage_lineage()
+    insufficient_pairs["stages"]["/scan"]["geometry"]["paired_count"] = 9
+    with pytest.raises(ValueError, match="scan_geometry_pairs<10"):
+        validate_stage_lineage(insufficient_pairs)
+
 
 def test_pointcloud_signature_tracks_non_header_payload_fields() -> None:
-    def message(is_dense: bool, frame_id: str) -> SimpleNamespace:
+    def message(
+        is_dense: bool,
+        frame_id: str,
+        *,
+        data: bytes = b"1234",
+        point_step: int = 4,
+    ) -> SimpleNamespace:
         return SimpleNamespace(
             header=SimpleNamespace(frame_id=frame_id),
             height=1,
             width=1,
             fields=(SimpleNamespace(name="x", offset=0, datatype=7, count=1),),
             is_bigendian=False,
-            point_step=4,
+            point_step=point_step,
             row_step=4,
             is_dense=is_dense,
-            data=b"1234",
+            data=data,
         )
 
     assert pointcloud_payload_signature(message(True, "frame_a")) == (
@@ -346,6 +357,12 @@ def test_pointcloud_signature_tracks_non_header_payload_fields() -> None:
     )
     assert pointcloud_payload_signature(message(True, "frame_a")) != (
         pointcloud_payload_signature(message(False, "frame_a"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(True, "frame_a", data=b"5678"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(True, "frame_a", point_step=8))
     )
 
 

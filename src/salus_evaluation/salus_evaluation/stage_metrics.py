@@ -88,8 +88,10 @@ def validate_stage_lineage(
                     errors.append(f"geometry_transform_missing:{topic}")
             elif not isinstance(geometry, Mapping) or not isinstance(
                 geometry.get("paired_count"), int
-            ) or geometry["paired_count"] <= 0:
-                errors.append(f"scan_geometry_unpaired:{topic}")
+            ) or geometry["paired_count"] < minimum_chains:
+                errors.append(
+                    f"scan_geometry_pairs<{minimum_chains}:{topic}"
+                )
     if errors:
         raise ValueError("invalid stage lineage: " + ", ".join(errors))
 
