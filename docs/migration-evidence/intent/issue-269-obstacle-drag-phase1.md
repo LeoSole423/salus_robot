@@ -68,6 +68,74 @@ integración existente con `launch_navigation:=false` y guarda provenance de
 world, fixture, profile, seed, SHA, dominio, partición, conteos y métricas en
 `artifacts/smokes/<run>/`.
 
+## Lineage de la percepción
+
+El mismo corte captura la cadena completa
+`/scan_3d_raw → /scan_3d → /obstacles_cloud → /scan → /scan_clean` en
+`obstacle_drag_stage_metrics.json`. Una muestra sólo entra al análisis si los
+cinco tópicos comparten exactamente el mismo `header.stamp`; la ejecución
+requiere al menos diez cadenas completas. El artefacto conserva las pérdidas
+por arista, latencias de recepción, frames, firmas de payload y métricas
+geométricas de cada etapa, además del soporte común de haces entre `/scan` y
+`/scan_clean`. Las firmas de nube excluyen el header y permiten comprobar el
+invariante raw→normalizado; el frame y el stamp se validan por separado. Los
+metadatos angulares, frame y stamp de `/scan`→`/scan_clean` también quedan
+comparados explícitamente.
+
+La captura falla si no alcanza diez cadenas, si se pierde un stamp, si el
+payload raw→normalizado cambia, si `/scan`→`/scan_clean` cambia sus metadatos o
+si alguna etapa no puede producir geometría emparejada. La igualdad exacta del
+soporte de haces entre esos dos scans no es un gate: el filtro puede eliminar
+ruido y por eso se conserva la intersección común junto con la diferencia.
+
+### Siguiente corte: oracle de proyección
+
+La diferencia entre el error geométrico de `/obstacles_cloud` y `/scan` no se
+interpreta todavía como un defecto de `pointcloud_to_laserscan`: las métricas
+actuales comparan representaciones distintas. El siguiente corte agrega un
+oracle puro, limitado a evaluación, que reproyecta cada `/obstacles_cloud`
+emparejada y compara su resultado haz por haz con `/scan` del mismo stamp.
+
+El oracle debe reproducir la semántica de `pointcloud_to_laserscan` instalada
+en Humble (`2.0.1`) y usar los metadatos del mensaje `/scan` junto con los
+parámetros efectivos de altura y `use_inf`:
+
+- tamaño de `ranges` igual a
+  `ceil((angle_max - angle_min) / angle_increment)`;
+- rechazo de coordenadas NaN, alturas fuera del intervalo inclusivo y rangos o
+  ángulos fuera de los límites inclusivos;
+- bin calculado truncando
+  `(angle - angle_min) / angle_increment` a entero;
+- conservación del rango mínimo de todos los puntos que caen en el mismo bin;
+- bins vacíos en infinito cuando `use_inf` es verdadero.
+
+El artefacto de stages debe incorporar una sección `projection_oracle` con la
+versión/provenance del algoritmo y sus parámetros, cantidad de pares exactos,
+acuerdo finito/infinito, diferencias absolutas de rango mediana, p95 y máxima,
+conteo de bins discordantes e índices de los peores bins. También debe puntuar
+la geometría conocida del oracle y del scan real sobre soporte común, para que
+la comparación no cambie de población entre ambas representaciones.
+
+La captura exige al menos diez pares por stamp y métricas completas. Una
+discordancia oracle→scan es un resultado diagnóstico y no hace fallar el smoke:
+el corte debe conservar evidencia suficiente para distinguir una divergencia
+del proyector de un efecto de muestreo/binning. Sí debe fallar si no puede
+construir la comparación o si faltan parámetros, stamps o soporte. Los tests
+unitarios deben cubrir nube vacía, múltiples puntos por bin, NaN/Inf, límites
+de altura/rango/ángulo, truncamiento de bin y detección de una divergencia
+inyectada.
+
+Este corte no modifica el nodo productivo, sus parámetros, QoS, TF, costmaps ni
+navegación. Tampoco propone una corrección hasta observar el resultado del
+oracle en PC/simulación.
+
+En la simulación, `/scan_3d_raw` puede conservar un frame interno de Gazebo que
+no aparece en TF. Si el payload raw y normalizado es idéntico, su geometría se
+evalúa usando el mensaje normalizado y se marca como tal; no se crea un TF
+ficticio ni se presenta esa sustitución como evidencia causal. Los puntos
+NaN/Inf y las nubes vacías quedan como `insufficient_data`. Esta captura es
+diagnóstica y no cambia QoS, TF, deskew, clearing, costmaps ni la navegación.
+
 ## Ejecución headless
 
 ```bash

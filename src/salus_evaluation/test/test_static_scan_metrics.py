@@ -1,10 +1,15 @@
 """Pure tests for the obstacle-drag static scan geometry metrics."""
 
 import math
+from types import SimpleNamespace
 
 import pytest
 
 from salus_evaluation.models import Pose2D
+from salus_evaluation.stage_metrics import (
+    beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
+    summarize_point_geometry, transform_points_to_odom, validate_stage_lineage,
+)
 from salus_evaluation.static_scan_metrics import (
     StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
     ray_box_intersection, scan_static_error_metrics, summarize_scan_metrics,
@@ -242,3 +247,129 @@ def test_pose_divergence_reports_insufficient_data_without_tf_samples() -> None:
         "p95_yaw_error_rad": None,
         "max_yaw_error_rad": None,
     }
+
+
+def test_stage_point_geometry_has_zero_and_divergent_controls() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    points = [(3.5, 0.0), (4.0, 0.5)]
+    perfect = summarize_point_geometry(points, [obstacle])
+    divergent = summarize_point_geometry([(3.0, 0.0)], [obstacle])
+    empty = summarize_point_geometry([], [obstacle])
+
+    assert perfect["status"] == "measured"
+    assert perfect["p95_surface_error_m"] == pytest.approx(0.0)
+    assert divergent["p95_surface_error_m"] == pytest.approx(0.5)
+    assert empty["status"] == "insufficient_data"
+
+    nonfinite = summarize_point_geometry(
+        [(float("nan"), 0.0), (float("inf"), 0.0)], [obstacle]
+    )
+    assert nonfinite["status"] == "insufficient_data"
+
+    rotated = summarize_point_geometry(
+        transform_points_to_odom(points, Pose2D(0.0, 0.0, 0.1)), [obstacle]
+    )
+    assert rotated["status"] == "measured"
+    assert rotated["p95_surface_error_m"] > 0.0
+
+
+def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:
+    assert exact_common_stamps([{1, 2, 3}, {2, 3}, {3, 4}]) == (3,)
+    assert exact_common_stamps([{1, 2}, {4, 5}]) == ()
+    assert beam_support_is_identical([1, 2, 3], [3, 1, 2])
+    assert not beam_support_is_identical([1, 2, 3], [1, 2, 4])
+
+
+def _valid_stage_lineage() -> dict[str, object]:
+    cloud_geometry = {
+        "status": "measured", "transform_missing_count": 0,
+    }
+    scan_geometry = {"status": "measured", "paired_count": 10}
+    return {
+        "complete_chain_count": 10,
+        "evaluated_chain_count": 10,
+        "stamp_preserved_across_chain": True,
+        "raw_to_normalized_content_equal": True,
+        "scan_to_clean_metadata_equal": True,
+        "common_scan_beam_count": 10,
+        "stages": {
+            "/scan_3d_raw": {"geometry": cloud_geometry},
+            "/scan_3d": {"geometry": cloud_geometry},
+            "/obstacles_cloud": {"geometry": cloud_geometry},
+            "/scan": {"geometry": scan_geometry},
+            "/scan_clean": {"geometry": scan_geometry},
+        },
+    }
+
+
+def test_stage_lineage_validator_rejects_invariant_mutations() -> None:
+    validate_stage_lineage(_valid_stage_lineage())
+    for field in (
+        "stamp_preserved_across_chain",
+        "raw_to_normalized_content_equal",
+        "scan_to_clean_metadata_equal",
+    ):
+        mutated = _valid_stage_lineage()
+        mutated[field] = False
+        with pytest.raises(ValueError, match=field):
+            validate_stage_lineage(mutated)
+
+    missing_stage = _valid_stage_lineage()
+    del missing_stage["stages"]["/scan_clean"]
+    with pytest.raises(ValueError, match="stage_missing"):
+        validate_stage_lineage(missing_stage)
+
+    insufficient_geometry = _valid_stage_lineage()
+    insufficient_geometry["stages"]["/scan_3d"]["geometry"]["status"] = (
+        "insufficient_data"
+    )
+    with pytest.raises(ValueError, match="geometry_unmeasured"):
+        validate_stage_lineage(insufficient_geometry)
+
+    insufficient_pairs = _valid_stage_lineage()
+    insufficient_pairs["stages"]["/scan"]["geometry"]["paired_count"] = 9
+    with pytest.raises(ValueError, match="scan_geometry_pairs<10"):
+        validate_stage_lineage(insufficient_pairs)
+
+
+def test_pointcloud_signature_tracks_non_header_payload_fields() -> None:
+    def message(
+        is_dense: bool,
+        frame_id: str,
+        *,
+        data: bytes = b"1234",
+        point_step: int = 4,
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            header=SimpleNamespace(frame_id=frame_id),
+            height=1,
+            width=1,
+            fields=(SimpleNamespace(name="x", offset=0, datatype=7, count=1),),
+            is_bigendian=False,
+            point_step=point_step,
+            row_step=4,
+            is_dense=is_dense,
+            data=data,
+        )
+
+    assert pointcloud_payload_signature(message(True, "frame_a")) == (
+        pointcloud_payload_signature(message(True, "frame_b"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(False, "frame_a"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(True, "frame_a", data=b"5678"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(True, "frame_a", point_step=8))
+    )
+
+
+def test_stage_point_transform_uses_raw_pose() -> None:
+    transformed = transform_points_to_odom(
+        [(1.0, 0.0)], Pose2D(2.0, 3.0, math.pi / 2.0)
+    )
+
+    assert transformed[0][0] == pytest.approx(2.0)
+    assert transformed[0][1] == pytest.approx(4.0)
