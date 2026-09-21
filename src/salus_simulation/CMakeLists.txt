@@ -11,6 +11,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
   ament_add_pytest_test(test_motion_assets test/test_motion_assets.py)
   ament_add_pytest_test(test_sensor_profiles test/test_sensor_profiles.py)
+  ament_add_pytest_test(test_obstacle_drag_assets test/test_obstacle_drag_assets.py)
 endif()
 
 ament_package()

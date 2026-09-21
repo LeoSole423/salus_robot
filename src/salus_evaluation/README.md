@@ -18,6 +18,79 @@ si la maniobra inicial pide izquierda, derecha o recto. Si no puede inferirlo,
 el gate `turn_sign` falla en lugar de omitir esa comprobación. Ambos modos
 generan el mismo bundle versionado en `artifacts/evaluations/`.
 
+## Medición de arrastre de obstáculos
+
+La Fase 1 de #269 usa `salus_simulation/worlds/obstacle_drag.world`, un world
+con tres cajas estáticas de geometría conocida en `odom`. El fixture
+`obstacle_drag_geometry.yaml` conserva sus poses y dimensiones como provenance.
+El smoke `./tools/smoke_obstacle_drag_sim.sh` reutiliza
+`integration_sim.launch.py` y comprueba que `/scan_clean` vea la geometría sin
+iniciar navegación.
+
+`salus_evaluation.static_scan_metrics.scan_static_error_metrics` transforma cada
+haz de `/scan_clean` desde `base_footprint` a `odom` usando la pose de `/odom_raw`
+interpolada en el timestamp ROS del scan, calcula la intersección esperada con
+las cajas conocidas y reporta el error por scan y los índices/errores de los tres
+peores haces. Sólo se puntúan haces que deberían intersectar una caja; el espacio
+libre no se considera error.
+
+El artefacto `obstacle_drag_metrics.json` usa `schema_version: 2` (el fixture
+geométrico sigue en v1). Conserva provenance, pairing, conteos y
+`worst_outliers`; sus agregados inequívocos son
+`max_scan_static_error_rmse_m`, `max_scan_static_error_p95_m` y
+`max_beam_static_error_m`. `per_scan_metrics` está ordenado por `stamp_s` y
+contiene `stamp_s`, `sample_count`, `rmse_m`, `p95_m` y `max_m`.
+
+El mismo artefacto agrega diagnósticos report-only para separar causas:
+`temporal_offset_sweep` reevalúa los últimos scans con poses de `/odom_raw`
+desplazadas entre `-0.30` y `+0.30` s, sin extrapolar ni aplicar el offset al
+runtime. Todos los offsets usan exactamente el mismo conjunto de scans y la
+intersección de haces scoreables; `scored_beam_support` y
+`best_temporal_offset_support` dejan esa población explícita. Por eso
+`best_temporal_offset_s` sólo identifica el mínimo de la mediana RMSE entre
+entradas realmente comparables. `localization_vs_raw` compara
+`/odometry/local` con `/odom_raw`, y `tf_vs_raw` compara el TF dinámico
+`odom -> base_footprint` de `/tf` con `/odom_raw`, siempre por timestamp, e
+informa divergencia de posición y yaw. El smoke requiere al menos dos muestras
+TF emparejadas para considerar válida la captura; una ausencia de TF queda como
+fallo de instrumentación, no como una conclusión de baja divergencia. Ninguno
+de estos campos es un umbral de aceptación ni modifica TF, EKF, LiDAR o
+costmaps.
+
+El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
+entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
+y stop. Esto mantiene la medición reproducible sin añadir otro controller.
+Esto es instrumentación base, no un diagnóstico ni un cambio del pipeline de
+LiDAR, TF, EKF, costmaps o Nav2.
+
+Para inspección gráfica, usar dos terminales con el entorno ROS del compose. En
+el primero, levantar el world con RViz:
+
+```bash
+docker compose run --rm \
+  -e ROS_DOMAIN_ID=49 -e GZ_PARTITION=salus-obstacle-drag-gui \
+  -e IGN_PARTITION=salus-obstacle-drag-gui \
+  ros2 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && \
+    ros2 launch salus_bringup integration_sim.launch.py \
+      world:=/ros2_ws/install/salus_simulation/share/salus_simulation/worlds/obstacle_drag.world \
+      gz_args:="-r" rviz:=true sim_sensor_profile:=clean sim_sensor_seed:=6400'
+```
+
+En el segundo, ejecutar la misma maniobra con el mismo dominio y
+`use_sim_time=true`:
+
+```bash
+docker compose run --rm \
+  -e ROS_DOMAIN_ID=49 -e GZ_PARTITION=salus-obstacle-drag-gui \
+  -e IGN_PARTITION=salus-obstacle-drag-gui \
+  ros2 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && \
+    python3 /ros2_ws/tools/obstacle_drag_maneuver.py \
+      --ros-args -p use_sim_time:=true'
+```
+
+En RViz, seleccionar `odom` como Fixed Frame y verificar durante la maniobra
+`/scan_clean`, `/local_costmap/costmap`, `/global_costmap/costmap` y el robot.
+
 El bundle v2 conserva `commands.csv` como la solicitud Nav2 en `/cmd_vel` y
 agrega las etapas `/cmd_vel_safe`, `/cmd_vel_final`, `VehicleCommand` y
 `DriveTelemetry`, junto con los diagnósticos observados de control. Las
