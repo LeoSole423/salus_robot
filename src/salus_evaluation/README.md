@@ -109,6 +109,14 @@ de `turn_1`, incluyendo obligatoriamente `turn_2` y `pause_2`; esta es la métri
 directa para la marca vieja observada durante el segundo giro. El costmap global
 queda como evidencia diagnóstica independiente.
 
+Para el caso repetido, el artefacto también sigue la geometría de esa cohorte
+durante `turn_2`. Compara las celdas letales en dos marcos y reporta por separado
+el subconjunto sin respaldo del scan contemporáneo: conservar la forma en
+`odom` respalda la hipótesis
+`world_fixed`, mientras conservarla en `base_footprint` respalda
+`base_attached`. Los controles sintéticos cubren ambos casos y un cúmulo nuevo
+sin correspondencia; un resultado ambiguo permanece explícitamente ambiguo.
+
 El análisis puro en `costmap_drag_metrics.py` transforma por defecto sólo
 celdas con coste Nav2 `254` (lethal) a `odom`; `253` (inscribed/inflated) y
 `255` (unknown) quedan fuera de la medición principal. Conserva también las

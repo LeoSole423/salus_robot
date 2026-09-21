@@ -24,7 +24,8 @@ from tf2_ros import Buffer, TransformListener
 
 from salus_evaluation.costmap_drag_metrics import (
     CostmapObservation, CostmapSnapshot, occupied_grid_points,
-    summarize_costmap_observations, transform_odom_points_to_base,
+    summarize_cohort_frame_tracking, summarize_costmap_observations,
+    transform_odom_points_to_base,
 )
 from salus_evaluation.models import Pose2D
 from salus_evaluation.static_scan_metrics import (
@@ -305,6 +306,7 @@ def main() -> int:
                 f"supported={common_local['cohort_supported_cell_count']}"
             )
         first_turn_carryover = None
+        first_turn_frame_tracking = None
         if args.repetitions == 2:
             first_turn_carryover = summarize_costmap_observations(
                 local_observations, obstacles,
@@ -323,6 +325,18 @@ def main() -> int:
                     f"coverage={first_turn_carryover['measurement_coverage_s']} "
                     f"supported="
                     f"{first_turn_carryover['cohort_supported_cell_count']}"
+                )
+            first_turn_frame_tracking = summarize_cohort_frame_tracking(
+                local_observations,
+                scan_support=scan_support,
+                cohort_phase="turn_1",
+                measurement_phases=("turn_2",),
+            )
+            if first_turn_frame_tracking["status"] != "measured":
+                raise RuntimeError(
+                    "first-turn frame tracking was not measurable during turn_2: "
+                    f"seed={first_turn_frame_tracking['seed_cell_count']} "
+                    f"usable={first_turn_frame_tracking['usable_observation_count']}"
                 )
         report = {
             "schema_version": 1,
@@ -362,6 +376,7 @@ def main() -> int:
             "local_costmap": local,
             "local_costmap_common_window": common_local,
             "local_costmap_first_turn_carryover": first_turn_carryover,
+            "local_costmap_first_turn_frame_tracking": first_turn_frame_tracking,
             "global_costmap": global_,
         }
         args.metrics_path.parent.mkdir(parents=True, exist_ok=True)

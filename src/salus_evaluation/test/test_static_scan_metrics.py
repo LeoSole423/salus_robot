@@ -8,8 +8,8 @@ import pytest
 from salus_evaluation.models import Pose2D
 from salus_evaluation.costmap_drag_metrics import (
     CostmapObservation, CostmapSnapshot, occupied_grid_points,
-    summarize_costmap_observations, transform_costmap_points_to_odom,
-    transform_odom_points_to_base,
+    summarize_cohort_frame_tracking, summarize_costmap_observations,
+    transform_costmap_points_to_odom, transform_odom_points_to_base,
 )
 from salus_evaluation.stage_metrics import (
     beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
@@ -321,6 +321,116 @@ def test_costmap_drag_metrics_distinguish_world_and_base_controls() -> None:
         ], [obstacle],
     )
     assert base_attached["classification"] == "base_attached"
+
+
+def test_costmap_cohort_tracking_distinguishes_world_fixed_control() -> None:
+    result = summarize_cohort_frame_tracking(
+        [
+            CostmapObservation(
+                1.0, "turn_1",
+                ((4.0, 0.0), (4.0, 0.1)),
+                ((4.0, 0.0), (4.0, 0.1)),
+            ),
+            CostmapObservation(
+                2.0, "turn_2",
+                ((4.0, 0.0), (4.0, 0.1)),
+                ((0.0, -4.0), (0.1, -4.0)),
+            ),
+        ],
+        scan_support=[
+            (1.0, ((4.0, 0.0), (4.0, 0.1))),
+            (2.0, ((8.0, 8.0),)),
+        ],
+        cohort_phase="turn_1", measurement_phases=("turn_2",),
+    )
+    assert result["status"] == "measured"
+    assert result["classification"] == "world_fixed"
+    assert result["world_fixed_match_fraction_median"] == pytest.approx(1.0)
+    assert result["base_attached_match_fraction_median"] == pytest.approx(0.0)
+
+
+def test_costmap_cohort_tracking_distinguishes_base_attached_control() -> None:
+    result = summarize_cohort_frame_tracking(
+        [
+            CostmapObservation(
+                1.0, "turn_1",
+                ((4.0, 0.0), (4.0, 0.1)),
+                ((2.0, 0.0), (2.0, 0.1)),
+            ),
+            CostmapObservation(
+                2.0, "turn_2",
+                ((0.0, 2.0), (-0.1, 2.0)),
+                ((2.0, 0.0), (2.0, 0.1)),
+            ),
+        ],
+        scan_support=[
+            (1.0, ((4.0, 0.0), (4.0, 0.1))),
+            (2.0, ((8.0, 8.0),)),
+        ],
+        cohort_phase="turn_1", measurement_phases=("turn_2",),
+    )
+    assert result["classification"] == "base_attached"
+    assert result["world_fixed_match_fraction_median"] == pytest.approx(0.0)
+    assert result["base_attached_match_fraction_median"] == pytest.approx(1.0)
+
+
+def test_costmap_cohort_tracking_rejects_new_cluster() -> None:
+    observations = [
+        CostmapObservation(
+            1.0, "turn_1", ((4.0, 0.0),), ((2.0, 0.0),),
+        ),
+        CostmapObservation(
+            2.0, "turn_2", ((9.0, 9.0),), ((8.0, 8.0),),
+        ),
+    ]
+    result = summarize_cohort_frame_tracking(
+        observations,
+        scan_support=[(1.0, ((4.0, 0.0),)), (2.0, ((0.0, 9.0),))],
+        cohort_phase="turn_1", measurement_phases=("turn_2",),
+    )
+    assert result["status"] == "measured"
+    assert result["classification"] == "unmatched"
+    assert result["usable_observation_count"] == 1
+
+
+def test_costmap_cohort_tracking_geometry_does_not_require_later_scan() -> None:
+    result = summarize_cohort_frame_tracking(
+        [
+            CostmapObservation(
+                1.0, "turn_1", ((4.0, 0.0),), ((2.0, 0.0),),
+            ),
+            CostmapObservation(
+                2.0, "turn_2", ((4.0, 0.0),), ((0.0, -4.0),),
+            ),
+        ],
+        scan_support=[(1.0, ((4.0, 0.0),))],
+        cohort_phase="turn_1", measurement_phases=("turn_2",),
+    )
+    assert result["classification"] == "world_fixed"
+    assert result["usable_observation_count"] == 1
+    assert result["samples"][0]["unsupported_cell_count"] is None
+
+
+def test_costmap_cohort_tracking_keeps_multiple_seed_clusters() -> None:
+    result = summarize_cohort_frame_tracking(
+        [
+            CostmapObservation(
+                1.0, "turn_1", ((4.0, 0.0), (8.0, 0.0)),
+                ((4.0, 0.0), (8.0, 0.0)),
+            ),
+            CostmapObservation(
+                2.0, "turn_2", ((4.0, 0.0), (9.0, 9.0)),
+                ((0.0, -4.0), (8.0, 8.0)),
+            ),
+        ],
+        scan_support=[(1.0, ((4.0, 0.0), (8.0, 0.0)))],
+        cohort_phase="turn_1", measurement_phases=("turn_2",),
+    )
+    assert result["cohort_count"] == 2
+    assert any(
+        cohort["classification"] == "world_fixed"
+        for cohort in result["cohorts"]
+    )
 
 
 def test_costmap_drag_metrics_report_unsupported_persistence() -> None:
