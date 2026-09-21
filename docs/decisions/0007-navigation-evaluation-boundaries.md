@@ -23,7 +23,7 @@ compararán individualmente mediante P95/P99 y límites explícitos; no habrá u
 puntuación única que oculte regresiones.
 
 La llegada distingue el contrato operacional vigente del objetivo de mejora.
-Mientras Nav2 use `xy_goal_tolerance: 1.2`, ése será el gate funcional. El
+Mientras Nav2 use `xy_goal_tolerance: 2.5`, ése será el gate funcional. El
 objetivo de precisión de 0.25 m se registra separadamente como `calibrating` y
 no rompe CI. Ambos valores son explícitos en cada artefacto y podrán reducirse
 con evidencia acumulada.

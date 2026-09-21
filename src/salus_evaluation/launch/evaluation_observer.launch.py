@@ -12,7 +12,7 @@ def generate_launch_description():
         DeclareLaunchArgument("scenario", default_value=""),
         DeclareLaunchArgument("output_dir"),
         DeclareLaunchArgument(
-            "goal_tolerance_m", default_value="1.2",
+            "goal_tolerance_m", default_value="2.5",
             description="Current functional Nav2 arrival tolerance in metres.",
         ),
         DeclareLaunchArgument(

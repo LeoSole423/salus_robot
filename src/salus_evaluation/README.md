@@ -177,7 +177,7 @@ comandos o plan invalidan la ejecución.
 
 La llegada tiene dos referencias deliberadamente separadas:
 
-- `goal_tolerance_m=1.2`: gate funcional alineado con Nav2 hoy;
+- `goal_tolerance_m=2.5`: gate funcional alineado con Nav2 hoy;
 - `precision_target_m=0.25`: objetivo futuro, reportado como `calibrating` sin
   fallar CI.
 

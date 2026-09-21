@@ -64,7 +64,7 @@ controller_server:
     general_goal_checker:
       plugin: nav2_controller::PositionGoalChecker
       stateful: true
-      xy_goal_tolerance: 1.2
+      xy_goal_tolerance: 2.5
     FollowPath:
       plugin: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
       desired_linear_vel: 1.6

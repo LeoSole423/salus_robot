@@ -9,7 +9,7 @@ def test_observer_launch_has_no_command_or_tf_authority():
     assert "navigation_evaluation" in contents
     assert "cmd_vel" not in contents
     assert "tf" not in contents
-    assert '"goal_tolerance_m", default_value="1.2"' in contents
+    assert '"goal_tolerance_m", default_value="2.5"' in contents
     assert '"precision_target_m", default_value="0.25"' in contents
 
 

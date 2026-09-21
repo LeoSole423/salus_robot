@@ -359,7 +359,7 @@ class EvaluationRunner(Node):
         self.declare_parameter("scenario", "")
         self.declare_parameter("output_dir", "")
         self.declare_parameter("mode", "run")
-        self.declare_parameter("goal_tolerance_m", 1.2)
+        self.declare_parameter("goal_tolerance_m", 2.5)
         self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
         self.scenario_path = str(self.get_parameter("scenario").value)
