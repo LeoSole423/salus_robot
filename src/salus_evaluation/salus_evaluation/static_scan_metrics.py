@@ -44,7 +44,8 @@ def summarize_temporal_offset_sweep(
     range_min_m: float = 0.0,
     range_max_m: float = math.inf,
 ) -> list[dict[str, object]]:
-    """Report scan geometry error for a bounded pose timestamp sweep.
+    """
+    Report scan geometry error for a bounded pose timestamp sweep.
 
     Positive offsets evaluate the pose after the scan timestamp; negative
     offsets evaluate it before.  This is deliberately diagnostic: it does not
