@@ -6,6 +6,11 @@ from types import SimpleNamespace
 import pytest
 
 from salus_evaluation.models import Pose2D
+from salus_evaluation.costmap_drag_metrics import (
+    CostmapObservation, CostmapSnapshot, occupied_grid_points,
+    summarize_costmap_observations, transform_costmap_points_to_odom,
+    transform_odom_points_to_base,
+)
 from salus_evaluation.stage_metrics import (
     beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
     compare_scan_projection, project_pointcloud_to_scan, summarize_point_geometry,
@@ -261,7 +266,6 @@ def test_stage_point_geometry_has_zero_and_divergent_controls() -> None:
     assert perfect["p95_surface_error_m"] == pytest.approx(0.0)
     assert divergent["p95_surface_error_m"] == pytest.approx(0.5)
     assert empty["status"] == "insufficient_data"
-
     nonfinite = summarize_point_geometry(
         [(float("nan"), 0.0), (float("inf"), 0.0)], [obstacle]
     )
@@ -272,6 +276,59 @@ def test_stage_point_geometry_has_zero_and_divergent_controls() -> None:
     )
     assert rotated["status"] == "measured"
     assert rotated["p95_surface_error_m"] > 0.0
+
+
+def test_costmap_cells_and_frame_transforms_have_known_controls() -> None:
+    snapshot = CostmapSnapshot(
+        stamp_s=1.0, frame_id="base_footprint", resolution_m=1.0,
+        origin_x_m=-1.0, origin_y_m=-1.0, width=3, height=2,
+        data=(0, 254, -1, 0, 0, 253),
+    )
+    points = occupied_grid_points(snapshot)
+    assert points[0] == pytest.approx((0.5, -0.5))
+    assert points[1] == pytest.approx((1.5, 0.5))
+    odom = transform_costmap_points_to_odom(
+        points, "base_footprint", Pose2D(10.0, 2.0, math.pi / 2.0)
+    )
+    assert odom[0] == pytest.approx((10.5, 2.5))
+    round_trip = transform_odom_points_to_base(odom, Pose2D(10.0, 2.0, math.pi / 2.0))
+    assert round_trip[0] == pytest.approx(points[0])
+    assert round_trip[1] == pytest.approx(points[1])
+
+
+def test_costmap_drag_metrics_distinguish_world_and_base_controls() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    world_fixed = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+            CostmapObservation(7.0, "turn_2", ((4.0, 0.0),), ((3.0, 0.0),)),
+        ], [obstacle],
+    )
+    assert world_fixed["status"] == "measured"
+    assert world_fixed["classification"] == "world_fixed"
+    assert world_fixed["trail_width_p95_m"] == pytest.approx(0.0)
+
+    base_attached = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((2.0, 0.0),)),
+            CostmapObservation(7.0, "turn_2", ((2.0, 2.0),), ((2.0, 0.0),)),
+        ], [obstacle],
+    )
+    assert base_attached["classification"] == "base_attached"
+
+
+def test_costmap_drag_metrics_report_unsupported_persistence() -> None:
+    obstacle = StaticObstacle("box", 4.0, 0.0, 1.0, 1.0)
+    result = summarize_costmap_observations(
+        [
+            CostmapObservation(1.0, "turn_1", ((4.0, 0.0),), ((4.0, 0.0),)),
+            CostmapObservation(2.0, "pause", ((4.0, 0.0),), ((4.0, 0.0),)),
+            CostmapObservation(7.0, "turn_2", ((4.0, 0.0),), ((4.0, 0.0),)),
+        ], [obstacle],
+        scan_support=[(1.0, ((4.0, 0.0),))],
+    )
+    assert result["ghost_cell_count"] == 1
+    assert result["ghost_persistence_s"] == pytest.approx(5.0)
 
 
 def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:

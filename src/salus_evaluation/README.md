@@ -92,6 +92,23 @@ y stop. Esto mantiene la medición reproducible sin añadir otro controller.
 Esto es instrumentación base, no un diagnóstico ni un cambio del pipeline de
 LiDAR, TF, EKF, costmaps o Nav2.
 
+### Corte 3 — medición directa del costmap
+
+`tools/smoke_obstacle_drag_costmap.sh` levanta el mismo world con Nav2 activo,
+ejecuta una maniobra de control y una segunda maniobra idéntica después de una
+pausa de 6 s, sin invocar ningún servicio de limpieza. El probe sólo observa
+`/scan_clean`, `/local_costmap/costmap_raw`, `/global_costmap/costmap_raw`,
+`/odom_raw` y TF, y guarda `obstacle_drag_costmap_metrics.json`.
+
+El análisis puro en `costmap_drag_metrics.py` transforma celdas letales a
+`odom`, conserva también sus coordenadas en `base_footprint` y reporta
+`trail_width_p95_m`, `ghost_persistence_s`, centroides y la clasificación
+diagnóstica `world_fixed`, `base_attached`, `cleared` o `insufficient_data`.
+Las marcas sin respaldo en el scan se etiquetan como evidencia report-only:
+una celda puede salir del campo de visión sin ser un fallo de seguridad. El
+artefacto es una medición de simulación; no cambia frecuencias, tolerancias,
+clearing, TF ni parámetros del costmap y no cierra #269 por sí solo.
+
 Para inspección gráfica, usar dos terminales con el entorno ROS del compose. En
 el primero, levantar el world con RViz:
 

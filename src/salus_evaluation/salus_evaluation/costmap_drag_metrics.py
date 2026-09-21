@@ -1,0 +1,249 @@
+"""
+Pure metrics for detecting obstacle trails in published costmaps.
+
+The functions in this module deliberately do not own a ROS node.  A probe can
+feed them immutable grid snapshots and poses, which keeps the interpretation
+testable with positive and negative synthetic controls.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Iterable, Sequence
+
+from .models import Pose2D
+from .static_scan_metrics import StaticObstacle, _percentile
+
+
+@dataclass(frozen=True)
+class CostmapSnapshot:
+    """One ``OccupancyGrid`` snapshot reduced to its measurement fields."""
+
+    stamp_s: float
+    frame_id: str
+    resolution_m: float
+    origin_x_m: float
+    origin_y_m: float
+    width: int
+    height: int
+    data: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class CostmapObservation:
+    """Occupied cells expressed in both fixed and robot frames."""
+
+    stamp_s: float
+    phase: str
+    odom_points: tuple[tuple[float, float], ...]
+    base_points: tuple[tuple[float, float], ...]
+
+
+def occupied_grid_points(
+    snapshot: CostmapSnapshot, *, lethal_threshold: int = 253,
+) -> tuple[tuple[float, float], ...]:
+    """
+    Return centers of lethal cells in the costmap frame.
+
+    Unknown cells (normally ``-1`` in ``OccupancyGrid``) are excluded.  The
+    threshold is explicit because this metric is diagnostic and must not infer
+    Nav2's internal cost semantics from a visual rendering.
+    """
+    if snapshot.width <= 0 or snapshot.height <= 0:
+        return ()
+    if not math.isfinite(snapshot.resolution_m) or snapshot.resolution_m <= 0.0:
+        raise ValueError("costmap resolution must be finite and positive")
+    expected = snapshot.width * snapshot.height
+    if len(snapshot.data) != expected:
+        raise ValueError(f"costmap data length {len(snapshot.data)} != {expected}")
+    points = []
+    for index, raw_value in enumerate(snapshot.data):
+        if int(raw_value) < lethal_threshold:
+            continue
+        row, column = divmod(index, snapshot.width)
+        points.append((
+            snapshot.origin_x_m + (column + 0.5) * snapshot.resolution_m,
+            snapshot.origin_y_m + (row + 0.5) * snapshot.resolution_m,
+        ))
+    return tuple(points)
+
+
+def transform_costmap_points_to_odom(
+    points: Iterable[tuple[float, float]], frame_id: str, pose: Pose2D,
+) -> tuple[tuple[float, float], ...]:
+    """Express grid points in ``odom`` for supported rolling-frame maps."""
+    if frame_id == "odom":
+        return tuple((float(x), float(y)) for x, y in points)
+    if frame_id != "base_footprint":
+        raise ValueError(f"unsupported costmap frame: {frame_id!r}")
+    cosine, sine = math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)
+    return tuple(
+        (
+            pose.x_m + cosine * float(x) - sine * float(y),
+            pose.y_m + sine * float(x) + cosine * float(y),
+        )
+        for x, y in points
+    )
+
+
+def transform_odom_points_to_base(
+    points: Iterable[tuple[float, float]], pose: Pose2D,
+) -> tuple[tuple[float, float], ...]:
+    """Express fixed-frame points in the robot frame at a pose timestamp."""
+    cosine, sine = math.cos(pose.yaw_rad), math.sin(pose.yaw_rad)
+    return tuple(
+        (
+            cosine * (float(x) - pose.x_m) + sine * (float(y) - pose.y_m),
+            -sine * (float(x) - pose.x_m) + cosine * (float(y) - pose.y_m),
+        )
+        for x, y in points
+    )
+
+
+def _centroid(points: Sequence[tuple[float, float]]) -> tuple[float, float] | None:
+    if not points:
+        return None
+    return (
+        sum(float(x) for x, _ in points) / len(points),
+        sum(float(y) for _, y in points) / len(points),
+    )
+
+
+def _nearest_point_distance(
+    point: tuple[float, float], candidates: Sequence[tuple[float, float]],
+) -> float:
+    if not candidates:
+        return math.inf
+    return min(math.hypot(point[0] - x, point[1] - y) for x, y in candidates)
+
+
+def _distance_outside_obstacle(
+    point: tuple[float, float], obstacle: StaticObstacle,
+) -> float:
+    """Return zero inside a box and Euclidean distance outside its boundary."""
+    dx = abs(point[0] - obstacle.x_m) - obstacle.size_x_m / 2.0
+    dy = abs(point[1] - obstacle.y_m) - obstacle.size_y_m / 2.0
+    if dx <= 0.0 and dy <= 0.0:
+        return 0.0
+    if dx > 0.0 and dy > 0.0:
+        return math.hypot(dx, dy)
+    return max(dx, dy)
+
+
+def _voxel(point: tuple[float, float], resolution_m: float) -> tuple[int, int]:
+    return (round(point[0] / resolution_m), round(point[1] / resolution_m))
+
+
+def summarize_costmap_observations(
+    observations: Sequence[CostmapObservation],
+    obstacles: Sequence[StaticObstacle],
+    *,
+    scan_support: Sequence[tuple[float, Sequence[tuple[float, float]]]] = (),
+    neighborhood_m: float = 3.0,
+    support_tolerance_m: float = 0.20,
+    voxel_resolution_m: float = 0.10,
+) -> dict[str, object]:
+    """
+    Summarize trail width, persistence and frame-attached motion.
+
+    ``scan_support`` contains timestamped ``/scan_clean`` points already
+    expressed in ``odom``.  Unsupported cells are report-only evidence: a
+    raytracing field-of-view can legitimately leave a mark outside the next
+    scan, so this function never labels a cell as a safety failure.
+    """
+    ordered = sorted(observations, key=lambda item: float(item.stamp_s))
+    if not ordered or not obstacles:
+        return {
+            "status": "insufficient_data",
+            "observation_count": len(ordered),
+            "trail_width_p95_m": None,
+            "ghost_persistence_s": None,
+            "centroids": [],
+            "classification": "insufficient_data",
+        }
+    if neighborhood_m <= 0.0 or support_tolerance_m < 0.0:
+        raise ValueError("metric bounds must be non-negative")
+    widths = []
+    centroids = []
+    for observation in ordered:
+        centroid_odom = _centroid(observation.odom_points)
+        centroid_base = _centroid(observation.base_points)
+        centroids.append({
+            "stamp_s": float(observation.stamp_s),
+            "phase": observation.phase,
+            "odom_xy": list(centroid_odom) if centroid_odom else None,
+            "base_xy": list(centroid_base) if centroid_base else None,
+            "occupied_count": len(observation.odom_points),
+        })
+        for point in observation.odom_points:
+            distance = min(
+                _distance_outside_obstacle(point, obstacle)
+                for obstacle in obstacles
+            )
+            if distance <= neighborhood_m:
+                widths.append(distance)
+
+    first_points = ordered[0].odom_points
+    support_by_stamp = sorted(
+        ((float(stamp), tuple(points)) for stamp, points in scan_support),
+        key=lambda item: item[0],
+    )
+    ghost_persistence = []
+    for point in first_points:
+        key = _voxel(point, voxel_resolution_m)
+        first_unsupported: float | None = None
+        last_occupied: float | None = None
+        for observation in ordered[1:]:
+            occupied_keys = {
+                _voxel(candidate, voxel_resolution_m)
+                for candidate in observation.odom_points
+            }
+            if key not in occupied_keys:
+                continue
+            supported = any(
+                stamp <= observation.stamp_s
+                and _nearest_point_distance(point, scan_points) <= support_tolerance_m
+                for stamp, scan_points in support_by_stamp
+                if abs(stamp - observation.stamp_s) <= 0.25
+            )
+            if not supported and first_unsupported is None:
+                first_unsupported = float(observation.stamp_s)
+            if first_unsupported is not None:
+                last_occupied = float(observation.stamp_s)
+        if first_unsupported is not None and last_occupied is not None:
+            ghost_persistence.append(last_occupied - first_unsupported)
+
+    classification = "insufficient_data"
+    nonempty = [item for item in ordered if item.odom_points and item.base_points]
+    if len(nonempty) >= 1 and not ordered[-1].odom_points:
+        classification = "cleared"
+    elif len(nonempty) >= 2:
+        first, last = nonempty[0], nonempty[-1]
+        first_odom = _centroid(first.odom_points)
+        last_odom = _centroid(last.odom_points)
+        first_base = _centroid(first.base_points)
+        last_base = _centroid(last.base_points)
+        assert first_odom and last_odom and first_base and last_base
+        odom_shift = math.hypot(
+            last_odom[0] - first_odom[0], last_odom[1] - first_odom[1]
+        )
+        base_shift = math.hypot(
+            last_base[0] - first_base[0], last_base[1] - first_base[1]
+        )
+        if odom_shift <= support_tolerance_m:
+            classification = "world_fixed"
+        elif base_shift <= support_tolerance_m:
+            classification = "base_attached"
+        else:
+            classification = "insufficient_data"
+    return {
+        "status": "measured" if widths or centroids else "insufficient_data",
+        "observation_count": len(ordered),
+        "trail_width_p95_m": _percentile(widths, 0.95) if widths else None,
+        "trail_width_sample_count": len(widths),
+        "ghost_persistence_s": max(ghost_persistence) if ghost_persistence else 0.0,
+        "ghost_cell_count": len(ghost_persistence),
+        "centroids": centroids,
+        "classification": classification,
+    }
