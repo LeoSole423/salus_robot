@@ -92,6 +92,40 @@ y stop. Esto mantiene la medición reproducible sin añadir otro controller.
 Esto es instrumentación base, no un diagnóstico ni un cambio del pipeline de
 LiDAR, TF, EKF, costmaps o Nav2.
 
+### Corte 3 — medición directa del costmap
+
+`tools/smoke_obstacle_drag_costmap.sh` levanta el mismo world con Nav2 activo y
+ejecuta dos casos limpios, sin invocar ningún servicio de limpieza: un control
+con una maniobra y un caso repetido con dos maniobras idénticas separadas por
+una pausa de 6 s. El probe sólo observa
+`/scan_clean`, `/local_costmap/costmap_raw`, `/global_costmap/costmap_raw`,
+`/odom_raw` y TF. Guarda un artefacto por caso y una comparación
+`obstacle_drag_costmap_comparison.json` en el caso repetido. La comparación usa
+únicamente el costmap local y ventanas posteriores de 8 s: el control se ancla
+al último costmap ocupado de `turn_1` y el caso repetido al de `turn_2`. La
+ventana excluye muestras anteriores a cada ancla y exige cobertura temporal
+equivalente. Además, el caso repetido sigue durante 29 s la cohorte respaldada
+de `turn_1`, incluyendo obligatoriamente `turn_2` y `pause_2`; esta es la métrica
+directa para la marca vieja observada durante el segundo giro. El costmap global
+queda como evidencia diagnóstica independiente.
+
+El análisis puro en `costmap_drag_metrics.py` transforma por defecto sólo
+celdas con coste Nav2 `254` (lethal) a `odom`; `253` (inscribed/inflated) y
+`255` (unknown) quedan fuera de la medición principal. Conserva también las
+coordenadas en `base_footprint`. Reporta
+`trail_width_p95_m`, `ghost_persistence_s`, centroides y la clasificación
+diagnóstica `world_fixed`, `base_attached`, `cleared` o `insufficient_data`.
+El estado sólo es `measured` cuando hay celdas letales válidas, fases requeridas
+con ocupación, cobertura suficiente y al menos una celda de la cohorte respaldada
+temporal y espacialmente por `/scan_clean`.
+Las marcas sin respaldo en el scan se etiquetan como evidencia report-only:
+una celda puede salir del campo de visión sin ser un fallo de seguridad. El
+artefacto es una medición de simulación; no cambia frecuencias, tolerancias,
+clearing, TF ni parámetros del costmap y no cierra #269 por sí solo. El probe
+conserva 180 s de TF para transformar retrospectivamente costmaps y scans desde
+el `header.frame_id` declarado, y reporta las observaciones descartadas por
+falta de TF o pose.
+
 Para inspección gráfica, usar dos terminales con el entorno ROS del compose. En
 el primero, levantar el world con RViz:
 

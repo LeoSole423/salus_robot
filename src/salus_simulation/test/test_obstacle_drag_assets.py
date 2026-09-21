@@ -69,3 +69,29 @@ def test_obstacle_drag_smoke_reuses_existing_integration_launch() -> None:
         encoding="utf-8"
     )
     assert 'create_publisher(Twist, "/cmd_vel", 10)' in maneuver
+
+
+def test_costmap_drag_measurement_has_repeated_maneuver_and_no_reset() -> None:
+    root = SIMULATION_DIR.parents[1]
+    smoke = (root / "tools" / "smoke_obstacle_drag_costmap.sh").read_text(
+        encoding="utf-8"
+    )
+    probe = (root / "tools" / "smoke_obstacle_drag_costmap.py").read_text(
+        encoding="utf-8"
+    )
+    maneuver = (root / "tools" / "obstacle_drag_maneuver.py").read_text(
+        encoding="utf-8"
+    )
+    assert "launch_navigation:=true" in smoke
+    assert "use_keepout:=false" in smoke
+    assert "run_case control 1" in smoke
+    assert "run_case repeated 2" in smoke
+    assert "--repetitions ${repetitions} --pause-s 6.0" in smoke
+    assert "--ros-args -p use_sim_time:=true" in smoke
+    assert "/local_costmap/costmap_raw" in probe
+    assert "/global_costmap/costmap_raw" in probe
+    assert '"costmap_reset": False' in probe
+    assert 'common_cohort_phase = f"turn_{args.repetitions}"' in probe
+    assert 'common_local["status"] != "measured"' in probe
+    assert "message.header.frame_id" in probe
+    assert '"/obstacle_drag/phase"' in maneuver
