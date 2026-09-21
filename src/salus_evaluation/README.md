@@ -71,9 +71,12 @@ Cuando el simulador entrega un frame interno sin TF público, la geometría raw
 se reporta mediante el payload idéntico de `/scan_3d` y queda marcada con una
 nota explícita, sin inventar una transformación. `/scan` y `/scan_clean`
 exponen sus metadatos angulares y el artefacto indica si frame, ángulos y
-timestamps se preservaron. El soporte de haces común se publica para evitar
-comparar conjuntos distintos. Este artefacto es evidencia de simulación y no
-cierra #269 ni establece un umbral de aceptación.
+timestamps se preservaron; stamps, payload raw→normalizado, metadatos y
+disponibilidad geométrica son invariantes del smoke y hacen fallar la captura
+si no se cumplen. El soporte de haces común se publica para evitar comparar
+conjuntos distintos, pero su igualdad entre `/scan` y `/scan_clean` queda como
+diagnóstico porque el filtro puede cambiarlo. Este artefacto es evidencia de
+simulación y no cierra #269 ni establece un umbral de aceptación.
 
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta

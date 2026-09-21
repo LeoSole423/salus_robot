@@ -82,6 +82,12 @@ invariante raw→normalizado; el frame y el stamp se validan por separado. Los
 metadatos angulares, frame y stamp de `/scan`→`/scan_clean` también quedan
 comparados explícitamente.
 
+La captura falla si no alcanza diez cadenas, si se pierde un stamp, si el
+payload raw→normalizado cambia, si `/scan`→`/scan_clean` cambia sus metadatos o
+si alguna etapa no puede producir geometría emparejada. La igualdad exacta del
+soporte de haces entre esos dos scans no es un gate: el filtro puede eliminar
+ruido y por eso se conserva la intersección común junto con la diferencia.
+
 En la simulación, `/scan_3d_raw` puede conservar un frame interno de Gazebo que
 no aparece en TF. Si el payload raw y normalizado es idéntico, su geometría se
 evalúa usando el mensaje normalizado y se marca como tal; no se crea un TF

@@ -1,13 +1,14 @@
 """Pure tests for the obstacle-drag static scan geometry metrics."""
 
 import math
+from types import SimpleNamespace
 
 import pytest
 
 from salus_evaluation.models import Pose2D
 from salus_evaluation.stage_metrics import (
-    beam_support_is_identical, exact_common_stamps, summarize_point_geometry,
-    transform_points_to_odom,
+    beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
+    summarize_point_geometry, transform_points_to_odom, validate_stage_lineage,
 )
 from salus_evaluation.static_scan_metrics import (
     StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
@@ -277,6 +278,75 @@ def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:
     assert exact_common_stamps([{1, 2}, {4, 5}]) == ()
     assert beam_support_is_identical([1, 2, 3], [3, 1, 2])
     assert not beam_support_is_identical([1, 2, 3], [1, 2, 4])
+
+
+def _valid_stage_lineage() -> dict[str, object]:
+    cloud_geometry = {
+        "status": "measured", "transform_missing_count": 0,
+    }
+    scan_geometry = {"status": "measured", "paired_count": 10}
+    return {
+        "complete_chain_count": 10,
+        "evaluated_chain_count": 10,
+        "stamp_preserved_across_chain": True,
+        "raw_to_normalized_content_equal": True,
+        "scan_to_clean_metadata_equal": True,
+        "common_scan_beam_count": 10,
+        "stages": {
+            "/scan_3d_raw": {"geometry": cloud_geometry},
+            "/scan_3d": {"geometry": cloud_geometry},
+            "/obstacles_cloud": {"geometry": cloud_geometry},
+            "/scan": {"geometry": scan_geometry},
+            "/scan_clean": {"geometry": scan_geometry},
+        },
+    }
+
+
+def test_stage_lineage_validator_rejects_invariant_mutations() -> None:
+    validate_stage_lineage(_valid_stage_lineage())
+    for field in (
+        "stamp_preserved_across_chain",
+        "raw_to_normalized_content_equal",
+        "scan_to_clean_metadata_equal",
+    ):
+        mutated = _valid_stage_lineage()
+        mutated[field] = False
+        with pytest.raises(ValueError, match=field):
+            validate_stage_lineage(mutated)
+
+    missing_stage = _valid_stage_lineage()
+    del missing_stage["stages"]["/scan_clean"]
+    with pytest.raises(ValueError, match="stage_missing"):
+        validate_stage_lineage(missing_stage)
+
+    insufficient_geometry = _valid_stage_lineage()
+    insufficient_geometry["stages"]["/scan_3d"]["geometry"]["status"] = (
+        "insufficient_data"
+    )
+    with pytest.raises(ValueError, match="geometry_unmeasured"):
+        validate_stage_lineage(insufficient_geometry)
+
+
+def test_pointcloud_signature_tracks_non_header_payload_fields() -> None:
+    def message(is_dense: bool, frame_id: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            header=SimpleNamespace(frame_id=frame_id),
+            height=1,
+            width=1,
+            fields=(SimpleNamespace(name="x", offset=0, datatype=7, count=1),),
+            is_bigendian=False,
+            point_step=4,
+            row_step=4,
+            is_dense=is_dense,
+            data=b"1234",
+        )
+
+    assert pointcloud_payload_signature(message(True, "frame_a")) == (
+        pointcloud_payload_signature(message(True, "frame_b"))
+    )
+    assert pointcloud_payload_signature(message(True, "frame_a")) != (
+        pointcloud_payload_signature(message(False, "frame_a"))
+    )
 
 
 def test_stage_point_transform_uses_raw_pose() -> None:

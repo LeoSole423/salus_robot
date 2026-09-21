@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import os
@@ -27,8 +26,8 @@ from tf2_ros import Buffer, TransformListener
 
 from salus_evaluation.models import Pose2D
 from salus_evaluation.stage_metrics import (
-    beam_support_is_identical, exact_common_stamps, summarize_point_geometry,
-    transform_points_to_odom,
+    beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
+    summarize_point_geometry, transform_points_to_odom, validate_stage_lineage,
 )
 from salus_evaluation.static_scan_metrics import (
     interpolate_pose, load_obstacle_geometry, scan_static_error_metrics,
@@ -272,18 +271,7 @@ def _complete_stage_stamps(node: ObstacleDragProbe) -> set[int]:
 
 def _cloud_content_signature(message: PointCloud2) -> str:
     """Hash PointCloud2 content while deliberately excluding its frame header."""
-    fields = tuple(
-        (field.name, field.offset, field.datatype, field.count)
-        for field in message.fields
-    )
-    descriptor = repr((
-        message.height, message.width, fields, message.is_bigendian,
-        message.point_step, message.row_step,
-    )).encode("utf-8")
-    digest = hashlib.sha256()
-    digest.update(descriptor)
-    digest.update(bytes(message.data))
-    return digest.hexdigest()
+    return pointcloud_payload_signature(message)
 
 
 def _percentile(values: list[float], fraction: float) -> float | None:
@@ -632,6 +620,7 @@ def main() -> int:
         )
         complete_stamps = _complete_stage_stamps(node)
         stage_lineage = _stage_lineage(node, obstacles, complete_stamps)
+        validate_stage_lineage(stage_lineage)
         pose_matched = 0
         pose_unmatched = 0
         for timed_scan in node.scans[-20:]:
