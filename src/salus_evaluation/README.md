@@ -57,6 +57,24 @@ fallo de instrumentación, no como una conclusión de baja divergencia. Ninguno
 de estos campos es un umbral de aceptación ni modifica TF, EKF, LiDAR o
 costmaps.
 
+La captura de lineage del mismo smoke escribe además
+`obstacle_drag_stage_metrics.json` (`schema_version: 1`). Sólo considera
+cadenas completas emparejadas por igualdad exacta de `header.stamp` y exige al
+menos diez antes de declarar la ejecución válida. Conserva los conteos de
+pérdida por cada arista de
+`/scan_3d_raw → /scan_3d → /obstacles_cloud → /scan → /scan_clean`, latencias
+de recepción monotónica respecto de la nube raw, frames, firmas de payload y
+métricas geométricas independientes contra `/odom_raw`. La firma de
+`PointCloud2` excluye deliberadamente el header para comprobar si el
+normalizador cambió el payload; no permite inferir causalidad por sí sola.
+Cuando el simulador entrega un frame interno sin TF público, la geometría raw
+se reporta mediante el payload idéntico de `/scan_3d` y queda marcada con una
+nota explícita, sin inventar una transformación. `/scan` y `/scan_clean`
+exponen sus metadatos angulares y el artefacto indica si frame, ángulos y
+timestamps se preservaron. El soporte de haces común se publica para evitar
+comparar conjuntos distintos. Este artefacto es evidencia de simulación y no
+cierra #269 ni establece un umbral de aceptación.
+
 El smoke ejecuta una única maniobra open-loop por el `/cmd_vel` existente:
 entrada recta, curva derecha de radio aproximado de 4 m a 0,5 m/s, salida recta
 y stop. Esto mantiene la medición reproducible sin añadir otro controller.

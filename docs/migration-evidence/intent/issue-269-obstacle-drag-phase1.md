@@ -68,6 +68,27 @@ integración existente con `launch_navigation:=false` y guarda provenance de
 world, fixture, profile, seed, SHA, dominio, partición, conteos y métricas en
 `artifacts/smokes/<run>/`.
 
+## Lineage de la percepción
+
+El mismo corte captura la cadena completa
+`/scan_3d_raw → /scan_3d → /obstacles_cloud → /scan → /scan_clean` en
+`obstacle_drag_stage_metrics.json`. Una muestra sólo entra al análisis si los
+cinco tópicos comparten exactamente el mismo `header.stamp`; la ejecución
+requiere al menos diez cadenas completas. El artefacto conserva las pérdidas
+por arista, latencias de recepción, frames, firmas de payload y métricas
+geométricas de cada etapa, además del soporte común de haces entre `/scan` y
+`/scan_clean`. Las firmas de nube excluyen el header y permiten comprobar el
+invariante raw→normalizado; el frame y el stamp se validan por separado. Los
+metadatos angulares, frame y stamp de `/scan`→`/scan_clean` también quedan
+comparados explícitamente.
+
+En la simulación, `/scan_3d_raw` puede conservar un frame interno de Gazebo que
+no aparece en TF. Si el payload raw y normalizado es idéntico, su geometría se
+evalúa usando el mensaje normalizado y se marca como tal; no se crea un TF
+ficticio ni se presenta esa sustitución como evidencia causal. Los puntos
+NaN/Inf y las nubes vacías quedan como `insufficient_data`. Esta captura es
+diagnóstica y no cambia QoS, TF, deskew, clearing, costmaps ni la navegación.
+
 ## Ejecución headless
 
 ```bash
