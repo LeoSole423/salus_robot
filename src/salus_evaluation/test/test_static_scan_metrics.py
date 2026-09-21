@@ -8,7 +8,8 @@ import pytest
 from salus_evaluation.models import Pose2D
 from salus_evaluation.stage_metrics import (
     beam_support_is_identical, exact_common_stamps, pointcloud_payload_signature,
-    summarize_point_geometry, transform_points_to_odom, validate_stage_lineage,
+    compare_scan_projection, project_pointcloud_to_scan, summarize_point_geometry,
+    transform_points_to_odom, validate_stage_lineage,
 )
 from salus_evaluation.static_scan_metrics import (
     StaticObstacle, StaticScanMetrics, interpolate_pose, load_obstacle_geometry,
@@ -280,6 +281,78 @@ def test_stage_lineage_rejects_incomplete_stamps_and_support_mismatch() -> None:
     assert not beam_support_is_identical([1, 2, 3], [1, 2, 4])
 
 
+def test_projection_oracle_matches_nearest_point_per_bin() -> None:
+    ranges = project_pointcloud_to_scan(
+        [
+            (2.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (2.0, 1.0, 2.0),
+            (float("nan"), 0.0, 0.0),
+            (float("inf"), 0.0, 0.0),
+        ],
+        angle_min=-0.5,
+        angle_max=0.5,
+        angle_increment=0.5,
+        range_min=0.2,
+        range_max=10.0,
+        min_height=-0.1,
+        max_height=1.0,
+    )
+    assert ranges == pytest.approx((float("inf"), 1.0))
+
+
+def test_projection_oracle_preserves_inclusive_boundaries_and_empty_mode() -> None:
+    ranges = project_pointcloud_to_scan(
+        [
+            (1.0, 0.0, -1.0),
+            (math.cos(1.0), math.sin(1.0), 1.0),
+            (0.1, 0.0, 0.0),
+        ],
+        angle_min=0.0,
+        angle_max=1.0,
+        angle_increment=0.6,
+        range_min=0.1,
+        range_max=1.0,
+        min_height=-1.0,
+        max_height=1.0,
+        use_inf=False,
+        inf_epsilon=1.0,
+    )
+    assert ranges == pytest.approx((0.1, 1.0))
+    empty = project_pointcloud_to_scan(
+        [],
+        angle_min=0.0,
+        angle_max=1.0,
+        angle_increment=0.6,
+        range_min=0.1,
+        range_max=1.0,
+        min_height=-1.0,
+        max_height=1.0,
+        use_inf=False,
+        inf_epsilon=1.0,
+    )
+    assert empty == pytest.approx((2.0, 2.0))
+
+
+def test_projection_comparison_reports_zero_and_injected_divergence() -> None:
+    oracle = (1.0, float("inf"), 2.0)
+    equal = compare_scan_projection(oracle, (1.0 + 1.0e-6, float("inf"), 2.0))
+    assert equal["finite_infinite_mismatch_count"] == 0
+    assert equal["finite_agreement_count"] == 2
+    assert equal["common_finite_support"] == [0, 2]
+    assert equal["range_delta_m"]["max"] == pytest.approx(1.0e-6)
+
+    divergent = compare_scan_projection(oracle, (1.5, 3.0, 2.0))
+    assert divergent["finite_infinite_mismatch_count"] == 1
+    assert divergent["finite_agreement_count"] == 1
+    assert divergent["worst_bins"][0]["beam_index"] == 0
+    assert divergent["worst_bins"][0]["abs_delta_m"] == pytest.approx(0.5)
+
+    invalid = compare_scan_projection((float("inf"),), (float("nan"),))
+    assert invalid["finite_infinite_mismatch_count"] == 1
+    assert invalid["invalid_actual_count"] == 1
+
+
 def _valid_stage_lineage() -> dict[str, object]:
     cloud_geometry = {
         "status": "measured", "transform_missing_count": 0,
@@ -292,6 +365,13 @@ def _valid_stage_lineage() -> dict[str, object]:
         "raw_to_normalized_content_equal": True,
         "scan_to_clean_metadata_equal": True,
         "common_scan_beam_count": 10,
+        "projection_oracle": {
+            "status": "measured",
+            "paired_count": 10,
+            "common_finite_support_count": 10,
+            "geometry_paired_count": 10,
+            "range_delta_m": {"status": "measured"},
+        },
         "stages": {
             "/scan_3d_raw": {"geometry": cloud_geometry},
             "/scan_3d": {"geometry": cloud_geometry},
@@ -318,6 +398,20 @@ def test_stage_lineage_validator_rejects_invariant_mutations() -> None:
     del missing_stage["stages"]["/scan_clean"]
     with pytest.raises(ValueError, match="stage_missing"):
         validate_stage_lineage(missing_stage)
+
+
+def test_stage_lineage_validator_rejects_empty_projection_evidence() -> None:
+    empty_oracle = _valid_stage_lineage()
+    empty_oracle["projection_oracle"]["common_finite_support_count"] = 0
+    with pytest.raises(ValueError, match="projection_oracle_support"):
+        validate_stage_lineage(empty_oracle)
+
+    unmeasured_delta = _valid_stage_lineage()
+    unmeasured_delta["projection_oracle"]["range_delta_m"] = {
+        "status": "insufficient_data",
+    }
+    with pytest.raises(ValueError, match="projection_oracle_delta"):
+        validate_stage_lineage(unmeasured_delta)
 
     insufficient_geometry = _valid_stage_lineage()
     insufficient_geometry["stages"]["/scan_3d"]["geometry"]["status"] = (
