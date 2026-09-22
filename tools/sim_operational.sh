@@ -8,6 +8,7 @@ headless=false
 rviz=false
 adaptive_dense=false
 adaptive_dense_leg_max_m="8.0"
+adaptive_dense_horizon_m="35.0"
 generic_world=false
 for option in "$@"; do
   case "${option}" in
@@ -17,9 +18,12 @@ for option in "$@"; do
     --adaptive-dense-leg-max-m=*)
       adaptive_dense_leg_max_m="${option#*=}"
       ;;
+    --adaptive-dense-horizon-m=*)
+      adaptive_dense_horizon_m="${option#*=}"
+      ;;
     --generic) generic_world=true ;;
     *)
-      echo "Usage: ./tools/sim_operational.sh [--headless] [--rviz] [--adaptive-dense] [--adaptive-dense-leg-max-m=<meters>] [--generic]" >&2
+      echo "Usage: ./tools/sim_operational.sh [--headless] [--rviz] [--adaptive-dense] [--adaptive-dense-leg-max-m=<meters>] [--adaptive-dense-horizon-m=<meters>] [--generic]" >&2
       exit 2
       ;;
   esac
@@ -32,7 +36,7 @@ fi
 
 route_args=""
 if [[ "${adaptive_dense}" == "true" ]]; then
-  route_args=" route_execution_mode:=adaptive_dense adaptive_dense_leg_max_m:=${adaptive_dense_leg_max_m} adaptive_dense_horizon_m:=35.0"
+  route_args=" route_execution_mode:=adaptive_dense adaptive_dense_leg_max_m:=${adaptive_dense_leg_max_m} adaptive_dense_horizon_m:=${adaptive_dense_horizon_m}"
 fi
 
 georeferenced_args=""
