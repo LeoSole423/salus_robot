@@ -3,7 +3,7 @@
 
 The source route contains operator coordinates and is intentionally written only below
 ``artifacts/`` (which is ignored by Git).  The companion fixture contains only local
-coordinates relative to HOME and can be shared for simulation diagnosis.
+coordinates relative to the selected datum and can be shared for simulation diagnosis.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ DEFAULT_CONTAINER_ROOT = "/ros2_ws"
 
 
 class RoutePreparationError(ValueError):
-    """Raised when a saved Cockpit patrol cannot provide a safe temporary datum."""
+    """Raised when a saved Cockpit route cannot provide a safe temporary datum."""
 
 
 def _as_finite_coordinate(value: object, name: str) -> float:
@@ -95,13 +95,13 @@ def _local_xy(latitude: float, longitude: float, datum_lat: float, datum_lon: fl
 
 
 def _heading_to(source: dict[str, Any], target: dict[str, Any]) -> float:
-    source_lat = _as_finite_coordinate(source.get("x"), "HOME latitude")
-    source_lon = _as_finite_coordinate(source.get("y"), "HOME longitude")
+    source_lat = _as_finite_coordinate(source.get("x"), "datum latitude")
+    source_lon = _as_finite_coordinate(source.get("y"), "datum longitude")
     target_lat = _as_finite_coordinate(target.get("x"), "departure latitude")
     target_lon = _as_finite_coordinate(target.get("y"), "departure longitude")
     east, north = _local_xy(target_lat, target_lon, source_lat, source_lon)
     if math.hypot(east, north) <= 1.0e-6:
-        raise RoutePreparationError("HOME and selected departure waypoint coincide")
+        raise RoutePreparationError("datum and selected departure waypoint coincide")
     return math.atan2(north, east)
 
 
@@ -116,6 +116,7 @@ def _write_world(
     latitude: float,
     longitude: float,
     yaw_deg: float,
+    plane_size_m: float,
 ) -> None:
     tree = ET.parse(source_world)
     spherical = tree.find(".//spherical_coordinates")
@@ -131,8 +132,21 @@ def _write_world(
     if heading_node is None:
         heading_node = ET.SubElement(spherical, "heading_deg")
     heading_node.text = f"{yaw_deg:.10f}"
+    for plane_size_node in tree.findall(
+        ".//model[@name='ground_plane']//geometry/plane/size"
+    ):
+        plane_size_node.text = f"{plane_size_m:.3f} {plane_size_m:.3f}"
     tree.write(destination, encoding="utf-8", xml_declaration=True)
     os.chmod(destination, 0o600)
+
+
+def _ground_plane_size_m(relative_waypoints: list[dict[str, Any]]) -> float:
+    """Return a square ground plane that encloses the route plus a fixed margin."""
+    max_extent = max(
+        max(abs(float(waypoint["east_m"])), abs(float(waypoint["north_m"])))
+        for waypoint in relative_waypoints
+    )
+    return float(max(200, math.ceil(2.0 * (max_extent + 50.0))))
 
 
 def prepare_artifacts(
@@ -148,18 +162,29 @@ def prepare_artifacts(
     routes = _load_routes(routes_file)
     record = _route_record(routes, route_name)
     waypoints = list(record["waypoints"])
-    profile = _profile_indices(record, len(waypoints))
-    home_index = profile["homeWaypointIndex"]
-    home = waypoints[home_index]
-    datum_lat = _as_finite_coordinate(home.get("x"), "HOME latitude")
-    datum_lon = _as_finite_coordinate(home.get("y"), "HOME longitude")
+    try:
+        profile = _profile_indices(record, len(waypoints))
+    except RoutePreparationError:
+        profile = None
+    if profile is None:
+        if len(waypoints) < 2:
+            raise RoutePreparationError("generic route needs at least two waypoints")
+        datum_index = 0
+        departure_index = 1
+        datum_kind = "first_waypoint"
+    else:
+        datum_index = profile["homeWaypointIndex"]
+        departure_index = (
+            profile["departWaypointIndices"][0]
+            if profile["departWaypointIndices"]
+            else profile["departEntryWaypointIndex"]
+        )
+        datum_kind = "home"
+    datum = waypoints[datum_index]
+    datum_lat = _as_finite_coordinate(datum.get("x"), "datum latitude")
+    datum_lon = _as_finite_coordinate(datum.get("y"), "datum longitude")
     datum_yaw_deg = _as_finite_coordinate(datum_yaw_deg, "datum yaw")
-    departure_index = (
-        profile["departWaypointIndices"][0]
-        if profile["departWaypointIndices"]
-        else profile["departEntryWaypointIndex"]
-    )
-    spawn_yaw = _heading_to(home, waypoints[departure_index])
+    spawn_yaw = _heading_to(datum, waypoints[departure_index])
 
     output_dir.mkdir(parents=True, exist_ok=False)
     runtime_dir = output_dir / "runtime"
@@ -170,32 +195,6 @@ def prepare_artifacts(
     sanitized_path = output_dir / "route_fixture_relative.yaml"
     launch_args_path = output_dir / "launch_args_private.txt"
     launcher_path = output_dir / "launch_simulation.sh"
-
-    _write_world(source_world, world_path, datum_lat, datum_lon, datum_yaw_deg)
-    _write_private(
-        mission_path,
-        json.dumps({route_name: record}, ensure_ascii=False, indent=2) + "\n",
-    )
-    waypoints_document = {
-        "waypoints": [
-            {
-                "latitude": _as_finite_coordinate(waypoint.get("x"), "waypoint latitude"),
-                "longitude": _as_finite_coordinate(waypoint.get("y"), "waypoint longitude"),
-                **({"yaw": float(waypoint["yawDeg"])} if "yawDeg" in waypoint else {}),
-                **({"actions": waypoint["actions"]} if waypoint.get("actions") else {}),
-                **({"role": waypoint["role"]} if waypoint.get("role") else {}),
-            }
-            for waypoint in waypoints
-        ],
-        "patrol_profile": {
-            "home_waypoint_index": home_index,
-            "loop_waypoint_indices": profile["loopWaypointIndices"],
-            "return_waypoint_indices": profile["returnWaypointIndices"],
-            "depart_waypoint_indices": profile["departWaypointIndices"],
-            "depart_entry_waypoint_index": profile["departEntryWaypointIndex"],
-        },
-    }
-    _write_private(waypoints_path, yaml.safe_dump(waypoints_document, sort_keys=False))
 
     relative_waypoints = []
     for index, waypoint in enumerate(waypoints):
@@ -214,13 +213,54 @@ def prepare_artifacts(
             **({"action_types": [action.get("type") for action in waypoint["actions"]]}
                if waypoint.get("actions") else {}),
         })
+    ground_plane_size_m = _ground_plane_size_m(relative_waypoints)
+    _write_world(
+        source_world,
+        world_path,
+        datum_lat,
+        datum_lon,
+        datum_yaw_deg,
+        ground_plane_size_m,
+    )
+    _write_private(
+        mission_path,
+        json.dumps({route_name: record}, ensure_ascii=False, indent=2) + "\n",
+    )
+    waypoints_document = {
+        "waypoints": [
+            {
+                "latitude": _as_finite_coordinate(waypoint.get("x"), "waypoint latitude"),
+                "longitude": _as_finite_coordinate(waypoint.get("y"), "waypoint longitude"),
+                **({"yaw": float(waypoint["yawDeg"])} if "yawDeg" in waypoint else {}),
+                **({"actions": waypoint["actions"]} if waypoint.get("actions") else {}),
+                **({"role": waypoint["role"]} if waypoint.get("role") else {}),
+            }
+            for waypoint in waypoints
+        ],
+        **(
+            {
+                "patrol_profile": {
+                    "home_waypoint_index": profile["homeWaypointIndex"],
+                    "loop_waypoint_indices": profile["loopWaypointIndices"],
+                    "return_waypoint_indices": profile["returnWaypointIndices"],
+                    "depart_waypoint_indices": profile["departWaypointIndices"],
+                    "depart_entry_waypoint_index": profile["departEntryWaypointIndex"],
+                }
+            }
+            if profile is not None
+            else {}
+        ),
+    }
+    _write_private(waypoints_path, yaml.safe_dump(waypoints_document, sort_keys=False))
     sanitized = {
         "route_name": route_name,
         "datum_yaw_deg": datum_yaw_deg,
         "spawn": {"x_m": 0.0, "y_m": 0.0, "yaw_rad": round(spawn_yaw, 6)},
-        "home_input_index": home_index,
-        "patrol_profile": profile,
-        "waypoints_relative_to_home": relative_waypoints,
+        "datum_kind": datum_kind,
+        "datum_input_index": datum_index,
+        "ground_plane_size_m": ground_plane_size_m,
+        **({"patrol_profile": profile} if profile is not None else {}),
+        "waypoints_relative_to_datum": relative_waypoints,
     }
     sanitized_path.write_text(yaml.safe_dump(sanitized, sort_keys=False), encoding="utf-8")
 
@@ -266,7 +306,8 @@ def prepare_artifacts(
     return {
         "route_name": route_name,
         "waypoint_count": len(waypoints),
-        "home_index": home_index,
+        "datum_index": datum_index,
+        "datum_kind": datum_kind,
         "output_dir": output_dir,
         "world_path": world_path,
         "mission_path": mission_path,
