@@ -55,6 +55,10 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert '"route_execution_mode"' in contents
     assert 'default_value="legacy_pair"' in contents
     assert '"route_execution_mode": route_execution_mode' in contents
+    assert '"adaptive_dense_leg_max_m"' in contents
+    assert '"adaptive_dense_horizon_m"' in contents
+    assert '"adaptive_dense_leg_max_m": adaptive_dense_leg_max_m' in contents
+    assert '"adaptive_dense_horizon_m": adaptive_dense_horizon_m' in contents
     assert '"route_progress_pose_max_age_s": route_progress_pose_max_age_s' in contents
     assert "no_obstacle_detection" in contents
     assert "safety_arbitration_no_obstacles_sim.launch.py" in contents

@@ -121,6 +121,8 @@ def test_real_route_and_patrol_launches_reuse_one_safe_existing_node_each():
     assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in route
     assert 'default_value="legacy_pair"' in route
     assert '"route_execution_mode": route_execution_mode' in route
+    assert '"adaptive_dense_leg_max_m"' in route
+    assert '"adaptive_dense_horizon_m"' in route
     assert 'default_value="0.5"' in route
     assert 'DeclareLaunchArgument("use_sim_time", default_value="false")' in patrol
     assert 'DeclareLaunchArgument("runtime_dir", default_value="runtime/patrol")' in patrol

@@ -16,6 +16,8 @@ def generate_launch_description() -> LaunchDescription:
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
     patrol_battery_state_topic = LaunchConfiguration("patrol_battery_state_topic")
     route_execution_mode = LaunchConfiguration("route_execution_mode")
+    adaptive_dense_leg_max_m = LaunchConfiguration("adaptive_dense_leg_max_m")
+    adaptive_dense_horizon_m = LaunchConfiguration("adaptive_dense_horizon_m")
     route_progress_pose_max_age_s = LaunchConfiguration(
         "route_progress_pose_max_age_s")
     zones_launch = PathJoinSubstitution([
@@ -47,8 +49,10 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "route_execution_mode",
             default_value="legacy_pair",
-            choices=["single_checkpoint", "legacy_pair"],
+            choices=["single_checkpoint", "legacy_pair", "adaptive_dense"],
         ),
+        DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="8.0"),
+        DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="35.0"),
         DeclareLaunchArgument(
             "route_progress_pose_max_age_s", default_value="0.5"),
         IncludeLaunchDescription(
@@ -69,6 +73,8 @@ def generate_launch_description() -> LaunchDescription:
             launch_arguments={
                 "use_sim_time": "false",
                 "route_execution_mode": route_execution_mode,
+                "adaptive_dense_leg_max_m": adaptive_dense_leg_max_m,
+                "adaptive_dense_horizon_m": adaptive_dense_horizon_m,
                 "route_progress_pose_max_age_s": route_progress_pose_max_age_s,
             }.items(),
         ),

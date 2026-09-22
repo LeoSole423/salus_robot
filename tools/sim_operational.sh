@@ -6,12 +6,14 @@ cd "${repo_dir}"
 
 headless=false
 rviz=false
+adaptive_dense=false
 for option in "$@"; do
   case "${option}" in
     --headless) headless=true ;;
     --rviz) rviz=true ;;
+    --adaptive-dense) adaptive_dense=true ;;
     *)
-      echo "Usage: ./tools/sim_operational.sh [--headless] [--rviz]" >&2
+      echo "Usage: ./tools/sim_operational.sh [--headless] [--rviz] [--adaptive-dense]" >&2
       exit 2
       ;;
   esac
@@ -20,6 +22,11 @@ done
 if [[ "${headless}" == "true" && "${rviz}" == "true" ]]; then
   echo "--rviz cannot be used with --headless" >&2
   exit 2
+fi
+
+route_args=""
+if [[ "${adaptive_dense}" == "true" ]]; then
+  route_args=" route_execution_mode:=adaptive_dense adaptive_dense_leg_max_m:=8.0 adaptive_dense_horizon_m:=35.0"
 fi
 
 docker compose up -d --build
@@ -38,5 +45,5 @@ docker compose exec ros2 bash -lc "
   cd /ros2_ws
   colcon build --symlink-install --packages-up-to salus_bringup
   source /ros2_ws/install/setup.bash
-  exec ros2 launch salus_bringup sim_operational.launch.py headless:=${headless} rviz:=${rviz}
+  exec ros2 launch salus_bringup sim_operational.launch.py headless:=${headless} rviz:=${rviz}${route_args}
 "

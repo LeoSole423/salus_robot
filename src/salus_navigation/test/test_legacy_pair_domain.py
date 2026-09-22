@@ -12,11 +12,11 @@ from salus_navigation.route_model import RouteWaypoint
 from salus_navigation.route_preparation import prepare
 
 
-def point(x, index, *, role="normal", action="", explicit=False, key=True):
+def point(x, index, *, y=0.0, role="normal", action="", explicit=False, key=True):
     return RouteWaypoint(
         0.0, 0.0, float(index * 10) if explicit else nan, index,
         key=key, action_json=action, role=role,
-        map_x=float(x), map_y=0.0, yaw_explicit=explicit,
+        map_x=float(x), map_y=float(y), yaw_explicit=explicit,
     )
 
 
@@ -76,6 +76,81 @@ def test_single_checkpoint_mode_remains_one_real_key():
     prepared = route([point(0, 0), point(10, 1), point(20, 2)])
     chunk = build_chunk(prepared, 0)
     assert indices(chunk) == [0]
+
+
+def test_adaptive_dense_groups_an_ordered_cluster_larger_than_a_pair():
+    prepared = route([
+        point(0, 0), point(4, 1), point(8, 2), point(12, 3), point(16, 4),
+    ])
+
+    chunk = build_chunk(
+        prepared,
+        0,
+        mode="adaptive_dense",
+        adaptive_dense_leg_max_m=5.0,
+        adaptive_dense_horizon_m=35.0,
+    )
+
+    assert indices(chunk) == [0, 1, 2, 3, 4]
+    assert chunk.checkpoint_occurrences == (
+        (0, 0, 0), (1, 1, 0), (2, 2, 0), (3, 3, 0), (4, 4, 0),
+    )
+
+
+def test_adaptive_dense_falls_back_to_a_legacy_pair_across_a_long_leg():
+    prepared = route([
+        point(0, 0), point(12, 1), point(16, 2), point(20, 3),
+    ])
+
+    chunk = build_chunk(
+        prepared,
+        0,
+        mode="adaptive_dense",
+        adaptive_dense_leg_max_m=5.0,
+        adaptive_dense_horizon_m=35.0,
+    )
+
+    assert indices(chunk) == [0, 1]
+
+
+def test_adaptive_dense_uses_route_order_not_spatial_loop_proximity():
+    prepared = route([
+        point(0, 0, y=0), point(4, 1, y=0), point(20, 2, y=0),
+        point(4, 3, y=1), point(0, 4, y=1),
+    ], loop=True)
+
+    chunk = build_chunk(
+        prepared,
+        0,
+        mode="adaptive_dense",
+        adaptive_dense_leg_max_m=5.0,
+        adaptive_dense_horizon_m=35.0,
+    )
+
+    assert indices(chunk) == [0, 1]
+
+
+def test_adaptive_dense_stops_at_an_action_or_explicit_yaw_boundary():
+    prepared = route([
+        point(0, 0),
+        point(4, 1),
+        point(8, 2, action='{"type":"brake_hold"}'),
+        point(12, 3),
+    ])
+    action_chunk = build_chunk(
+        prepared, 0, mode="adaptive_dense",
+        adaptive_dense_leg_max_m=5.0, adaptive_dense_horizon_m=35.0,
+    )
+    assert indices(action_chunk) == [0, 1, 2]
+
+    prepared = route([
+        point(0, 0), point(4, 1), point(8, 2, explicit=True), point(12, 3),
+    ])
+    explicit_chunk = build_chunk(
+        prepared, 0, mode="adaptive_dense",
+        adaptive_dense_leg_max_m=5.0, adaptive_dense_horizon_m=35.0,
+    )
+    assert indices(explicit_chunk) == [0, 1, 2]
 
 
 def sample(x, stamp=10.0, received=10.0):
