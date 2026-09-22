@@ -7,6 +7,7 @@ cd "${repo_dir}"
 visual=true
 cockpit=false
 adaptive_dense=false
+adaptive_dense_leg_max_m="8.0"
 generic_world=false
 for option in "$@"; do
   case "${option}" in
@@ -19,11 +20,14 @@ for option in "$@"; do
     --adaptive-dense)
       adaptive_dense=true
       ;;
+    --adaptive-dense-leg-max-m=*)
+      adaptive_dense_leg_max_m="${option#*=}"
+      ;;
     --generic)
       generic_world=true
       ;;
     *)
-      echo "Usage: ./tools/sim.sh [--headless] [--cockpit] [--adaptive-dense] [--generic]" >&2
+      echo "Usage: ./tools/sim.sh [--headless] [--cockpit] [--adaptive-dense] [--adaptive-dense-leg-max-m=<meters>] [--generic]" >&2
       exit 2
       ;;
   esac
@@ -33,6 +37,7 @@ if [[ "${cockpit}" == "true" ]]; then
   operational_args=()
   [[ "${visual}" == "false" ]] && operational_args+=(--headless)
   [[ "${adaptive_dense}" == "true" ]] && operational_args+=(--adaptive-dense)
+  [[ "${adaptive_dense}" == "true" ]] && operational_args+=("--adaptive-dense-leg-max-m=${adaptive_dense_leg_max_m}")
   [[ "${generic_world}" == "true" ]] && operational_args+=(--generic)
   exec "${repo_dir}/tools/sim_operational.sh" "${operational_args[@]}"
 fi
@@ -66,7 +71,7 @@ else
   launch_args="gz_args:=-r\ -s rviz:=false"
 fi
 if [[ "${adaptive_dense}" == "true" ]]; then
-  launch_args+=" route_execution_mode:=adaptive_dense adaptive_dense_leg_max_m:=8.0 adaptive_dense_horizon_m:=35.0"
+  launch_args+=" route_execution_mode:=adaptive_dense adaptive_dense_leg_max_m:=${adaptive_dense_leg_max_m} adaptive_dense_horizon_m:=35.0"
 fi
 launch_args+="${georeferenced_args}"
 
