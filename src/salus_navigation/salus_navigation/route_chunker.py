@@ -221,6 +221,13 @@ def _build_adaptive_dense_chunk(
             next_index %= total
             if next_index == start:
                 break
+            # A single NavigateThroughPoses request must never contain a full
+            # circuit.  If it did, its terminal pose could coincide with the
+            # robot at dispatch and Nav2 could legitimately return success
+            # without traversing the intermediate checkpoints.  Leave the
+            # final point for the next finite window instead.
+            if (next_index + 1) % total == start:
+                break
             if next_index == 0 and index != 0:
                 current_iteration += 1
         elif next_index >= total:

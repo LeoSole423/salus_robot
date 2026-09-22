@@ -7,7 +7,7 @@ docker compose run --rm \
   -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-patrol-battery-$$}" \
   -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" \
   -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/direct}" \
-  -e SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-single_checkpoint}" \
+  -e SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-adaptive_dense}" \
   -e FASTDDS_BUILTIN_TRANSPORTS="${FASTDDS_BUILTIN_TRANSPORTS:-DEFAULT}" \
   ros2 bash -lc '
   set -eo pipefail
