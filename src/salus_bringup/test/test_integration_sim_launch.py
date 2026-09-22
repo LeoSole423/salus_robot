@@ -53,7 +53,7 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert '"sim_sensor_profile"' in contents
     assert '"sim_sensor_seed"' in contents
     assert '"route_execution_mode"' in contents
-    assert 'default_value="legacy_pair"' in contents
+    assert 'default_value="adaptive_dense"' in contents
     assert '"route_execution_mode": route_execution_mode' in contents
     assert '"adaptive_dense_leg_max_m"' in contents
     assert '"adaptive_dense_horizon_m"' in contents

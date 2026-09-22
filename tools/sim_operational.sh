@@ -7,8 +7,8 @@ cd "${repo_dir}"
 headless=false
 rviz=false
 adaptive_dense=false
-adaptive_dense_leg_max_m="8.0"
-adaptive_dense_horizon_m="35.0"
+adaptive_dense_leg_max_m="20.0"
+adaptive_dense_horizon_m="60.0"
 generic_world=false
 for option in "$@"; do
   case "${option}" in

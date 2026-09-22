@@ -199,6 +199,10 @@ El helper operativo construye el workspace y expone Cockpit:
 Activa por defecto navegación, keepout, rutas, patrulla/HOME, snapshots,
 WebSocket compacto en el puerto `8766` y cámara PTZ simulada. La persistencia se
 agrupa bajo `runtime/sim_operational`; puede cambiarse con `runtime_dir:=...`.
+La ejecución de rutas usa por defecto `adaptive_dense`, con piernas densas de
+hasta `20 m` y un horizonte ordenado de `60 m`; `legacy_pair` continúa siendo
+un override explícito para comparación o rollback. Los mismos defaults se
+propagan al perfil real.
 Cuando existe `artifacts/PatrullaSencillaPolo.private.json`, el helper la usa de
 forma local como perfil georreferenciado: el waypoint 1 es el datum y el spawn,
 y el yaw inicial apunta hacia el waypoint 2. Usar `--generic` para omitir ese

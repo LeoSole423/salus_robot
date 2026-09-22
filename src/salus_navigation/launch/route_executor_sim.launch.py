@@ -16,11 +16,11 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument(
             "route_execution_mode",
-            default_value="legacy_pair",
+            default_value="adaptive_dense",
             choices=["single_checkpoint", "legacy_pair", "adaptive_dense"],
         ),
-        DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="8.0"),
-        DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="35.0"),
+        DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="20.0"),
+        DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="60.0"),
         DeclareLaunchArgument(
             "route_progress_pose_max_age_s", default_value="0.5"),
         Node(

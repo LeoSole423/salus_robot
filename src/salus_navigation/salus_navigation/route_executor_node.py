@@ -106,9 +106,9 @@ class RouteExecutorNode(Node):
     def __init__(self) -> None:
         super().__init__("route_executor")
         self.declare_parameter("waypoint_reached_tolerance_m", 1.2)
-        self.declare_parameter("route_execution_mode", "legacy_pair")
-        self.declare_parameter("adaptive_dense_leg_max_m", 8.0)
-        self.declare_parameter("adaptive_dense_horizon_m", 35.0)
+        self.declare_parameter("route_execution_mode", "adaptive_dense")
+        self.declare_parameter("adaptive_dense_leg_max_m", 20.0)
+        self.declare_parameter("adaptive_dense_horizon_m", 60.0)
         self.declare_parameter("route_progress_pose_max_age_s", 0.5)
         self.declare_parameter("fromll_timeout_s", 2.0)
         self.declare_parameter("blocked_persistence_s", 1.5)
