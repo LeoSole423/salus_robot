@@ -93,6 +93,7 @@ class SyntheticNavigationInputs(Node):
     def __init__(self) -> None:
         super().__init__("navigation_real_pc_fixture")
         self.obstacle_range: float | None = None
+        self.scan_ranges_override: list[float] | None = None
         self.scan_enabled = True
         self.command_enabled = False
         self.safe: list[Twist] = []
@@ -181,7 +182,9 @@ class SyntheticNavigationInputs(Node):
             scan.range_min = 0.4
             scan.range_max = 20.0
             scan.ranges = [float("inf")] * 360
-            if self.obstacle_range is not None:
+            if self.scan_ranges_override is not None:
+                scan.ranges = self.scan_ranges_override
+            elif self.obstacle_range is not None:
                 for index in range(176, 185):
                     scan.ranges[index] = self.obstacle_range
             self.scan_pub.publish(scan)
@@ -217,6 +220,43 @@ def _assert_lifecycle_active(node: Node, node_name: str) -> None:
         node_name,
         response.current_state.label,
     )
+
+
+def _tilted_grass_scan() -> list[float]:
+    """Project the same left grass geometry used by the perception fixture."""
+    ranges = [float("inf")] * 360
+    roll = math.radians(8.0)
+    sine, cosine = math.sin(roll), math.cos(roll)
+    for ix in range(25):
+        for iy in range(26):
+            x = 6.0 + 0.25 * ix
+            y = 1.5 + 0.1 * iy
+            z = 0.08 + 0.015 * ((ix + 2 * iy) % 5)
+            lateral = cosine * y - sine * z
+            height = sine * y + cosine * z
+            if height <= 0.20:
+                continue
+            radius = math.hypot(x, lateral)
+            index = int((math.atan2(lateral, x) + math.pi / 2) / (math.pi / 359))
+            if 0 <= index < 360:
+                ranges[index] = min(ranges[index], radius)
+    return ranges
+
+
+def _lethal_left_grass_cells(costmap: Costmap) -> int:
+    metadata = costmap.metadata
+    resolution = metadata.resolution
+    width = metadata.size_x
+    count = 0
+    for row in range(metadata.size_y):
+        y = metadata.origin.position.y + (row + 0.5) * resolution
+        if not 1.0 <= y <= 4.5:
+            continue
+        for col in range(width):
+            x = metadata.origin.position.x + (col + 0.5) * resolution
+            if 5.5 <= x <= 12.5 and costmap.data[row * width + col] == 254:
+                count += 1
+    return count
 
 
 def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
@@ -266,6 +306,25 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             20.0,
             "local and global costmaps",
         )
+        assert _lethal_left_grass_cells(fixture.local_costmaps[-1]) == 0
+        fixture.scan_ranges_override = _tilted_grass_scan()
+        _spin_until(
+            fixture,
+            lambda: bool(fixture.local_costmaps)
+            and _lethal_left_grass_cells(fixture.local_costmaps[-1]) >= 10,
+            10.0,
+            "tilted grass marked in local costmap",
+        )
+        marked_cells = _lethal_left_grass_cells(fixture.local_costmaps[-1])
+        fixture.scan_ranges_override = None
+        _spin_until(
+            fixture,
+            lambda: bool(fixture.local_costmaps)
+            and _lethal_left_grass_cells(fixture.local_costmaps[-1]) <= 1,
+            10.0,
+            "tilted grass mostly cleared from local costmap",
+        )
+        assert marked_cells >= 10
         snapshot_client = fixture.create_client(
             GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
         )

@@ -19,6 +19,8 @@
 | `route_recovery.py` y `route_executor_node.py` | El ejecutor trata `CONTROLLER_COLLISION` y `NAV_ABORTED` como bloqueo persistente; tras 1,5 s puede cancelar, frenar y reintentar. | El progreso de checkpoints ya acreditados corresponde a #302. |
 | Legacy `nav_command_server.py`, commit `dfda7f3` | El texto `collision ahead` se clasifica como pista `CONTROLLER_COLLISION`. | Es una pista de log, no una medición del obstáculo. |
 | Recuerdo del operador, comunicado después de la caracterización inicial | En una pendiente, con el robot inclinado, apareció a su izquierda una ocupación grande en el costmap semejante a una pared. Los puntos rojos de Nav Live se veían dispersos, sin geometría de pared. Había pasto bajo en esa zona. La «pared» desaparecía al enderezarse el robot, sin inclinación. | No hay aún correlación temporal exacta con `collision ahead`, scan, pose, costmap o resultado Nav2. Tampoco se midió cuánto tardaba en desaparecer. |
+| `test_tilted_ground_characterization.py` y `test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright` | Con una escena sintética fija de pasto irregular a la izquierda, el filtro y la composición real de percepción muestran ocupación lateral en `/scan_clean` al aplicar una rotación relativa de 8°; la ocupación no aparece a 0° y desaparece al volver a 0°. Un poste de 0,75 m permanece detectable. | Es un control causal sintético de la geometría relativa en nube y scan. No prueba que el roll real fuera 8°, que la inclinación del chasis por sí sola cause esa geometría, ni que RPP termine el goal. El input del test ROS ya está expresado en `base_footprint`; no ejercita la TF dinámica del LiDAR. |
+| `test_navigation_real_pc_runtime_without_clock` | El mismo patrón angular sintético, publicado en `/scan_clean` con Nav2 real activo en PC, produjo al menos 10 celdas letales en el costmap local de la zona izquierda. Al regresar al scan despejado, quedaron como máximo una en 10 s. En una ejecución diagnóstica la secuencia publicada fue 52 → 1 celdas. | Esta etapa inyecta el scan directamente; no ejecuta un goal de movimiento ni demuestra la causa del aborto físico. La celda residual necesita investigación separada antes de afirmar clearing completo. |
 
 El artifact físico citado en #300 está sólo en el Jetson, que no respondió por SSH durante esta investigación. Falta el bag y los logs exactos de la ruta que produjo `collision ahead`.
 
@@ -41,6 +43,9 @@ El artifact físico citado en #300 está sólo en el Jetson, que no respondió p
 ## Pruebas y gates
 
 - Caracterización actual: `test_single_distant_lethal_cell_replans_active_path_immediately`.
+- Fixture de percepción: `test_tilted_ground_characterization.py` comprueba la clasificación pura y `test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright` atraviesa `scan_ground_filter -> pointcloud_to_laserscan -> scan_noise_filter`, cotejando cada salida por `header.stamp`.
+- El test de composición real de navegación comprueba la marca y el despeje mayoritario del costmap local con el patrón del fixture; el remanente de una celda se registra sin ocultarlo.
+- Siguiente frontera: un escenario de movimiento en Gazebo que introduzca inclinación mientras Nav2 ejecuta una meta y mida RPP, resultado del goal y trayectoria. Un robot inmóvil con odometría sintética no permite interpretar un aborto de controlador como causado por la ocupación.
 - Un obstáculo real cercano conserva stop y no recibe aproximación positiva desde la política.
 - Una ocupación lejana de corta duración se observa sin abortar ni reiniciar la misión; si persiste, produce replan o espera con motivo observable.
 - Datos stale/TF inválido mantienen degradación segura. Ningún test debe pasar simulando libre una celda desconocida o vencida.
