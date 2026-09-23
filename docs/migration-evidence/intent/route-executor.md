@@ -17,10 +17,12 @@ Fuente histórica: `fb54b95`, `eaac77d`, `fd7d977`, `6d94ba3`, `8e826e9` y `d0cd
   sobrepasado. Los checkpoints originales nunca se podan: cada uno es una
   frontera observable para `ROUTE_CHECKPOINT_REACHED`, incluida la salida de
   loop que Patrol usa para pasar de `EXIT_LOOP` a `RETURN_HOME`.
-- Un yaw automático describe la pierna siguiente de la misión. Durante un
-  dispatch finito sólo el terminal automático se adapta al rumbo de llegada;
-  esto evita exigir geometría fuera de la ventana. Los yaws explícitos nunca se
-  sustituyen.
+- El request de Cockpit selecciona `auto_yaw_policy=route_tangent`: un yaw
+  automático de checkpoint sigue la tangente entre las piernas de entrada y
+  salida; los extremos usan la única pierna disponible. Los puntos sintéticos
+  usan el rumbo de su pierna. El dispatch finito conserva esos valores. Los
+  callers que dejan el campo vacío conservan la política previa de rumbo de
+  salida y ajuste del terminal; un yaw explícito nunca se sustituye.
 - No hay freno entre objetivos contiguos; sí al finalizar, cancelar o abortar.
 - Esta migración convierte LL una vez para validar/preparar la misión y conserva las poses `map` para diagnóstico. Cada despacho usa el contrato legacy `SetNavGoalLL`, cuyo servidor mantiene su conversión defensiva.
 
@@ -48,9 +50,9 @@ Nav2 debe seguir, pero no redefine los hitos de la misión.
 - El smoke de rutas registra el request lógico del chunk, el pose del robot y
   el `/plan`; sus métricas deterministas incluyen longitud, ratio de desvío,
   máxima distancia a la polilínea solicitada y auto-intersecciones. La
-  comparación de yaw mantiene separadas la política actual, la preparada sin
-  mutación y la terminal entrante; el yaw explícito siempre prevalece. En tres
-  ejecuciones del escenario determinista `wide_turn_two_pose_window`, usando
+  comparación histórica de yaw mantuvo separadas la política de approach, la
+  preparada sin mutación y la terminal entrante. En tres ejecuciones del
+  escenario determinista `wide_turn_two_pose_window`, usando
   `ComputePathThroughPoses` y el path devuelto por Nav2, se obtuvo la misma
   conclusión:
 
@@ -61,16 +63,37 @@ Nav2 debe seguir, pero no redefine los hitos de la misión.
   | sólo terminal entrante | 0, 0 | 39.605 | 3.961 | 8.07 | 0 |
 
   La variación entre ejecuciones fue menor que 0.03 m en `max deviation` y no
-  cambió la clasificación. Se conserva `terminal_incoming`: elimina las
-  auto-intersecciones y minimiza longitud/detour sin mutar el primer yaw; un
-  yaw explícito continúa siendo intocable. La evidencia queda reproducible con
-  `./tools/smoke_route_executor_sim.sh`, que escribe
-  `evidence.yaw_policy_comparison` en `route_probe.json`.
+  cambió la clasificación. En aquel corte se conservó `terminal_incoming`;
+  el smoke vigente compara la tangente de ruta con esa política histórica y
+  escribe `evidence.yaw_policy_comparison` en `route_probe.json`.
 - No se incorporan parámetros legacy omitidos ni tuning: requieren evidencia
   independiente y no son necesarios para restaurar el contrato multi-pose.
 
 No validado en hardware en este corte: continuidad física, curva Ackermann y
 loop. Esas pruebas sólo se habilitan después de PC/CI y simulación verdes.
+
+## Yaw automático en curvas de patrulla
+
+La ruta guardada `PatrullaSencillaPolo` no contiene yaws explícitos. En el
+Cockpit legacy, `web_zone_server._resolve_waypoint_yaws()` convertía esos
+puntos a yaws finitos antes de enviarlos: para un punto interior usaba la
+bisectriz de los rumbos de entrada y salida. El executor legacy los recibía
+como explícitos y los despachaba sin adaptar el terminal. En el Cockpit nuevo,
+el gateway conserva la ausencia de yaw como `NaN`; el executor actual calculaba
+el rumbo de salida y después sustituía el yaw del terminal por el de entrada.
+
+En los puntos 3 y 4 del archivo de la patrulla, los rumbos aproximados de
+entrada/salida son `-104°/-17°` y `-17°/84°`. El yaw que generaba el Cockpit
+legacy era `-60°` y `34°`; el terminal automático actual pedía `-104°` y
+`-17°`. Esto explica una diferencia de request, no demuestra todavía la
+trayectoria ejecutada. La política pura se ajusta para usar la tangente de la
+ruta en los checkpoints automáticos, conservar yaws explícitos y usar el rumbo
+del tramo en puntos sintéticos. El dispatch preserva estos yaws al cortar un
+  chunk. El campo aditivo `SetRouteMissionLL.auto_yaw_policy` sólo lo solicita
+  el gateway de rutas de Cockpit; vacío conserva la política existente de
+  Patrol/HOME y otros callers. No cambia Nav2, costmaps, tolerancias, chunking
+  ni recovery. La validación física queda pendiente de simulación del operador
+  y, después, del robot.
 
 ## Corrección física posterior a #244
 

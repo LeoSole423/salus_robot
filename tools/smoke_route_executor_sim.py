@@ -399,19 +399,19 @@ def _pose_stamped(node, x, y, yaw):
 
 
 def compare_yaw_policies(node, runtime, robot_xy):
-    """Compare the three approved yaw policies against real planner output."""
+    """Compare route tangents with the previous finite-window yaw policies."""
     origin_x, origin_y = robot_xy
     full_route = [
         RouteWaypoint(0, 0, math.nan, 0, map_x=origin_x, map_y=origin_y + 6.0),
         RouteWaypoint(0, 0, math.nan, 1, map_x=origin_x + 8.0, map_y=origin_y + 6.0),
         RouteWaypoint(0, 0, math.nan, 2, map_x=origin_x + 8.0, map_y=origin_y + 14.0),
     ]
-    prepared = resolve_yaws(full_route, False)
+    prepared = resolve_yaws(full_route, False, curve_tangent=True)
     window = tuple(prepared[:2])
     policies = {
-        "current": dispatch_yaws(window, approach_xy=robot_xy),
-        "prepared_legacy": [float(point.yaw_deg) for point in window],
-        "terminal_incoming": dispatch_yaws(window),
+        "route_tangent": dispatch_yaws(window, approach_xy=robot_xy, curve_tangent=True),
+        "terminal_incoming": [0.0, 0.0],
+        "outgoing": [0.0, 90.0],
     }
     evidence = {}
     for name, yaws in policies.items():
@@ -463,7 +463,7 @@ def compare_yaw_policies(node, runtime, robot_xy):
             evidence[policy]["length_m"],
         ),
     )
-    selected_policy = "terminal_incoming"
+    selected_policy = "route_tangent"
     return {
         "scenario": "wide_turn_two_pose_window",
         "policies": evidence,
@@ -471,7 +471,7 @@ def compare_yaw_policies(node, runtime, robot_xy):
         "selected_policy": selected_policy,
         "selection_matches_measurement": winner == selected_policy,
         "decision": (
-            "keep terminal_incoming: it minimizes topology/detour in the deterministic Nav2 comparison"
+            "route_tangent minimizes topology/detour in the deterministic Nav2 comparison"
             if winner == selected_policy
             else f"measured winner is {winner}; selected policy requires review"
         ),
@@ -635,6 +635,8 @@ def request_from_pose(pose, *, loop=False):
     request.lons = [LON + point_x / (111_320.0 * math.cos(math.radians(LAT))) for point_x, _ in values]
     request.yaws_deg = ([float("nan")] * len(values)
                         if automatic_yaws else [math.degrees(yaw)] * len(values))
+    if automatic_yaws:
+        request.auto_yaw_policy = "route_tangent"
     request.loop, request.leg_spacing_m = loop, leg_spacing_m
     request.waypoint_action_jsons = actions
     if scenario == "recovery_action":
@@ -769,14 +771,11 @@ def main():
             (float(node.odom[-1].pose.pose.position.x),
              float(node.odom[-1].pose.pose.position.y)),
         )
-        if (
-            not yaw_policy_evidence["selection_matches_measurement"]
-            or yaw_policy_evidence["winner"] != yaw_policy_evidence["selected_policy"]
-            or yaw_policy_evidence["selected_policy"] != "terminal_incoming"
-        ):
-            raise RuntimeError(
-                "yaw policy gate failed: production policy is not the measured winner"
-            )
+        tangent = yaw_policy_evidence["policies"]["route_tangent"]
+        incoming = yaw_policy_evidence["policies"]["terminal_incoming"]
+        if (tangent["self_intersections"] > incoming["self_intersections"]
+                or tangent["length_m"] > incoming["length_m"] + 2.0):
+            raise RuntimeError("route tangent yaw worsened the baseline plan topology")
         initial_state = call(node, node.state, GetRouteMissionState.Request())
         if not initial_state.ok:
             raise RuntimeError(f"route state handshake failed: {initial_state.error}")

@@ -1,4 +1,4 @@
-from math import nan
+from math import isclose, nan
 from contextlib import nullcontext
 from types import SimpleNamespace
 from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteMission, RoutePhase, RouteWaypoint
@@ -28,6 +28,35 @@ def test_open_route_final_automatic_yaw_follows_its_incoming_leg():
     ], False)
 
     assert [point.yaw_deg for point in route] == [90.0, 90.0]
+
+
+def test_route_tangent_mode_splits_a_right_angle_and_keeps_leg_synthetics():
+    route = prepare([
+        RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+    ], loop=False, input_count=3, spacing_m=5.0,
+        chunk_span_m=120.0, chunk_max_waypoints=5, curve_tangent=True)
+
+    corner = next(p for p in route.waypoints if p.key and p.input_index == 1)
+    synthetic = next(p for p in route.waypoints if not p.key and p.input_index == 1)
+    assert isclose(corner.yaw_deg, 45.0, abs_tol=1e-6)
+    assert isclose(synthetic.yaw_deg, 90.0, abs_tol=1e-6)
+    chunk = build_chunk(route, 2)
+    assert list(chunk_goal_request(chunk, route, approach_xy=(9.0, -1.0)).yaws_deg) == [45.0]
+
+
+def test_route_tangent_mode_preserves_operator_yaw_and_legacy_default():
+    points = [
+        RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, -30.0, 1, map_x=10.0, map_y=0.0, yaw_explicit=True),
+        RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+    ]
+    tangent = resolve_yaws(points, False, curve_tangent=True)
+    legacy = resolve_yaws(points, False)
+    assert tangent[1].yaw_deg == legacy[1].yaw_deg == -30.0
+    assert dispatch_yaws(tuple(tangent), curve_tangent=True)[1] == -30.0
+    assert legacy[0].yaw_deg == 0.0
 
 
 def test_finite_chunk_changes_only_an_automatic_terminal_yaw_to_its_incoming_leg():

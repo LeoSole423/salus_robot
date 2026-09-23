@@ -83,6 +83,7 @@ def test_route_mapping_keeps_roles_actions_and_options() -> None:
     assert request.loop is True
     assert request.leg_spacing_m == 3.0
     assert request.chunk_max_waypoints == 12
+    assert request.auto_yaw_policy == "route_tangent"
 
 
 def test_route_mapping_uses_physically_characterized_multi_pose_defaults() -> None:

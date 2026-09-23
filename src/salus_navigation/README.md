@@ -18,6 +18,9 @@ autoridad de velocidad.
   y no se versionan; no se genera una máscara global PGM.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
+- El gateway de rutas de Cockpit solicita `auto_yaw_policy=route_tangent` para
+  que los checkpoints sin yaw manual sigan la tangente de la curva. Los callers
+  que dejan el campo vacío conservan la política previa, incluido Patrol/HOME.
 - Recuperación de rutas bloqueadas mediante una política pura con espera por
   datos, cooldown, limpieza de costmaps y límite de intentos observable en los
   campos `blocked_*`. El retry conserva el sufijo del chunk activo posterior a

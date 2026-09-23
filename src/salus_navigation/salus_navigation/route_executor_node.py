@@ -82,12 +82,12 @@ def chunk_goal_request(
     request = SetNavGoalLL.Request()
     request.lats = [float(point.lat) for point in chunk.waypoints]
     request.lons = [float(point.lon) for point in chunk.waypoints]
-    # Preserve prepared headings except for the automatic terminal pose: the
-    # incoming-leg heading avoids an artificial turn toward geometry outside
-    # this finite dispatch window. Explicit headings remain unchanged.
+    # Route tangents are preserved for Cockpit routes. Existing callers keep
+    # the finite-window approach and terminal policy.
     request.yaws_deg = dispatch_yaws(
         chunk.waypoints,
         approach_xy=approach_xy,
+        curve_tangent=prepared.auto_yaw_policy == "route_tangent",
     )
     request.lat, request.lon, request.yaw_deg = (
         request.lats[0], request.lons[0], request.yaws_deg[0]
@@ -269,6 +269,8 @@ class RouteExecutorNode(Node):
         lats, lons, yaws = list(request.lats), list(request.lons), list(request.yaws_deg)
         actions, roles = list(request.waypoint_action_jsons), list(request.waypoint_roles)
         error = validate_inputs(lats, lons, yaws, actions, roles)
+        if request.auto_yaw_policy not in ("", "route_tangent"):
+            error = "auto_yaw_policy must be empty or route_tangent"
         response.input_waypoint_count = len(lats)
         if error:
             response.ok, response.error = False, error
@@ -346,6 +348,7 @@ class RouteExecutorNode(Node):
             job["converted"], loop=bool(request.loop), input_count=len(job["raw"]),
             spacing_m=float(request.leg_spacing_m), chunk_span_m=float(request.chunk_span_m),
             chunk_max_waypoints=int(request.chunk_max_waypoints),
+            curve_tangent=request.auto_yaw_policy == "route_tangent",
         )
         anchor = 0
         if self._pose is not None:

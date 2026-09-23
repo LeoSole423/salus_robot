@@ -33,6 +33,7 @@ class PreparedRoute:
     waypoints: tuple[RouteWaypoint, ...]; loop: bool; input_count: int
     leg_spacing_m: float; chunk_span_m: float; chunk_max_waypoints: int
     anchor_input_index: int = 0; note: str = ""
+    auto_yaw_policy: str = ""
 
 
 @dataclass(frozen=True)
