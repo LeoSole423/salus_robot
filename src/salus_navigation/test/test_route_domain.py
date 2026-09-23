@@ -1,7 +1,7 @@
 from math import nan
 from contextlib import nullcontext
 from types import SimpleNamespace
-from salus_navigation.route_model import PreparedRoute, RoutePhase, RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RouteMission, RoutePhase, RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
@@ -585,6 +585,49 @@ def test_pose_callback_accounts_for_time_waiting_before_tracker_evaluation():
     assert sample.received_steady_s == 10.0
     assert now_steady_s == 10.7
     assert now_ros_s == 100.2
+
+
+def test_cancel_route_mission_transitions_paused_state_to_cancelled():
+    class ImmediateFuture:
+        def add_done_callback(self, callback):
+            callback(self)
+
+        def result(self):
+            return SimpleNamespace(ok=True, error="")
+
+    class Client:
+        def call_async(self, _request):
+            return ImmediateFuture()
+
+    mission = RouteMission(phase=RoutePhase.PAUSED, pause_reason="manual takeover")
+    fake = SimpleNamespace(
+        _lock=nullcontext(),
+        _preparation_epoch=0,
+        _preparation=object(),
+        _goal_request_pending=True,
+        _recovery=SimpleNamespace(reset=lambda: None),
+        _recovery_clears=object(),
+        _recovery_checkpoint_reached=True,
+        _checkpoint_tracker=object(),
+        _checkpoint_tracker_key=object(),
+        _reached_occurrences={1},
+        _action=None,
+        _action_future=None,
+        _mission=mission,
+        _goal_epoch=4,
+        _cancel_goal=Client(),
+        _brake=Client(),
+        _log_failed_brake=lambda _future: None,
+        _nav_cancel_timeout_s=0.1,
+        _event=lambda *_args, **_kwargs: None,
+    )
+    response = SimpleNamespace(ok=False, error="")
+
+    RouteExecutorNode._cancel(fake, None, response)
+
+    assert response.ok and response.error == ""
+    assert mission.phase is RoutePhase.CANCELLED
+    assert mission.pause_reason == "cancelled"
 
 
 def test_route_input_accepts_hard_role_but_rejects_unknown_roles():
