@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import threading
 import uuid
-from math import isfinite
+from math import atan2, degrees, isfinite
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -35,9 +35,13 @@ from .route_anchor import select_anchor
 from .route_checkpoint_tracker import (
     CheckpointOccurrence, IntermediateCheckpointTracker, PoseSample,
 )
-from .route_chunker import build_chunk, next_start, resolve_dispatch_start
+from .route_chunker import (
+    build_chunk, limit_chunk_to_horizon, next_start, resolve_dispatch_start,
+)
 from .route_model import RouteMission, RoutePhase, RouteWaypoint
-from .route_preparation import dispatch_yaws, prepare, validate_inputs
+from .route_preparation import (
+    dispatch_yaws, prepare, use_curve_tangent_policy, validate_inputs,
+)
 from .route_progress import project
 from .route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
@@ -75,19 +79,21 @@ def chunk_goal_request(
     prepared,
     *,
     approach_xy=None,
+    approach_heading_deg=None,
 ) -> SetNavGoalLL.Request:
     """Translate one finite route window without changing checkpoint semantics."""
-    if chunk is None or not chunk.waypoints or not chunk.checkpoint_offsets:
-        raise ValueError("route chunk contains no original checkpoint")
+    if chunk is None or not chunk.waypoints:
+        raise ValueError("route chunk contains no waypoint")
     request = SetNavGoalLL.Request()
     request.lats = [float(point.lat) for point in chunk.waypoints]
     request.lons = [float(point.lon) for point in chunk.waypoints]
-    # Preserve prepared headings except for the automatic terminal pose: the
-    # incoming-leg heading avoids an artificial turn toward geometry outside
-    # this finite dispatch window. Explicit headings remain unchanged.
+    # Automatic route tangents are the public default; explicit legacy mode
+    # retains the finite-window approach and terminal adjustment.
     request.yaws_deg = dispatch_yaws(
         chunk.waypoints,
         approach_xy=approach_xy,
+        approach_heading_deg=approach_heading_deg,
+        curve_tangent=prepared.auto_yaw_policy == "route_tangent",
     )
     request.lat, request.lon, request.yaw_deg = (
         request.lats[0], request.lons[0], request.yaws_deg[0]
@@ -109,6 +115,7 @@ class RouteExecutorNode(Node):
         self.declare_parameter("route_execution_mode", "adaptive_dense")
         self.declare_parameter("adaptive_dense_leg_max_m", 20.0)
         self.declare_parameter("adaptive_dense_horizon_m", 60.0)
+        self.declare_parameter("nav_goal_horizon_m", 120.0)
         self.declare_parameter("route_progress_pose_max_age_s", 0.5)
         self.declare_parameter("fromll_timeout_s", 2.0)
         self.declare_parameter("blocked_persistence_s", 1.5)
@@ -125,6 +132,7 @@ class RouteExecutorNode(Node):
         self._preparation = None
         self._preparation_epoch = 0
         self._pose = None
+        self._pose_heading_deg = None
         self._pose_sample = None
         self._chunk = None
         self._checkpoint_tracker = None
@@ -172,6 +180,11 @@ class RouteExecutorNode(Node):
             raise ValueError("adaptive_dense_leg_max_m must be positive")
         if self._adaptive_dense_horizon_m <= 0.0:
             raise ValueError("adaptive_dense_horizon_m must be positive")
+        self._nav_goal_horizon_m = float(
+            self.get_parameter("nav_goal_horizon_m").value
+        )
+        if not isfinite(self._nav_goal_horizon_m) or self._nav_goal_horizon_m <= 0.0:
+            raise ValueError("nav_goal_horizon_m must be finite and positive")
         self._route_progress_pose_max_age_s = float(
             self.get_parameter("route_progress_pose_max_age_s").value
         )
@@ -234,6 +247,17 @@ class RouteExecutorNode(Node):
             + float(message.header.stamp.nanosec) * 1.0e-9
         )
         position = message.pose.pose.position
+        orientation = getattr(message.pose.pose, "orientation", None)
+        quaternion = None if orientation is None else (
+            orientation.x, orientation.y, orientation.z, orientation.w,
+        )
+        heading_deg = None
+        if quaternion is not None and all(isfinite(value) for value in quaternion):
+            x, y, z, w = quaternion
+            heading_deg = degrees(atan2(
+                2.0 * (w * z + x * y),
+                1.0 - 2.0 * (y * y + z * z),
+            ))
         sample = PoseSample(
             float(position.x), float(position.y),
             source_stamp_s, received_steady_s,
@@ -245,6 +269,7 @@ class RouteExecutorNode(Node):
             now_steady_s = self._steady_now()
             now_ros_s = self.get_clock().now().nanoseconds * 1.0e-9
             self._pose = position
+            self._pose_heading_deg = heading_deg
             self._pose_sample = sample
             tracker = self._checkpoint_tracker
             if (
@@ -269,6 +294,10 @@ class RouteExecutorNode(Node):
         lats, lons, yaws = list(request.lats), list(request.lons), list(request.yaws_deg)
         actions, roles = list(request.waypoint_action_jsons), list(request.waypoint_roles)
         error = validate_inputs(lats, lons, yaws, actions, roles)
+        try:
+            use_curve_tangent_policy(request.auto_yaw_policy)
+        except ValueError as exc:
+            error = str(exc)
         response.input_waypoint_count = len(lats)
         if error:
             response.ok, response.error = False, error
@@ -346,6 +375,7 @@ class RouteExecutorNode(Node):
             job["converted"], loop=bool(request.loop), input_count=len(job["raw"]),
             spacing_m=float(request.leg_spacing_m), chunk_span_m=float(request.chunk_span_m),
             chunk_max_waypoints=int(request.chunk_max_waypoints),
+            curve_tangent=use_curve_tangent_policy(request.auto_yaw_policy),
         )
         anchor = 0
         if self._pose is not None:
@@ -606,6 +636,24 @@ class RouteExecutorNode(Node):
         if self._chunk is None:
             transition(self._mission, RoutePhase.COMPLETED)
             return
+        if self._pose is None:
+            self._pause("ROUTE_POSE_UNAVAILABLE")
+            return
+        bounded = limit_chunk_to_horizon(
+            route, self._chunk,
+            robot_xy=(self._pose.x, self._pose.y),
+            max_goal_distance_m=self._nav_goal_horizon_m,
+        )
+        if bounded is None:
+            self._pause("ROUTE_GOAL_HORIZON_UNREACHABLE")
+            self._event(
+                DiagnosticStatus.ERROR, "ROUTE_GOAL_HORIZON_UNREACHABLE",
+                "next route pose is outside the navigation horizon",
+                start_index=self._mission.target_index,
+                nav_goal_horizon_m=self._nav_goal_horizon_m,
+            )
+            return
+        self._chunk = bounded
         self._target_offset = 0
         self._publish_paths()
         self._send_chunk()
@@ -666,11 +714,7 @@ class RouteExecutorNode(Node):
                     waypoint_index=0 if execution is None else execution.waypoint_index)
 
     def _send_chunk(self) -> None:
-        offsets = self._chunk.checkpoint_offsets
-        if not offsets:
-            self._pause("route chunk contains no original checkpoint")
-            return
-        self._target_offset = offsets[-1]
+        self._target_offset = len(self._chunk.waypoints) - 1
         self._prepare_checkpoint_tracker()
         self._recovery_checkpoint_reached = False
         approach_xy = None
@@ -685,6 +729,7 @@ class RouteExecutorNode(Node):
             self._chunk,
             self._mission.prepared,
             approach_xy=approach_xy,
+            approach_heading_deg=self._pose_heading_deg,
         )
         self._event(
             DiagnosticStatus.OK,
@@ -767,6 +812,9 @@ class RouteExecutorNode(Node):
 
     def _prepare_checkpoint_tracker(self) -> None:
         occurrences = self._chunk.checkpoint_occurrences
+        soft_occurrences = (
+            occurrences[:-1] if self._chunk.waypoints[-1].key else occurrences
+        )
         soft = tuple(
             CheckpointOccurrence(
                 input_index=input_index,
@@ -774,7 +822,7 @@ class RouteExecutorNode(Node):
                 x=float(self._chunk.waypoints[offset].map_x),
                 y=float(self._chunk.waypoints[offset].map_y),
             )
-            for offset, input_index, loop_iteration in occurrences[:-1]
+            for offset, input_index, loop_iteration in soft_occurrences
         )
         key = (
             self._mission.mission_id,
@@ -854,6 +902,14 @@ class RouteExecutorNode(Node):
                 chunk_id=self._mission.chunk_id,
                 pending=json.dumps(pending, separators=(",", ":")),
             )
+            return
+        if not self._chunk.waypoints[-1].key:
+            # A synthetic terminal only advances the navigation window. It
+            # never credits a mission checkpoint or starts its actions.
+            route = self._mission.prepared
+            if route.loop and self._mission.target_index + self._target_offset >= len(route.waypoints):
+                self._mission.loop_iteration += 1
+            self._advance()
             return
         terminal = self._chunk.checkpoint_occurrences[-1]
         terminal_occurrence = CheckpointOccurrence(

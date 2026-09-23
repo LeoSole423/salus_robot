@@ -15,6 +15,9 @@
   `CameraPtzState` (más el `Trigger` estándar de zoom).
 - `PathHealth` es un contrato interno de runtime: explica si Nav2 conserva,
   recalcula o detiene temporalmente un path; no es una API de Cockpit.
+- `SetRouteMissionLL.auto_yaw_policy` es aditivo: vacío conserva la política
+  anterior de yaw automático; `route_tangent` usa la bisectriz en checkpoints
+  interiores. Los yaws finitos proporcionados por el operador prevalecen.
 - `EvaluatePathHealth` usa explícitamente el contexto `ACTIVE` o `CANDIDATE`;
   evita inferir la intención a partir del orden de llamadas del BT.
 - `GetNavSnapshot` conserva la petición vacía y la respuesta PNG del contrato

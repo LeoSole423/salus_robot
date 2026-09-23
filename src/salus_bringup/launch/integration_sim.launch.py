@@ -57,6 +57,7 @@ def generate_launch_description() -> LaunchDescription:
     route_execution_mode = LaunchConfiguration("route_execution_mode")
     adaptive_dense_leg_max_m = LaunchConfiguration("adaptive_dense_leg_max_m")
     adaptive_dense_horizon_m = LaunchConfiguration("adaptive_dense_horizon_m")
+    nav_goal_horizon_m = LaunchConfiguration("nav_goal_horizon_m")
     route_progress_pose_max_age_s = LaunchConfiguration(
         "route_progress_pose_max_age_s")
     obstacle_detection_enabled = PythonExpression([
@@ -132,6 +133,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="20.0"),
             DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="60.0"),
+            DeclareLaunchArgument("nav_goal_horizon_m", default_value="120.0"),
             DeclareLaunchArgument(
                 "route_progress_pose_max_age_s", default_value="0.5"),
             DeclareLaunchArgument(
@@ -387,6 +389,7 @@ def generate_launch_description() -> LaunchDescription:
                     "route_execution_mode": route_execution_mode,
                     "adaptive_dense_leg_max_m": adaptive_dense_leg_max_m,
                     "adaptive_dense_horizon_m": adaptive_dense_horizon_m,
+                    "nav_goal_horizon_m": nav_goal_horizon_m,
                     "route_progress_pose_max_age_s": route_progress_pose_max_age_s,
                 },
                 condition=IfCondition(launch_routes),

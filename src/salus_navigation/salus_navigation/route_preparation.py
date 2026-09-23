@@ -1,8 +1,17 @@
 """Validation, yaw resolution and expansion; deliberately free of ROS."""
 from __future__ import annotations
-from math import atan2, degrees, hypot, isfinite
+from math import atan2, cos, degrees, hypot, isfinite, sin
 from .route_model import PreparedRoute, RouteWaypoint
 from .route_actions import parse_actions
+
+
+def use_curve_tangent_policy(value: str) -> bool:
+    """Resolve the public route yaw mode; empty is the current default."""
+    if value in ("", "route_tangent"):
+        return True
+    if value == "legacy":
+        return False
+    raise ValueError("auto_yaw_policy must be empty, route_tangent or legacy")
 
 
 def validate_inputs(lats, lons, yaws, actions, roles) -> str:
@@ -16,15 +25,46 @@ def validate_inputs(lats, lons, yaws, actions, roles) -> str:
     return ""
 
 
-def resolve_yaws(points: list[RouteWaypoint], loop: bool) -> list[RouteWaypoint]:
+def _bearing(start: RouteWaypoint, end: RouteWaypoint) -> float | None:
+    dx = float(end.map_x or 0.0) - float(start.map_x or 0.0)
+    dy = float(end.map_y or 0.0) - float(start.map_y or 0.0)
+    return atan2(dy, dx) if hypot(dx, dy) > 1e-9 else None
+
+
+def resolve_yaws(
+    points: list[RouteWaypoint], loop: bool, *, curve_tangent: bool = False,
+) -> list[RouteWaypoint]:
     result = list(points)
     for index, point in enumerate(result):
-        if isfinite(point.yaw_deg): continue
-        if index + 1 < len(result) or loop:
-            origin, following = point, result[(index + 1) % len(result)]
+        if isfinite(point.yaw_deg):
+            continue
+        if not curve_tangent:
+            if index + 1 < len(result) or loop:
+                origin, following = point, result[(index + 1) % len(result)]
+            else:
+                origin, following = result[index - 1] if index else point, point
+            yaw = degrees(atan2(
+                (following.map_y or 0.0) - (origin.map_y or 0.0),
+                (following.map_x or 0.0) - (origin.map_x or 0.0),
+            ))
+            result[index] = RouteWaypoint(**{**point.__dict__, "yaw_deg": yaw})
+            continue
+        previous = result[index - 1] if index else (
+            result[-1] if loop and len(result) > 1 else None
+        )
+        following = result[(index + 1) % len(result)] if (
+            index + 1 < len(result) or (loop and len(result) > 1)
+        ) else None
+        incoming = _bearing(previous, point) if previous is not None else None
+        outgoing = _bearing(point, following) if following is not None else None
+        if incoming is None:
+            yaw = outgoing if outgoing is not None else 0.0
+        elif outgoing is None:
+            yaw = incoming
         else:
-            origin, following = result[index - 1] if index else point, point
-        yaw = degrees(atan2((following.map_y or 0.0) - (origin.map_y or 0.0), (following.map_x or 0.0) - (origin.map_x or 0.0)))
+            x, y = cos(incoming) + cos(outgoing), sin(incoming) + sin(outgoing)
+            yaw = outgoing if hypot(x, y) <= 1e-6 else atan2(y, x)
+        yaw = degrees(yaw)
         result[index] = RouteWaypoint(**{**point.__dict__, "yaw_deg": yaw})
     return result
 
@@ -33,35 +73,39 @@ def dispatch_yaws(
     points: tuple[RouteWaypoint, ...],
     *,
     approach_xy: tuple[float, float] | None = None,
+    approach_heading_deg: float | None = None,
+    curve_tangent: bool = False,
 ) -> list[float]:
-    """Return finite headings for one Nav2 execution window.
-
-    Automatic headings describe the mission's following leg. A finite window,
-    however, terminates at its last waypoint. Give that automatic terminal
-    pose the incoming-leg heading so Smac does not need to satisfy a heading
-    toward a waypoint outside the request. When the current robot position is
-    known, its first automatic pose instead uses the approach heading: asking
-    an Ackermann planner to arrive at that checkpoint already facing its next
-    leg can require an unnecessary Dubins loop. Explicit operator yaw is an
-    input contract and is never changed here.
-    """
+    """Return Nav2 yaws, preserving route tangents only when requested."""
     yaws = [float(point.yaw_deg) for point in points]
     if not points:
         return yaws
 
     first = points[0]
-    if approach_xy is not None and not first.yaw_explicit:
+    if (curve_tangent and first.key and not first.yaw_explicit
+            and approach_heading_deg is not None
+            and isfinite(approach_heading_deg)):
+        turn = abs((yaws[0] - approach_heading_deg + 180.0) % 360.0 - 180.0)
+        if turn > 60.0:
+            yaws[0] = float(approach_heading_deg)
+        return yaws
+    if approach_xy is not None and not first.yaw_explicit and (
+        first.key or not curve_tangent
+    ):
         values = (approach_xy[0], approach_xy[1], first.map_x, first.map_y)
         if all(value is not None and isfinite(value) for value in values):
             dx = float(first.map_x) - float(approach_xy[0])
             dy = float(first.map_y) - float(approach_xy[1])
             if hypot(dx, dy) > 1e-9:
-                yaws[0] = degrees(atan2(dy, dx))
+                approach_yaw = degrees(atan2(dy, dx))
+                turn = abs((yaws[0] - approach_yaw + 180.0) % 360.0 - 180.0)
+                if not curve_tangent or turn > 60.0:
+                    yaws[0] = approach_yaw
 
-    if len(points) < 2:
+    if curve_tangent:
         return yaws
 
-    if points[-1].yaw_explicit:
+    if len(points) < 2 or points[-1].yaw_explicit:
         return yaws
     previous, terminal = points[-2], points[-1]
     values = (previous.map_x, previous.map_y, terminal.map_x, terminal.map_y)
@@ -69,9 +113,8 @@ def dispatch_yaws(
         return yaws
     dx = float(terminal.map_x) - float(previous.map_x)
     dy = float(terminal.map_y) - float(previous.map_y)
-    if hypot(dx, dy) <= 1e-9:
-        return yaws
-    yaws[-1] = degrees(atan2(dy, dx))
+    if hypot(dx, dy) > 1e-9:
+        yaws[-1] = degrees(atan2(dy, dx))
     return yaws
 
 
@@ -79,7 +122,10 @@ def drop_loop_closure(points: list[RouteWaypoint], loop: bool, tolerance_m: floa
     return points[:-1] if loop and len(points) > 2 and points[0].distance_to(points[-1]) <= tolerance_m else points
 
 
-def expand(points: list[RouteWaypoint], spacing_m: float, loop: bool) -> list[RouteWaypoint]:
+def expand(
+    points: list[RouteWaypoint], spacing_m: float, loop: bool,
+    *, curve_tangent: bool = False,
+) -> list[RouteWaypoint]:
     if spacing_m <= 0.0 or len(points) < 2: return points
     result: list[RouteWaypoint] = []
     pairs = list(zip(points, points[1:] + ([points[0]] if loop else [])))
@@ -87,9 +133,26 @@ def expand(points: list[RouteWaypoint], spacing_m: float, loop: bool) -> list[Ro
         result.append(first)
         distance = first.distance_to(second); count = int(distance // spacing_m)
         for step in range(1, count + 1):
-            fraction = step * spacing_m / distance
-            if fraction >= 1.0: break
-            result.append(RouteWaypoint(first.lat + (second.lat-first.lat)*fraction, first.lon + (second.lon-first.lon)*fraction, first.yaw_deg, first.input_index, False, map_x=(first.map_x or 0.0)+((second.map_x or 0.0)-(first.map_x or 0.0))*fraction, map_y=(first.map_y or 0.0)+((second.map_y or 0.0)-(first.map_y or 0.0))*fraction))
+            travelled = step * spacing_m
+            # Keep the final leg into a real checkpoint useful for steering.
+            # A sample just before the endpoint creates two near-coincident
+            # through-poses with potentially different required headings.
+            if distance - travelled < spacing_m / 2.0:
+                break
+            fraction = travelled / distance
+            leg_yaw = (
+                degrees(_bearing(first, second) or 0.0)
+                if curve_tangent else first.yaw_deg
+            )
+            result.append(RouteWaypoint(
+                first.lat + (second.lat - first.lat) * fraction,
+                first.lon + (second.lon - first.lon) * fraction,
+                leg_yaw, first.input_index, False,
+                map_x=(first.map_x or 0.0)
+                + ((second.map_x or 0.0) - (first.map_x or 0.0)) * fraction,
+                map_y=(first.map_y or 0.0)
+                + ((second.map_y or 0.0) - (first.map_y or 0.0)) * fraction,
+            ))
     if not loop:
         # ``pairs`` contributes each segment origin.  Preserve the final
         # original point explicitly so an open route always ends at a real
@@ -98,7 +161,12 @@ def expand(points: list[RouteWaypoint], spacing_m: float, loop: bool) -> list[Ro
     return result
 
 
-def prepare(points: list[RouteWaypoint], *, loop: bool, input_count: int, spacing_m: float, chunk_span_m: float, chunk_max_waypoints: int) -> PreparedRoute:
+def prepare(points: list[RouteWaypoint], *, loop: bool, input_count: int, spacing_m: float, chunk_span_m: float, chunk_max_waypoints: int, curve_tangent: bool = False) -> PreparedRoute:
     points = drop_loop_closure(points, loop)
-    points = resolve_yaws(points, loop)
-    return PreparedRoute(tuple(expand(points, spacing_m, loop)), loop, input_count, spacing_m, chunk_span_m, chunk_max_waypoints)
+    points = resolve_yaws(points, loop, curve_tangent=curve_tangent)
+    return PreparedRoute(
+        tuple(expand(points, spacing_m, loop, curve_tangent=curve_tangent)),
+        loop, input_count,
+        spacing_m, chunk_span_m, chunk_max_waypoints,
+        auto_yaw_policy="route_tangent" if curve_tangent else "",
+    )

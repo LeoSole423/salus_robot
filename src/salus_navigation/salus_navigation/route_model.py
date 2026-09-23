@@ -33,6 +33,7 @@ class PreparedRoute:
     waypoints: tuple[RouteWaypoint, ...]; loop: bool; input_count: int
     leg_spacing_m: float; chunk_span_m: float; chunk_max_waypoints: int
     anchor_input_index: int = 0; note: str = ""
+    auto_yaw_policy: str = ""
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,8 @@ class RouteChunk:
         """Offsets that represent mission success boundaries.
 
         Synthetic points remain in ``waypoints`` for geometry, progress and
-        diagnostics, but are never dispatched as independent Nav2 goals.
+        diagnostics. A long-leg synthetic may be a provisional Nav2 terminal,
+        but never a mission checkpoint or an action boundary.
         """
         return tuple(index for index, point in enumerate(self.waypoints) if point.key)
 

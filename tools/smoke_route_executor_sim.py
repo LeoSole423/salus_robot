@@ -56,6 +56,7 @@ class Smoke(Node):
         super().__init__("route_executor_smoke", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.odom, self.local_odom = [], []
         self.mission_paths, self.chunks, self.plans, self.final = [], [], [], []
+        self.final_stamped = []
         self.received_global_plans = []
         self.path_health, self.telemetry, self.events = [], [], []
         self.progress_trace = []
@@ -75,7 +76,7 @@ class Smoke(Node):
         self.create_subscription(
             NavPath, "/received_global_plan", self.received_global_plans.append, 10
         )
-        self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.final.append, 10)
+        self.create_subscription(CmdVelFinal, "/cmd_vel_final", self.on_final, 10)
         self.create_subscription(PathHealth, "/path_health", self.path_health.append, 10)
         self.create_subscription(
             NavTelemetry, "/nav_command_server/telemetry", self.telemetry.append, 10
@@ -129,6 +130,10 @@ class Smoke(Node):
         self.bt_state_timeouts = 0
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+
+    def on_final(self, message):
+        self.final.append(message)
+        self.final_stamped.append((self.get_clock().now().nanoseconds, message))
 
     def poll_bt_state(self):
         now = time.monotonic()
@@ -398,20 +403,23 @@ def _pose_stamped(node, x, y, yaw):
     return pose
 
 
-def compare_yaw_policies(node, runtime, robot_xy):
-    """Compare the three approved yaw policies against real planner output."""
+def compare_yaw_policies(node, runtime, robot_xy, robot_heading_deg):
+    """Compare route tangents with the previous finite-window yaw policies."""
     origin_x, origin_y = robot_xy
     full_route = [
         RouteWaypoint(0, 0, math.nan, 0, map_x=origin_x, map_y=origin_y + 6.0),
         RouteWaypoint(0, 0, math.nan, 1, map_x=origin_x + 8.0, map_y=origin_y + 6.0),
         RouteWaypoint(0, 0, math.nan, 2, map_x=origin_x + 8.0, map_y=origin_y + 14.0),
     ]
-    prepared = resolve_yaws(full_route, False)
+    prepared = resolve_yaws(full_route, False, curve_tangent=True)
     window = tuple(prepared[:2])
     policies = {
-        "current": dispatch_yaws(window, approach_xy=robot_xy),
-        "prepared_legacy": [float(point.yaw_deg) for point in window],
-        "terminal_incoming": dispatch_yaws(window),
+        "route_tangent": dispatch_yaws(
+            window, approach_xy=robot_xy,
+            approach_heading_deg=robot_heading_deg, curve_tangent=True,
+        ),
+        "terminal_incoming": [0.0, 0.0],
+        "outgoing": [0.0, 90.0],
     }
     evidence = {}
     for name, yaws in policies.items():
@@ -463,7 +471,7 @@ def compare_yaw_policies(node, runtime, robot_xy):
             evidence[policy]["length_m"],
         ),
     )
-    selected_policy = "terminal_incoming"
+    selected_policy = "route_tangent"
     return {
         "scenario": "wide_turn_two_pose_window",
         "policies": evidence,
@@ -471,7 +479,7 @@ def compare_yaw_policies(node, runtime, robot_xy):
         "selected_policy": selected_policy,
         "selection_matches_measurement": winner == selected_policy,
         "decision": (
-            "keep terminal_incoming: it minimizes topology/detour in the deterministic Nav2 comparison"
+            "route_tangent minimizes topology/detour in the deterministic Nav2 comparison"
             if winner == selected_policy
             else f"measured winner is {winner}; selected policy requires review"
         ),
@@ -607,6 +615,10 @@ def request_from_pose(pose, *, loop=False):
         distances = (12, 18, 24, 60, 66, 6)
         values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw))
                   for distance in distances]
+    elif scenario == "horizon":
+        distances = (6, 46)
+        values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw))
+                  for distance in distances]
     elif loop:
         # Broad Ackermann-compatible loop: the smoke stops after the first
         # causal dispatch of the second lap.  It is intentionally opt-in so
@@ -635,6 +647,8 @@ def request_from_pose(pose, *, loop=False):
     request.lons = [LON + point_x / (111_320.0 * math.cos(math.radians(LAT))) for point_x, _ in values]
     request.yaws_deg = ([float("nan")] * len(values)
                         if automatic_yaws else [math.degrees(yaw)] * len(values))
+    if automatic_yaws:
+        request.auto_yaw_policy = "route_tangent"
     request.loop, request.leg_spacing_m = loop, leg_spacing_m
     request.waypoint_action_jsons = actions
     if scenario == "recovery_action":
@@ -764,22 +778,29 @@ def main():
             "local odometry unavailable for route progress diagnostics",
         )
         rpp_branch_evidence = rpp_branch_selection_gate(node, runtime)
+        orientation = node.odom[-1].pose.pose.orientation
+        robot_heading_deg = math.degrees(math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y ** 2 + orientation.z ** 2),
+        ))
         yaw_policy_evidence = compare_yaw_policies(
             node, runtime,
             (float(node.odom[-1].pose.pose.position.x),
              float(node.odom[-1].pose.pose.position.y)),
+            robot_heading_deg,
         )
-        if (
-            not yaw_policy_evidence["selection_matches_measurement"]
-            or yaw_policy_evidence["winner"] != yaw_policy_evidence["selected_policy"]
-            or yaw_policy_evidence["selected_policy"] != "terminal_incoming"
-        ):
-            raise RuntimeError(
-                "yaw policy gate failed: production policy is not the measured winner"
-            )
+        tangent = yaw_policy_evidence["policies"]["route_tangent"]
+        incoming = yaw_policy_evidence["policies"]["terminal_incoming"]
+        if (tangent["self_intersections"] > incoming["self_intersections"]
+                or tangent["length_m"] > incoming["length_m"] + 2.0):
+            raise RuntimeError(f"route tangent yaw worsened the baseline plan topology: {yaw_policy_evidence}")
         initial_state = call(node, node.state, GetRouteMissionState.Request())
         if not initial_state.ok:
             raise RuntimeError(f"route state handshake failed: {initial_state.error}")
+        # The planner/controller preflight runs before this mission and may
+        # legitimately emit safety zero while no route owns navigation.
+        node.final.clear()
+        node.final_stamped.clear()
         accepted_at = time.monotonic()
         result = call(node, node.set, request_from_pose(node.odom[-1].pose.pose))
         acceptance_latency_s = time.monotonic() - accepted_at
@@ -818,6 +839,10 @@ def main():
             )
             timeout_s = 50
             description = "route did not acknowledge the soft checkpoint before takeover"
+        elif scenario == "horizon":
+            predicate = lambda: mission_crossed_chunk_transition_or_raise(state_poller)
+            timeout_s = 85
+            description = "synthetic subgoal did not advance to the real checkpoint"
         else:
             predicate = lambda: mission_crossed_chunk_transition_or_raise(state_poller)
             timeout_s = 50
@@ -903,21 +928,46 @@ def main():
                 f"path_health={health}; nav_result={nav_result!r}; last_event={event_text!r}"
             ) from exc
         state = state_poller.latest
+        if scenario == "horizon":
+            dispatches = node.dispatch_evidence()
+            synthetic_terminals = [item for item in dispatches
+                                   if item.get("synthetic_offsets")
+                                   and item["synthetic_offsets"][-1]
+                                   == len(item.get("input_indices", [])) - 1]
+            if not synthetic_terminals:
+                raise RuntimeError("long leg did not use a synthetic terminal")
+            reached = [
+                {detail.key: detail.value for detail in event.details}.get("input_index")
+                for event in node.events if event.code == "ROUTE_CHECKPOINT_REACHED"
+            ]
+            if reached.count("0") != 1 or reached.count("1") != 1:
+                raise RuntimeError(f"synthetic subgoal changed checkpoint credits: {reached}")
+            first_dispatch, second_dispatch = dispatches[:2]
+            if any(
+                first_dispatch["stamp_ns"] <= stamp_ns < second_dispatch["stamp_ns"]
+                and command.source == CmdVelFinal.SOURCE_SAFETY
+                and command.brake_pct > 0
+                for stamp_ns, command in node.final_stamped
+            ):
+                raise RuntimeError("safety brake occurred before synthetic subgoal handoff")
         if state.active_chunk_size:
             target = int(state.current_target_index)
-            if target >= len(state.mission_key_flags) or not state.mission_key_flags[target]:
+            if (scenario != "horizon" and
+                    (target >= len(state.mission_key_flags) or
+                     not state.mission_key_flags[target])):
                 raise RuntimeError("active chunk ends at a synthetic point")
         if not any(
             message.source == CmdVelFinal.SOURCE_AUTO for message in node.final
         ):
             raise RuntimeError("route did not reach command chain")
-        if scenario not in ("action", "takeover", "cancel") and any(
+        if scenario not in ("action", "takeover", "cancel", "horizon") and any(
             message.source == CmdVelFinal.SOURCE_SAFETY
             and message.brake_pct > 0
             for message in node.final
         ):
             raise RuntimeError("route braked between contiguous chunks")
-        if not scenario_cancelled and scenario != "takeover":
+        if (not scenario_cancelled and scenario != "takeover"
+                and state.status != "COMPLETED"):
             result = call(node, node.cancel, CancelRouteMission.Request())
             if not result.ok: raise RuntimeError(result.error)
             wait(

@@ -365,3 +365,41 @@ def build_chunk(
 
 def next_start(route: PreparedRoute, chunk: RouteChunk) -> int:
     return (chunk.end + 1) % len(route.waypoints) if route.loop else chunk.end + 1
+
+
+def limit_chunk_to_horizon(
+    route: PreparedRoute,
+    chunk: RouteChunk,
+    *,
+    robot_xy: tuple[float, float],
+    max_goal_distance_m: float,
+) -> RouteChunk | None:
+    """End a long request at the last reachable pose before leaving the horizon.
+
+    All poses in the request must fit the conservative radial horizon around
+    the dispatch pose. This bounds goals within the rolling global costmap's
+    usable interior; a synthetic terminal is only a navigation subgoal.
+    """
+    limit = float(max_goal_distance_m)
+    if not isfinite(limit) or limit <= 0.0:
+        raise ValueError("max_goal_distance_m must be finite and positive")
+    x, y = map(float, robot_xy)
+    if not all(isfinite(value) for value in (x, y)):
+        raise ValueError("robot_xy must be finite")
+    first_outside = next((
+        offset for offset, point in enumerate(chunk.waypoints)
+        if _distance_to_waypoint(point, x, y) > limit
+    ), None)
+    if first_outside is None:
+        return chunk
+    terminal = first_outside - 1
+    if terminal < 0:
+        return None
+    selected = chunk.waypoints[:terminal + 1]
+    key_count = sum(point.key for point in selected)
+    total = len(route.waypoints)
+    end = (chunk.start + terminal) % total if route.loop else chunk.start + terminal
+    return RouteChunk(
+        selected, chunk.start, end, chunk.iteration,
+        chunk.checkpoint_iterations[:key_count],
+    )

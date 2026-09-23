@@ -994,6 +994,7 @@ def build_ros_request(request: OperatorRequest) -> Any:
         result.lats = [item["lat"] for item in waypoints]
         result.lons = [item["lon"] for item in waypoints]
         result.yaws_deg = [item.get("yaw_deg", math.nan) for item in waypoints]
+        result.auto_yaw_policy = "route_tangent"
         result.waypoint_action_jsons = [json.dumps(item.get("actions", [])) for item in waypoints]
         result.waypoint_roles = [str(item.get("role", "normal")) for item in waypoints]
         result.loop = bool(fields.get("loop", False))

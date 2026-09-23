@@ -152,3 +152,18 @@ def test_retry_suffix_retains_synthetic_after_credited_checkpoint():
     pending = pending_checkpoint_suffix(chunk, {(0, 5)})
     assert pending.waypoints == points[1:]
     assert pending.checkpoint_occurrences == ((1, 0, 1),)
+
+
+def test_retry_suffix_can_contain_only_synthetics_after_credit():
+    points = (
+        RouteWaypoint(0, 0, 0, 43, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, 0, 43, key=False, map_x=35.0, map_y=0.0),
+        RouteWaypoint(0, 0, 0, 43, key=False, map_x=70.0, map_y=0.0),
+    )
+    chunk = RouteChunk(points, 0, 2, 0, (0,))
+
+    pending = pending_checkpoint_suffix(chunk, {(0, 43)})
+
+    assert pending.waypoints == points[1:]
+    assert pending.checkpoint_occurrences == ()
+    assert pending.iteration == 0
