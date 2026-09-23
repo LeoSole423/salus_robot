@@ -26,6 +26,12 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("gps_fix_topic", default_value="/gps/fix"),
         DeclareLaunchArgument("scan_preview_topic", default_value="/scan_preview"),
         DeclareLaunchArgument("scan_preview_enabled", default_value="true"),
+        DeclareLaunchArgument(
+            "rtk_sources_config",
+            default_value="",
+            description="Read-only private NTRIP config; only source id and label reach Cockpit",
+        ),
+        DeclareLaunchArgument("rtk_rtcm_stale_timeout_s", default_value="10.0"),
         DeclareLaunchArgument("waypoints_file", default_value="runtime/web/waypoints.yaml"),
         Node(
             package="salus_web",
@@ -61,6 +67,10 @@ def generate_launch_description() -> LaunchDescription:
                 "gps_fix_topic": LaunchConfiguration("gps_fix_topic"),
                 "scan_preview_topic": LaunchConfiguration("scan_preview_topic"),
                 "scan_preview_enabled": LaunchConfiguration("scan_preview_enabled"),
+                "rtk_sources_config": LaunchConfiguration("rtk_sources_config"),
+                "rtk_rtcm_stale_timeout_s": LaunchConfiguration(
+                    "rtk_rtcm_stale_timeout_s"
+                ),
                 "waypoints_file": LaunchConfiguration("waypoints_file"),
             }],
         ),

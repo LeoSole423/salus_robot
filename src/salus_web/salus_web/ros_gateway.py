@@ -16,6 +16,8 @@ from threading import Lock
 import time
 from typing import Any, Callable, Iterable, Mapping
 
+import yaml
+
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import (
@@ -180,6 +182,91 @@ def accepts_legacy_rtk_status(typed_status_received: bool) -> bool:
     return not typed_status_received
 
 
+def _safe_rtk_source_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if not value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return None
+    return value
+
+
+def load_rtk_source_catalog(config_path: object) -> tuple[list[dict[str, str]], str]:
+    """Load only operator-safe RTK source identity from a private YAML file.
+
+    The NTRIP owner remains responsible for validating credentials and selecting
+    its startup source.  Cockpit needs only an id and label to render the
+    configured catalogue, so this deliberately never returns endpoints,
+    credentials, or the input path.
+    """
+    if not isinstance(config_path, str) or not config_path.strip():
+        return [], ""
+    try:
+        document = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")) or {}
+        if not isinstance(document, Mapping):
+            return [], ""
+        raw_sources = document.get("sources")
+        if not isinstance(raw_sources, list):
+            return [], ""
+        sources: list[dict[str, str]] = []
+        source_ids: set[str] = set()
+        for raw_source in raw_sources:
+            if not isinstance(raw_source, Mapping):
+                return [], ""
+            source_id = _safe_rtk_source_text(raw_source.get("id"))
+            label = _safe_rtk_source_text(raw_source.get("label")) or source_id
+            if source_id is None or label is None or source_id in source_ids:
+                return [], ""
+            source_ids.add(source_id)
+            sources.append({"id": source_id, "label": label})
+        configured_active_id = _safe_rtk_source_text(document.get("active_source_id"))
+        if configured_active_id and configured_active_id not in source_ids:
+            return [], ""
+        return sources, configured_active_id or ""
+    except (OSError, TypeError, ValueError, yaml.YAMLError):
+        return [], ""
+
+
+def rtk_source_state_payload(
+    message: GnssRtkStatus,
+    sources: Iterable[Mapping[str, str]],
+    *,
+    configured_active_id: str = "",
+    status_sequence: int,
+    rtcm_stale_timeout_s: float,
+) -> dict[str, Any]:
+    """Project typed acquisition telemetry into Cockpit's RTK source state."""
+    source_labels = {
+        source_id: label
+        for source in sources
+        if (source_id := _safe_rtk_source_text(source.get("id"))) is not None
+        and (label := _safe_rtk_source_text(source.get("label"))) is not None
+    }
+    active_source_id = _safe_rtk_source_text(message.source_id) or configured_active_id
+    acquisition_state = _enum_label(
+        GNSS_ACQUISITION_STATE_LABELS, message.acquisition_state
+    )
+    correction_age_s = _finite_or_none(message.correction_age_s)
+    if correction_age_s is not None and correction_age_s < 0.0:
+        correction_age_s = None
+    receiving = (
+        acquisition_state == "receiving"
+        and bool(message.corrections_fresh)
+        and correction_age_s is not None
+        and correction_age_s <= rtcm_stale_timeout_s
+    )
+    return {
+        "active_source_id": active_source_id,
+        "active_source_label": source_labels.get(active_source_id, active_source_id),
+        "connected": acquisition_state in {"connected_no_data", "receiving"},
+        "receiving_rtcm": receiving,
+        "rtcm_age_s": correction_age_s,
+        "rtcm_stale_timeout_s": rtcm_stale_timeout_s,
+        "last_error": message.status_detail if acquisition_state == "error" else "",
+        "status_sequence": status_sequence,
+    }
+
+
 class CockpitRosGateway(Node):
     def __init__(self) -> None:
         super().__init__("salus_web_gateway")
@@ -201,6 +288,8 @@ class CockpitRosGateway(Node):
         self.declare_parameter("gps_fix_topic", "/gps/fix")
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
+        self.declare_parameter("rtk_sources_config", "")
+        self.declare_parameter("rtk_rtcm_stale_timeout_s", 10.0)
         self._service_timeout_s = max(
             0.1, float(self.get_parameter("service_timeout_s").value)
         )
@@ -228,8 +317,37 @@ class CockpitRosGateway(Node):
             ),
             clock=time.monotonic,
         )
+        self._rtk_sources, self._configured_rtk_source_id = load_rtk_source_catalog(
+            self.get_parameter("rtk_sources_config").value
+        )
+        self._rtk_rtcm_stale_timeout_s = max(
+            0.1, float(self.get_parameter("rtk_rtcm_stale_timeout_s").value)
+        )
+        self._rtk_status_sequence = 0
         self._lock = Lock()
-        self._cache: dict[str, Any] = {"connected": True, "mode": "connected"}
+        self._cache: dict[str, Any] = {
+            "connected": True,
+            "mode": "connected",
+            "rtk_sources": deepcopy(self._rtk_sources),
+        }
+        if self._configured_rtk_source_id:
+            self._cache["rtk_source_state"] = {
+                "active_source_id": self._configured_rtk_source_id,
+                "active_source_label": next(
+                    (
+                        source["label"]
+                        for source in self._rtk_sources
+                        if source["id"] == self._configured_rtk_source_id
+                    ),
+                    self._configured_rtk_source_id,
+                ),
+                "connected": False,
+                "receiving_rtcm": False,
+                "rtcm_age_s": None,
+                "rtcm_stale_timeout_s": self._rtk_rtcm_stale_timeout_s,
+                "last_error": "",
+                "status_sequence": self._rtk_status_sequence,
+            }
         # Once the canonical status has arrived it remains authoritative for
         # this process lifetime; the legacy text topic is only a migration
         # fallback and must never roll the UI back to an inferred status.
@@ -760,9 +878,23 @@ class CockpitRosGateway(Node):
         status = gnss_rtk_status_payload(message)
         with self._lock:
             self._typed_rtk_status_received = True
+            self._rtk_status_sequence += 1
             self._cache["gps_status"] = status
+            source_state = rtk_source_state_payload(
+                message,
+                self._rtk_sources,
+                configured_active_id=self._configured_rtk_source_id,
+                status_sequence=self._rtk_status_sequence,
+                rtcm_stale_timeout_s=self._rtk_rtcm_stale_timeout_s,
+            )
+            self._cache["rtk_source_state"] = source_state
         if self._telemetry_profile == "full":
-            self._emit({"op": "gps_status", "gps_status": status})
+            self._emit({
+                "op": "gps_status",
+                "gps_status": status,
+                "rtk_sources": deepcopy(self._rtk_sources),
+                "rtk_source_state": deepcopy(source_state),
+            })
         else:
             self._on_cached_telemetry_change()
 

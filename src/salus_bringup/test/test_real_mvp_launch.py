@@ -136,6 +136,7 @@ def test_real_mvp_includes_each_final_block_once() -> None:
     assert '"salus_web",\n            "web_bridge.launch.py",' in source
     assert '"web_gps_fix_topic", default_value="/salus/gps/fix"' in source
     assert '"gps_fix_topic": web_gps_fix_topic' in source
+    assert '"rtk_sources_config": ntrip_config_path' in source
     assert '"web_heading_odometry_topic",\n            default_value="/odometry/global"' in source
     assert '"heading_odometry_topic": web_heading_odometry_topic' in source
     assert '"salus_hardware",\n            "camera_real.launch.py",' in source
