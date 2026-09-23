@@ -12,6 +12,11 @@ sys.modules[SPEC.name] = probe
 SPEC.loader.exec_module(probe)
 
 
+def test_patrol_battery_smoke_uses_the_adaptive_dense_default():
+    shell = (PROBE.parent / "smoke_patrol_battery_sim.sh").read_text(encoding="utf-8")
+    assert 'SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-adaptive_dense}"' in shell
+
+
 def _path(points, stamp_ns=1):
     return {"stamp_ns": stamp_ns, "frame_id": "map", "points": points}
 

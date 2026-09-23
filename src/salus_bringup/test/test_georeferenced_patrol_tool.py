@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 import subprocess
 
-import pytest
 import yaml
 
 
@@ -63,10 +62,12 @@ def test_preparer_keeps_route_private_and_writes_relative_fixture(tmp_path, monk
     )
 
     sanitized = yaml.safe_load(result["sanitized_path"].read_text(encoding="utf-8"))
-    assert sanitized["home_input_index"] == 0
+    assert sanitized["datum_kind"] == "home"
+    assert sanitized["datum_input_index"] == 0
     assert sanitized["spawn"]["x_m"] == 0.0
     assert sanitized["spawn"]["y_m"] == 0.0
-    assert len(sanitized["waypoints_relative_to_home"]) == 3
+    assert sanitized["ground_plane_size_m"] == 200.0
+    assert len(sanitized["waypoints_relative_to_datum"]) == 3
     assert "latitude" not in result["sanitized_path"].read_text(encoding="utf-8")
     assert "-31.5" not in result["sanitized_path"].read_text(encoding="utf-8")
     assert oct(result["mission_path"].stat().st_mode & 0o777) == "0o600"
@@ -81,19 +82,46 @@ def test_preparer_keeps_route_private_and_writes_relative_fixture(tmp_path, monk
     subprocess.run(["bash", "-n", str(result["launcher_path"])], check=True)
 
 
-def test_preparer_requires_a_complete_patrol_profile(tmp_path, monkeypatch) -> None:
+def test_preparer_uses_first_waypoint_as_datum_for_generic_loop(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     routes = artifacts / "routes-private.json"
-    routes.write_text(json.dumps({"PatrullaSencillaPolo": {"waypoints": []}}), encoding="utf-8")
+    routes.write_text(
+        json.dumps(
+            {
+                "PatrullaSencillaPolo": {
+                    "waypoints": [
+                        {"localId": "one", "x": -31.5, "y": -64.2},
+                        {"localId": "two", "x": -31.5, "y": -64.1999},
+                    ],
+                    "patrolMissionProfileRefs": {
+                        "loopWaypointIndices": [],
+                        "returnWaypointIndices": [],
+                        "departWaypointIndices": [],
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     world = artifacts / "free.world"
     _world(world)
 
-    with pytest.raises(MODULE.RoutePreparationError):
-        MODULE.prepare_artifacts(
-            routes_file=routes,
-            route_name="PatrullaSencillaPolo",
-            source_world=world,
-            output_dir=artifacts / "run",
-        )
+    result = MODULE.prepare_artifacts(
+        routes_file=routes,
+        route_name="PatrullaSencillaPolo",
+        source_world=world,
+        output_dir=artifacts / "run",
+    )
+    saved_waypoints = yaml.safe_load(result["waypoints_path"].read_text(encoding="utf-8"))
+    sanitized = yaml.safe_load(result["sanitized_path"].read_text(encoding="utf-8"))
+    assert "patrol_profile" not in saved_waypoints
+    assert sanitized["datum_kind"] == "first_waypoint"
+    assert sanitized["datum_input_index"] == 0
+
+
+def test_ground_plane_grows_to_enclose_large_relative_route() -> None:
+    assert MODULE._ground_plane_size_m(
+        [{"east_m": -260.0, "north_m": 10.0}, {"east_m": 5.0, "north_m": 520.0}]
+    ) == 1140.0

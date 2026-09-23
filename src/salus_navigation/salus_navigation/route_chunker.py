@@ -121,6 +121,137 @@ def _legacy_pair_eligible(point) -> bool:
     )
 
 
+def _route_distance(points, start: int, end: int, *, loop: bool) -> float:
+    """Return ordered polyline distance from ``start`` through ``end``."""
+    if start == end:
+        return 0.0
+    total = len(points)
+    distance = 0.0
+    index = start
+    while index != end:
+        following = (index + 1) % total if loop else index + 1
+        if following >= total:
+            raise ValueError("route distance reaches past an open route")
+        distance += points[index].distance_to(points[following])
+        index = following
+    return distance
+
+
+def _next_key_index(route: PreparedRoute, index: int, start: int) -> int | None:
+    """Find the next original checkpoint without crossing the active window."""
+    total = len(route.waypoints)
+    current = index
+    for _ in range(total - 1):
+        current = (current + 1) % total if route.loop else current + 1
+        if not route.loop and current >= total:
+            return None
+        if current == start:
+            return None
+        if route.waypoints[current].key:
+            return current
+    return None
+
+
+def _build_adaptive_dense_chunk(
+    route: PreparedRoute,
+    start: int,
+    iteration: int,
+    *,
+    dense_leg_max_m: float,
+    dense_horizon_m: float,
+) -> RouteChunk | None:
+    """Build a legacy-pair window extended across a dense ordered run.
+
+    This is deliberately ordered, not a spatial-clustering operation: only the
+    next waypoint in route order can extend a window.  A normal checkpoint may
+    be an interior through-pose; hard checkpoints remain terminal boundaries.
+    """
+    if dense_leg_max_m <= 0.0 or dense_horizon_m <= 0.0:
+        raise ValueError("adaptive dense distances must be positive")
+    points = route.waypoints
+    total = len(points)
+    if not points or (not route.loop and start >= total):
+        return None
+
+    start %= total
+    selected = []
+    checkpoint_iterations = []
+    index = start
+    current_iteration = int(iteration)
+    first = points[index]
+    first_is_pairable = _legacy_pair_eligible(first)
+    key_indices = []
+
+    while True:
+        point = points[index]
+        selected.append(point)
+        if point.key:
+            checkpoint_iterations.append(current_iteration)
+            key_indices.append(index)
+            # Preserve the existing hard-boundary behavior: a hard point is a
+            # terminal, never an interior of an adaptive window.
+            if len(key_indices) == 1 and not first_is_pairable:
+                break
+            if len(key_indices) > 1 and not _legacy_pair_eligible(point):
+                break
+
+            next_key = _next_key_index(route, index, start)
+            if next_key is None:
+                break
+            # The first two real checkpoints are the legacy-pair baseline.
+            # Extending beyond them requires both adjacent legs to be dense
+            # and the ordered physical horizon to remain bounded.
+            if len(key_indices) >= 2:
+                previous_key = key_indices[-2]
+                previous_leg = _route_distance(
+                    points, previous_key, index, loop=route.loop)
+                next_leg = _route_distance(
+                    points, index, next_key, loop=route.loop)
+                span_to_next = _route_distance(
+                    points, start, next_key, loop=route.loop)
+                if (
+                    previous_leg > dense_leg_max_m
+                    or next_leg > dense_leg_max_m
+                    or span_to_next > dense_horizon_m
+                ):
+                    break
+
+        next_index = index + 1
+        if route.loop:
+            next_index %= total
+            if next_index == start:
+                break
+            # A single NavigateThroughPoses request must never contain a full
+            # circuit.  If it did, its terminal pose could coincide with the
+            # robot at dispatch and Nav2 could legitimately return success
+            # without traversing the intermediate checkpoints.  Leave the
+            # final point for the next finite window instead.
+            if (next_index + 1) % total == start:
+                break
+            if next_index == 0 and index != 0:
+                current_iteration += 1
+        elif next_index >= total:
+            break
+        index = next_index
+
+    if not any(point.key for point in selected):
+        raise ValueError("route chunk has no original checkpoint")
+    if not selected[-1].key:
+        last_key = max(
+            (offset for offset, point in enumerate(selected) if point.key),
+            default=-1,
+        )
+        selected = selected[:last_key + 1]
+        checkpoint_iterations = checkpoint_iterations[:len(
+            [point for point in selected if point.key]
+        )]
+    end = ((start + len(selected) - 1) % total if route.loop
+           else start + len(selected) - 1)
+    return RouteChunk(
+        tuple(selected), start, end, iteration, tuple(checkpoint_iterations)
+    )
+
+
 def _build_legacy_pair_chunk(
     route: PreparedRoute, start: int, iteration: int
 ) -> RouteChunk | None:
@@ -181,11 +312,23 @@ def build_chunk(
     iteration: int = 0,
     *,
     mode: str = "single_checkpoint",
+    adaptive_dense_leg_max_m: float = 8.0,
+    adaptive_dense_horizon_m: float = 35.0,
 ) -> RouteChunk | None:
     if mode == "legacy_pair":
         return _build_legacy_pair_chunk(route, start, iteration)
+    if mode == "adaptive_dense":
+        return _build_adaptive_dense_chunk(
+            route,
+            start,
+            iteration,
+            dense_leg_max_m=float(adaptive_dense_leg_max_m),
+            dense_horizon_m=float(adaptive_dense_horizon_m),
+        )
     if mode != "single_checkpoint":
-        raise ValueError("mode must be 'single_checkpoint' or 'legacy_pair'")
+        raise ValueError(
+            "mode must be 'single_checkpoint', 'legacy_pair' or 'adaptive_dense'"
+        )
     points = route.waypoints; total = len(points)
     if not points or (not route.loop and start >= total): return None
     start %= total; selected = []; index = start

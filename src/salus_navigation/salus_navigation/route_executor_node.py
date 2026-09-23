@@ -106,7 +106,9 @@ class RouteExecutorNode(Node):
     def __init__(self) -> None:
         super().__init__("route_executor")
         self.declare_parameter("waypoint_reached_tolerance_m", 1.2)
-        self.declare_parameter("route_execution_mode", "legacy_pair")
+        self.declare_parameter("route_execution_mode", "adaptive_dense")
+        self.declare_parameter("adaptive_dense_leg_max_m", 20.0)
+        self.declare_parameter("adaptive_dense_horizon_m", 60.0)
         self.declare_parameter("route_progress_pose_max_age_s", 0.5)
         self.declare_parameter("fromll_timeout_s", 2.0)
         self.declare_parameter("blocked_persistence_s", 1.5)
@@ -154,10 +156,22 @@ class RouteExecutorNode(Node):
         self._route_execution_mode = str(
             self.get_parameter("route_execution_mode").value
         )
-        if self._route_execution_mode not in ("single_checkpoint", "legacy_pair"):
+        if self._route_execution_mode not in (
+            "single_checkpoint", "legacy_pair", "adaptive_dense"
+        ):
             raise ValueError(
-                "route_execution_mode must be single_checkpoint or legacy_pair"
+                "route_execution_mode must be single_checkpoint, legacy_pair or adaptive_dense"
             )
+        self._adaptive_dense_leg_max_m = float(
+            self.get_parameter("adaptive_dense_leg_max_m").value
+        )
+        self._adaptive_dense_horizon_m = float(
+            self.get_parameter("adaptive_dense_horizon_m").value
+        )
+        if self._adaptive_dense_leg_max_m <= 0.0:
+            raise ValueError("adaptive_dense_leg_max_m must be positive")
+        if self._adaptive_dense_horizon_m <= 0.0:
+            raise ValueError("adaptive_dense_horizon_m must be positive")
         self._route_progress_pose_max_age_s = float(
             self.get_parameter("route_progress_pose_max_age_s").value
         )
@@ -569,6 +583,8 @@ class RouteExecutorNode(Node):
             self._mission.target_index,
             self._mission.loop_iteration,
             mode=self._route_execution_mode,
+            adaptive_dense_leg_max_m=self._adaptive_dense_leg_max_m,
+            adaptive_dense_horizon_m=self._adaptive_dense_horizon_m,
         )
         if self._chunk is None:
             transition(self._mission, RoutePhase.COMPLETED)

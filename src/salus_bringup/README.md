@@ -199,6 +199,15 @@ El helper operativo construye el workspace y expone Cockpit:
 Activa por defecto navegación, keepout, rutas, patrulla/HOME, snapshots,
 WebSocket compacto en el puerto `8766` y cámara PTZ simulada. La persistencia se
 agrupa bajo `runtime/sim_operational`; puede cambiarse con `runtime_dir:=...`.
+La ejecución de rutas usa por defecto `adaptive_dense`, con piernas densas de
+hasta `20 m` y un horizonte ordenado de `60 m`; `legacy_pair` continúa siendo
+un override explícito para comparación o rollback. Los mismos defaults se
+propagan al perfil real.
+Cuando existe `artifacts/PatrullaSencillaPolo.private.json`, el helper la usa de
+forma local como perfil georreferenciado: el waypoint 1 es el datum y el spawn,
+y el yaw inicial apunta hacia el waypoint 2. Usar `--generic` para omitir ese
+perfil privado y volver al mundo genérico. El archivo y los artefactos derivados
+no se versionan.
 Usar `headless:=true` en automatización y `rviz:=true` sólo para diagnóstico
 local. El sufijo `wifi` describe el perfil remoto compacto: no selecciona una
 interfaz de red ni configura DDS.
@@ -221,10 +230,12 @@ python3 tools/prepare_georeferenced_patrol_sim.py \
   --output-dir artifacts/georeferenced-patrol/polo
 ```
 
-El preparador exige HOME y el perfil de patrulla, toma HOME como datum temporal
-para Gazebo, `/fromLL` y `navsat_transform`, y genera un world/mission/argumentos
-privados con permisos restrictivos. También deja un fixture sólo relativo a HOME
-para diagnóstico. Los defaults de simulación no cambian. Ejecutar el
+Para una patrulla formal, el preparador toma HOME como datum temporal. Para una
+ruta genérica sin perfil de patrulla, toma el primer waypoint como datum/spawn y
+orienta el robot hacia el segundo. Configura Gazebo, `/fromLL` y
+`navsat_transform`, y genera un world/mission/argumentos privados con permisos
+restrictivos. También deja un fixture sólo relativo al datum para diagnóstico.
+Los defaults de los launches no cambian. Ejecutar el
 `launch_simulation.sh` generado para abrir Gazebo, RViz y el bridge de Cockpit;
 después cargar la ruta guardada en el Cockpit usando el preset **Simulation**.
 

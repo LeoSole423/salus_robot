@@ -92,6 +92,6 @@ def test_route_smoke_has_opt_in_legacy_pair_contract_scenarios():
 
 def test_route_smoke_shell_propagates_legacy_pair_scenario():
     shell = (PROBE.parent / "smoke_route_executor_sim.sh").read_text(encoding="utf-8")
-    assert 'SMOKE_ROUTE_EXECUTION_MODE' in shell
+    assert 'SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-adaptive_dense}"' in shell
     assert 'route_execution_mode:=' in shell
     assert 'skipped:navigation_profiles:mission_remains_paused_after_takeover' in shell

@@ -261,6 +261,27 @@ def test_loop_chunk_does_not_contain_a_complete_circuit():
     assert len(chunk.waypoints) == 1 and next_start(route, chunk) == 1
 
 
+def test_adaptive_dense_loop_leaves_one_point_for_the_next_finite_request():
+    route = prepare(
+        [
+            RouteWaypoint(0, 0, nan, 0, map_x=0, map_y=0),
+            RouteWaypoint(0, 0, nan, 1, map_x=10, map_y=0),
+            RouteWaypoint(0, 0, nan, 2, map_x=10, map_y=10),
+            RouteWaypoint(0, 0, nan, 3, map_x=0, map_y=10),
+        ],
+        loop=True, input_count=4, spacing_m=35,
+        chunk_span_m=120, chunk_max_waypoints=5,
+    )
+
+    chunk = build_chunk(
+        route, 3, mode="adaptive_dense",
+        adaptive_dense_leg_max_m=20, adaptive_dense_horizon_m=60,
+    )
+
+    assert [waypoint.input_index for waypoint in chunk.waypoints] == [3, 0, 1]
+    assert next_start(route, chunk) == 2
+
+
 def test_each_finite_chunk_has_at_most_one_terminal_key_and_advances():
     route = prepare(
         [point(0, 0), point(10, 1), point(20, 2)], loop=False,

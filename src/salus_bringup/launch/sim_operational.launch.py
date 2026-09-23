@@ -12,6 +12,9 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Pyth
 def generate_launch_description() -> LaunchDescription:
     headless = LaunchConfiguration("headless")
     runtime_dir = LaunchConfiguration("runtime_dir")
+    route_execution_mode = LaunchConfiguration("route_execution_mode")
+    adaptive_dense_leg_max_m = LaunchConfiguration("adaptive_dense_leg_max_m")
+    adaptive_dense_horizon_m = LaunchConfiguration("adaptive_dense_horizon_m")
     integration = (
         Path(get_package_share_directory("salus_bringup"))
         / "launch"
@@ -54,6 +57,13 @@ def generate_launch_description() -> LaunchDescription:
             default_value="course_over_ground",
             choices=["course_over_ground", "external_heading"],
         ),
+        DeclareLaunchArgument(
+            "route_execution_mode",
+            default_value="adaptive_dense",
+            choices=["single_checkpoint", "legacy_pair", "adaptive_dense"],
+        ),
+        DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="20.0"),
+        DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="60.0"),
         DeclareLaunchArgument(
             "sim_sensor_profile",
             default_value="clean",
@@ -112,6 +122,9 @@ def generate_launch_description() -> LaunchDescription:
                 "orientation_source": LaunchConfiguration("orientation_source"),
                 "sim_sensor_profile": LaunchConfiguration("sim_sensor_profile"),
                 "sim_sensor_seed": LaunchConfiguration("sim_sensor_seed"),
+                "route_execution_mode": route_execution_mode,
+                "adaptive_dense_leg_max_m": adaptive_dense_leg_max_m,
+                "adaptive_dense_horizon_m": adaptive_dense_horizon_m,
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "spawn_x": LaunchConfiguration("spawn_x"),
