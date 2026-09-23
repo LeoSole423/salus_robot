@@ -49,7 +49,8 @@ class RouteChunk:
         """Offsets that represent mission success boundaries.
 
         Synthetic points remain in ``waypoints`` for geometry, progress and
-        diagnostics, but are never dispatched as independent Nav2 goals.
+        diagnostics. A long-leg synthetic may be a provisional Nav2 terminal,
+        but never a mission checkpoint or an action boundary.
         """
         return tuple(index for index, point in enumerate(self.waypoints) if point.key)
 

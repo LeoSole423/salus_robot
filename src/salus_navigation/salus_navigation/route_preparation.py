@@ -5,6 +5,15 @@ from .route_model import PreparedRoute, RouteWaypoint
 from .route_actions import parse_actions
 
 
+def use_curve_tangent_policy(value: str) -> bool:
+    """Resolve the public route yaw mode; empty is the current default."""
+    if value in ("", "route_tangent"):
+        return True
+    if value == "legacy":
+        return False
+    raise ValueError("auto_yaw_policy must be empty, route_tangent or legacy")
+
+
 def validate_inputs(lats, lons, yaws, actions, roles) -> str:
     if not lats or len(lats) != len(lons) or len(lats) != len(yaws): return "lats, lons and yaws_deg must be non-empty and equally sized"
     if actions and len(actions) != len(lats): return "waypoint_action_jsons length must match lats/lons when provided"
@@ -64,21 +73,37 @@ def dispatch_yaws(
     points: tuple[RouteWaypoint, ...],
     *,
     approach_xy: tuple[float, float] | None = None,
+    approach_heading_deg: float | None = None,
     curve_tangent: bool = False,
 ) -> list[float]:
     """Return Nav2 yaws, preserving route tangents only when requested."""
     yaws = [float(point.yaw_deg) for point in points]
-    if curve_tangent or not points:
+    if not points:
         return yaws
 
     first = points[0]
-    if approach_xy is not None and not first.yaw_explicit:
+    if (curve_tangent and first.key and not first.yaw_explicit
+            and approach_heading_deg is not None
+            and isfinite(approach_heading_deg)):
+        turn = abs((yaws[0] - approach_heading_deg + 180.0) % 360.0 - 180.0)
+        if turn > 60.0:
+            yaws[0] = float(approach_heading_deg)
+        return yaws
+    if approach_xy is not None and not first.yaw_explicit and (
+        first.key or not curve_tangent
+    ):
         values = (approach_xy[0], approach_xy[1], first.map_x, first.map_y)
         if all(value is not None and isfinite(value) for value in values):
             dx = float(first.map_x) - float(approach_xy[0])
             dy = float(first.map_y) - float(approach_xy[1])
             if hypot(dx, dy) > 1e-9:
-                yaws[0] = degrees(atan2(dy, dx))
+                approach_yaw = degrees(atan2(dy, dx))
+                turn = abs((yaws[0] - approach_yaw + 180.0) % 360.0 - 180.0)
+                if not curve_tangent or turn > 60.0:
+                    yaws[0] = approach_yaw
+
+    if curve_tangent:
+        return yaws
 
     if len(points) < 2 or points[-1].yaw_explicit:
         return yaws
@@ -108,8 +133,13 @@ def expand(
         result.append(first)
         distance = first.distance_to(second); count = int(distance // spacing_m)
         for step in range(1, count + 1):
-            fraction = step * spacing_m / distance
-            if fraction >= 1.0: break
+            travelled = step * spacing_m
+            # Keep the final leg into a real checkpoint useful for steering.
+            # A sample just before the endpoint creates two near-coincident
+            # through-poses with potentially different required headings.
+            if distance - travelled < spacing_m / 2.0:
+                break
+            fraction = travelled / distance
             leg_yaw = (
                 degrees(_bearing(first, second) or 0.0)
                 if curve_tangent else first.yaw_deg

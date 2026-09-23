@@ -28,10 +28,15 @@ def pending_checkpoint_suffix(
     if cut >= len(chunk.waypoints):
         return chunk  # Terminal completion is handled by the executor.
     consumed = sum(offset < cut for offset in chunk.checkpoint_offsets)
+    pending_iterations = iterations[consumed:] if iterations else ()
+    next_iteration = (
+        chunk.checkpoint_occurrences[consumed][2]
+        if consumed < len(chunk.checkpoint_occurrences)
+        else (chunk.checkpoint_occurrences[-1][2] if consumed else chunk.iteration)
+    )
     return RouteChunk(
         chunk.waypoints[cut:], chunk.start, chunk.end,
-        chunk.checkpoint_occurrences[consumed][2] if consumed else chunk.iteration,
-        iterations[consumed:] if iterations else (),
+        next_iteration, pending_iterations,
     )
 
 

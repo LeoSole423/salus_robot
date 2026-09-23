@@ -2,14 +2,19 @@
 set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_dir}"
+recovery_scenario="${SMOKE_RECOVERY_ROUTE_SCENARIO:-recovery_partial}"
+default_leg_spacing="0.0"
+if [[ "${recovery_scenario}" == "recovery_synthetic" ]]; then
+  default_leg_spacing="2.0"
+fi
 docker compose run --rm \
   -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-47}" \
   -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-route-recovery-$$}" \
   -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" \
   -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/route-recovery}" \
   -e SMOKE_ROUTE_AUTO_YAWS=1 \
-  -e SMOKE_ROUTE_SCENARIO="${SMOKE_RECOVERY_ROUTE_SCENARIO:-recovery_partial}" \
-  -e SMOKE_ROUTE_LEG_SPACING_M="${SMOKE_RECOVERY_LEG_SPACING_M:-0.0}" \
+  -e SMOKE_ROUTE_SCENARIO="${recovery_scenario}" \
+  -e SMOKE_ROUTE_LEG_SPACING_M="${SMOKE_RECOVERY_LEG_SPACING_M:-${default_leg_spacing}}" \
   -e SMOKE_ROUTE_ACTION_INDEX="${SMOKE_RECOVERY_ACTION_INDEX:--1}" \
   -e SMOKE_RECOVERY_CANCEL_IN_WAIT="${SMOKE_RECOVERY_CANCEL_IN_WAIT:-0}" \
   -e SMOKE_RECOVERY_CREDIT_COUNT="${SMOKE_RECOVERY_CREDIT_COUNT:-1}" \

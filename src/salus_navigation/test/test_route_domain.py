@@ -1,11 +1,16 @@
 from math import isclose, nan
 from contextlib import nullcontext
 from types import SimpleNamespace
+import pytest
 from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteMission, RoutePhase, RouteWaypoint
-from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
+from salus_navigation.route_preparation import (
+    dispatch_yaws, expand, prepare, resolve_yaws, use_curve_tangent_policy,
+)
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
-from salus_navigation.route_chunker import build_chunk, next_start, resolve_dispatch_start
+from salus_navigation.route_chunker import (
+    build_chunk, limit_chunk_to_horizon, next_start, resolve_dispatch_start,
+)
 from salus_navigation.route_checkpoint_tracker import (
     CheckpointOccurrence, IntermediateCheckpointTracker,
 )
@@ -19,6 +24,93 @@ def test_expansion_marks_synthetic_points_and_resolves_yaw():
     route = resolve_yaws(expand([point(0, 0), point(10, 1)], 2.0, False), False)
     assert len(route) == 6 and route[1].key is False and route[0].yaw_deg == 0.0
     assert route[-1].key is True and route[-1].input_index == 1
+
+
+def test_expansion_avoids_a_synthetic_almost_on_top_of_a_checkpoint():
+    # Captured 12 -> 13 leg: a sample at 35 m left only 1.8 m for Nav2 to
+    # change from the incoming heading to the checkpoint's corner tangent.
+    route = prepare([
+        RouteWaypoint(0, 0, nan, 12, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 13, map_x=36.8, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 14, map_x=66.8, map_y=-20.0),
+    ], loop=False, input_count=3, spacing_m=35.0,
+        chunk_span_m=120.0, chunk_max_waypoints=5, curve_tangent=True)
+
+    assert [(p.input_index, p.key) for p in route.waypoints] == [
+        (12, True), (13, True), (14, True),
+    ]
+    assert 0.0 > route.waypoints[1].yaw_deg > -45.0
+
+
+def test_expansion_keeps_useful_synthetics_on_a_long_leg():
+    route = prepare([
+        point(0.0, 0), point(71.8, 1),
+    ], loop=False, input_count=2, spacing_m=35.0,
+        chunk_span_m=120.0, chunk_max_waypoints=5)
+
+    assert [(p.input_index, p.key, p.map_x) for p in route.waypoints] == [
+        (0, True, 0.0), (0, False, 35.0), (1, True, 71.8),
+    ]
+
+
+def test_long_chunk_uses_reachable_synthetic_as_terminal_without_credit():
+    route = prepare([
+        point(0.0, 43), point(149.0, 44),
+    ], loop=False, input_count=2, spacing_m=35.0,
+        chunk_span_m=120.0, chunk_max_waypoints=5)
+    original = build_chunk(route, 0, mode="adaptive_dense")
+
+    first = limit_chunk_to_horizon(route, original, robot_xy=(-20.0, 0.0),
+                                   max_goal_distance_m=120.0)
+    assert first is not None
+    assert [point.map_x for point in first.waypoints] == [0.0, 35.0, 70.0]
+    assert first.checkpoint_offsets == (0,)
+    assert first.waypoints[-1].key is False
+    assert next_start(route, first) == 3
+    assert len(chunk_goal_request(first, route).lats) == 3
+
+    second = build_chunk(route, next_start(route, first), mode="adaptive_dense")
+    assert second.checkpoint_offsets == (1,)
+    assert second.waypoints[-1].input_index == 44
+    assert limit_chunk_to_horizon(route, second, robot_xy=(70.0, 0.0),
+                                  max_goal_distance_m=120.0) is second
+
+
+def test_horizon_credits_a_reachable_key_then_fails_closed_without_synthetic():
+    route = prepare([point(0.0, 0), point(149.0, 1)], loop=False,
+                    input_count=2, spacing_m=0.0,
+                    chunk_span_m=120.0, chunk_max_waypoints=5)
+    chunk = build_chunk(route, 0, mode="adaptive_dense")
+    first = limit_chunk_to_horizon(route, chunk, robot_xy=(0.0, 0.0),
+                                   max_goal_distance_m=120.0)
+    assert first.checkpoint_offsets == (0,)
+    assert first.waypoints[-1].input_index == 0
+    second = build_chunk(route, next_start(route, first), mode="adaptive_dense")
+    assert limit_chunk_to_horizon(route, second, robot_xy=(0.0, 0.0),
+                                  max_goal_distance_m=120.0) is None
+
+
+def test_loop_long_closure_uses_synthetic_then_preserves_next_lap_key():
+    route = prepare([
+        point(0.0, 0), point(100.0, 1), point(250.0, 2),
+    ], loop=True, input_count=3, spacing_m=35.0,
+        chunk_span_m=120.0, chunk_max_waypoints=5)
+    last_key = max(i for i, p in enumerate(route.waypoints) if p.key)
+    original = build_chunk(route, last_key, iteration=0,
+                           mode="adaptive_dense")
+
+    first = limit_chunk_to_horizon(
+        route, original, robot_xy=(260.0, 0.0),
+        max_goal_distance_m=120.0,
+    )
+
+    assert first.waypoints[-1].key is False
+    assert first.checkpoint_occurrences == ((0, 2, 0),)
+    assert first.end < len(route.waypoints) - 1
+    remainder = build_chunk(route, next_start(route, first), iteration=0,
+                            mode="adaptive_dense")
+    assert remainder.waypoints[-1].input_index == 0
+    assert remainder.checkpoint_occurrences[-1][2] == 1
 
 
 def test_open_route_final_automatic_yaw_follows_its_incoming_leg():
@@ -46,7 +138,7 @@ def test_route_tangent_mode_splits_a_right_angle_and_keeps_leg_synthetics():
     assert list(chunk_goal_request(chunk, route, approach_xy=(9.0, -1.0)).yaws_deg) == [45.0]
 
 
-def test_route_tangent_mode_preserves_operator_yaw_and_legacy_default():
+def test_route_tangent_mode_preserves_operator_yaw_and_legacy_option():
     points = [
         RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
         RouteWaypoint(0, 0, -30.0, 1, map_x=10.0, map_y=0.0, yaw_explicit=True),
@@ -57,6 +149,55 @@ def test_route_tangent_mode_preserves_operator_yaw_and_legacy_default():
     assert tangent[1].yaw_deg == legacy[1].yaw_deg == -30.0
     assert dispatch_yaws(tuple(tangent), curve_tangent=True)[1] == -30.0
     assert legacy[0].yaw_deg == 0.0
+
+
+def test_unspecified_public_yaw_policy_uses_tangents_for_all_routes():
+    assert use_curve_tangent_policy("")
+    assert use_curve_tangent_policy("route_tangent")
+    assert not use_curve_tangent_policy("legacy")
+    with pytest.raises(ValueError, match="auto_yaw_policy"):
+        use_curve_tangent_policy("unknown")
+    points = [
+        RouteWaypoint(0, 0, nan, 0, map_x=0.0, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 1, map_x=10.0, map_y=0.0),
+        RouteWaypoint(0, 0, nan, 2, map_x=10.0, map_y=10.0),
+    ]
+    default = prepare(points, loop=False, input_count=3, spacing_m=0.0,
+                      chunk_span_m=120.0, chunk_max_waypoints=5,
+                      curve_tangent=use_curve_tangent_policy(""))
+    assert default.auto_yaw_policy == "route_tangent"
+    assert isclose(default.waypoints[1].yaw_deg, 45.0, abs_tol=1e-6)
+
+
+def test_tangent_dispatch_uses_approach_for_first_automatic_key_only():
+    # Patrol's join starts ~6 m in front of the robot. Asking that first
+    # through-pose for its later -90 degree corner tangent made Dubins loop.
+    keys = (
+        RouteWaypoint(0, 0, -90.0, 3, map_x=6.0, map_y=0.0),
+        RouteWaypoint(0, 0, 0.0, 0, map_x=20.0, map_y=-14.0),
+        RouteWaypoint(0, 0, 90.0, 1, map_x=34.0, map_y=0.0),
+    )
+    assert dispatch_yaws(keys, approach_xy=(0.0, 0.0), curve_tangent=True) == [
+        0.0, 0.0, 90.0,
+    ]
+    assert dispatch_yaws(keys, approach_xy=(0.0, 0.0),
+                         approach_heading_deg=0.0, curve_tangent=True) == [
+        0.0, 0.0, 90.0,
+    ]
+    synthetic = RouteWaypoint(0, 0, -30.0, 3, key=False,
+                              map_x=6.0, map_y=0.0)
+    assert dispatch_yaws((synthetic, *keys[1:]), approach_xy=(0.0, 0.0),
+                         curve_tangent=True)[0] == -30.0
+    explicit = RouteWaypoint(0, 0, -90.0, 3, map_x=6.0, map_y=0.0,
+                             yaw_explicit=True)
+    assert dispatch_yaws((explicit,), approach_xy=(0.0, 0.0),
+                         curve_tangent=True) == [-90.0]
+    gentle = RouteWaypoint(0, 0, 45.0, 0, map_x=0.0, map_y=6.0)
+    assert dispatch_yaws((gentle,), approach_xy=(0.0, 0.0),
+                         curve_tangent=True) == [45.0]
+    north = RouteWaypoint(0, 0, 90.0, 0, map_x=0.0, map_y=6.0)
+    assert dispatch_yaws((north,), approach_xy=(0.0, 0.0),
+                         approach_heading_deg=0.0, curve_tangent=True) == [0.0]
 
 
 def test_finite_chunk_changes_only_an_automatic_terminal_yaw_to_its_incoming_leg():
@@ -506,6 +647,32 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
     assert [event[1]["input_index"] for event in events] == [1]
     assert len(events) == len(chunk.checkpoint_offsets)
     assert len(events) <= len(chunk.waypoints)
+    assert advanced == [True]
+
+
+def test_synthetic_subgoal_success_advances_without_checkpoint_event():
+    route = prepare([point(0.0, 43), point(149.0, 44)], loop=False,
+                    input_count=2, spacing_m=35.0,
+                    chunk_span_m=120.0, chunk_max_waypoints=5)
+    chunk = limit_chunk_to_horizon(
+        route, build_chunk(route, 0, mode="adaptive_dense"),
+        robot_xy=(-20.0, 0.0), max_goal_distance_m=120.0,
+    )
+    events, advanced = [], []
+    fake = SimpleNamespace(
+        _chunk=chunk,
+        _target_offset=len(chunk.waypoints) - 1,
+        _mission=SimpleNamespace(prepared=route, target_index=0, reached=1,
+                                 mission_id="m", chunk_id=1, loop_iteration=0),
+        _checkpoint_tracker=None, _reached_occurrences={("m", 0, 43)},
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _advance=lambda: advanced.append(True),
+    )
+
+    RouteExecutorNode._complete_current_chunk(fake, "nav2_succeeded")
+
+    assert fake._mission.reached == 1
+    assert not events
     assert advanced == [True]
 
 

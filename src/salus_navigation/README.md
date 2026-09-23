@@ -18,9 +18,12 @@ autoridad de velocidad.
   y no se versionan; no se genera una máscara global PGM.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
-- El gateway de rutas de Cockpit solicita `auto_yaw_policy=route_tangent` para
-  que los checkpoints sin yaw manual sigan la tangente de la curva. Los callers
-  que dejan el campo vacío conservan la política previa, incluido Patrol/HOME.
+- Los checkpoints sin yaw manual siguen por defecto la tangente de la curva,
+  también en Patrol/HOME. El gateway de Cockpit puede enviar
+  `auto_yaw_policy=route_tangent` explícitamente; `legacy` solicita el cálculo
+  anterior. El primer checkpoint automático de cada pedido usa la orientación
+  actual del robot sólo si difiere más de 60° de la bisectriz; los siguientes
+  conservan la bisectriz. Los yaws manuales siempre prevalecen.
 - Recuperación de rutas bloqueadas mediante una política pura con espera por
   datos, cooldown, limpieza de costmaps y límite de intentos observable en los
   campos `blocked_*`. El retry conserva el sufijo del chunk activo posterior a
@@ -30,11 +33,20 @@ autoridad de velocidad.
   progreso acreditado y registra el plan, la odometría y el comando final
   durante el retry y cancelación.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
-  ni invoca Nav2 directamente. Cada chunk termina en el siguiente checkpoint,
-  conserva la geometría sintética de esa pierna y se despacha por
+  ni invoca Nav2 directamente. Normalmente el chunk termina en el siguiente
+  checkpoint. Si una pose queda fuera del horizonte radial de navegación,
+  termina en la última pose alcanzable, que puede ser un sintético, y continúa luego
+  hasta el checkpoint real. `nav_goal_horizon_m` es `float`, default `120.0 m`,
+  rango finito `(0, +inf)`: limita la distancia de todas las poses del pedido
+  desde el robot al despacharlo. El costmap global actual mide 300×300 m y
+  deja así 30 m de margen. Si la primera pose pendiente ya está fuera se pausa con
+  `ROUTE_GOAL_HORIZON_UNREACHABLE`. La expansión descarta sintéticos situados
+  a menos de medio `leg_spacing_m` del checkpoint siguiente para evitar metas
+  casi coincidentes con yaws diferentes. El chunk se despacha por
   `nav_command_server`: una pose usa `NavigateToPose` y varias usan
   `NavigateThroughPoses`. Sólo los checkpoints originales incrementan el
-  progreso de misión o ejecutan acciones.
+  progreso de misión o ejecutan acciones; un sintético terminal no acredita
+  un checkpoint.
 - Las acciones `brake_hold` y `set_navigation_profile` se ejecutan sólo en
   checkpoints originales. Tienen estado explícito y se cancelan ante takeover,
   collision stop o cancelación de misión.

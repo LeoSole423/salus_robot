@@ -15,6 +15,7 @@ def generate_launch_description() -> LaunchDescription:
     route_execution_mode = LaunchConfiguration("route_execution_mode")
     adaptive_dense_leg_max_m = LaunchConfiguration("adaptive_dense_leg_max_m")
     adaptive_dense_horizon_m = LaunchConfiguration("adaptive_dense_horizon_m")
+    nav_goal_horizon_m = LaunchConfiguration("nav_goal_horizon_m")
     integration = (
         Path(get_package_share_directory("salus_bringup"))
         / "launch"
@@ -64,6 +65,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("adaptive_dense_leg_max_m", default_value="20.0"),
         DeclareLaunchArgument("adaptive_dense_horizon_m", default_value="60.0"),
+        DeclareLaunchArgument("nav_goal_horizon_m", default_value="120.0"),
         DeclareLaunchArgument(
             "sim_sensor_profile",
             default_value="clean",
@@ -125,6 +127,7 @@ def generate_launch_description() -> LaunchDescription:
                 "route_execution_mode": route_execution_mode,
                 "adaptive_dense_leg_max_m": adaptive_dense_leg_max_m,
                 "adaptive_dense_horizon_m": adaptive_dense_horizon_m,
+                "nav_goal_horizon_m": nav_goal_horizon_m,
                 "gz_args": gz_args,
                 "world": LaunchConfiguration("world"),
                 "spawn_x": LaunchConfiguration("spawn_x"),
