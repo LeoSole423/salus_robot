@@ -895,7 +895,7 @@ class RouteExecutorNode(Node):
             if self._action is not None:
                 self._action.cancel("mission cancelled")
             self._action = self._action_future = None
-            if self._mission.phase == RoutePhase.ACTIVE:
+            if self._mission.phase in (RoutePhase.ACTIVE, RoutePhase.PAUSED):
                 transition(self._mission, RoutePhase.CANCELLED, "cancelled")
             self._goal_epoch += 1
             cancel_future = self._cancel_goal.call_async(CancelNavGoal.Request())
