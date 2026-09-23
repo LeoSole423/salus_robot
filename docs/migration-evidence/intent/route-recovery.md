@@ -41,4 +41,13 @@ original. Una acreditación posterior sin las previas no permite saltar ninguna.
 El nodo mantiene `mission_id` y `chunk_id`, reconstruye el tracker sólo con los
 pendientes y preserva el registro de eventos ya acreditados. No cambia Nav2,
 tolerancias, contratos públicos ni el disparador inicial del bloqueo (#303).
-Validación en robot permanece pendiente.
+La validación causal en PC/sim usa `tools/smoke_route_recovery_sim.sh`:
+espera un evento de checkpoint y el paso físico más allá de su coordenada,
+inyecta STOP acotado en el monitor de colisión y verifica el request efectivo,
+el plan nuevo y la odometría posteriores al retry. Otra variante cancela durante
+`WAITING_RETRY` y exige un comando safe-zero posterior al cancel. El caso de
+loop construye físicamente `5(vuelta 0) → 0 → 1 → 2(vuelta 1)` sin necesitar
+completar una vuelta de navegación para llegar al cierre. La regresión del
+algoritmo y el humo sim cubren el objetivo de no volver al checkpoint
+acreditado; la ruta y el plan sim no prueban por sí solos que Nav2 nunca elegirá
+un giro en U en cualquier calle. Validación en robot permanece pendiente.
