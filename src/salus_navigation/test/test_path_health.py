@@ -104,6 +104,24 @@ def test_lethal_cost_forces_replan():
     assert result.reason == "path_collision"
 
 
+def test_single_distant_lethal_cell_replans_active_path_immediately():
+    """Baseline for #303: no distance or temporal confidence is applied yet."""
+    policy = PathHealthPolicy()
+    path = make_path([(1, 1), (12, 1)])
+    # At 0.25 m/cell, x=36 is 9 m from the costmap origin and 8 m ahead.
+    blocked = policy.evaluate(
+        path, robot_x=1, robot_y=1,
+        costmap=costmap([(36, 4, 254)]), now_s=10.0,
+    )
+    cleared = policy.evaluate(
+        path, robot_x=1, robot_y=1,
+        costmap=costmap(stamp=10.1), now_s=10.1,
+    )
+    assert blocked.state == PathHealth.REPLAN
+    assert blocked.reason == "path_collision"
+    assert cleared.state == PathHealth.KEEP_PATH
+
+
 def test_sustained_inflation_forces_replan_but_single_sample_does_not():
     path = make_path([(1, 1), (12, 1)])
     single = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1, costmap=costmap([(16, 4, 120)]), now_s=10.0)

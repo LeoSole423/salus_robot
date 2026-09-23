@@ -142,6 +142,15 @@ class PerceptionRuntimeHarness(Node):
         ]
         self.cloud_pub.publish(point_cloud2.create_cloud_xyz32(header, ground + obstacle))
 
+    def publish_cloud_points(self, points: list[tuple[float, float, float]]) -> tuple[int, int]:
+        """Inject a synthetic cloud already expressed in base_footprint."""
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = "base_footprint"
+        stamp = (header.stamp.sec, header.stamp.nanosec)
+        self.cloud_pub.publish(point_cloud2.create_cloud_xyz32(header, points))
+        return stamp
+
     @staticmethod
     def _lidar_point_for_output(x: float, y: float, z: float) -> tuple[float, float, float]:
         """Invert the frozen transform so the node output is (x, y, z)."""
@@ -263,5 +272,71 @@ def test_missing_tf_fails_closed_without_scan_output(tmp_path: Path) -> None:
         assert harness.obstacle_clouds == []
         assert harness.scans == []
         assert harness.clean_scans == []
+    finally:
+        _finish_runtime_probe(harness)
+
+
+def test_tilted_low_returns_reach_each_scan_side_then_disappear_when_upright(
+    tmp_path: Path,
+) -> None:
+    """Characterize the real three-node pipeline without changing its policy."""
+    harness = _run_runtime_probe(tmp_path, publish_tf=False)
+    low_returns = [
+        (6.0 + 0.25 * ix, side * (1.5 + 0.1 * iy),
+         0.08 + 0.015 * ((ix + 2 * iy) % 5))
+        for side in (-1, 1) for ix in range(25) for iy in range(26)
+    ]
+    post = [(2.5, -0.1 + 0.025 * index, 0.75) for index in range(9)]
+
+    def sample(roll_deg: float) -> tuple[int, int]:
+        angle = math.radians(roll_deg)
+        sine, cosine = math.sin(angle), math.cos(angle)
+        points = [
+            (x, cosine * y - sine * z, sine * y + cosine * z)
+            for x, y, z in low_returns + post
+        ]
+        for _ in range(10):
+            stamp = harness.publish_cloud_points(points)
+            if harness.wait_for(
+                lambda: any((item.header.stamp.sec, item.header.stamp.nanosec) == stamp
+                            for item in harness.obstacle_clouds)
+                and any((item.header.stamp.sec, item.header.stamp.nanosec) == stamp
+                        for item in harness.clean_scans),
+                timeout_s=0.5,
+            ):
+                return stamp
+        raise AssertionError("synthetic cloud did not cross the perception pipeline")
+
+    def outputs(stamp: tuple[int, int]) -> tuple[int, int, int]:
+        cloud = next(item for item in harness.obstacle_clouds
+                     if (item.header.stamp.sec, item.header.stamp.nanosec) == stamp)
+        scan = next(item for item in harness.clean_scans
+                    if (item.header.stamp.sec, item.header.stamp.nanosec) == stamp)
+        def count_beams(lower_deg: float, upper_deg: float) -> int:
+            return sum(
+                math.isfinite(value)
+                for index, value in enumerate(scan.ranges)
+                if math.radians(lower_deg)
+                <= scan.angle_min + index * scan.angle_increment
+                <= math.radians(upper_deg)
+            )
+
+        return cloud.width, count_beams(10, 40), count_beams(-40, -10)
+
+    try:
+        assert harness.wait_for(
+            lambda: {"scan_ground_filter", "pointcloud_to_laserscan", "scan_noise_filter"}
+            .issubset(set(harness.get_node_names()))
+        )
+        upright = outputs(sample(0.0))
+        tilted_left = outputs(sample(8.0))
+        tilted_right = outputs(sample(-8.0))
+        straightened = outputs(sample(0.0))
+        assert upright == (len(post), 0, 0)
+        assert tilted_left[0] > len(post) + 500
+        assert tilted_left[1] >= 30 and tilted_left[2] == 0
+        assert tilted_right[0] > len(post) + 500
+        assert tilted_right[2] >= 30 and tilted_right[1] == 0
+        assert straightened == (len(post), 0, 0)
     finally:
         _finish_runtime_probe(harness)
