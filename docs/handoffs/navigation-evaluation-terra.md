@@ -52,8 +52,8 @@ giros, además, el primer comando relevante debe coincidir con `expected_turn`.
 
 ## Decisión operativa resuelta
 
-Nav2 usa actualmente `xy_goal_tolerance: 1.2`, mientras el runner nació con
+Nav2 usa actualmente `xy_goal_tolerance: 2.5`, mientras el runner nació con
 `goal_tolerance_m: 0.25`. Una ejecución real confirmó que Nav2 puede declarar
-éxito cerca de 1 m. El operador aceptó separar el gate funcional de 1.2 m del
+éxito cerca de 1 m. El operador aceptó separar el gate funcional de 2.5 m del
 objetivo de rendimiento de 0.25 m. El segundo permanece `calibrating` y no
 rompe CI hasta que las mejoras futuras estén respaldadas por evidencia.

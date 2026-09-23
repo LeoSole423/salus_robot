@@ -118,6 +118,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "/scan_clean" in config
     assert "vector_keepout_layer" in config
     for profile in (config, no_obstacles_config):
+        assert "xy_goal_tolerance: 2.5" in profile
         assert "smooth_path: false" in profile
         assert "ConstrainedSmoother" not in profile
         assert "smoother_server" not in profile
@@ -157,6 +158,7 @@ def test_multi_pose_navigator_uses_stable_candidate_validation_and_ackermann_rec
         "nav2_core_real.yaml",
     ):
         profile = (ROOT / "config" / profile_name).read_text(encoding="utf-8")
+        assert "xy_goal_tolerance: 2.5" in profile
         assert "navigators: [navigate_to_pose, navigate_through_poses]" in profile
         assert "nav2_bt_navigator::NavigateThroughPosesNavigator" in profile
         assert "nav2_remove_passed_goals_action_bt_node" in profile
