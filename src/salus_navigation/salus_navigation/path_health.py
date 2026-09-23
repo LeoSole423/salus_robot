@@ -10,7 +10,8 @@ import rclpy
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Path
 from rclpy.node import Node
-from salus_interfaces.msg import PathHealth
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from salus_interfaces.msg import PathHealth, ProjectedKeepoutState
 from salus_interfaces.srv import EvaluatePathHealth
 from tf2_ros import Buffer, TransformException, TransformListener
 
@@ -36,6 +37,8 @@ class HealthResult:
     max_cost: int
     checked_samples: int
     cross_track_error_m: float
+    far_x: float | None = None
+    far_y: float | None = None
 
 
 def path_signature(path: Path) -> tuple[object, ...]:
@@ -72,14 +75,24 @@ def cross_track_error(path: Path, x: float, y: float) -> tuple[float, float]:
 class PathHealthPolicy:
     """Pure policy: geometry, hysteresis and progress; no ROS side effects."""
 
-    def __init__(self, *, max_distance_m=12.0, sample_step_m=0.25, high_cost=100, lethal_cost=253, high_samples=3, cross_track_replan_m=0.9, cross_track_recover_m=0.6, cross_track_confirmations=3, cooldown_s=1.5, costmap_timeout_s=1.5, progress_timeout_s=5.0) -> None:
+    def __init__(self, *, max_distance_m=12.0, sample_step_m=0.25, high_cost=100, lethal_cost=253, high_samples=3, cross_track_replan_m=0.9, cross_track_recover_m=0.6, cross_track_confirmations=3, cooldown_s=1.5, costmap_timeout_s=1.5, progress_timeout_s=5.0, near_horizon_m=5.35, far_persistence_s=1.5) -> None:
         self.max_distance_m, self.sample_step_m = max_distance_m, sample_step_m
         self.high_cost, self.lethal_cost, self.high_samples = high_cost, lethal_cost, high_samples
         self.cross_track_replan_m, self.cross_track_recover_m = cross_track_replan_m, cross_track_recover_m
         self.cross_track_confirmations, self.cooldown_s = cross_track_confirmations, cooldown_s
         self.costmap_timeout_s, self.progress_timeout_s = costmap_timeout_s, progress_timeout_s
+        if not 0.0 < near_horizon_m < max_distance_m:
+            raise ValueError("near_horizon_m must be inside the inspected path")
+        if not math.isfinite(far_persistence_s) or far_persistence_s <= 0.0:
+            raise ValueError("far_persistence_s must be finite and positive")
+        self.near_horizon_m, self.far_persistence_s = near_horizon_m, far_persistence_s
         self._cross_count = 0; self._last_replan_s = -float("inf")
         self._signature = None; self._best_progress = 0.0; self._progress_at_s = 0.0
+        self._far_since_s = None
+        self._far_last_stamp_s = None
+        self._far_observation_count = 0
+        self._far_xy = None
+        self._keepout_revision = None
 
     @staticmethod
     def _cell_cost(costmap: CostmapView, x: float, y: float) -> int:
@@ -96,30 +109,56 @@ class PathHealthPolicy:
         cos_yaw, sin_yaw = math.cos(yaw), math.sin(yaw)
         return max(self._cell_cost(costmap, x + dx * cos_yaw - dy * sin_yaw, y + dx * sin_yaw + dy * cos_yaw) for dx, dy in corners)
 
-    def _result(self, state, reason, age, maximum, checked, error):
-        return HealthResult(state, reason, age, maximum, checked, error)
+    def _result(self, state, reason, age, maximum, checked, error, far_xy=None):
+        return HealthResult(state, reason, age, maximum, checked, error,
+                            None if far_xy is None else far_xy[0],
+                            None if far_xy is None else far_xy[1])
+
+    def _reset_far_observation(self):
+        self._far_since_s = None
+        self._far_last_stamp_s = None
+        self._far_observation_count = 0
+        self._far_xy = None
 
     def evaluate(self, path: Path, *, robot_x: float, robot_y: float,
                  costmap: CostmapView | None, now_s: float,
-                 tf_available=True, track_active_state=True) -> HealthResult:
+                 tf_available=True, track_active_state=True,
+                 keepout_revision: int | None = None) -> HealthResult:
         if not tf_available:
+            if track_active_state:
+                self._reset_far_observation()
             return self._result(PathHealth.STOP_AND_WAIT, "tf_unavailable", float("inf"), 0, 0, 0.0)
         if costmap is None:
+            if track_active_state:
+                self._reset_far_observation()
             return self._result(PathHealth.STOP_AND_WAIT, "costmap_unavailable", float("inf"), 0, 0, 0.0)
         age = max(0.0, now_s - costmap.stamp_s)
         if age > self.costmap_timeout_s:
+            if track_active_state:
+                self._reset_far_observation()
             return self._result(PathHealth.STOP_AND_WAIT, "costmap_stale", age, 0, 0, 0.0)
         if len(path.poses) < 2:
             return self._result(PathHealth.REPLAN, "path_too_short", age, 0, 0, 0.0)
+
+        if track_active_state and keepout_revision is not None:
+            if (self._keepout_revision is not None
+                    and keepout_revision != self._keepout_revision):
+                self._keepout_revision = keepout_revision
+                self._reset_far_observation()
+                return self._result(PathHealth.REPLAN, "keepout_revision_changed",
+                                    age, 0, 0, 0.0)
+            self._keepout_revision = keepout_revision
 
         signature = path_signature(path)
         error, progress = cross_track_error(path, robot_x, robot_y)
         if not track_active_state:
             # A candidate is evaluated independently.  Its validity must not
             # reset the progress, hysteresis or cooldown of the active path.
-            return self._evaluate_geometry(path, progress, error, costmap, now_s, age)
+            return self._evaluate_geometry(path, progress, error, costmap, now_s, age,
+                                           track_active_state=False)
         if signature != self._signature:
             self._signature, self._best_progress, self._progress_at_s, self._cross_count = signature, progress, now_s, 0
+            self._reset_far_observation()
         elif progress > self._best_progress + 0.05:
             self._best_progress, self._progress_at_s = progress, now_s
 
@@ -128,7 +167,26 @@ class PathHealthPolicy:
         elif error <= self.cross_track_recover_m:
             self._cross_count = 0
 
-        geometry = self._evaluate_geometry(path, progress, error, costmap, now_s, age)
+        geometry = self._evaluate_geometry(path, progress, error, costmap, now_s, age,
+                                           track_active_state=True)
+        if geometry.reason == "far_obstacle_observed":
+            far_xy = (geometry.far_x, geometry.far_y)
+            if (self._far_xy is not None
+                    and math.hypot(far_xy[0] - self._far_xy[0],
+                                   far_xy[1] - self._far_xy[1]) > 1.0):
+                self._reset_far_observation()
+            if self._far_since_s is None:
+                self._far_since_s = now_s
+                self._far_xy = far_xy
+            if self._far_last_stamp_s != costmap.stamp_s:
+                self._far_last_stamp_s = costmap.stamp_s
+                self._far_observation_count += 1
+            if (self._far_observation_count >= 2
+                    and now_s - self._far_since_s >= self.far_persistence_s):
+                geometry = self._result(PathHealth.REPLAN, "far_obstacle_persistent",
+                                        age, geometry.max_cost, geometry.checked_samples, error)
+        else:
+            self._reset_far_observation()
         if geometry.state == PathHealth.REPLAN:
             self._last_replan_s = now_s
             return geometry
@@ -145,11 +203,14 @@ class PathHealthPolicy:
         return geometry
 
     def _evaluate_geometry(self, path: Path, progress: float, error: float,
-                           costmap: CostmapView, now_s: float, age: float) -> HealthResult:
+                           costmap: CostmapView, now_s: float, age: float,
+                           track_active_state: bool) -> HealthResult:
         # Only inspect the part the vehicle still has to traverse.  Checking
         # the path behind the rear axle would cause needless replans when a
         # new obstacle appears after the robot has already passed it.
         maximum = checked = sustained = 0
+        far_observed = False
+        far_xy = None
         remaining = self.max_distance_m
         walked = 0.0
         for left, right in zip(path.poses, path.poses[1:]):
@@ -160,19 +221,30 @@ class PathHealthPolicy:
             yaw, distance = math.atan2(dy, dx), segment_start
             while distance <= length and remaining >= 0.0:
                 ratio = distance / length
-                cost = self._footprint_cost(costmap, ax + ratio * dx, ay + ratio * dy, yaw)
+                sample_x, sample_y = ax + ratio * dx, ay + ratio * dy
+                cost = self._footprint_cost(costmap, sample_x, sample_y, yaw)
                 maximum, checked = max(maximum, cost), checked + 1
                 if cost >= self.lethal_cost:
-                    return self._result(PathHealth.REPLAN, "path_collision", age, maximum, checked, error)
+                    if not track_active_state or self.max_distance_m - remaining <= self.near_horizon_m:
+                        return self._result(PathHealth.REPLAN, "path_collision", age, maximum, checked, error)
+                    far_observed = True
+                    if far_xy is None:
+                        far_xy = (sample_x, sample_y)
                 sustained = sustained + 1 if cost >= self.high_cost else 0
                 if sustained >= self.high_samples:
-                    return self._result(PathHealth.REPLAN, "clearance_degraded", age, maximum, checked, error)
+                    if not track_active_state or self.max_distance_m - remaining <= self.near_horizon_m:
+                        return self._result(PathHealth.REPLAN, "clearance_degraded", age, maximum, checked, error)
+                    far_observed = True
+                    if far_xy is None:
+                        far_xy = (sample_x, sample_y)
                 distance += self.sample_step_m; remaining -= self.sample_step_m
             walked += length
             if remaining < 0.0:
                 break
 
-        return self._result(PathHealth.KEEP_PATH, "path_healthy", age, maximum, checked, error)
+        return self._result(PathHealth.KEEP_PATH,
+                            "far_obstacle_observed" if far_observed else "path_healthy",
+                            age, maximum, checked, error, far_xy)
 
 
 def costmap_view_from_message(message: Costmap) -> CostmapView:
@@ -197,12 +269,27 @@ class PathHealthNode(Node):
             "base_frame": "base_footprint",
             "costmap_timeout_s": 1.5,
             "tf_timeout_s": 1.5,
+            "near_horizon_m": 5.35,
+            "far_persistence_s": 1.5,
         }.items():
             self.declare_parameter(name, value)
         self._costmap = None
-        self._policy = PathHealthPolicy(costmap_timeout_s=float(self.get_parameter("costmap_timeout_s").value))
+        self._keepout_revision = None
+        self._policy = PathHealthPolicy(
+            costmap_timeout_s=float(self.get_parameter("costmap_timeout_s").value),
+            near_horizon_m=float(self.get_parameter("near_horizon_m").value),
+            far_persistence_s=float(self.get_parameter("far_persistence_s").value),
+        )
         self._pub = self.create_publisher(PathHealth, str(self.get_parameter("health_topic").value), 10)
         self.create_subscription(Costmap, str(self.get_parameter("costmap_topic").value), self._on_costmap, 10)
+        keepout_qos = QoSProfile(
+            depth=1, reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.create_subscription(
+            ProjectedKeepoutState, "/zones_manager/projected_keepouts",
+            self._on_keepouts, keepout_qos,
+        )
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
         self.create_service(EvaluatePathHealth, str(self.get_parameter("service_name").value), self._on_evaluate)
@@ -210,6 +297,9 @@ class PathHealthNode(Node):
     def _on_costmap(self, message):
         self._costmap_frame = message.header.frame_id
         self._costmap = costmap_view_from_message(message)
+
+    def _on_keepouts(self, message):
+        self._keepout_revision = int(message.revision)
 
     def _on_evaluate(self, request, response):
         now_s = self.get_clock().now().nanoseconds * 1.0e-9
@@ -219,8 +309,12 @@ class PathHealthNode(Node):
             # deliberate reason to enter the planner branch without TF.
             result = self._policy._result(PathHealth.REPLAN, "path_missing", 0.0, 0, 0, 0.0)
         elif not path_frame:
+            if request.context == EvaluatePathHealth.Request.ACTIVE:
+                self._policy._reset_far_observation()
             result = self._policy._result(PathHealth.STOP_AND_WAIT, "path_frame_missing", float("inf"), 0, 0, 0.0)
         elif self._costmap is not None and path_frame != self._costmap_frame:
+            if request.context == EvaluatePathHealth.Request.ACTIVE:
+                self._policy._reset_far_observation()
             result = self._policy._result(PathHealth.STOP_AND_WAIT, "costmap_frame_mismatch", float("inf"), 0, 0, 0.0)
         else:
             try:
@@ -237,7 +331,8 @@ class PathHealthNode(Node):
                 result = self._policy.evaluate(
                     request.path, robot_x=point.x, robot_y=point.y,
                     costmap=self._costmap, now_s=now_s,
-                    track_active_state=request.context == EvaluatePathHealth.Request.ACTIVE)
+                    track_active_state=request.context == EvaluatePathHealth.Request.ACTIVE,
+                    keepout_revision=self._keepout_revision)
                 if request.context == EvaluatePathHealth.Request.CANDIDATE and result.state != PathHealth.KEEP_PATH:
                     result = self._policy._result(
                         PathHealth.STOP_AND_WAIT,
@@ -245,6 +340,8 @@ class PathHealthNode(Node):
                         result.costmap_age_s, result.max_cost,
                         result.checked_samples, result.cross_track_error_m)
             except Exception as exc:
+                if request.context == EvaluatePathHealth.Request.ACTIVE:
+                    self._policy._reset_far_observation()
                 # The BT service has a bounded timeout.  A malformed or
                 # temporarily unavailable TF lookup must become a safe result,
                 # never an unhandled callback that leaves Nav2 waiting.

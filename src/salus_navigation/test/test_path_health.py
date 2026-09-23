@@ -104,8 +104,7 @@ def test_lethal_cost_forces_replan():
     assert result.reason == "path_collision"
 
 
-def test_single_distant_lethal_cell_replans_active_path_immediately():
-    """Baseline for #303: no distance or temporal confidence is applied yet."""
+def test_single_distant_lethal_cell_keeps_active_path_until_persistent():
     policy = PathHealthPolicy()
     path = make_path([(1, 1), (12, 1)])
     # At 0.25 m/cell, x=36 is 9 m from the costmap origin and 8 m ahead.
@@ -117,9 +116,79 @@ def test_single_distant_lethal_cell_replans_active_path_immediately():
         path, robot_x=1, robot_y=1,
         costmap=costmap(stamp=10.1), now_s=10.1,
     )
-    assert blocked.state == PathHealth.REPLAN
-    assert blocked.reason == "path_collision"
+    assert blocked.state == PathHealth.KEEP_PATH
+    assert blocked.reason == "far_obstacle_observed"
     assert cleared.state == PathHealth.KEEP_PATH
+
+
+def test_persistent_distant_cell_replans_only_after_distinct_costmaps():
+    policy = PathHealthPolicy(far_persistence_s=1.5, costmap_timeout_s=2.0)
+    path = make_path([(1, 1), (12, 1)])
+    occupied = [(36, 4, 254)]
+    first = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap(occupied, stamp=10.0), now_s=10.0)
+    repeated = policy.evaluate(path, robot_x=1, robot_y=1,
+                               costmap=costmap(occupied, stamp=10.0), now_s=11.5)
+    confirmed = policy.evaluate(path, robot_x=1, robot_y=1,
+                                costmap=costmap(occupied, stamp=11.6), now_s=11.6)
+    assert first.reason == repeated.reason == "far_obstacle_observed"
+    assert confirmed.state == PathHealth.REPLAN
+    assert confirmed.reason == "far_obstacle_persistent"
+
+
+def test_near_obstacle_and_distant_candidate_remain_strict():
+    path = make_path([(1, 1), (12, 1)])
+    near = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1,
+                                       costmap=costmap([(16, 4, 254)]), now_s=10.0)
+    candidate = PathHealthPolicy().evaluate(
+        path, robot_x=1, robot_y=1, costmap=costmap([(36, 4, 254)]),
+        now_s=10.0, track_active_state=False)
+    assert near.state == candidate.state == PathHealth.REPLAN
+    assert near.reason == candidate.reason == "path_collision"
+
+
+def test_different_distant_cells_do_not_count_as_one_persistent_obstacle():
+    policy = PathHealthPolicy(far_persistence_s=1.5)
+    path = make_path([(1, 1), (12, 1)])
+    first = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap([(28, 4, 254)], stamp=10.0), now_s=10.0)
+    shifted = policy.evaluate(path, robot_x=1, robot_y=1,
+                              costmap=costmap([(40, 4, 254)], stamp=11.6), now_s=11.6)
+    assert first.reason == shifted.reason == "far_obstacle_observed"
+    assert shifted.state == PathHealth.KEEP_PATH
+
+
+def test_stale_costmap_resets_distant_observation_persistence():
+    policy = PathHealthPolicy(far_persistence_s=1.5)
+    path = make_path([(1, 1), (12, 1)])
+    policy.evaluate(path, robot_x=1, robot_y=1,
+                    costmap=costmap([(36, 4, 254)], stamp=10.0), now_s=10.0)
+    stale = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap([(36, 4, 254)], stamp=10.0), now_s=12.0)
+    fresh = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap([(36, 4, 254)], stamp=12.1), now_s=12.1)
+    assert stale.state == PathHealth.STOP_AND_WAIT
+    assert fresh.state == PathHealth.KEEP_PATH
+    assert fresh.reason == "far_obstacle_observed"
+
+
+def test_keepout_revision_change_replans_even_with_no_obstacle_nearby():
+    policy = PathHealthPolicy()
+    path = make_path([(1, 1), (12, 1)])
+    first = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap(), now_s=10.0, keepout_revision=3)
+    candidate = policy.evaluate(path, robot_x=1, robot_y=1,
+                                costmap=costmap(stamp=10.1), now_s=10.1,
+                                keepout_revision=4, track_active_state=False)
+    changed = policy.evaluate(path, robot_x=1, robot_y=1,
+                              costmap=costmap(stamp=10.2), now_s=10.2,
+                              keepout_revision=4)
+    stable = policy.evaluate(path, robot_x=1, robot_y=1,
+                             costmap=costmap(stamp=10.3), now_s=10.3,
+                             keepout_revision=4)
+    assert first.state == candidate.state == stable.state == PathHealth.KEEP_PATH
+    assert changed.state == PathHealth.REPLAN
+    assert changed.reason == "keepout_revision_changed"
 
 
 def test_sustained_inflation_forces_replan_but_single_sample_does_not():

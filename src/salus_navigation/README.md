@@ -75,6 +75,27 @@ autoridad de velocidad.
   El BT multi-pose añade poda de goals superados y recuperaciones separadas de
   costmaps local/global, sin maniobras `Spin`/`BackUp` incompatibles con
   Ackermann.
+- La política de ocupación progresiva del path activo usa `near_horizon_m`
+  (`float`, default 5,35 m, rango abierto `0 < valor < 12`): una marca en ese
+  tramo pide replan inmediato. Más lejos, hasta los 12 m inspeccionados,
+  `far_persistence_s` (`float`, default 1,5 s, finito y positivo) exige al
+  menos dos costmaps con stamps distintos antes de pedir replan. Una marca
+  aislada conserva el path y se publica como `far_obstacle_observed`; la marca
+  confirmada debe permanecer a menos de 1 m de la primera posición muestreada
+  sobre el path. El despeje reinicia la observación. El horizonte inicial corresponde a la zona
+  de slowdown más externa del Collision Monitor real, y la persistencia al
+  baseline existente de recuperación de ruta: ambos requieren calibración
+  física antes de afirmar distancia segura de frenado. Los paths candidatos
+  siguen rechazando cualquier colisión o inflación sostenida dentro de los
+  12 m. El BT delega la validez del path activo en `path_health`; la consulta
+  global `IsPathValid` de Humble recorría todo el path restante y adelantaba
+  un replan por una sola celda letal lejana. RPP y Collision Monitor conservan
+  la respuesta de colisión cercana independiente. Una revisión nueva de
+  `/zones_manager/projected_keepouts` (`ProjectedKeepoutState`, reliable,
+  transient-local; productor `zones_manager`, consumidor `path_health`)
+  pide replan inmediato del path activo, sin aplicar la espera de ocupación
+  lejana. Si no existe un publicador de zonas, la política usa sólo costmap,
+  TF y path como antes.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
   modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).
