@@ -34,6 +34,27 @@ El artifact físico citado en #300 está sólo en el Jetson, que no respondió p
 
 ## Investigación y decisión pendiente
 
+### Corte de política PC
+
+La fuente Humble de Nav2 confirma que `IsPathValid` consulta el costmap global
+desde el punto más cercano al robot hasta el fin del path y falla ante costo
+letal. En ambos BT ese nodo se ejecutaba antes de `path_health`, por lo que una
+marca lejana aislada podía disparar planificación inmediata aunque la política
+local conservara el path. El corte de #303 deja la decisión del path activo en
+`path_health` y mantiene la validación estricta del candidato antes de copiarlo.
+
+El horizonte cercano inicial es 5,35 m, alineado con la zona de slowdown más
+externa configurada en Collision Monitor real; no se presenta como distancia de
+parada validada. Una ocupación por delante de ese horizonte y dentro de los 12 m
+inspeccionados conserva el path hasta aparecer en dos costmaps con stamps
+distintos durante 1,5 s, la persistencia existente de recuperación de ruta.
+Una marca cercana sigue pidiendo replan inmediatamente. RPP y Collision Monitor
+siguen determinando el frenado cercano con sus contratos vigentes. La prueba
+física de distancia de parada y desempeño de misión queda pendiente.
+Las revisiones nuevas de keepout permanecen fuera de esta espera: el
+`ProjectedKeepoutState` existente dispara replan inmediato del path activo.
+No se crea otro productor ni se modifica la autoridad de las zonas.
+
 1. Sincronizar `header.stamp` y tiempo de recepción de `/scan_clean`, costmaps local/global, plan, arco RPP, `/cmd_vel`, `/cmd_vel_safe`, `/collision_monitor_state`, `/path_health`, diagnóstico del controlador y resultado Nav2. Registrar el primer eslabón que marca ocupación y el desfase de cada pareja causal.
 2. Por evento, medir distancia al obstáculo sobre la trayectoria y al footprint, sector, costo, duración, número de observaciones independientes, velocidad, tiempo disponible para detenerse, clearance cercano y si el punto persiste al cambiar de pose. Reproducir además inclinación del robot y ocupación lateral izquierda: comparar nube original, puntos proyectados y costmap antes de atribuir una pared física. Un costo alto por sí solo no constituye confianza de sensor.
 3. Reproducir en PC/sim: obstáculo real a distancias cercana y lejana, celda transitoria lejana, ocupación persistente, pasto/pendiente y datos stale. En el escenario de pasto, mantener la escena fija y variar la inclinación del robot de inclinado a derecho; comprobar si la ocupación con aspecto de pared aparece y desaparece en nube, scan y costmap, y medir la demora de despeje. Comparar con el baseline antes de seleccionar umbrales.

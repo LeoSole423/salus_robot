@@ -138,6 +138,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "/path_health/evaluate" in tree
     assert 'context="1"' in tree
     assert "IsPathHealthValid" in tree
+    assert "<IsPathValid" not in tree
     assert tree.count('server_timeout="500"') == 5
     assert 'hz="0.333"' in tree
     assert "NavigateToPose" not in tree
@@ -170,6 +171,7 @@ def test_multi_pose_navigator_uses_stable_candidate_validation_and_ackermann_rec
     assert '<ComputePathThroughPoses goals="{goals}" path="{candidate_path}" planner_id="GridBased"/>' in tree
     assert '<CopyPath input_path="{candidate_path}" output_path="{path}"/>' in tree
     assert 'context="0" expected_state="2"' in tree
+    assert "<IsPathValid" not in tree
     assert "global_costmap/clear_entirely_global_costmap" in tree
     assert "local_costmap/clear_entirely_local_costmap" in tree
     assert "Spin" not in tree and "BackUp" not in tree and "SmoothPath" not in tree

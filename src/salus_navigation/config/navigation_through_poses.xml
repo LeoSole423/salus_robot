@@ -7,7 +7,6 @@
             <Fallback name="KeepOrReplanPathThroughPoses">
               <ReactiveSequence name="KeepHealthyPathThroughPoses">
                 <Inverter><GlobalUpdatedGoal/></Inverter>
-                <IsPathValid path="{path}"/>
                 <IsPathHealthValid path="{path}" context="0" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
               </ReactiveSequence>
               <ReactiveSequence name="StopAndWaitForPathData">

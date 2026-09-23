@@ -50,3 +50,26 @@ navigator `NavigateThroughPoses` se habilita reutilizando la misma política
 antes de reemplazarlo y separa los clears local/global. `nav_observer` resultó
 suficiente para observar replans, por lo que `TraceReplan` continúa fuera del
 runtime. Tampoco se incorporan `Spin`, `BackUp`, smoother ni waypoint follower.
+
+## Enmienda #303: ocupaciones lejanas transitorias
+
+La caracterización de #303 mostró que una celda letal a 8 m provocaba
+`REPLAN` inmediato en `PathHealth`. Además, `IsPathValid` de Nav2 Humble
+recorría todo el path restante antes de `PathHealth` y adelantaba un replan por
+una única marca lejana. Ambos BT delegan ahora la decisión del path activo en
+`PathHealth`, manteniendo la validación estricta del candidato antes de
+reemplazarlo.
+
+La política distingue el horizonte cercano de 5,35 m del tramo de observación
+hasta 12 m. Una ocupación cercana pide replan de inmediato. La lejana requiere
+dos costmaps de stamps distintos, al menos 1,5 s y continuidad espacial dentro
+de 1 m; una observación ausente o stale reinicia esa confirmación. Los valores
+iniciales toman como referencias la zona de slowdown exterior de Collision
+Monitor y la persistencia de recuperación de rutas. No constituyen una
+distancia de frenado física validada. RPP y Collision Monitor conservan sus
+propios stops cercanos.
+
+Una revisión nueva de keepout fuerza replan inmediato, sin aplicar la espera
+de ocupación lejana. Esto conserva el tratamiento distinto de una zona
+operativa explícita y un retorno del sensor dudoso. La validación física de
+distancia, latencia y comportamiento de misión sigue pendiente.
