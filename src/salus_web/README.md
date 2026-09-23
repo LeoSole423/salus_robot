@@ -5,7 +5,8 @@
 - Interfaces previstas: cliente de APIs ROS y protocolo WebSocket versionado.
 - Estado: runtime ROS/WebSocket compatible con Cockpit portado en simulación,
   incluyendo lease exclusivo, telemetría compacta/full, zonas, navegación/misiones, control
-  manual, waypoints y snapshots. Sesiones, rosbag, RTK y cámara siguen diferidos.
+  manual, waypoints, snapshots y catálogo RTK de sólo lectura. Sesiones,
+  rosbag y la selección/edición RTK en caliente siguen diferidos.
 - Prueba: `colcon test --packages-select salus_web`.
 - Launch parcial:
   `ros2 launch salus_web web_bridge.launch.py ws_port:=8766`.
@@ -29,6 +30,9 @@ fix GPS o el cuaternión es inválido, no se fabrica una pose u orientación.
   calidad GNSS, adquisición/frescura RTCM y backend/estado de entrega. El
   string `/gps/rtk_status` queda como fallback de migración y no puede reemplazar
   un estado tipado ya recibido durante la vida del proceso.
+  En el perfil real, `rtk_sources_config` recibe la misma configuración privada
+  de NTRIP que usa el dueño de adquisición y proyecta exclusivamente `id` y
+  `label` como `rtk_sources`; no expone endpoints, credenciales ni rutas.
   Los módulos puros no abren sockets ni acceden a ROS. El transporte y el
   adaptador ROS permanecen separados y la política multi-cliente está fijada
   por el ADR 0005.

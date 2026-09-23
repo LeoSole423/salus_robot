@@ -35,6 +35,16 @@ def test_web_bridge_exposes_and_propagates_generic_gps_topic() -> None:
         encoding="utf-8"
     )
     assert 'DeclareLaunchArgument("gps_fix_topic", default_value="/gps/fix")' in source
+
+
+def test_web_bridge_exposes_read_only_rtk_source_catalog_config() -> None:
+    root = Path(__file__).parents[2]
+    source = (root / "salus_web" / "launch" / "web_bridge.launch.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'DeclareLaunchArgument(\n            "rtk_sources_config"' in source
+    assert '"rtk_sources_config": LaunchConfiguration("rtk_sources_config")' in source
     assert '"gps_fix_topic": LaunchConfiguration("gps_fix_topic")' in source
 
 

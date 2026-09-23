@@ -66,7 +66,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces]
-    status: ported_cockpit_runtime_capability_state_compact_telemetry_camera_ptz_and_typed_rtk_projection_sim
+    status: ported_cockpit_runtime_capability_state_compact_telemetry_camera_ptz_typed_rtk_projection_and_read_only_source_catalog
   salus_simulation:
     owner: simulation
     build_type: ament_cmake

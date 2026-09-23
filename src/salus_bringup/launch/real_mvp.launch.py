@@ -117,6 +117,7 @@ def generate_launch_description() -> LaunchDescription:
             {
                 "gps_fix_topic": web_gps_fix_topic,
                 "heading_odometry_topic": web_heading_odometry_topic,
+                "rtk_sources_config": ntrip_config_path,
             },
         ),
     ])
