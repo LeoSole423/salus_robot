@@ -6,7 +6,33 @@ from dataclasses import dataclass
 from enum import Enum
 from math import hypot, inf
 
-from .route_model import PreparedRoute
+from .route_model import PreparedRoute, RouteChunk
+
+
+def pending_checkpoint_suffix(
+    chunk: RouteChunk, reached_occurrences: set[tuple[int, int]],
+) -> RouteChunk:
+    """Keep only the uncredited suffix of this exact finite request.
+
+    Occurrences are (loop_iteration, input_index). An out-of-order credit
+    cannot authorize skipping an earlier checkpoint.
+    """
+    cut = 0
+    iterations = chunk.checkpoint_iterations
+    if iterations and len(iterations) != len(chunk.checkpoint_offsets):
+        raise ValueError("checkpoint iteration count does not match chunk")
+    for offset, input_index, iteration in chunk.checkpoint_occurrences:
+        if (iteration, input_index) not in reached_occurrences:
+            break
+        cut = offset + 1
+    if cut >= len(chunk.waypoints):
+        return chunk  # Terminal completion is handled by the executor.
+    consumed = sum(offset < cut for offset in chunk.checkpoint_offsets)
+    return RouteChunk(
+        chunk.waypoints[cut:], chunk.start, chunk.end,
+        chunk.checkpoint_occurrences[consumed][2] if consumed else chunk.iteration,
+        iterations[consumed:] if iterations else (),
+    )
 
 
 class RecoveryState(str, Enum):

@@ -41,7 +41,7 @@ from .route_preparation import dispatch_yaws, prepare, validate_inputs
 from .route_progress import project
 from .route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    checkpoint_within_tolerance, resolve_forward_reanchor,
+    checkpoint_within_tolerance, pending_checkpoint_suffix,
 )
 from .route_state_machine import transition
 from .nav_command_server import diagnostic_level
@@ -491,21 +491,13 @@ class RouteExecutorNode(Node):
                 self._finish_recovery(True)
                 self._complete_current_chunk("recovery_geometry")
                 return
-            route = self._mission.prepared
-            pose = self._pose
-            pending_index = self._mission.target_index + self._target_offset
-            if route.loop and route.waypoints:
-                pending_index %= len(route.waypoints)
-            resolution = resolve_forward_reanchor(
-                route, current_index=self._mission.target_index,
-                robot_x=None if pose is None else pose.x,
-                robot_y=None if pose is None else pose.y,
-                tolerance_m=float(
-                    self.get_parameter("blocked_retry_reanchor_tolerance_m").value
-                ),
-                max_index=pending_index,
-            )
-            self._mission.target_index = resolution.resolved_index
+            original = self._chunk
+            credited = {
+                (iteration, index)
+                for mission_id, iteration, index in self._reached_occurrences
+                if mission_id == self._mission.mission_id
+            }
+            pending = pending_checkpoint_suffix(original, credited)
             if not all(client.service_is_ready() for client in self._clear_costmaps):
                 self._finish_recovery(False, "COSTMAP_CLEAR_TIMEOUT")
                 return
@@ -515,14 +507,29 @@ class RouteExecutorNode(Node):
                 "futures": futures,
                 "deadline": self._steady_now()
                 + float(self.get_parameter("costmap_clear_timeout_s").value),
-                "resolution": resolution,
+                "pending": pending,
+                "original_size": len(original.waypoints),
             }
         self._event(DiagnosticStatus.WARN, "ROUTE_BLOCKED_RETRYING",
                     "retrying blocked route", reason=decision.reason,
                     attempt=decision.attempt,
-                    requested_index=resolution.requested_index,
-                    resolved_index=resolution.resolved_index,
-                    reanchor_reason=resolution.reason)
+                    original_input_indices=json.dumps(
+                        [point.input_index for point in original.waypoints]),
+                    original_checkpoint_occurrences=json.dumps(
+                        [[iteration, index] for _, index, iteration
+                         in original.checkpoint_occurrences]),
+                    credited_checkpoints=json.dumps(
+                        [{"loop_iteration": iteration, "input_index": index}
+                         for _, index, iteration in original.checkpoint_occurrences
+                         if (iteration, index) in credited]),
+                    retry_input_indices=json.dumps(
+                        [point.input_index for point in pending.waypoints]),
+                    retry_checkpoint_occurrences=json.dumps(
+                        [[iteration, index] for _, index, iteration
+                         in pending.checkpoint_occurrences]),
+                    trim_reason=("consecutive_credited_checkpoints"
+                                 if pending is not original and pending.waypoints != original.waypoints
+                                 else "no_consecutive_credit"))
 
     def _check_recovery_clears(self) -> None:
         job = self._recovery_clears
@@ -536,7 +543,17 @@ class RouteExecutorNode(Node):
                 self._finish_recovery(False, f"COSTMAP_CLEAR_FAILED: {exc}")
                 return
             self._recovery_clears = None
-            self._dispatch()
+            self._chunk = job["pending"]
+            cut = job["original_size"] - len(self._chunk.waypoints)
+            route = self._mission.prepared
+            start = self._mission.target_index + cut
+            self._mission.target_index = (
+                start % len(route.waypoints) if route.loop else start
+            )
+            self._mission.loop_iteration = self._chunk.iteration
+            self._checkpoint_tracker_key = None
+            self._publish_paths()
+            self._send_chunk()
         elif self._steady_now() >= job["deadline"]:
             self._finish_recovery(False, "COSTMAP_CLEAR_TIMEOUT")
 
@@ -845,7 +862,7 @@ class RouteExecutorNode(Node):
             x=float(self._chunk.waypoints[terminal[0]].map_x),
             y=float(self._chunk.waypoints[terminal[0]].map_y),
         )
-        RouteExecutorNode._record_checkpoint_reached(
+        newly_reached = RouteExecutorNode._record_checkpoint_reached(
             self,
             terminal_occurrence,
             completion_source,
@@ -853,7 +870,7 @@ class RouteExecutorNode(Node):
         self._mission.loop_iteration = terminal_occurrence.loop_iteration
         endpoint = self._chunk.waypoints[self._target_offset]
         actions = parse_actions(endpoint.action_json, endpoint.input_index)[0]
-        if endpoint.key and actions:
+        if newly_reached and endpoint.key and actions:
             self._start_actions(endpoint.input_index, actions)
         else:
             self._advance()

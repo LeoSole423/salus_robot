@@ -1,8 +1,8 @@
 from salus_interfaces.msg import PathHealth
-from salus_navigation.route_model import PreparedRoute, RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteWaypoint
 from salus_navigation.route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    checkpoint_within_tolerance, resolve_forward_reanchor,
+    checkpoint_within_tolerance, pending_checkpoint_suffix, resolve_forward_reanchor,
 )
 from salus_navigation.nav_command_server import diagnostic_level
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -121,3 +121,34 @@ def test_reanchor_cannot_skip_pending_checkpoint():
 def test_recovery_event_severity_is_normalized_for_humble() -> None:
     assert diagnostic_level(DiagnosticStatus.WARN) == 1
     assert isinstance(diagnostic_level(DiagnosticStatus.ERROR), int)
+
+
+def test_retry_suffix_crosses_loop_closure_only_with_consecutive_credit():
+    points = tuple(RouteWaypoint(0, 0, float(index), index, action_json=str(index),
+                                 map_x=float(index), map_y=0.0)
+                   for index in (5, 0, 1, 2))
+    chunk = RouteChunk(points, 5, 2, 0, (0, 1, 1, 1))
+    assert pending_checkpoint_suffix(chunk, set()) is not chunk
+    for credited, expected, iterations in (
+        ({(0, 5)}, (0, 1, 2), (1, 1, 1)),
+        ({(0, 5), (1, 0)}, (1, 2), (1, 1)),
+        ({(1, 0)}, (5, 0, 1, 2), (0, 1, 1, 1)),
+    ):
+        pending = pending_checkpoint_suffix(chunk, credited)
+        assert tuple(point.input_index for point in pending.waypoints) == expected
+        assert pending.waypoints == (points[-len(expected):] if len(expected) < 4 else points)
+        assert pending.checkpoint_iterations == iterations
+        assert pending.end == chunk.end
+
+
+def test_retry_suffix_retains_synthetic_after_credited_checkpoint():
+    points = (
+        RouteWaypoint(0, 0, 0, 5, map_x=5.0, map_y=0.0),
+        RouteWaypoint(0, 0, 23, 5, key=False, map_x=5.5, map_y=0.0),
+        RouteWaypoint(0, 0, 90, 0, action_json='{"type":"brake_hold"}',
+                      map_x=0.0, map_y=0.0),
+    )
+    chunk = RouteChunk(points, 5, 0, 0, (0, 1))
+    pending = pending_checkpoint_suffix(chunk, {(0, 5)})
+    assert pending.waypoints == points[1:]
+    assert pending.checkpoint_occurrences == ((1, 0, 1),)

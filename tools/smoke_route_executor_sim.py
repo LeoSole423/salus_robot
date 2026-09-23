@@ -600,10 +600,14 @@ def request_from_pose(pose, *, loop=False):
         "1", "true", "yes"
     )
     scenario = os.environ.get("SMOKE_ROUTE_SCENARIO", "open").lower()
-    loop = loop or scenario == "loop"
+    loop = loop or scenario in ("loop", "recovery_loop")
     yaw = math.atan2(2 * pose.orientation.w * pose.orientation.z, 1 - 2 * pose.orientation.z ** 2)
     x, y = pose.position.x, pose.position.y
-    if loop:
+    if scenario == "recovery_loop":
+        distances = (12, 18, 24, 60, 66, 6)
+        values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw))
+                  for distance in distances]
+    elif loop:
         # Broad Ackermann-compatible loop: the smoke stops after the first
         # causal dispatch of the second lap.  It is intentionally opt-in so
         # the historical open-route smoke remains unchanged.
@@ -616,7 +620,12 @@ def request_from_pose(pose, *, loop=False):
             for forward, lateral in local_values
         ]
     else:
-        values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw)) for distance in (3, 6, 9)]
+        distances = ((6, 18, 30) if scenario == "recovery_action"
+                     else (6, 20, 34) if scenario == "recovery_partial"
+                     else (6, 12) if scenario == "recovery_synthetic"
+                     else (3, 6, 9))
+        values = [(x + distance * math.cos(yaw), y + distance * math.sin(yaw))
+                  for distance in distances]
     action_index = int(os.environ.get("SMOKE_ROUTE_ACTION_INDEX", "-1"))
     actions = ["" for _ in values]
     if 0 <= action_index < len(actions):
@@ -628,6 +637,8 @@ def request_from_pose(pose, *, loop=False):
                         if automatic_yaws else [math.degrees(yaw)] * len(values))
     request.loop, request.leg_spacing_m = loop, leg_spacing_m
     request.waypoint_action_jsons = actions
+    if scenario == "recovery_action":
+        request.waypoint_roles = ["hard", "normal", "normal"]
     request.chunk_span_m, request.chunk_max_waypoints = (
         chunk_span_m, chunk_max_waypoints
     )

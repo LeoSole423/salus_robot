@@ -19,8 +19,13 @@ autoridad de velocidad.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
 - Recuperación de rutas bloqueadas mediante una política pura con espera por
-  datos, cooldown, limpieza de costmaps, reanclaje hacia delante y límite de
-  intentos observable en los campos `blocked_*`.
+  datos, cooldown, limpieza de costmaps y límite de intentos observable en los
+  campos `blocked_*`. El retry conserva el sufijo del chunk activo posterior a
+  checkpoints acreditados consecutivamente, incluso al cruzar el cierre de
+  un loop; la proximidad no acredita checkpoints originales.
+  `./tools/smoke_route_recovery_sim.sh` inyecta un STOP sim después de
+  progreso acreditado y registra el plan, la odometría y el comando final
+  durante el retry y cancelación.
   La preparación LL es asíncrona y atómica; el ejecutor no publica velocidad
   ni invoca Nav2 directamente. Cada chunk termina en el siguiente checkpoint,
   conserva la geometría sintética de esa pierna y se despacha por

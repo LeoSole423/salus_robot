@@ -1,7 +1,7 @@
 from math import nan
 from contextlib import nullcontext
 from types import SimpleNamespace
-from salus_navigation.route_model import PreparedRoute, RouteMission, RoutePhase, RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteMission, RoutePhase, RouteWaypoint
 from salus_navigation.route_preparation import dispatch_yaws, expand, prepare, resolve_yaws
 from salus_navigation.route_preparation import validate_inputs
 from salus_navigation.route_anchor import select_anchor
@@ -480,6 +480,31 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
     assert advanced == [True]
 
 
+def test_duplicate_terminal_credit_does_not_repeat_actions():
+    endpoint = RouteWaypoint(
+        0, 0, 0, 2,
+        action_json='[{"type":"brake_hold","duration_s":1}]',
+        map_x=2.0, map_y=0.0,
+    )
+    chunk = RouteChunk((endpoint,), 2, 2, 0, (0,))
+    actions, advanced, events = [], [], []
+    fake = SimpleNamespace(
+        _chunk=chunk, _target_offset=0, _checkpoint_tracker=None,
+        _mission=SimpleNamespace(reached=1, mission_id="m", chunk_id=2,
+                                 loop_iteration=0),
+        _reached_occurrences={("m", 0, 2)},
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _start_actions=lambda *args: actions.append(args),
+        _advance=lambda: advanced.append(True),
+    )
+
+    RouteExecutorNode._complete_current_chunk(fake, "nav2_succeeded")
+
+    assert not actions and not events
+    assert fake._mission.reached == 1
+    assert advanced == [True]
+
+
 def test_terminal_success_with_pending_soft_checkpoint_fails_closed():
     route = prepare(
         [point(0, 0), point(10, 1)], loop=False, input_count=2,
@@ -546,6 +571,54 @@ def test_retry_of_the_same_chunk_preserves_soft_checkpoint_evidence():
 
     assert fake._checkpoint_tracker is tracker
     assert fake._checkpoint_tracker.complete
+
+
+def test_recovery_reuses_credited_chunk_suffix_after_costmap_clear():
+    points = tuple(point(float(index), index) for index in (5, 0, 1, 2))
+    chunk = RouteChunk(points, 5, 2, 0, (0, 1, 1, 1))
+    dispatched = []
+    events = []
+
+    class ReadyClient:
+        def service_is_ready(self):
+            return True
+
+        def call_async(self, _request):
+            return SimpleNamespace(done=lambda: True, result=lambda: object())
+
+    route = PreparedRoute(tuple(point(float(i), i) for i in range(6)),
+                          True, 6, 0.0, 20.0, 6)
+    mission = SimpleNamespace(mission_id="m", chunk_id=7, loop_iteration=0,
+                              prepared=route, target_index=5)
+    fake = SimpleNamespace(
+        _lock=nullcontext(), _recovery_checkpoint_reached=False,
+        _mission=mission, _chunk=chunk, _reached_occurrences={("m", 0, 5)},
+        _clear_costmaps=(ReadyClient(), ReadyClient()), _recovery_clears=None,
+        _checkpoint_tracker_key=object(), _steady_now=lambda: 1.0,
+        get_parameter=lambda _name: SimpleNamespace(value=3.0),
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _publish_paths=lambda: None,
+        _send_chunk=lambda: dispatched.append(fake._chunk),
+    )
+    RouteExecutorNode._begin_recovery_retry(
+        fake, SimpleNamespace(reason="NAV_ABORTED", attempt=1))
+    RouteExecutorNode._check_recovery_clears(fake)
+
+    assert [p.input_index for p in dispatched[0].waypoints] == [0, 1, 2]
+    assert dispatched[0].checkpoint_iterations == (1, 1, 1)
+    assert mission.mission_id == "m" and mission.chunk_id == 7
+    assert mission.loop_iteration == 1
+    assert mission.target_index == 0
+    assert fake._reached_occurrences == {("m", 0, 5)}
+    assert events[0][0][1] == "ROUTE_BLOCKED_RETRYING"
+
+    fake._reached_occurrences.add(("m", 1, 0))
+    RouteExecutorNode._begin_recovery_retry(
+        fake, SimpleNamespace(reason="NAV_ABORTED", attempt=2))
+    RouteExecutorNode._check_recovery_clears(fake)
+    assert [p.input_index for p in dispatched[-1].waypoints] == [1, 2]
+    assert mission.target_index == 1 and mission.loop_iteration == 1
+    assert mission.chunk_id == 7
 
 
 def test_pose_callback_accounts_for_time_waiting_before_tracker_evaluation():
