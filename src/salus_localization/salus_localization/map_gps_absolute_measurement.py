@@ -9,10 +9,21 @@ from robot_localization.srv import FromLL
 from sensor_msgs.msg import NavSatFix
 
 
-def project_fix(latitude: float, longitude: float, datum_lat: float, datum_lon: float) -> tuple[float, float]:
+def project_fix(
+    latitude: float,
+    longitude: float,
+    datum_lat: float,
+    datum_lon: float,
+    datum_yaw_deg: float = 0.0,
+) -> tuple[float, float]:
+    """Project WGS84 into the datum-aligned map frame used by simulation."""
     north = (latitude - datum_lat) * 111_320.0
     east = (longitude - datum_lon) * 111_320.0 * math.cos(math.radians(datum_lat))
-    return east, north
+    yaw_rad = math.radians(datum_yaw_deg)
+    return (
+        math.cos(yaw_rad) * east + math.sin(yaw_rad) * north,
+        -math.sin(yaw_rad) * east + math.cos(yaw_rad) * north,
+    )
 
 
 class MapGpsAbsoluteMeasurement(Node):
@@ -22,6 +33,7 @@ class MapGpsAbsoluteMeasurement(Node):
         self.declare_parameter("output_topic", "/gps/odometry_map")
         self.declare_parameter("datum_lat", -31.4858037)
         self.declare_parameter("datum_lon", -64.2410570)
+        self.declare_parameter("datum_yaw_deg", 0.0)
         self.declare_parameter("covariance_xy", 0.05)
         self.publisher = self.create_publisher(Odometry, str(self.get_parameter("output_topic").value), 10)
         self.create_subscription(NavSatFix, str(self.get_parameter("gps_topic").value), self.on_fix, 10)
@@ -33,7 +45,13 @@ class MapGpsAbsoluteMeasurement(Node):
     def on_fix(self, fix: NavSatFix) -> None:
         if not math.isfinite(fix.latitude) or not math.isfinite(fix.longitude): return
         message = Odometry(); message.header = fix.header; message.header.frame_id = "map"
-        message.pose.pose.position.x, message.pose.pose.position.y = project_fix(fix.latitude, fix.longitude, float(self.get_parameter("datum_lat").value), float(self.get_parameter("datum_lon").value))
+        message.pose.pose.position.x, message.pose.pose.position.y = project_fix(
+            fix.latitude,
+            fix.longitude,
+            float(self.get_parameter("datum_lat").value),
+            float(self.get_parameter("datum_lon").value),
+            float(self.get_parameter("datum_yaw_deg").value),
+        )
         message.pose.pose.orientation.w = 1.0; covariance = [0.0] * 36; covariance[0] = covariance[7] = float(self.get_parameter("covariance_xy").value); covariance[14] = covariance[21] = covariance[28] = covariance[35] = 1e6; message.pose.covariance = covariance
         self.publisher.publish(message)
 
@@ -43,6 +61,7 @@ class MapGpsAbsoluteMeasurement(Node):
             request.ll_point.longitude,
             float(self.get_parameter("datum_lat").value),
             float(self.get_parameter("datum_lon").value),
+            float(self.get_parameter("datum_yaw_deg").value),
         )
         response.map_point.z = 0.0
         return response

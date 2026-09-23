@@ -67,6 +67,20 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
     assert "web_waypoints_file" in contents
     assert "web_telemetry_profile" in contents
     assert "patrol_battery_guard_topic" in contents
+    for argument in (
+        "spawn_x", "spawn_y", "spawn_yaw",
+        "datum_lat", "datum_lon", "datum_yaw_deg",
+    ):
+        assert f'"{argument}"' in contents
+    for forwarded in (
+        '"spawn_x": spawn_x',
+        '"spawn_y": spawn_y',
+        '"spawn_yaw": spawn_yaw',
+        '"datum_lat": datum_lat',
+        '"datum_lon": datum_lon',
+        '"datum_yaw_deg": datum_yaw_deg',
+    ):
+        assert forwarded in contents
     assert contents.count('DeclareLaunchArgument(\n                "world"') == 1
 
 

@@ -206,6 +206,28 @@ interfaz de red ni configura DDS.
 El perfil está listo para validación operacional, pero no sustituye al futuro
 bringup real ni demuestra capacidad de mover el robot físico.
 
+### Reproducción georreferenciada privada de una patrulla Cockpit
+
+Para inspeccionar una patrulla guardada sobre su ubicación satelital real sin
+versionar coordenadas, exportar manualmente el valor de localStorage
+`cockpit.navigation.routes.v1` a un archivo privado bajo `artifacts/`, y preparar
+un run aislado:
+
+```bash
+python3 tools/prepare_georeferenced_patrol_sim.py \
+  --routes-file artifacts/cockpit-routes-private.json \
+  --route-name PatrullaSencillaPolo \
+  --source-world src/salus_simulation/worlds/free.world \
+  --output-dir artifacts/georeferenced-patrol/polo
+```
+
+El preparador exige HOME y el perfil de patrulla, toma HOME como datum temporal
+para Gazebo, `/fromLL` y `navsat_transform`, y genera un world/mission/argumentos
+privados con permisos restrictivos. También deja un fixture sólo relativo a HOME
+para diagnóstico. Los defaults de simulación no cambian. Ejecutar el
+`launch_simulation.sh` generado para abrir Gazebo, RViz y el bridge de Cockpit;
+después cargar la ruta guardada en el Cockpit usando el preset **Simulation**.
+
 Para trazabilidad de la migración, este launch reemplaza en simulación a
 `navegacion_gps/sim_global_v2_wifi.launch.py`: conserva la composición
 operativa remota, pero no sus configuraciones DDS/WiFi ni `/scan_wifi_debug`.
