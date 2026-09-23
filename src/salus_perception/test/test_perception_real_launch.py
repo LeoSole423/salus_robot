@@ -276,14 +276,15 @@ def test_missing_tf_fails_closed_without_scan_output(tmp_path: Path) -> None:
         _finish_runtime_probe(harness)
 
 
-def test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright(
+def test_tilted_low_returns_reach_each_scan_side_then_disappear_when_upright(
     tmp_path: Path,
 ) -> None:
     """Characterize the real three-node pipeline without changing its policy."""
     harness = _run_runtime_probe(tmp_path, publish_tf=False)
-    grass = [
-        (6.0 + 0.25 * ix, 1.5 + 0.1 * iy, 0.08 + 0.015 * ((ix + 2 * iy) % 5))
-        for ix in range(25) for iy in range(26)
+    low_returns = [
+        (6.0 + 0.25 * ix, side * (1.5 + 0.1 * iy),
+         0.08 + 0.015 * ((ix + 2 * iy) % 5))
+        for side in (-1, 1) for ix in range(25) for iy in range(26)
     ]
     post = [(2.5, -0.1 + 0.025 * index, 0.75) for index in range(9)]
 
@@ -292,7 +293,7 @@ def test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright(
         sine, cosine = math.sin(angle), math.cos(angle)
         points = [
             (x, cosine * y - sine * z, sine * y + cosine * z)
-            for x, y, z in grass + post
+            for x, y, z in low_returns + post
         ]
         for _ in range(10):
             stamp = harness.publish_cloud_points(points)
@@ -306,18 +307,21 @@ def test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright(
                 return stamp
         raise AssertionError("synthetic cloud did not cross the perception pipeline")
 
-    def outputs(stamp: tuple[int, int]) -> tuple[int, int]:
+    def outputs(stamp: tuple[int, int]) -> tuple[int, int, int]:
         cloud = next(item for item in harness.obstacle_clouds
                      if (item.header.stamp.sec, item.header.stamp.nanosec) == stamp)
         scan = next(item for item in harness.clean_scans
                     if (item.header.stamp.sec, item.header.stamp.nanosec) == stamp)
-        left_beams = sum(
-            math.isfinite(value)
-            for index, value in enumerate(scan.ranges)
-            if math.radians(10) <= scan.angle_min + index * scan.angle_increment
-            <= math.radians(40)
-        )
-        return cloud.width, left_beams
+        def count_beams(lower_deg: float, upper_deg: float) -> int:
+            return sum(
+                math.isfinite(value)
+                for index, value in enumerate(scan.ranges)
+                if math.radians(lower_deg)
+                <= scan.angle_min + index * scan.angle_increment
+                <= math.radians(upper_deg)
+            )
+
+        return cloud.width, count_beams(10, 40), count_beams(-40, -10)
 
     try:
         assert harness.wait_for(
@@ -325,11 +329,14 @@ def test_tilted_low_grass_reaches_clean_scan_then_disappears_when_upright(
             .issubset(set(harness.get_node_names()))
         )
         upright = outputs(sample(0.0))
-        tilted = outputs(sample(8.0))
+        tilted_left = outputs(sample(8.0))
+        tilted_right = outputs(sample(-8.0))
         straightened = outputs(sample(0.0))
-        assert upright == (len(post), 0)
-        assert tilted[0] > len(post) + 500
-        assert tilted[1] >= 30
-        assert straightened == (len(post), 0)
+        assert upright == (len(post), 0, 0)
+        assert tilted_left[0] > len(post) + 500
+        assert tilted_left[1] >= 30 and tilted_left[2] == 0
+        assert tilted_right[0] > len(post) + 500
+        assert tilted_right[2] >= 30 and tilted_right[1] == 0
+        assert straightened == (len(post), 0, 0)
     finally:
         _finish_runtime_probe(harness)

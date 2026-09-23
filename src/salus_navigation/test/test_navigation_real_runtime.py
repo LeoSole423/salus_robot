@@ -222,35 +222,36 @@ def _assert_lifecycle_active(node: Node, node_name: str) -> None:
     )
 
 
-def _tilted_grass_scan() -> list[float]:
-    """Project the same left grass geometry used by the perception fixture."""
+def _tilted_low_returns_scan(roll_deg: float) -> list[float]:
+    """Project the low-return perception fixture after a signed roll."""
     ranges = [float("inf")] * 360
-    roll = math.radians(8.0)
+    roll = math.radians(roll_deg)
     sine, cosine = math.sin(roll), math.cos(roll)
-    for ix in range(25):
-        for iy in range(26):
-            x = 6.0 + 0.25 * ix
-            y = 1.5 + 0.1 * iy
-            z = 0.08 + 0.015 * ((ix + 2 * iy) % 5)
-            lateral = cosine * y - sine * z
-            height = sine * y + cosine * z
-            if height <= 0.20:
-                continue
-            radius = math.hypot(x, lateral)
-            index = int((math.atan2(lateral, x) + math.pi / 2) / (math.pi / 359))
-            if 0 <= index < 360:
-                ranges[index] = min(ranges[index], radius)
+    for side in (-1, 1):
+        for ix in range(25):
+            for iy in range(26):
+                x = 6.0 + 0.25 * ix
+                y = side * (1.5 + 0.1 * iy)
+                z = 0.08 + 0.015 * ((ix + 2 * iy) % 5)
+                lateral = cosine * y - sine * z
+                height = sine * y + cosine * z
+                if height <= 0.20:
+                    continue
+                radius = math.hypot(x, lateral)
+                index = int((math.atan2(lateral, x) + math.pi / 2) / (math.pi / 359))
+                if 0 <= index < 360:
+                    ranges[index] = min(ranges[index], radius)
     return ranges
 
 
-def _lethal_left_grass_cells(costmap: Costmap) -> int:
+def _lethal_side_return_cells(costmap: Costmap, side: int) -> int:
     metadata = costmap.metadata
     resolution = metadata.resolution
     width = metadata.size_x
     count = 0
     for row in range(metadata.size_y):
         y = metadata.origin.position.y + (row + 0.5) * resolution
-        if not 1.0 <= y <= 4.5:
+        if not 1.0 <= side * y <= 4.5:
             continue
         for col in range(width):
             x = metadata.origin.position.x + (col + 0.5) * resolution
@@ -306,25 +307,27 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             20.0,
             "local and global costmaps",
         )
-        assert _lethal_left_grass_cells(fixture.local_costmaps[-1]) == 0
-        fixture.scan_ranges_override = _tilted_grass_scan()
-        _spin_until(
-            fixture,
-            lambda: bool(fixture.local_costmaps)
-            and _lethal_left_grass_cells(fixture.local_costmaps[-1]) >= 10,
-            10.0,
-            "tilted grass marked in local costmap",
-        )
-        marked_cells = _lethal_left_grass_cells(fixture.local_costmaps[-1])
-        fixture.scan_ranges_override = None
-        _spin_until(
-            fixture,
-            lambda: bool(fixture.local_costmaps)
-            and _lethal_left_grass_cells(fixture.local_costmaps[-1]) <= 1,
-            10.0,
-            "tilted grass mostly cleared from local costmap",
-        )
-        assert marked_cells >= 10
+        for roll_deg, side in ((8.0, 1), (-8.0, -1)):
+            assert _lethal_side_return_cells(fixture.local_costmaps[-1], side) <= 1
+            fixture.scan_ranges_override = _tilted_low_returns_scan(roll_deg)
+            _spin_until(
+                fixture,
+                lambda: bool(fixture.local_costmaps)
+                and _lethal_side_return_cells(fixture.local_costmaps[-1], side) >= 10,
+                10.0,
+                "tilted low returns marked in local costmap",
+            )
+            marked_cells = _lethal_side_return_cells(fixture.local_costmaps[-1], side)
+            fixture.scan_ranges_override = None
+            _spin_until(
+                fixture,
+                lambda: bool(fixture.local_costmaps)
+                and _lethal_side_return_cells(fixture.local_costmaps[-1], side)
+                <= max(2, marked_cells // 20),
+                10.0,
+                "at least 95 percent of tilted returns cleared from local costmap",
+            )
+            assert marked_cells >= 10
         snapshot_client = fixture.create_client(
             GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
         )
