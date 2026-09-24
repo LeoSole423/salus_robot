@@ -2,7 +2,7 @@
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="3" name="NavigateThroughPosesRecovery">
       <PipelineSequence name="NavigateThroughPosesWithStablePath">
-        <RateController hz="0.333">
+        <RateController hz="2.0">
           <RecoveryNode number_of_retries="1" name="StablePathThroughPosesPlanning">
             <Fallback name="KeepOrReplanPathThroughPoses">
               <ReactiveSequence name="KeepHealthyPathThroughPoses">

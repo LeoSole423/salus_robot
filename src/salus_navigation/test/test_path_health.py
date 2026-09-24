@@ -136,6 +136,19 @@ def test_persistent_distant_cell_replans_only_after_distinct_costmaps():
     assert confirmed.reason == "far_obstacle_persistent"
 
 
+def test_default_persistence_replans_before_obstacle_enters_near_horizon():
+    policy = PathHealthPolicy()
+    path = make_path([(1, 1), (20, 1)])
+    occupied = [(48, 4, 254)]  # x=12 m, initially 11 m ahead.
+    first = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap(occupied, stamp=10.0), now_s=10.0)
+    second = policy.evaluate(path, robot_x=2.6, robot_y=1,
+                             costmap=costmap(occupied, stamp=11.0), now_s=11.0)
+    assert first.reason == "far_obstacle_observed"
+    assert second.state == PathHealth.REPLAN
+    assert second.reason == "far_obstacle_persistent"
+
+
 def test_near_obstacle_and_distant_candidate_remain_strict():
     path = make_path([(1, 1), (12, 1)])
     near = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1,

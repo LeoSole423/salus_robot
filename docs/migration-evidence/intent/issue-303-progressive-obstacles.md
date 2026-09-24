@@ -47,7 +47,11 @@ El horizonte cercano inicial es 5,35 m, alineado con la zona de slowdown más
 externa configurada en Collision Monitor real; no se presenta como distancia de
 parada validada. Una ocupación por delante de ese horizonte y dentro de los 12 m
 inspeccionados conserva el path hasta aparecer en dos costmaps con stamps
-distintos durante 1,5 s, la persistencia existente de recuperación de ruta.
+distintos durante 1,0 s. El valor inicial de 1,5 s se redujo después de que
+una prueba en Gazebo mostrara un replan demasiado cercano al obstáculo: el BT
+consultaba cada 3 s y el costmap global se publicaba cada 2 s. Las consultas
+pasan a 2 Hz y la publicación del costmap global a 1 Hz, conservando
+distancia de maniobra sin cuadruplicar la publicación de la matriz completa.
 Una marca cercana sigue pidiendo replan inmediatamente. RPP y Collision Monitor
 siguen determinando el frenado cercano con sus contratos vigentes. La prueba
 física de distancia de parada y desempeño de misión queda pendiente.

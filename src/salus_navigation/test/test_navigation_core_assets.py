@@ -140,7 +140,7 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
     assert "IsPathHealthValid" in tree
     assert "<IsPathValid" not in tree
     assert tree.count('server_timeout="500"') == 5
-    assert 'hz="0.333"' in tree
+    assert 'hz="2.0"' in tree
     assert "NavigateToPose" not in tree
     assert "SmoothPath" not in tree
     assert "smoothed_path" not in tree
@@ -175,6 +175,23 @@ def test_multi_pose_navigator_uses_stable_candidate_validation_and_ackermann_rec
     assert "global_costmap/clear_entirely_global_costmap" in tree
     assert "local_costmap/clear_entirely_local_costmap" in tree
     assert "Spin" not in tree and "BackUp" not in tree and "SmoothPath" not in tree
+
+
+def test_obstacle_replan_cadence_keeps_ahead_of_ackermann_turning_radius() -> None:
+    # The old 3 s BT tick and 2 s costmap publication could consume the
+    # 12 m lookahead before a persistent obstacle was confirmed.
+    for tree_name in ("navigation_core.xml", "navigation_through_poses.xml"):
+        tree = ElementTree.parse(ROOT / "config" / tree_name).getroot()
+        rate = tree.find(".//RateController")
+        assert rate is not None
+        assert float(rate.attrib["hz"]) >= 2.0
+
+    for profile_name in (
+        "nav2_core_sim.yaml", "nav2_core_no_obstacles_sim.yaml", "nav2_core_real.yaml"
+    ):
+        profile = (ROOT / "config" / profile_name).read_text(encoding="utf-8")
+        global_costmap = profile.split("\nglobal_costmap:", 1)[1]
+        assert "publish_frequency: 1.0" in global_costmap
 
 
 def test_navigation_launches_select_the_production_multi_pose_tree() -> None:

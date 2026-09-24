@@ -62,10 +62,14 @@ reemplazarlo.
 
 La política distingue el horizonte cercano de 5,35 m del tramo de observación
 hasta 12 m. Una ocupación cercana pide replan de inmediato. La lejana requiere
-dos costmaps de stamps distintos, al menos 1,5 s y continuidad espacial dentro
+dos costmaps de stamps distintos, al menos 1,0 s y continuidad espacial dentro
 de 1 m; una observación ausente o stale reinicia esa confirmación. Los valores
 iniciales toman como referencias la zona de slowdown exterior de Collision
-Monitor y la persistencia de recuperación de rutas. No constituyen una
+Monitor y la persistencia de recuperación de rutas. Tras observar en Gazebo
+un replan demasiado tardío frente a un obstáculo persistente, se elevó la
+consulta de ambos BT a 2 Hz, la publicación del costmap global a 1 Hz y se
+redujo la confirmación lejana a 1,0 s. Son cotas de configuración; todavía
+falta medir la latencia real de detección y planificación. No constituyen una
 distancia de frenado física validada. RPP y Collision Monitor conservan sus
 propios stops cercanos.
 

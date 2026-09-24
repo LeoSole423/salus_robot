@@ -2,7 +2,7 @@
   <BehaviorTree ID="MainTree">
     <RecoveryNode number_of_retries="3" name="NavigateRecovery">
       <PipelineSequence>
-        <RateController hz="0.333">
+        <RateController hz="2.0">
           <RecoveryNode number_of_retries="1" name="StablePathPlanning">
             <Fallback name="KeepOrReplanPath">
               <ReactiveSequence name="KeepHealthyPath">
