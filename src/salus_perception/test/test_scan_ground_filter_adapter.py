@@ -6,6 +6,7 @@ from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 
 from salus_perception.scan_ground_filter import ScanGroundFilter
+from salus_perception.radial_ground import RadialGroundConfig
 
 
 class _IdentityBuffer:
@@ -28,8 +29,7 @@ class _CapturePublisher:
 def _adapter_for_test():
     node = ScanGroundFilter.__new__(ScanGroundFilter)
     node.target = "base_footprint"
-    node.tolerance = 0.20
-    node.range_max = 20.0
+    node.config = RadialGroundConfig()
     node.buffer = _IdentityBuffer()
     node.pub = _CapturePublisher()
     return node

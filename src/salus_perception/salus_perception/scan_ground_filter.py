@@ -10,7 +10,9 @@ from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformException, TransformListener
-from .scan_filters import filter_cloud_points, rotate_translate_point
+from .scan_filters import rotate_translate_point, rotate_translate_points
+from .radial_ground import RadialGroundConfig, non_ground_points
+from dataclasses import replace
 
 
 def ground_filter_input_qos() -> QoSProfile:
@@ -33,20 +35,31 @@ def rotate_translate(point: tuple[float, float, float], transform) -> tuple[floa
 class ScanGroundFilter(Node):
     def __init__(self)->None:
         super().__init__("scan_ground_filter")
-        for name,value in {"input_topic":"/scan_3d", "output_topic":"/obstacles_cloud", "target_frame":"base_footprint", "wheelbase_m":0.94, "profile":"urban", "ground_tolerance_m":0.20, "range_max":20.0}.items():self.declare_parameter(name,value)
+        for name,value in {"input_topic":"/scan_3d", "output_topic":"/obstacles_cloud", "target_frame":"base_footprint", "profile":"urban", "global_slope_max_angle_deg":10.0, "local_slope_max_angle_deg":13.0, "radial_divider_angle_deg":1.0, "split_points_distance_tolerance":0.20, "use_virtual_ground_point":True, "split_height_distance":0.20, "vehicle_wheel_base_m":0.90, "range_max":20.0}.items():self.declare_parameter(name,value)
         self.target=str(self.get_parameter("target_frame").value); profile=str(self.get_parameter("profile").value)
-        self.tolerance=0.25 if profile == "rural" else float(self.get_parameter("ground_tolerance_m").value); self.range_max=float(self.get_parameter("range_max").value)
+        self.config = RadialGroundConfig(**{name: self.get_parameter(name).value for name in RadialGroundConfig.__dataclass_fields__})
+        if profile == "rural":
+            self.config = replace(self.config, global_slope_max_angle_deg=15.0, local_slope_max_angle_deg=18.0, split_height_distance=0.25)
         input_qos=ground_filter_input_qos()
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self);self.pub=self.create_publisher(PointCloud2,str(self.get_parameter("output_topic").value),qos_profile_sensor_data);self.create_subscription(PointCloud2,str(self.get_parameter("input_topic").value),self.on_cloud,input_qos)
         self.add_on_set_parameters_callback(self.on_parameters)
-    def on_parameters(self,parameters):
-        tolerance=self.tolerance
-        for parameter in parameters:
-            if parameter.name == "ground_tolerance_m":
-                tolerance=float(parameter.value)
-                if not 0.0 < tolerance <= 0.5:
-                    return SetParametersResult(successful=False,reason="ground_tolerance_m must be in (0, 0.5]")
-        self.tolerance=tolerance
+    def on_parameters(self, parameters):
+        changes = {p.name: p.value for p in parameters if p.name in RadialGroundConfig.__dataclass_fields__}
+        if not changes:
+            return SetParametersResult(successful=True)
+        try:
+            candidate = replace(self.config, **changes)
+            if not (0 < candidate.global_slope_max_angle_deg <= 35 and
+                    0 < candidate.local_slope_max_angle_deg <= 35 and
+                    0 < candidate.radial_divider_angle_deg <= 10 and
+                    0 < candidate.split_points_distance_tolerance <= 1 and
+                    0 < candidate.split_height_distance <= 0.5 and
+                    0 < candidate.vehicle_wheel_base_m <= 5 and
+                    0 < candidate.range_max <= 100):
+                raise ValueError("radial ground parameter out of range")
+        except (TypeError, ValueError) as error:
+            return SetParametersResult(successful=False, reason=str(error))
+        self.config = candidate
         return SetParametersResult(successful=True)
     def on_cloud(self,msg:PointCloud2)->None:
         try: transform=self.buffer.lookup_transform(self.target,msg.header.frame_id,rclpy.time.Time(),timeout=Duration(seconds=0.05))
@@ -60,13 +73,12 @@ class ScanGroundFilter(Node):
         ]
         rotation = transform.transform.rotation
         translation = transform.transform.translation
-        obstacles = filter_cloud_points(
+        transformed = rotate_translate_points(
             points,
             quaternion_xyzw=(rotation.x, rotation.y, rotation.z, rotation.w),
             translation_xyz=(translation.x, translation.y, translation.z),
-            ground_tolerance_m=self.tolerance,
-            max_range_m=self.range_max,
         )
+        obstacles = non_ground_points(transformed, self.config)
         header=Header();header.stamp=msg.header.stamp;header.frame_id=self.target
         self.pub.publish(point_cloud2.create_cloud_xyz32(header, obstacles.tolist()))
 def main(args=None)->None:

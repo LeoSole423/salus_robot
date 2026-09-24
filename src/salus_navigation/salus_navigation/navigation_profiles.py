@@ -5,7 +5,9 @@ from enum import Enum
 
 @dataclass(frozen=True)
 class ProfileValues:
-    ground_tolerance_m: float
+    global_slope_max_angle_deg: float
+    local_slope_max_angle_deg: float
+    split_height_distance: float
     local_inflation_radius: float
     local_cost_scaling: float
     global_inflation_radius: float
@@ -14,8 +16,8 @@ class ProfileValues:
 
 
 PROFILES = {
-    "urban": ProfileValues(0.20, 1.4, 1.3, 1.5, 1.4, 1.6),
-    "rural": ProfileValues(0.25, 0.8, 3.0, 0.8, 3.0, 1.6),
+    "urban": ProfileValues(10.0, 13.0, 0.20, 1.4, 1.3, 1.5, 1.4, 1.6),
+    "rural": ProfileValues(15.0, 18.0, 0.25, 0.8, 3.0, 0.8, 3.0, 1.6),
 }
 
 

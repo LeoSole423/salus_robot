@@ -65,4 +65,20 @@ El contraste prueba desacuerdo sustancial, no que el filtro legacy sea mejor en 
 - Composición: `scan_clean` sigue siendo único input autoritativo de Nav2/Collision Monitor; no sumar publicadores.
 - Hardware: A/B inicialmente observador en Jetson; sólo después prueba controlada de navegación con operador y E-stop.
 
-Estado: **characterized**, sin paridad ni validación de la política candidata en hardware.
+## Avance de implementación
+
+El operador pidió acelerar la migración y no agregar pruebas nuevas. Se conectó una
+política radial pura al adaptador existente de `salus_perception`, preservando
+`/scan_3d -> /obstacles_cloud`, frame, timestamp y QoS. El perfil urban usa
+10°/13°/0,20 m y rural 15°/18°/0,25 m; la coordinación de parámetros cambia
+los tres valores. La salida sigue siendo XYZ32 como el contrato actual.
+
+En 12 frames reales extraídos del bag del 24/09, el conjunto de obstáculos de
+la nueva política coincide con el segmentador histórico: diferencia simétrica
+0 por frame, después de aplicar el TF estático observado. Los dos paquetes
+modificados compilan en el contenedor Humble. Esto demuestra equivalencia de
+clasificación en esa ventana; no demuestra calidad de la clasificación ni
+comportamiento temporal en Jetson. La ejecución real aún no se ha cambiado.
+
+Estado: **ported**, con paridad offline limitada a 12 frames y sin validación en hardware.
+

@@ -59,9 +59,9 @@ def test_real_perception_launch_fixes_the_184_parameters() -> None:
     contents = LAUNCH.read_text(encoding="utf-8")
     for expected in (
         '"target_frame": "base_footprint"',
-        '"wheelbase_m": 0.94',
+        '"vehicle_wheel_base_m": 0.90',
         '"profile": "urban"',
-        '"ground_tolerance_m": 0.20',
+        '"split_height_distance": 0.20',
         '"range_max": 20.0',
         '"transform_tolerance": 0.1',
         '"min_height": -0.1',
