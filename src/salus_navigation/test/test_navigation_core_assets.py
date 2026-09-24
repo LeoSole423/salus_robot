@@ -105,6 +105,8 @@ def test_navigation_config_and_launch_keep_the_safe_contract() -> None:
         ROOT / "config" / "nav2_core_no_obstacles_sim.yaml"
     ).read_text(encoding="utf-8")
     launch = (ROOT / "launch" / "navigation_core_sim.launch.py").read_text(encoding="utf-8")
+    assert '"max_distance_m": 18.0' in launch
+    assert "obstacle_max_range: 19.0" in config
     tree = (ROOT / "config" / "navigation_core.xml").read_text(encoding="utf-8")
     coordinator = (
         ROOT / "salus_navigation" / "nav2_startup_coordinator.py"

@@ -498,7 +498,7 @@ components:
       - src/salus_navigation_bt/src/path_health_condition.cpp
       - src/salus_navigation/salus_navigation/path_health.py
       - docs/migration-evidence/intent/navigation-path-health.md
-    note: La política útil de path estable y despeje se migró como PathHealth y ahora gobierna tanto NavigateToPose como NavigateThroughPoses. El flujo multi-pose conserva poda, validación del candidato y recovery Ackermann sin restaurar TraceReplan; nav_observer mantiene la observabilidad desacoplada.
+    note: La política útil de path estable y despeje se migró como PathHealth y ahora gobierna tanto NavigateToPose como NavigateThroughPoses. El flujo multi-pose conserva poda, validación del candidato y recovery Ackermann sin restaurar TraceReplan; nav_observer mantiene la observabilidad desacoplada e informa planes que regresan sobre el chunk. La ampliación del horizonte a 18 m está limitada a simulación y no acredita seguridad física.
   operator_web:
     source: map_tools
     target: salus_web

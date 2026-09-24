@@ -53,6 +53,7 @@ def generate_launch_description() -> LaunchDescription:
             # reloads.  Five seconds still fails safe, but avoids treating a
             # healthy startup or atomic mask reload as a permanent obstacle.
             "costmap_timeout_s": 5.0,
+            "max_distance_m": 18.0,
         }],
     ))
     actions.append(Node(

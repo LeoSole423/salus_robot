@@ -149,6 +149,20 @@ def test_default_persistence_replans_before_obstacle_enters_near_horizon():
     assert second.reason == "far_obstacle_persistent"
 
 
+def test_sim_extended_horizon_replans_while_turning_room_remains():
+    policy = PathHealthPolicy(max_distance_m=18.0)
+    path = make_path([(1, 1), (25, 1)])
+    occupied = [(72, 4, 254)]  # x=18 m, 17 m ahead initially.
+    first = policy.evaluate(path, robot_x=1, robot_y=1,
+                            costmap=costmap(occupied, stamp=10.0), now_s=10.0)
+    second = policy.evaluate(path, robot_x=2.6, robot_y=1,
+                             costmap=costmap(occupied, stamp=11.0), now_s=11.0)
+    assert first.reason == "far_obstacle_observed"
+    assert second.reason == "far_obstacle_persistent"
+    assert second.state == PathHealth.REPLAN
+    assert 18.0 - 2.6 > 12.0
+
+
 def test_near_obstacle_and_distant_candidate_remain_strict():
     path = make_path([(1, 1), (12, 1)])
     near = PathHealthPolicy().evaluate(path, robot_x=1, robot_y=1,

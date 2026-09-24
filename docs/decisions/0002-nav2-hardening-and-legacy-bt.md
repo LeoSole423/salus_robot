@@ -73,6 +73,15 @@ falta medir la latencia real de detección y planificación. No constituyen una
 distancia de frenado física validada. RPP y Collision Monitor conservan sus
 propios stops cercanos.
 
+En una captura posterior de Gazebo, dos replans persistentes devolvieron
+trayectorias 14–19 m detrás del robot. Como corte experimental sólo para
+simulación, el costmap global marca hasta 19 m y `PathHealth` inspecciona
+18 m, aprovechando el scan de 20 m. La política real conserva 12 m y los
+stops cercanos no cambian. `nav_observer` emite `PLAN_U_TURN` y su despeje
+para medir regresiones de plan sin vetar trayectorias. Antes de aplicar un
+rechazo o extender el cambio al robot real se requiere comparar planes y
+ejecución con un obstáculo fijo en Gazebo.
+
 Una revisión nueva de keepout fuerza replan inmediato, sin aplicar la espera
 de ocupación lejana. Esto conserva el tratamiento distinto de una zona
 operativa explícita y un retorno del sensor dudoso. La validación física de
