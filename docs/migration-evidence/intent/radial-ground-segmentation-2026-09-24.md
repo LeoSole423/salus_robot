@@ -81,4 +81,3 @@ clasificación en esa ventana; no demuestra calidad de la clasificación ni
 comportamiento temporal en Jetson. La ejecución real aún no se ha cambiado.
 
 Estado: **ported**, con paridad offline limitada a 12 frames y sin validación en hardware.
-
