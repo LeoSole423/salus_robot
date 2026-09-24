@@ -146,7 +146,7 @@ global_costmap:
     ros__parameters:
       use_sim_time: true
       update_frequency: 3.0
-      publish_frequency: 2.0
+      publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_footprint
       rolling_window: true

@@ -191,7 +191,7 @@ def test_obstacle_replan_cadence_keeps_ahead_of_ackermann_turning_radius() -> No
     ):
         profile = (ROOT / "config" / profile_name).read_text(encoding="utf-8")
         global_costmap = profile.split("\nglobal_costmap:", 1)[1]
-        assert "publish_frequency: 2.0" in global_costmap
+        assert "publish_frequency: 1.0" in global_costmap
 
 
 def test_navigation_launches_select_the_production_multi_pose_tree() -> None:

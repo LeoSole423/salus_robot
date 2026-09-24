@@ -67,7 +67,7 @@ de 1 m; una observación ausente o stale reinicia esa confirmación. Los valores
 iniciales toman como referencias la zona de slowdown exterior de Collision
 Monitor y la persistencia de recuperación de rutas. Tras observar en Gazebo
 un replan demasiado tardío frente a un obstáculo persistente, se elevó la
-consulta de ambos BT a 2 Hz, la publicación del costmap global a 2 Hz y se
+consulta de ambos BT a 2 Hz, la publicación del costmap global a 1 Hz y se
 redujo la confirmación lejana a 1,0 s. Son cotas de configuración; todavía
 falta medir la latencia real de detección y planificación. No constituyen una
 distancia de frenado física validada. RPP y Collision Monitor conservan sus
