@@ -1,8 +1,9 @@
 from salus_interfaces.msg import PathHealth
-from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteWaypoint
+from salus_navigation.route_model import PreparedRoute, RouteChunk, RouteWaypoint, RoutePhase
 from salus_navigation.route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    checkpoint_within_tolerance, pending_checkpoint_suffix, resolve_forward_reanchor,
+    checkpoint_within_tolerance, pending_checkpoint_suffix, profile_change_allowed,
+    resolve_forward_reanchor,
 )
 from salus_navigation.nav_command_server import diagnostic_level
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -12,6 +13,13 @@ def observation(now, **changes):
     values = {"now_s": now}
     values.update(changes)
     return RecoveryObservation(**values)
+
+
+def test_profile_change_requires_terminal_operator_block_or_inactive_mission():
+    assert not profile_change_allowed(RoutePhase.ACTIVE, RecoveryState.CLEAR)
+    assert not profile_change_allowed(RoutePhase.PAUSED, RecoveryState.WAITING_RETRY)
+    assert profile_change_allowed(RoutePhase.ACTIVE, RecoveryState.NEEDS_OPERATOR)
+    assert profile_change_allowed(RoutePhase.CANCELLED, RecoveryState.CLEAR)
 
 
 def route(loop=False):

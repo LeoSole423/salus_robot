@@ -12,6 +12,7 @@ from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import NavigateThroughPoses, NavigateToPose
 from nav2_msgs.msg import CollisionMonitorState
+from rcl_interfaces.msg import Log
 from rclpy.action import ActionClient
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -27,6 +28,7 @@ from salus_interfaces.srv import (
     SetManualMode,
     SetNavGoalLL,
 )
+from salus_navigation.planner_failure import PlannerFailureEvidence
 
 
 def clamp_brake_pct(value: int) -> int:
@@ -183,6 +185,9 @@ class NavCommandServer(Node):
         self._event_id = 0
         self._failure_code = ""
         self._failure_component = ""
+        self._navigation_failure_code = ""
+        self._navigation_failure_component = ""
+        self._planner_failure = PlannerFailureEvidence()
         self._brake_cancel: threading.Event | None = None
         self._goal_epoch = 0
         self._goal_pending = False
@@ -208,6 +213,7 @@ class NavCommandServer(Node):
         self.create_subscription(LaserScan, str(p("safety_scan_topic")), self._on_scan, qos_profile_sensor_data)
         self.create_subscription(NavSatFix, str(p("gps_topic")), self._on_gps, qos_profile_sensor_data)
         self.create_subscription(PathHealth, str(p("path_health_topic")), self._on_path_health, 10)
+        self.create_subscription(Log, "/rosout", self._on_rosout, 10)
         self.create_subscription(PoseStamped, str(p("rviz_goal_topic")), self._on_rviz_goal, 10)
         self._service_group = MutuallyExclusiveCallbackGroup()
         self._client_group = ReentrantCallbackGroup()
@@ -278,6 +284,12 @@ class NavCommandServer(Node):
     def _on_path_health(self, message: PathHealth) -> None:
         with self._lock:
             self._arbiter.set_path_health(message)
+
+    def _on_rosout(self, message: Log) -> None:
+        with self._lock:
+            if self._goal_active_locked():
+                self._planner_failure.observe_log(
+                    name=message.name, message=message.msg, now_s=time.monotonic())
 
     def _on_projected_keepouts(self, message: ProjectedKeepoutState) -> None:
         with self._lock:
@@ -520,6 +532,9 @@ class NavCommandServer(Node):
                 return "previous navigation goal is still active"
             self._goal_epoch += 1
             epoch = self._goal_epoch
+            self._planner_failure.begin_goal(epoch)
+            self._navigation_failure_code = ""
+            self._navigation_failure_component = ""
             self._goal_pending = True
             self._goal_cancel_requested = False
             self._goal_cancel_reason = ""
@@ -694,11 +709,16 @@ class NavCommandServer(Node):
                     goal_generation=epoch,
                 )
             else:
+                if self._planner_failure.aborted_for_no_path(
+                        epoch=epoch, now_s=time.monotonic()):
+                    self._navigation_failure_code = "NO_VALID_PATH"
+                    self._navigation_failure_component = "planner_server"
                 result_event_id = self._event(
                     DiagnosticStatus.ERROR,
                     "GOAL_RESULT_ABORTED",
                     "navigation goal aborted",
                     goal_generation=epoch,
+                    failure_code=self._navigation_failure_code,
                 )
             # This id belongs to the terminal result itself. Keep it stable
             # across later GOAL_REQUESTED/ACCEPTED or safety/debug events.
@@ -769,8 +789,8 @@ class NavCommandServer(Node):
             message.robot_lon = 0.0 if fix is None else fix.longitude
             message.nav_result_status, message.nav_result_text = self._goal_result_status, self._goal_result_text
             message.nav_result_event_id = self._goal_result_event_id
-            message.failure_code = self._failure_code
-            message.failure_component = self._failure_component
+            message.failure_code = self._failure_code or self._navigation_failure_code
+            message.failure_component = self._failure_component or self._navigation_failure_component
         self._telemetry_pub.publish(message)
 
 

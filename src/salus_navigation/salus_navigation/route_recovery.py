@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from math import hypot, inf
 
-from .route_model import PreparedRoute, RouteChunk
+from .route_model import PreparedRoute, RouteChunk, RoutePhase
 
 
 def pending_checkpoint_suffix(
@@ -54,6 +54,12 @@ class RecoveryAction(str, Enum):
     CANCEL_AND_BRAKE = "CANCEL_AND_BRAKE"
     BEGIN_RETRY = "BEGIN_RETRY"
     RESUME = "RESUME"
+
+
+def profile_change_allowed(phase: RoutePhase, recovery_state: RecoveryState) -> bool:
+    """A failed route awaiting an operator has no active navigation goal."""
+    return (phase not in (RoutePhase.ACTIVE, RoutePhase.PAUSED)
+            or recovery_state == RecoveryState.NEEDS_OPERATOR)
 
 
 @dataclass(frozen=True)

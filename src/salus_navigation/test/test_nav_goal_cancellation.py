@@ -2,9 +2,11 @@ import threading
 from types import SimpleNamespace
 
 from action_msgs.msg import GoalStatus
+from rcl_interfaces.msg import Log
 
 from salus_interfaces.srv import GetNavState
 from salus_navigation.nav_command_server import NavCommandServer
+from salus_navigation.planner_failure import PlannerFailureEvidence
 
 
 class FakeHandle:
@@ -37,6 +39,10 @@ def make_server(*, handle=None, pending=False, manual=False, timeout_s=0.01):
     server = object.__new__(NavCommandServer)
     server._lock = threading.Lock()
     server._goal_epoch = 3
+    server._planner_failure = PlannerFailureEvidence()
+    server._planner_failure.begin_goal(3)
+    server._navigation_failure_code = ""
+    server._navigation_failure_component = ""
     server._goal_pending = pending
     server._goal_handle = handle
     server._goal_cancel_requested = False
@@ -84,6 +90,20 @@ def test_get_state_returns_terminal_result_atomically() -> None:
     assert response.nav_result_status == GoalStatus.STATUS_SUCCEEDED
     assert response.nav_result_text == "succeeded"
     assert response.nav_result_event_id == 14
+
+
+def test_planner_log_is_reported_on_matching_goal_abort() -> None:
+    server = make_server(handle=FakeHandle())
+    server._on_rosout(Log(name="planner_server", msg="GridBased: failed to create plan"))
+    server._on_goal_result(terminal_future(GoalStatus.STATUS_ABORTED), 3)
+    assert server._navigation_failure_code == "NO_VALID_PATH"
+    assert server._navigation_failure_component == "planner_server"
+
+
+def test_abort_without_planner_evidence_remains_generic() -> None:
+    server = make_server(handle=FakeHandle())
+    server._on_goal_result(terminal_future(GoalStatus.STATUS_ABORTED), 3)
+    assert server._navigation_failure_code == ""
 
 
 def test_cancel_keeps_goal_active_until_terminal_result() -> None:
