@@ -29,6 +29,12 @@ autoridad de velocidad.
   campos `blocked_*`. El retry conserva el sufijo del chunk activo posterior a
   checkpoints acreditados consecutivamente, incluso al cruzar el cierre de
   un loop; la proximidad no acredita checkpoints originales.
+  Si Nav2 aborta después de que `planner_server` informó que no pudo crear un
+  plan para ese goal, `failure_code=NO_VALID_PATH` identifica ese diagnóstico
+  y `blocked_reason_text` indica al operador que revise el camino. Un aborto
+  genérico conserva `NAV_ABORTED` sin atribuirlo a un obstáculo. Al agotar los
+  intentos (`NEEDS_OPERATOR`), se puede aplicar otro perfil antes de enviar
+  una ruta nueva; la misión no se reanuda sola.
   `./tools/smoke_route_recovery_sim.sh` inyecta un STOP sim después de
   progreso acreditado y registra el plan, la odometría y el comando final
   durante el retry y cancelación.

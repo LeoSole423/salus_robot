@@ -45,10 +45,11 @@ from .route_preparation import (
 from .route_progress import project
 from .route_recovery import (
     BlockedRecoveryPolicy, RecoveryAction, RecoveryObservation, RecoveryState,
-    checkpoint_within_tolerance, pending_checkpoint_suffix,
+    checkpoint_within_tolerance, pending_checkpoint_suffix, profile_change_allowed,
 )
 from .route_state_machine import transition
 from .nav_command_server import diagnostic_level
+from .planner_failure import operator_block_reason
 from .route_actions import ActionExecution, ActionState, parse_actions
 
 
@@ -1021,7 +1022,9 @@ class RouteExecutorNode(Node):
             response.ok, response.error = False, "profile must be 'urban' or 'rural'"
             return response
         with self._lock:
-            if self._mission.phase in (RoutePhase.ACTIVE, RoutePhase.PAUSED):
+            # A terminal blocked route has no running Nav2 goal. Let the
+            # operator select the profile before submitting its replacement.
+            if not profile_change_allowed(self._mission.phase, self._recovery.state):
                 response.ok = False
                 response.error = "navigation profile cannot be changed while a mission is active"
                 return response
@@ -1128,7 +1131,7 @@ class RouteExecutorNode(Node):
             recovery = self._recovery.snapshot(self._steady_now())
             response.blocked_state = recovery.state.value
             response.blocked_reason_code = recovery.reason
-            response.blocked_reason_text = recovery.reason or mission.pause_reason
+            response.blocked_reason_text = operator_block_reason(recovery.reason) if recovery.reason else mission.pause_reason
             response.blocked_retry_attempt = recovery.attempt
             response.blocked_retry_max_attempts = self._recovery.max_attempts
             response.blocked_wait_remaining_s = recovery.wait_remaining_s
