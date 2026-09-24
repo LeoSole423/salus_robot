@@ -1,6 +1,6 @@
 # salus_perception
 
-Estado: portado en simulación, sin paridad RS16 aún.
+Estado: filtro radial histórico migrado; falta validación de comportamiento en Jetson.
 
 La ruta operativa conserva la nube 3D localmente:
 `/scan_3d_raw -> /scan_3d -> /obstacles_cloud -> /scan -> /scan_clean`.
@@ -42,6 +42,6 @@ composición externa.
 - Responsabilidad: conversión, filtrado y validación de percepción LiDAR.
 - No contiene: drivers RS16, costmaps, planners ni la UI remota.
 - Interfaces previstas: nube normalizada, scan de navegación y diagnóstico.
-- Estado: pipeline 3D simulado y preview 2D diagnóstico portados; falta replay RS16.
+- Estado: pipeline 3D y segmentación radial del filtro histórico portados; falta validación de comportamiento en Jetson.
 - Prueba: `colcon test --packages-select salus_perception`.
-- Migración: portar primero el pipeline conservador; experimentos quedan fuera.
+- Migración: la clasificación agrupa puntos por azimut y radio y evalúa pendientes local/global; perfiles urban/rural 10°/13°/0,20 m y 15°/18°/0,25 m. El cambio no modifica el stop por nube vencida.

@@ -51,7 +51,9 @@ class NavigationProfileCoordinator(Node):
     def _parameters_for(self, component: str, profile: str) -> list[Parameter]:
         value = PROFILES[profile]
         if component == "ground_filter":
-            return [double_parameter("ground_tolerance_m", value.ground_tolerance_m)]
+            return [double_parameter("global_slope_max_angle_deg", value.global_slope_max_angle_deg),
+                    double_parameter("local_slope_max_angle_deg", value.local_slope_max_angle_deg),
+                    double_parameter("split_height_distance", value.split_height_distance)]
         if component == "local_inflation":
             return [double_parameter("inflation_layer.inflation_radius", value.local_inflation_radius),
                     double_parameter("inflation_layer.cost_scaling_factor", value.local_cost_scaling)]

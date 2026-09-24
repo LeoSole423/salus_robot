@@ -59,9 +59,9 @@ def test_real_perception_launch_fixes_the_184_parameters() -> None:
     contents = LAUNCH.read_text(encoding="utf-8")
     for expected in (
         '"target_frame": "base_footprint"',
-        '"wheelbase_m": 0.94',
+        '"vehicle_wheel_base_m": 0.90',
         '"profile": "urban"',
-        '"ground_tolerance_m": 0.20',
+        '"split_height_distance": 0.20',
         '"range_max": 20.0',
         '"transform_tolerance": 0.1',
         '"min_height": -0.1',
@@ -276,10 +276,10 @@ def test_missing_tf_fails_closed_without_scan_output(tmp_path: Path) -> None:
         _finish_runtime_probe(harness)
 
 
-def test_tilted_low_returns_reach_each_scan_side_then_disappear_when_upright(
+def test_radial_filter_rejects_low_returns_on_both_tilt_sides(
     tmp_path: Path,
 ) -> None:
-    """Characterize the real three-node pipeline without changing its policy."""
+    """Low ground returns stay filtered across both tilt directions."""
     harness = _run_runtime_probe(tmp_path, publish_tf=False)
     low_returns = [
         (6.0 + 0.25 * ix, side * (1.5 + 0.1 * iy),
@@ -333,10 +333,8 @@ def test_tilted_low_returns_reach_each_scan_side_then_disappear_when_upright(
         tilted_right = outputs(sample(-8.0))
         straightened = outputs(sample(0.0))
         assert upright == (len(post), 0, 0)
-        assert tilted_left[0] > len(post) + 500
-        assert tilted_left[1] >= 30 and tilted_left[2] == 0
-        assert tilted_right[0] > len(post) + 500
-        assert tilted_right[2] >= 30 and tilted_right[1] == 0
+        assert tilted_left == (len(post), 0, 0)
+        assert tilted_right == (len(post), 0, 0)
         assert straightened == (len(post), 0, 0)
     finally:
         _finish_runtime_probe(harness)

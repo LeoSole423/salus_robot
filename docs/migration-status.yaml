@@ -430,7 +430,9 @@ components:
       - src/salus_perception/test/test_scan_filters.py
       - tools/replay_lidar_report.py
       - tools/smoke_lidar_sim.py
-    note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. The raw Gazebo frame is normalized at /scan_3d; RS16 bag replay and RViz inspection are required for parity.
+      - src/salus_perception/salus_perception/radial_ground.py
+      - docs/migration-evidence/intent/radial-ground-segmentation-2026-09-24.md
+    note: Reduced 8-channel Gazebo model and 3D local pipeline are ported. Historical radial ground policy is now wired into the real perception launch; Jetson behavior remains unvalidated.
   rs16_real_owner:
     source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 RS16 deployment
     target: salus_hardware/rslidar_sdk raw owner
