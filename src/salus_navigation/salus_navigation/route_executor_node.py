@@ -272,10 +272,13 @@ class RouteExecutorNode(Node):
             self._pose_heading_deg = heading_deg
             self._pose_sample = sample
             tracker = self._checkpoint_tracker
+            # A fresh physical visit remains valid while SetNavGoalLL is
+            # pending.  Waiting for its response can let the robot leave the
+            # first soft checkpoint before it can ever be credited, causing a
+            # blocked retry to resend that already traversed pose.
             if (
                 self._mission.phase != RoutePhase.ACTIVE
                 or tracker is None
-                or self._goal_request_pending
             ):
                 return
             evidence = tracker.observe(

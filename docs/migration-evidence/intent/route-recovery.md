@@ -51,3 +51,17 @@ completar una vuelta de navegación para llegar al cierre. La regresión del
 algoritmo y el humo sim cubren el objetivo de no volver al checkpoint
 acreditado; la ruta y el plan sim no prueban por sí solos que Nav2 nunca elegirá
 un giro en U en cualquier calle. Validación en robot permanece pendiente.
+
+## Seguimiento: crédito durante el envío del goal
+
+Un obstáculo en Gazebo volvió a producir un retry con el chunk completo. El
+commit de #302 sigue en `main`; su recorte sólo funciona si el primer
+checkpoint del chunk recibió crédito. El tracker se preparaba antes de llamar
+`SetNavGoalLL`, pero descartaba odometría fresca mientras la respuesta del
+servicio estaba pendiente. Si el robot atravesaba el primer checkpoint en ese
+intervalo, podía quedar sin crédito y el retry lo reenviaba. Se conserva la
+misma evidencia física, ordenada y de radio 2,5 m durante la petición; el
+estado del goal no decide si la pose alcanzó el checkpoint. El test caracteriza
+el caso y comprueba que el retry conserva sólo el sufijo. La observación del
+operador no trae un log del dispatch anterior, por lo que esta es una causa
+plausible demostrada en código, no una atribución confirmada a ese episodio.
