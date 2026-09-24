@@ -15,6 +15,7 @@ from salus_navigation.route_checkpoint_tracker import (
     CheckpointOccurrence, IntermediateCheckpointTracker,
 )
 from salus_navigation.route_progress import project
+from salus_navigation.route_recovery import pending_checkpoint_suffix
 from salus_navigation.route_executor_node import RouteExecutorNode, chunk_goal_request
 from salus_navigation.patrol_domain import PatrolMachine, PatrolMissionSpec, PatrolPhase, PatrolRoute
 
@@ -854,6 +855,48 @@ def test_pose_callback_accounts_for_time_waiting_before_tracker_evaluation():
     assert sample.received_steady_s == 10.0
     assert now_steady_s == 10.7
     assert now_ros_s == 100.2
+
+
+def test_fresh_checkpoint_pose_during_goal_request_survives_blocked_retry():
+    # The robot can leave the first checkpoint before SetNavGoalLL replies.
+    # Its physical visit is still evidence for trimming a later retry.
+    chunk = RouteChunk((point(0.0, 6), point(20.0, 7)), 6, 7, 0, (0, 0))
+    tracker = IntermediateCheckpointTracker(
+        (CheckpointOccurrence(6, 0, 0.0, 0.0),),
+        max_age_s=0.5,
+    )
+    reached = set()
+    fake = SimpleNamespace(
+        _steady_now=lambda: 10.1,
+        get_clock=lambda: SimpleNamespace(
+            now=lambda: SimpleNamespace(nanoseconds=100_100_000_000)
+        ),
+        _lock=nullcontext(),
+        _mission=RouteMission(phase=RoutePhase.ACTIVE, mission_id="mission"),
+        _checkpoint_tracker=tracker,
+        _goal_request_pending=True,
+        _reached_occurrences=reached,
+        _event=lambda *_args, **_kwargs: None,
+        _pose=None,
+        _pose_sample=None,
+    )
+    fake._record_checkpoint_reached = lambda occurrence, source, **kwargs: (
+        RouteExecutorNode._record_checkpoint_reached(
+            fake, occurrence, source, **kwargs
+        )
+    )
+    message = SimpleNamespace(
+        header=SimpleNamespace(stamp=SimpleNamespace(sec=100, nanosec=0)),
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            position=SimpleNamespace(x=0.0, y=0.0)
+        )),
+    )
+
+    RouteExecutorNode._on_pose(fake, message)
+
+    assert reached == {("mission", 0, 6)}
+    assert tuple(point.input_index for point in
+                 pending_checkpoint_suffix(chunk, {(0, 6)}).waypoints) == (7,)
 
 
 def test_cancel_route_mission_transitions_paused_state_to_cancelled():
