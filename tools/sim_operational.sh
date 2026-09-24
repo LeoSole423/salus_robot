@@ -44,7 +44,7 @@ private_route_file="${repo_dir}/artifacts/PatrullaSencillaPolo.private.json"
 profile_dir="${repo_dir}/artifacts/georeferenced-patrulla-sencilla-polo-default"
 if [[ "${generic_world}" == "false" && -f "${private_route_file}" ]]; then
   if [[ ! -f "${profile_dir}/launch_args_private.txt" ]]; then
-    python3 "${repo_dir}/tools/prepare_georeferenced_patrol_sim.py" \
+    /usr/bin/python3 "${repo_dir}/tools/prepare_georeferenced_patrol_sim.py" \
       --routes-file "${private_route_file}" \
       --route-name PatrullaSencillaPolo \
       --source-world "${repo_dir}/src/salus_simulation/worlds/free.world" \
