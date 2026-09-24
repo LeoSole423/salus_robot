@@ -90,6 +90,11 @@ autoridad de velocidad.
   El BT multi-pose añade poda de goals superados y recuperaciones separadas de
   costmaps local/global, sin maniobras `Spin`/`BackUp` incompatibles con
   Ackermann.
+- En simulación, `max_distance_m` (`float`, default de política 12,0 m,
+  finito y mayor que `near_horizon_m`) se fija a 18,0 m. El costmap global
+  marca `/scan_clean` hasta 19,0 m (el scan llega a 20,0 m). Esto da margen
+  para iniciar un rodeo antes de agotar el radio de giro de 4,0 m. El costmap
+  local, el stop cercano y la configuración real mantienen sus rangos.
 - La política de ocupación progresiva del path activo usa `near_horizon_m`
   (`float`, default 5,35 m, rango abierto `0 < valor < 12`): una marca en ese
   tramo pide replan inmediato. Más lejos, hasta los 12 m inspeccionados,
@@ -113,7 +118,19 @@ autoridad de velocidad.
   lejana. Si no existe un publicador de zonas, la política usa sólo costmap,
   TF y path como antes.
 - `nav_observer` publica eventos de lifecycle, bloqueo local y replanning sin
-  modificar Nav2 ni poseer comandos. La decisión sobre el plugin BT delgado y
+  modificar Nav2 ni poseer comandos. Cuando un `/plan` con goal activo vuelve
+  al menos 6 m por detrás del robot sobre un chunk casi recto y su longitud
+  supera 1,5 veces el avance restante, publica `PLAN_U_TURN` (WARN) en
+  `/nav_command_server/events` (`salus_interfaces/NavEvent`, reliable/volatile;
+  productor `nav_observer`, consumidores Cockpit y diagnósticos). Incluye
+  `backward_m`, `path_length_m`, `forward_distance_m` y `detour_ratio`.
+  Emite `PLAN_U_TURN_CLEARED` al recibir después un plan sin esa regresión;
+  las replans equivalentes no repiten el aviso.
+  Usa `/odometry/global` y `/route_executor/active_chunk_path` (reliable,
+  transient-local); requiere frames coincidentes y odometría recibida en el
+  último segundo. Un chunk curvo o datos ausentes producen silencio, no un
+  plan aprobado. El evento es diagnóstico y no cambia la autoridad del plan.
+  La decisión sobre el plugin BT delgado y
   `TraceReplan` está registrada en [ADR 0002](../../docs/decisions/0002-nav2-hardening-and-legacy-bt.md).
 - `nav2_startup_coordinator` mantiene Nav2 sin activar hasta observar reloj y
   odometría progresivos, TF global reciente, scan válido y la máscara keepout

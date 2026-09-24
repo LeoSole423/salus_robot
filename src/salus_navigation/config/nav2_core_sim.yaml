@@ -169,7 +169,7 @@ global_costmap:
           marking: true
           clearing: true
           inf_is_valid: true
-          obstacle_max_range: 15.0
+          obstacle_max_range: 19.0
           raytrace_max_range: 20.0
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer

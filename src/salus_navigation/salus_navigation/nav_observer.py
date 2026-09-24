@@ -8,10 +8,12 @@ import rclpy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from lifecycle_msgs.msg import TransitionEvent
 from nav2_msgs.msg import CollisionMonitorState
-from nav_msgs.msg import Path
+from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.msg import NavEvent, NavTelemetry, PathHealth
 from salus_navigation.nav_command_server import diagnostic_level
+from salus_navigation.plan_regression import PlanRegressionTracker, detect_plan_regression
 
 
 def plan_signature(path: Path) -> tuple[object, ...]:
@@ -56,9 +58,19 @@ class NavObserver(Node):
         self._goal_active = False
         self._collision_stopped = False
         self._tracker = PlanReplanTracker()
+        self._robot_xy: tuple[float, float] | None = None
+        self._robot_frame = ""
+        self._robot_received_ns = 0
+        self._chunk_xy: tuple[tuple[float, float], ...] = ()
+        self._chunk_frame = ""
+        self._regression_tracker = PlanRegressionTracker()
         self._events = self.create_publisher(NavEvent, str(self.get_parameter("event_topic").value), 10)
         self.create_subscription(NavTelemetry, "/nav_command_server/telemetry", self._on_telemetry, 10)
         self.create_subscription(Path, "/plan", self._on_plan, 10)
+        self.create_subscription(Odometry, "/odometry/global", self._on_odometry, 10)
+        chunk_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                               durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(Path, "/route_executor/active_chunk_path", self._on_chunk, chunk_qos)
         self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self._on_collision, 10)
         self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
         for name in ("planner_server", "controller_server", "bt_navigator", "behavior_server"):
@@ -75,10 +87,45 @@ class NavObserver(Node):
 
     def _on_telemetry(self, message: NavTelemetry) -> None:
         self._goal_active = bool(message.goal_active)
+        if not self._goal_active:
+            self._regression_tracker.reset()
+
+    def _on_odometry(self, message: Odometry) -> None:
+        self._robot_xy = (message.pose.pose.position.x, message.pose.pose.position.y)
+        self._robot_frame = message.header.frame_id
+        self._robot_received_ns = self.get_clock().now().nanoseconds
+
+    def _on_chunk(self, message: Path) -> None:
+        points = tuple((pose.pose.position.x, pose.pose.position.y) for pose in message.poses)
+        if points != self._chunk_xy:
+            self._regression_tracker.reset()
+        self._chunk_xy = points
+        self._chunk_frame = message.header.frame_id
 
     def _on_plan(self, path: Path) -> None:
-        if self._tracker.observe(path, goal_active=self._goal_active):
+        changed = self._tracker.observe(path, goal_active=self._goal_active)
+        if changed:
             self._emit(DiagnosticStatus.OK, "REPLAN_OBSERVED", "Nav2 published a materially different plan", poses=len(path.poses), frame=path.header.frame_id)
+        if not self._goal_active or not path.poses or self._robot_xy is None:
+            return
+        if path.header.frame_id != self._robot_frame or path.header.frame_id != self._chunk_frame:
+            return
+        if abs(self.get_clock().now().nanoseconds - self._robot_received_ns) > 1_000_000_000:
+            return
+        plan_xy = tuple((pose.pose.position.x, pose.pose.position.y) for pose in path.poses)
+        regression = detect_plan_regression(plan_xy, self._chunk_xy, self._robot_xy)
+        transition = self._regression_tracker.observe(regression)
+        if transition == "cleared":
+            self._emit(DiagnosticStatus.OK, "PLAN_U_TURN_CLEARED",
+                       "Nav2 plan no longer returns behind the robot")
+        elif transition == "detected":
+            self._emit(
+                DiagnosticStatus.WARN, "PLAN_U_TURN", "Nav2 plan returns behind the robot along the active chunk",
+                backward_m=round(regression.backward_m, 2),
+                path_length_m=round(regression.path_length_m, 2),
+                forward_distance_m=round(regression.forward_distance_m, 2),
+                detour_ratio=round(regression.detour_ratio, 2),
+            )
 
     def _on_collision(self, message: CollisionMonitorState) -> None:
         stopped = int(message.action_type) == CollisionMonitorState.STOP

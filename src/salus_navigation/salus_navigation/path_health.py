@@ -76,6 +76,8 @@ class PathHealthPolicy:
     """Pure policy: geometry, hysteresis and progress; no ROS side effects."""
 
     def __init__(self, *, max_distance_m=12.0, sample_step_m=0.25, high_cost=100, lethal_cost=253, high_samples=3, cross_track_replan_m=0.9, cross_track_recover_m=0.6, cross_track_confirmations=3, cooldown_s=1.5, costmap_timeout_s=1.5, progress_timeout_s=5.0, near_horizon_m=5.35, far_persistence_s=1.0) -> None:
+        if not math.isfinite(max_distance_m) or max_distance_m <= 0.0:
+            raise ValueError("max_distance_m must be finite and positive")
         self.max_distance_m, self.sample_step_m = max_distance_m, sample_step_m
         self.high_cost, self.lethal_cost, self.high_samples = high_cost, lethal_cost, high_samples
         self.cross_track_replan_m, self.cross_track_recover_m = cross_track_replan_m, cross_track_recover_m
@@ -270,6 +272,7 @@ class PathHealthNode(Node):
             "costmap_timeout_s": 1.5,
             "tf_timeout_s": 1.5,
             "near_horizon_m": 5.35,
+            "max_distance_m": 12.0,
             "far_persistence_s": 1.0,
         }.items():
             self.declare_parameter(name, value)
@@ -277,6 +280,7 @@ class PathHealthNode(Node):
         self._keepout_revision = None
         self._policy = PathHealthPolicy(
             costmap_timeout_s=float(self.get_parameter("costmap_timeout_s").value),
+            max_distance_m=float(self.get_parameter("max_distance_m").value),
             near_horizon_m=float(self.get_parameter("near_horizon_m").value),
             far_persistence_s=float(self.get_parameter("far_persistence_s").value),
         )

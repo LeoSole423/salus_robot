@@ -41,13 +41,19 @@ def _diff_paths(left, right, prefix=()):
         yield prefix, left, right
 
 
-def test_real_yaml_is_the_parsed_sim_profile_plus_only_use_sim_time():
+def test_real_yaml_differs_only_in_clock_and_sim_global_observation_range():
     sim = _yaml(CONFIG / "nav2_core_sim.yaml")
     real = _yaml(CONFIG / "nav2_core_real.yaml")
     differences = list(_diff_paths(sim, real))
     assert differences
-    assert all(path[-1] == "use_sim_time" for path, _, _ in differences)
-    assert all(before is True and after is False for _, before, after in differences)
+    range_path = ("global_costmap", "global_costmap", "ros__parameters",
+                  "obstacle_layer", "scan", "obstacle_max_range")
+    assert all(path[-1] == "use_sim_time" or path == range_path
+               for path, _, _ in differences)
+    assert [(before, after) for path, before, after in differences
+            if path == range_path] == [(19.0, 15.0)]
+    assert all(before is True and after is False
+               for path, before, after in differences if path[-1] == "use_sim_time")
 
 
 def test_real_yaml_has_no_sim_time_true_and_keeps_single_clean_scan_source():
