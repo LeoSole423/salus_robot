@@ -81,6 +81,16 @@ def test_profile_forwarder_outlives_coordinator_transaction_contract():
     assert "component_deadline = min(" in coordinator
 
 
+def test_profile_smoke_checks_the_radial_ground_filter_parameters():
+    smoke = (ROOT.parents[1] / "tools" / "smoke_navigation_profiles.py").read_text()
+    assert '"global_slope_max_angle_deg"' in smoke
+    assert '"local_slope_max_angle_deg"' in smoke
+    assert '"split_height_distance"' in smoke
+    assert '"radial_ground": [15.0, 18.0, 0.25]' in smoke
+    assert '"radial_ground": [10.0, 13.0, 0.20]' in smoke
+    assert "ground_tolerance_m" not in smoke
+
+
 def test_route_goal_results_are_correlated_to_the_current_request_boundary():
     route = (ROOT / "salus_navigation" / "route_executor_node.py").read_text()
     nav = (ROOT / "salus_navigation" / "nav_command_server.py").read_text()

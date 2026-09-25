@@ -18,6 +18,15 @@ autoridad de velocidad.
   y no se versionan; no se genera una máscara global PGM.
 - API de rutas: `/route_executor/set_route_mission_ll`,
   `/route_executor/cancel_route_mission` y `/route_executor/get_route_mission_state`.
+- Al iniciar un loop nuevo, `route_executor` usa posición y yaw disponibles de
+  `/odometry/global` (muestra reciente según `route_progress_pose_max_age_s`,
+  0,5 s por defecto) para elegir un tramo cercano cuyo avance concuerde con el
+  rumbo del robot. Publica `ROUTE_ANCHOR_SELECTED` por el `NavEvent` existente,
+  con segmento, anchor, distancia lateral, proyección, diferencia angular y
+  candidatos. Si no hay orientación válida, tramo dentro de
+  `route_segment_start_tolerance_m` (5 m por defecto), o una elección única,
+  publica `ROUTE_ANCHOR_REJECTED` y no activa ni despacha la misión loop. Las
+  rutas abiertas mantienen su selección existente.
 - Los checkpoints sin yaw manual siguen por defecto la tangente de la curva,
   también en Patrol/HOME. El gateway de Cockpit puede enviar
   `auto_yaw_policy=route_tangent` explícitamente; `legacy` solicita el cálculo

@@ -32,8 +32,10 @@ def main() -> int:
         runtime.wait("profile services", lambda: apply.service_is_ready()
                      and all(client.service_is_ready() for client in clients.values()), 15.0)
         for profile, expected in (
-            ("rural", {"ground": [0.25], "local": [0.8, 3.0], "global": [0.8, 3.0]}),
-            ("urban", {"ground": [0.20], "local": [1.4, 1.3], "global": [1.5, 1.4]}),
+            ("rural", {"radial_ground": [15.0, 18.0, 0.25],
+                       "local": [0.8, 3.0], "global": [0.8, 3.0]}),
+            ("urban", {"radial_ground": [10.0, 13.0, 0.20],
+                       "local": [1.4, 1.3], "global": [1.5, 1.4]}),
         ):
             response = runtime.call(
                 "set profile",
@@ -44,8 +46,10 @@ def main() -> int:
             if not response.ok or response.active_profile != profile:
                 raise RuntimeError(f"profile {profile} rejected: {response.error}")
             observed = {
-                "ground": values(runtime.call("ground parameters", clients["ground"],
-                    GetParameters.Request(names=["ground_tolerance_m"]), 4.0)),
+                "radial_ground": values(runtime.call("radial ground parameters", clients["ground"],
+                    GetParameters.Request(names=["global_slope_max_angle_deg",
+                                                 "local_slope_max_angle_deg",
+                                                 "split_height_distance"]), 4.0)),
                 "local": values(runtime.call("local parameters", clients["local"],
                     GetParameters.Request(names=["inflation_layer.inflation_radius",
                                                  "inflation_layer.cost_scaling_factor"]), 4.0)),

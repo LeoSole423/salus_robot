@@ -623,7 +623,12 @@ def request_from_pose(pose, *, loop=False):
         # Broad Ackermann-compatible loop: the smoke stops after the first
         # causal dispatch of the second lap.  It is intentionally opt-in so
         # the historical open-route smoke remains unchanged.
-        local_values = [(6.0, 0.0), (20.0, -14.0), (34.0, 0.0), (20.0, 14.0)]
+        # Keep the robot's starting pose on a forward segment. Loop admission
+        # now rejects starts outside the configured route-segment tolerance.
+        local_values = [
+            (-6.0, 0.0), (6.0, 0.0), (20.0, -14.0),
+            (34.0, 0.0), (20.0, 14.0),
+        ]
         values = [
             (
                 x + forward * math.cos(yaw) - lateral * math.sin(yaw),

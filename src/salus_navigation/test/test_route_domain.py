@@ -384,7 +384,8 @@ def test_chunk_request_falls_back_when_current_pose_is_invalid():
 
 def test_open_anchor_never_moves_backwards():
     route = prepare([point(0,0), point(10,1), point(20,2)], loop=False, input_count=3, spacing_m=0, chunk_span_m=20, chunk_max_waypoints=3)
-    assert select_anchor(route, 9.0, 0.2) >= 1
+    selection = select_anchor(route, 9.0, 0.2)
+    assert selection.accepted and selection.anchor_index >= 1
 
 
 def test_loop_anchor_enters_at_next_waypoint_of_nearby_segment():
@@ -402,10 +403,19 @@ def test_loop_anchor_enters_at_next_waypoint_of_nearby_segment():
     # incorporation must follow the nearby segment and enter at waypoint 1.
     assert select_anchor(
         route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
-    ) == 1
-    assert select_anchor(
+        heading_deg=0.0,
+    ).anchor_index == 1
+    near_vertex = select_anchor(
         route, 10.4, 0.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
-    ) == 2
+        heading_deg=135.0,
+    )
+    assert near_vertex.anchor_index == 2
+    assert any(
+        candidate.segment_start_index == 1
+        and candidate.segment_end_index == 2
+        and candidate.projection == 0.0
+        for candidate in near_vertex.candidates
+    )
 
 
 def test_loop_anchor_respects_configured_segment_tolerance():
@@ -420,10 +430,199 @@ def test_loop_anchor_respects_configured_segment_tolerance():
 
     assert select_anchor(
         route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=1.2,
-    ) == 1
-    assert select_anchor(
+        heading_deg=0.0,
+    ).anchor_index == 1
+    rejected = select_anchor(
         route, 5.0, 1.0, reached_tolerance_m=1.2, segment_tolerance_m=0.5,
-    ) == 2
+        heading_deg=0.0,
+    )
+    assert not rejected.accepted and rejected.reason == "no_near_segment"
+
+
+def _issue_315_capture_route_geometry():
+    # The PC does not have the capture bag or original route. Preserve the
+    # observed pose and 46/47 coordinates, and reconstruct only the two
+    # competing directed segments. Waypoints 10 -> 11 are inferred eastbound.
+    robot_x, robot_y = 13403.745, 6808.525
+    waypoint_46 = (13372.705, 6811.113)
+    waypoint_47 = (13346.321, 6813.811)
+    eastbound = (robot_x - 20.0, robot_y + 1.475)
+    eastbound_end = (robot_x + 20.0, robot_y + 1.475)
+    westbound_start = (robot_x + 35.0, robot_y - 2.917)
+    far = (robot_x + 100.0, robot_y + 100.0)
+
+    coordinates = [waypoint_47] * 10 + [eastbound, eastbound_end]
+    coordinates += [far] * (45 - len(coordinates))
+    coordinates += [westbound_start, waypoint_46, waypoint_47]
+    coordinates += [waypoint_47] * (51 - len(coordinates))
+    points = tuple(
+        RouteWaypoint(0.0, 0.0, 0.0, index, map_x=x, map_y=y)
+        for index, (x, y) in enumerate(coordinates)
+    )
+    return PreparedRoute(points, True, 51, 0.0, 120.0, 5), robot_x, robot_y
+
+
+def test_issue_315_capture_geometry_selects_waypoint_11_in_eastbound_direction():
+    route, robot_x, robot_y = _issue_315_capture_route_geometry()
+
+    selection = select_anchor(
+        route, robot_x, robot_y, heading_deg=1.6,
+    )
+
+    assert selection.accepted
+    assert route.waypoints[selection.anchor_index].input_index == 11
+    assert selection.reason == "best_forward_segment"
+    assert any(
+        candidate.segment_start_index == 45
+        and candidate.segment_end_index == 46
+        and not candidate.is_forward
+        for candidate in selection.candidates
+    )
+
+
+def test_issue_315_capture_geometry_selects_waypoint_46_when_facing_west():
+    route, robot_x, robot_y = _issue_315_capture_route_geometry()
+
+    selection = select_anchor(
+        route, robot_x, robot_y, heading_deg=176.0,
+    )
+
+    assert selection.accepted
+    assert route.waypoints[selection.anchor_index].input_index == 46
+
+
+def test_loop_anchor_rejects_unknown_orientation_and_outside_route():
+    route, robot_x, robot_y = _issue_315_capture_route_geometry()
+
+    unknown_heading = select_anchor(route, robot_x, robot_y)
+    no_forward_segment = select_anchor(
+        route, robot_x, robot_y, heading_deg=270.0,
+    )
+    outside = select_anchor(
+        route, robot_x + 1000.0, robot_y, heading_deg=1.6,
+    )
+
+    assert not unknown_heading.accepted
+    assert unknown_heading.reason == "orientation_unavailable"
+    assert not no_forward_segment.accepted
+    assert no_forward_segment.reason == "no_forward_segment"
+    assert not outside.accepted
+    assert outside.reason == "no_near_segment"
+
+
+def test_loop_anchor_rejects_indistinguishable_forward_segments():
+    route = PreparedRoute(
+        tuple(
+            RouteWaypoint(0, 0, 0.0, index, map_x=x, map_y=0.0)
+            for index, x in enumerate((-10.0, 10.0, -10.0, 10.0))
+        ),
+        True, 4, 0.0, 20.0, 5,
+    )
+
+    selection = select_anchor(route, 0.0, 0.0, heading_deg=0.0)
+
+    assert not selection.accepted
+    assert selection.reason == "ambiguous_forward_segments"
+
+
+def test_loop_anchor_rejects_distance_heading_tradeoff():
+    route = PreparedRoute(
+        tuple(
+            RouteWaypoint(0, 0, 0.0, index, map_x=x, map_y=y)
+            for index, (x, y) in enumerate((
+                (-10.0, 1.0), (10.0, 1.0), (100.0, 100.0),
+                (-10.0, -10.0), (10.0, 10.0), (100.0, -100.0),
+            ))
+        ),
+        True, 6, 0.0, 20.0, 5,
+    )
+
+    selection = select_anchor(route, 0.0, 0.0, heading_deg=0.0)
+
+    assert not selection.accepted
+    assert selection.reason == "ambiguous_forward_segments"
+
+
+def test_rejected_loop_anchor_emits_event_without_dispatching_a_goal():
+    route, robot_x, robot_y = _issue_315_capture_route_geometry()
+    request = SimpleNamespace(
+        loop=True, leg_spacing_m=0.0, chunk_span_m=120.0,
+        chunk_max_waypoints=5, auto_yaw_policy="",
+    )
+    job = {
+        "request": request,
+        "raw": route.waypoints,
+        "converted": list(route.waypoints),
+    }
+    events = []
+    warnings = []
+    dispatches = []
+    fake = SimpleNamespace(
+        _pose=SimpleNamespace(x=robot_x, y=robot_y),
+        _pose_heading_deg=None,
+        _preparation=job,
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _dispatch=lambda: dispatches.append(True),
+        get_parameter=lambda name: SimpleNamespace(value={
+            "waypoint_reached_tolerance_m": 1.2,
+            "route_segment_start_tolerance_m": 5.0,
+        }[name]),
+        get_logger=lambda: SimpleNamespace(warning=warnings.append),
+    )
+
+    RouteExecutorNode._activate_prepared(fake, job)
+
+    assert fake._preparation is None
+    assert warnings and "orientation_unavailable" in warnings[0]
+    assert events[0][0][1] == "ROUTE_ANCHOR_REJECTED"
+    assert events[0][1]["reason"] == "orientation_unavailable"
+    assert events[0][1]["candidates"]
+    assert dispatches == []
+
+
+def test_selected_loop_anchor_emits_segment_reason_before_dispatch():
+    route, robot_x, robot_y = _issue_315_capture_route_geometry()
+    request = SimpleNamespace(
+        loop=True, leg_spacing_m=0.0, chunk_span_m=120.0,
+        chunk_max_waypoints=5, auto_yaw_policy="",
+    )
+    job = {
+        "request": request,
+        "raw": route.waypoints,
+        "converted": list(route.waypoints),
+    }
+    events = []
+    dispatches = []
+    fake = SimpleNamespace(
+        _pose=SimpleNamespace(x=robot_x, y=robot_y),
+        _pose_heading_deg=1.6,
+        _preparation=job,
+        _mission=RouteMission(),
+        _recovery=SimpleNamespace(reset=lambda: None),
+        _recovery_clears=None,
+        _checkpoint_tracker=None,
+        _checkpoint_tracker_key=None,
+        _reached_occurrences=set(),
+        _pose_sample_is_fresh=lambda: True,
+        _event=lambda *args, **kwargs: events.append((args, kwargs)),
+        _dispatch=lambda: dispatches.append(fake._mission.target_index),
+        get_parameter=lambda name: SimpleNamespace(value={
+            "waypoint_reached_tolerance_m": 1.2,
+            "route_segment_start_tolerance_m": 5.0,
+        }[name]),
+    )
+
+    RouteExecutorNode._activate_prepared(fake, job)
+
+    assert dispatches == [11]
+    assert fake._mission.prepared.anchor_input_index == 11
+    assert events[0][0][1] == "ROUTE_ANCHOR_SELECTED"
+    assert events[0][1]["segment_start_index"] == 10
+    assert events[0][1]["segment_end_index"] == 11
+    assert events[0][1]["segment_start_input_index"] == 10
+    assert events[0][1]["segment_end_input_index"] == 11
+    assert events[0][1]["heading_deg"] == 1.6
+    assert events[0][1]["reason"] == "best_forward_segment"
 
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():
@@ -855,6 +1054,46 @@ def test_pose_callback_accounts_for_time_waiting_before_tracker_evaluation():
     assert sample.received_steady_s == 10.0
     assert now_steady_s == 10.7
     assert now_ros_s == 100.2
+
+
+def test_pose_callback_does_not_treat_zero_quaternion_as_heading_zero():
+    fake = SimpleNamespace(
+        _steady_now=lambda: 10.0,
+        get_clock=lambda: SimpleNamespace(
+            now=lambda: SimpleNamespace(nanoseconds=100_000_000_000)
+        ),
+        _lock=nullcontext(),
+        _mission=SimpleNamespace(phase=RoutePhase.IDLE),
+        _checkpoint_tracker=None,
+        _pose=None,
+        _pose_sample=None,
+    )
+    message = SimpleNamespace(
+        header=SimpleNamespace(stamp=SimpleNamespace(sec=100, nanosec=0)),
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            position=SimpleNamespace(x=1.0, y=2.0),
+            orientation=SimpleNamespace(x=0.0, y=0.0, z=0.0, w=0.0),
+        )),
+    )
+
+    RouteExecutorNode._on_pose(fake, message)
+
+    assert fake._pose_heading_deg is None
+
+
+def test_loop_anchor_pose_freshness_checks_ros_and_receipt_time():
+    fake = SimpleNamespace(
+        _pose_sample=SimpleNamespace(
+            x=1.0, y=2.0, source_stamp_s=100.0, received_steady_s=10.0,
+        ),
+        _route_progress_pose_max_age_s=0.5,
+        _steady_now=lambda: 10.6,
+        get_clock=lambda: SimpleNamespace(
+            now=lambda: SimpleNamespace(nanoseconds=100_100_000_000)
+        ),
+    )
+
+    assert not RouteExecutorNode._pose_sample_is_fresh(fake)
 
 
 def test_fresh_checkpoint_pose_during_goal_request_survives_blocked_retry():
