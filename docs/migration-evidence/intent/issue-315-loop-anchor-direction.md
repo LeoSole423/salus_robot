@@ -49,11 +49,11 @@ Al reiniciar una ruta loop desde la pose actual, la cercanía lateral por sí so
 ## Pruebas y aceptación
 
 - Base previa: el fixture reducido confirmó índice 46 con la política posicional original.
-- Unitarias actuales: rumbo este selecciona waypoint 11; rumbo oeste selecciona waypoint 46; vértice próximo conserva la entrada al tramo saliente; orientación ausente, pose vencida, tramo lejano y candidatos ambiguos se rechazan. `colcon test --packages-select salus_navigation`: 302 pasaron, 0 fallos.
-- Gates completos: `./tools/test.sh` terminó con build de 14 paquetes, 1208 tests pasados, 0 fallos y 2 skips; el smoke harness self-test pasó.
+- Unitarias actuales: rumbo este selecciona waypoint 11; rumbo oeste selecciona waypoint 46; vértice próximo conserva la entrada al tramo saliente; orientación ausente, pose vencida, tramo lejano y candidatos ambiguos se rechazan. Tras actualizar el smoke de perfiles a los parámetros radiales de #316, el build y `colcon test --packages-select salus_navigation` pasan con 303 tests y 0 fallos.
+- Gates completos: `./tools/test.sh` terminó con build de 14 paquetes, 1208 tests pasados, 0 fallos y 2 skips; el smoke harness self-test pasó antes de añadir la prueba de sincronización del smoke de perfiles. Después, el paquete afectado pasó con 303 tests.
 - Adaptador: `ROUTE_ANCHOR_REJECTED` se emite y no se despacha un goal cuando falta orientación.
-- Smoke simulado `SMOKE_ROUTE_SCENARIO=loop ./tools/smoke_route_executor_sim.sh`: el check `route_executor` pasó hasta despachar la iteración 1. El artefacto registra cinco chunks, goals completados, pose, checkpoints y 1121 comandos finales en `artifacts/smokes/routes-free-world-20260925T125445-1/route_probe.json`.
-- La misma ejecución falló después en `navigation_profiles`: faltó el parámetro de suelo `[0.25]`. Ese check es ajeno a la política anchor y se conserva en la evidencia; el smoke global no queda marcado como verde.
+- Smoke simulado completo `SMOKE_ROUTE_SCENARIO=loop ./tools/smoke_route_executor_sim.sh`: pasaron `route_executor` y `navigation_profiles`; el reporte confirma entrada a la iteración 1 del loop y cancelación limpia. El smoke de perfiles verifica rural `[15.0, 18.0, 0.25]` y urbano `[10.0, 13.0, 0.20]` en `global_slope_max_angle_deg`, `local_slope_max_angle_deg` y `split_height_distance`. Evidencia local: `artifacts/smokes/routes-free-world-20260925T131337-1/report.json`, `route_probe.json` y `profile_probe.json`.
+- El gate inicialmente falló porque el smoke aún consultaba `ground_tolerance_m`, eliminado por #316. Se actualizó la aserción al contrato radial actual y se repitió el smoke completo con éxito.
 
 ## Estado de evidencia
 
