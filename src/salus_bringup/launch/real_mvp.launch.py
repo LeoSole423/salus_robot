@@ -24,6 +24,7 @@ def generate_launch_description() -> LaunchDescription:
     ntrip_active_source_id = LaunchConfiguration("ntrip_active_source_id")
     serial_port = LaunchConfiguration("serial_port")
     use_keepout = LaunchConfiguration("use_keepout")
+    route_execution_mode = LaunchConfiguration("route_execution_mode")
     zones_runtime_dir = LaunchConfiguration("zones_runtime_dir")
     patrol_runtime_dir = LaunchConfiguration("patrol_runtime_dir")
     patrol_battery_guard_topic = LaunchConfiguration("patrol_battery_guard_topic")
@@ -44,6 +45,10 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("ntrip_active_source_id", default_value=""),
         DeclareLaunchArgument("serial_port", default_value="auto"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
+        DeclareLaunchArgument(
+            "route_execution_mode", default_value="adaptive_dense",
+            choices=["single_checkpoint", "legacy_pair", "adaptive_dense"],
+        ),
         DeclareLaunchArgument("zones_runtime_dir", default_value="runtime/zones"),
         DeclareLaunchArgument("patrol_runtime_dir", default_value="runtime/patrol"),
         DeclareLaunchArgument(
@@ -105,6 +110,7 @@ def generate_launch_description() -> LaunchDescription:
             "navigation_real.launch.py",
             {
                 "use_keepout": use_keepout,
+                "route_execution_mode": route_execution_mode,
                 "zones_runtime_dir": zones_runtime_dir,
                 "patrol_runtime_dir": patrol_runtime_dir,
                 "patrol_battery_guard_topic": patrol_battery_guard_topic,

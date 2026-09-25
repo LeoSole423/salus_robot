@@ -43,6 +43,7 @@ class DeploymentContractTests(unittest.TestCase):
         self.assertIn("ros2 launch salus_bringup real_mvp.launch.py", text)
         self.assertIn("ntrip_config_path:=${ntrip_config_container}", text)
         self.assertIn("serial_port:=${SALUS_SERIAL_PORT}", text)
+        self.assertIn("route_execution_mode:=${SALUS_ROUTE_EXECUTION_MODE}", text)
         self.assertIn("patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR}", text)
         self.assertIn(
             'SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"',

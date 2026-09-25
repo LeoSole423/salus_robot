@@ -104,3 +104,11 @@ nueva ventana controlada.
 Si un gate físico falla, detener el servicio, capturar evidencia mínima y
 restaurar legacy. No añadir reintentos, tuning ni comandos de movimiento al
 procedimiento.
+
+## Selección del modo de ruta
+
+`SALUS_ROUTE_EXECUTION_MODE` acepta `adaptive_dense` (default), `legacy_pair` o
+`single_checkpoint`. Configurarlo en `/etc/salus/salus-robot-real.env`, preparar
+el runtime para el commit desplegado y reiniciar `salus-robot-real.service` con
+el robot detenido. Verificar el valor efectivo con
+`ros2 param get /route_executor route_execution_mode` dentro del contenedor real.

@@ -8,6 +8,11 @@ SALUS_NTRIP_CONFIG_PATH="${SALUS_NTRIP_CONFIG_PATH:-${repo_dir}/src/salus_hardwa
 SALUS_FCU_URL="${SALUS_FCU_URL:-/dev/ttyACM0:921600}"
 SALUS_SERIAL_PORT="${SALUS_SERIAL_PORT:-/dev/ttyUSB0}"
 SALUS_USE_KEEPOUT="${SALUS_USE_KEEPOUT:-true}"
+SALUS_ROUTE_EXECUTION_MODE="${SALUS_ROUTE_EXECUTION_MODE:-adaptive_dense}"
+case "${SALUS_ROUTE_EXECUTION_MODE}" in
+  single_checkpoint|legacy_pair|adaptive_dense) ;;
+  *) echo "invalid SALUS_ROUTE_EXECUTION_MODE: ${SALUS_ROUTE_EXECUTION_MODE}" >&2; exit 2 ;;
+esac
 SALUS_ZONES_RUNTIME_DIR="${SALUS_ZONES_RUNTIME_DIR:-runtime/zones}"
 SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"
 SALUS_CAMERA_HOST="${SALUS_CAMERA_HOST:-${CAMERA_HOST:-}}"
@@ -46,6 +51,7 @@ exec "${runtime_exec}" "${runtime_args[@]}" -- \
     ntrip_config_path:=${ntrip_config_container} \
     serial_port:=${SALUS_SERIAL_PORT} \
     use_keepout:=${SALUS_USE_KEEPOUT} \
+    route_execution_mode:=${SALUS_ROUTE_EXECUTION_MODE} \
     zones_runtime_dir:=${SALUS_ZONES_RUNTIME_DIR} \
     patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR} \
     camera_host:=${SALUS_CAMERA_HOST} \
