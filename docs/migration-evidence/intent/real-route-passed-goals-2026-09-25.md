@@ -3,7 +3,7 @@
 ## Physical evidence
 
 The operator reported three loops on 2026-09-24/25. Bags and incident notes are
-stored only on the Jetson under `/home/admin/salus_diagnostics`.
+stored only in the Jetson diagnostics directory.
 
 At 00:13:22 UTC a two-pose route chunk contained a synthetic intermediate pose
 at map y≈6334 and a real checkpoint at y≈6285. The robot passed the synthetic
