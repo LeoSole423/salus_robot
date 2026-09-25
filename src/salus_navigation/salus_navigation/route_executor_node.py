@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import threading
 import uuid
-from math import atan2, degrees, isfinite
+from math import atan2, degrees, hypot, isfinite
 
 import rclpy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
@@ -31,7 +31,7 @@ from salus_interfaces.srv import (
     SetNavigationProfile, SetNavGoalLL, SetRouteMissionLL,
 )
 
-from .route_anchor import select_anchor
+from .route_anchor import AnchorSelection, select_anchor
 from .route_checkpoint_tracker import (
     CheckpointOccurrence, IntermediateCheckpointTracker, PoseSample,
 )
@@ -255,10 +255,16 @@ class RouteExecutorNode(Node):
         heading_deg = None
         if quaternion is not None and all(isfinite(value) for value in quaternion):
             x, y, z, w = quaternion
-            heading_deg = degrees(atan2(
-                2.0 * (w * z + x * y),
-                1.0 - 2.0 * (y * y + z * z),
-            ))
+            norm = hypot(hypot(x, y), hypot(z, w))
+            if norm > 1.0e-12:
+                x, y, z, w = (value / norm for value in quaternion)
+            else:
+                x = y = z = w = 0.0
+            if norm > 1.0e-12:
+                heading_deg = degrees(atan2(
+                    2.0 * (w * z + x * y),
+                    1.0 - 2.0 * (y * y + z * z),
+                ))
         sample = PoseSample(
             float(position.x), float(position.y),
             source_stamp_s, received_steady_s,
@@ -293,6 +299,29 @@ class RouteExecutorNode(Node):
                     "fresh_odometry_radius",
                     distance_m=evidence.distance_m,
                 )
+
+    def _pose_sample_is_fresh(self) -> bool:
+        """Require current ROS and receipt times before using a loop anchor."""
+        sample = self._pose_sample
+        if sample is None:
+            return False
+        now_ros_s = self.get_clock().now().nanoseconds * 1.0e-9
+        now_steady_s = self._steady_now()
+        values = (
+            sample.x, sample.y, sample.source_stamp_s,
+            sample.received_steady_s, now_ros_s, now_steady_s,
+        )
+        if not all(isfinite(value) for value in values):
+            return False
+        ros_age_s = now_ros_s - sample.source_stamp_s
+        steady_age_s = now_steady_s - sample.received_steady_s
+        return bool(
+            sample.source_stamp_s > 0.0
+            and ros_age_s >= -0.1
+            and steady_age_s >= 0.0
+            and ros_age_s <= self._route_progress_pose_max_age_s
+            and steady_age_s <= self._route_progress_pose_max_age_s
+        )
 
     def _set(self, request, response):
         lats, lons, yaws = list(request.lats), list(request.lons), list(request.yaws_deg)
@@ -382,14 +411,112 @@ class RouteExecutorNode(Node):
             curve_tangent=use_curve_tangent_policy(request.auto_yaw_policy),
         )
         anchor = 0
-        if self._pose is not None:
-            anchor = select_anchor(
+        if prepared.loop:
+            if self._pose is None:
+                selection = AnchorSelection(None, "pose_unavailable")
+            else:
+                selection = select_anchor(
+                    prepared, self._pose.x, self._pose.y,
+                    float(self.get_parameter("waypoint_reached_tolerance_m").value),
+                    segment_tolerance_m=float(
+                        self.get_parameter("route_segment_start_tolerance_m").value
+                    ),
+                    heading_deg=self._pose_heading_deg,
+                )
+                if selection.accepted and not self._pose_sample_is_fresh():
+                    selection = AnchorSelection(
+                        None, "pose_stale", selection.candidates,
+                    )
+            if not selection.accepted:
+                self._preparation = None
+                candidate_details = [
+                    {
+                        "segment_start_index": item.segment_start_index,
+                        "segment_end_index": item.segment_end_index,
+                        "segment_start_input_index": prepared.waypoints[
+                            item.segment_start_index
+                        ].input_index,
+                        "segment_end_input_index": prepared.waypoints[
+                            item.segment_end_index
+                        ].input_index,
+                        "anchor_index": item.anchor_index,
+                        "distance_m": round(item.distance_m, 3),
+                        "projection": round(item.projection, 4),
+                        "heading_error_deg": (
+                            None if item.heading_error_deg is None
+                            else round(item.heading_error_deg, 2)
+                        ),
+                        "forward": item.is_forward,
+                    }
+                    for item in selection.candidates
+                ]
+                self.get_logger().warning(
+                    f"loop route preparation rejected: anchor selection {selection.reason}"
+                )
+                self._event(
+                    DiagnosticStatus.WARN, "ROUTE_ANCHOR_REJECTED",
+                    "loop route not activated; no navigation goal was dispatched",
+                    reason=selection.reason,
+                    heading_deg=self._pose_heading_deg,
+                    candidates=json.dumps(candidate_details, separators=(",", ":")),
+                )
+                return
+
+            anchor = selection.anchor_index
+            chosen = next(
+                item for item in selection.candidates
+                if item.anchor_index == anchor
+            )
+            candidate_details = [
+                {
+                    "segment_start_index": item.segment_start_index,
+                    "segment_end_index": item.segment_end_index,
+                    "segment_start_input_index": prepared.waypoints[
+                        item.segment_start_index
+                    ].input_index,
+                    "segment_end_input_index": prepared.waypoints[
+                        item.segment_end_index
+                    ].input_index,
+                    "anchor_index": item.anchor_index,
+                    "distance_m": round(item.distance_m, 3),
+                    "projection": round(item.projection, 4),
+                    "heading_error_deg": (
+                        None if item.heading_error_deg is None
+                        else round(item.heading_error_deg, 2)
+                    ),
+                    "forward": item.is_forward,
+                }
+                for item in selection.candidates
+            ]
+            self._event(
+                DiagnosticStatus.OK, "ROUTE_ANCHOR_SELECTED",
+                "loop route entry selected from current pose and heading",
+                reason=selection.reason,
+                heading_deg=self._pose_heading_deg,
+                segment_start_index=chosen.segment_start_index,
+                segment_end_index=chosen.segment_end_index,
+                segment_start_input_index=prepared.waypoints[
+                    chosen.segment_start_index
+                ].input_index,
+                segment_end_input_index=prepared.waypoints[
+                    chosen.segment_end_index
+                ].input_index,
+                anchor_index=anchor,
+                anchor_input_index=prepared.waypoints[anchor].input_index,
+                distance_m=round(chosen.distance_m, 3),
+                projection=round(chosen.projection, 4),
+                heading_error_deg=round(chosen.heading_error_deg, 2),
+                candidates=json.dumps(candidate_details, separators=(",", ":")),
+            )
+        elif self._pose is not None:
+            selection = select_anchor(
                 prepared, self._pose.x, self._pose.y,
                 float(self.get_parameter("waypoint_reached_tolerance_m").value),
                 segment_tolerance_m=float(
                     self.get_parameter("route_segment_start_tolerance_m").value
                 ),
             )
+            anchor = selection.anchor_index
         prepared = type(prepared)(**{**prepared.__dict__, "anchor_input_index": anchor})
         mission = RouteMission(
             prepared=prepared, phase=RoutePhase.PREPARING,
