@@ -4,6 +4,8 @@
       <PipelineSequence name="NavigateThroughPosesWithStablePath">
         <RateController hz="2.0">
           <RecoveryNode number_of_retries="1" name="StablePathThroughPosesPlanning">
+            <ReactiveSequence name="TrackPassedGoalsWhileFollowing">
+              <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5" global_frame="map" robot_base_frame="base_footprint"/>
             <Fallback name="KeepOrReplanPathThroughPoses">
               <ReactiveSequence name="KeepHealthyPathThroughPoses">
                 <Inverter><GlobalUpdatedGoal/></Inverter>
@@ -15,12 +17,12 @@
                 <AlwaysFailure/>
               </ReactiveSequence>
               <Sequence name="ComputeHealthyPathThroughPoses">
-                <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5"/>
                 <ComputePathThroughPoses goals="{goals}" path="{candidate_path}" planner_id="GridBased"/>
                 <IsPathHealthValid path="{candidate_path}" context="1" expected_state="0" service_name="/path_health/evaluate" server_timeout="500"/>
                 <CopyPath input_path="{candidate_path}" output_path="{path}"/>
               </Sequence>
             </Fallback>
+            </ReactiveSequence>
             <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" server_timeout="5000"/>
           </RecoveryNode>
         </RateController>

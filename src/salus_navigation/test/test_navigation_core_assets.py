@@ -169,7 +169,9 @@ def test_multi_pose_navigator_uses_stable_candidate_validation_and_ackermann_rec
     tree = (ROOT / "config" / "navigation_through_poses.xml").read_text(
         encoding="utf-8"
     )
-    assert '<RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5"/>' in tree
+    assert '<RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="2.5" global_frame="map" robot_base_frame="base_footprint"/>' in tree
+    assert tree.index("TrackPassedGoalsWhileFollowing") < tree.index("KeepOrReplanPathThroughPoses")
+    assert tree.count("<RemovePassedGoals") == 1
     assert '<ComputePathThroughPoses goals="{goals}" path="{candidate_path}" planner_id="GridBased"/>' in tree
     assert '<CopyPath input_path="{candidate_path}" output_path="{path}"/>' in tree
     assert 'context="0" expected_state="2"' in tree
