@@ -39,6 +39,6 @@ No actuation launch or external repository edits are authorized by this cut.
   preflight fails on pre-existing untracked .agents skill markdown (home paths and
   C++ syntax interpreted as links); no user skill files were edited or removed.
 - Patrol/HOME smoke failed before battery-return testing: JOIN_LOOP timed out;
-  route executor reported anchor selection no_near_segment. Baseline diagnosis
-  against main is pending. Do not classify this failure as a battery regression
-  without baseline evidence.
+  route executor reported anchor selection no_near_segment. User explicitly requested ignoring these intermittent smokes. Baseline
+  investigation was stopped at that request; the smoke remains recorded as failed,
+  not passed. No navigation fix or timeout relaxation is included.
