@@ -43,6 +43,10 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("ntrip_active_source_id", default_value=""),
         DeclareLaunchArgument("serial_port", default_value="auto"),
+        DeclareLaunchArgument("battery_backend", default_value="pylontech_us2000"),
+        DeclareLaunchArgument("battery_serial_port"),
+        DeclareLaunchArgument("battery_baud", default_value="115200"),
+        DeclareLaunchArgument("battery_address", default_value="2"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
         DeclareLaunchArgument("zones_runtime_dir", default_value="runtime/zones"),
         DeclareLaunchArgument("patrol_runtime_dir", default_value="runtime/patrol"),
@@ -73,6 +77,11 @@ def generate_launch_description() -> LaunchDescription:
                 "ntrip_config_path": ntrip_config_path,
                 "ntrip_active_source_id": ntrip_active_source_id,
             },
+        ),
+        _include(
+            "salus_hardware", "battery_real.launch.py",
+            {key: LaunchConfiguration(key) for key in (
+                "battery_backend", "battery_serial_port", "battery_baud", "battery_address")},
         ),
         _include(
             "salus_control",

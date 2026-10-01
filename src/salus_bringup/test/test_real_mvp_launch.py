@@ -93,6 +93,7 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "description_real.launch.py",
         "real_hardware.launch.py",
         "control_real_uart.launch.py",
+        "battery_real.launch.py",
         "localization_local_real.launch.py",
         "global_localization_real.launch.py",
         "perception_real.launch.py",
@@ -101,11 +102,13 @@ def test_real_mvp_includes_each_final_block_once() -> None:
         "web_bridge.launch.py",
     ):
         assert source.count(launch_file) == 1
-    assert source.count("_include(") == 10  # helper + 9 includes
+    assert source.count("_include(") == 11  # helper + 10 includes
     for argument in (
         "ntrip_config_path",
         "fcu_url",
         "serial_port",
+        "battery_serial_port",
+        "battery_backend",
         "use_keepout",
         "zones_runtime_dir",
         "patrol_runtime_dir",

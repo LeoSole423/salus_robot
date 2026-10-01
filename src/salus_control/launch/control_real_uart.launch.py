@@ -17,6 +17,7 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("serial_port", default_value="auto"),
+            DeclareLaunchArgument("battery_source", default_value="external"),
             Node(
                 package="salus_control",
                 executable="controller_server_node",
@@ -26,6 +27,7 @@ def generate_launch_description() -> LaunchDescription:
                     {
                         "use_sim_time": False,
                         "transport_backend": "uart",
+                        "battery_source": LaunchConfiguration("battery_source"),
                         "command_input_mode": "legacy_cmd_vel",
                         "serial_port": serial_port,
                         "serial_baud": 115200,

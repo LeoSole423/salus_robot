@@ -75,3 +75,45 @@
 No debe habilitarse la entrega mientras el `rtk_bridge` legado siga publicando
 `/mavros_node/send_rtcm`. Este paquete no inicia MAVROS, FCU ni control; la
 adquisición NTRIP sólo se inicia mediante su launch real explícito.
+
+## Replaceable battery adapters
+
+`battery_backends.create_battery_backend` selects a read-only adapter implementing
+`BatteryBackend.read() -> BatterySample` and `close()`. Add future battery models
+here with their own pure parser and tests; the ROS/public consumers do not change.
+`pylontech_us2000` supports the characterized single-module low-voltage protocol,
+15 cells, standard/extended capacity fields and strict framing/checksums. SOC is
+remaining Ah / total Ah; current is positive charging, negative discharging.
+The battery USB adapter is independent of the ESP32 drive adapter.
+
+Isolated read-only launch (no drive nodes):
+
+```bash
+ros2 launch salus_hardware battery_real.launch.py battery_serial_port:=/dev/ttyUSB1
+```
+
+Use an explicit stable device path where possible. CH340 requires host `ch341`;
+container dependencies cannot supply a missing host driver. A kernel update may
+require rebuilding the locally installed module. RJ45 wiring must match the exact
+battery revision; characterized US2000 used pins 7=A, 8=B, 6=GND, 115200 8N1,
+address 2. Do not auto-select the controller USB port.
+
+| Node parameter | Type/default | Unit/range | Meaning |
+| --- | --- | --- | --- |
+| backend | string / pylontech_us2000 | registered name | Adapter selection; unknown names fail |
+| serial_port | string / empty | explicit device path | Required battery adapter, no auto fallback |
+| baud | int / 115200 | bit/s; 9600 or 115200 | Match active battery DIP setting |
+| address | int / 2 | 0–255 | Protocol device address |
+| timeout_s | double / 0.5 | s; (0,2] | Bounded serial read/write timeout |
+| poll_hz | double / 1.0 | Hz; [0.1,2] | Poll rate; choose control stale timeout longer than poll interval |
+| state_topic | string / /battery/backend_state | ROS topic | Private measured-state output |
+
+`/battery/backend_state`: sensor_msgs/BatteryState, producer salus_battery,
+consumer salus_controller external source, reliable/volatile depth 10. Node owns
+serial while running and closes on exit. Failed reads publish nothing and retry
+opening on next poll; control expires the last sample after 3 s. Unknown health, design capacity and individual-cell temperatures remain
+unknown (the US2000 provides grouped temperature sensors). Only CID2 0x42 requests are emitted.
+
+Stationary serial evidence on 2026-10-01: five checksum-valid frames captured in
+`test/fixtures/pylontech_us2000_readings.json`. This is not ROS deployment or
+mission hardware parity.

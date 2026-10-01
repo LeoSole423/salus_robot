@@ -75,3 +75,20 @@ limit. This saturation remains observable as requested/applied curvature and
 steering plus `steer_saturated`. There is intentionally no fixed
 `max_abs_angular_z`: such a yaw-rate cap would impose a speed-dependent second
 curvature authority rather than a fixed Ackermann steering limit.
+
+## Independent battery source
+
+`battery_source` (string, default `transport`, enum `transport|external`) selects
+simulation/legacy transport samples or the generic measured BMS input.
+`control_real_uart.launch.py` defaults to `external`; simulation retains transport.
+`battery_backend_state_topic` (string, default `/battery/backend_state`) is the
+reliable/volatile depth-10 BatteryState input. The controller remains the only
+publisher of `/battery_state` and `/battery_mission_guard` (depth 10).
+External mode never reads or falls back to ESP32 battery measurements. It preserves
+BMS voltage, SOC, current, capacities and cell measurements. Invalid/absent,
+duplicate, old and future-stamped input does not refresh availability. The existing
+`battery_telemetry_stale_timeout_s` (3 s) expires measurements; stale state publishes
+unknown percentage/voltage/current with present=false. Missing data resets voltage
+persistence timers but never clears a latched HOME recommendation. The existing
+46.5 V / 30 s latch and 48 V / 30 s clear use BMS voltage; changing the mission
+policy to SOC would require a separate reviewed change.

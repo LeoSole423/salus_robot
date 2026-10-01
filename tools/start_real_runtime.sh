@@ -7,6 +7,7 @@ runtime_exec="${repo_dir}/tools/real_runtime_exec.sh"
 SALUS_NTRIP_CONFIG_PATH="${SALUS_NTRIP_CONFIG_PATH:-${repo_dir}/src/salus_hardware/config/rtk_sources.local.yaml}"
 SALUS_FCU_URL="${SALUS_FCU_URL:-/dev/ttyACM0:921600}"
 SALUS_SERIAL_PORT="${SALUS_SERIAL_PORT:-/dev/ttyUSB0}"
+SALUS_BATTERY_SERIAL_PORT="${SALUS_BATTERY_SERIAL_PORT:?Set an explicit battery device path}"
 SALUS_USE_KEEPOUT="${SALUS_USE_KEEPOUT:-true}"
 SALUS_ZONES_RUNTIME_DIR="${SALUS_ZONES_RUNTIME_DIR:-runtime/zones}"
 SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"
@@ -34,6 +35,7 @@ esac
 runtime_args=(
   --device /dev/ttyACM0
   --device /dev/ttyUSB0
+  --device "${SALUS_BATTERY_SERIAL_PORT}"
   --container-name salus-robot-real-runtime
 )
 if [[ -n "${SALUS_CAMERA_PASS_FILE:-}" ]]; then
@@ -45,6 +47,7 @@ exec "${runtime_exec}" "${runtime_args[@]}" -- \
     fcu_url:=${SALUS_FCU_URL} \
     ntrip_config_path:=${ntrip_config_container} \
     serial_port:=${SALUS_SERIAL_PORT} \
+    battery_serial_port:=${SALUS_BATTERY_SERIAL_PORT} \
     use_keepout:=${SALUS_USE_KEEPOUT} \
     zones_runtime_dir:=${SALUS_ZONES_RUNTIME_DIR} \
     patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR} \
