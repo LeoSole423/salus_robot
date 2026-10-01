@@ -24,7 +24,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [interfaces, salus_interfaces, salus_description]
-    status: mavros_sensor_only_and_pinned_rs16_raw_owner_profiles_hardware_validated_mavros_rs16_and_ntrip_physical_delivery_validation_pending
+    status: selectable_pylontech_battery_backend_ported_and_mavros_sensor_only_and_pinned_rs16_raw_owner_profiles_hardware_validated_mavros_rs16_and_ntrip_physical_delivery_validation_pending
   salus_localization:
     owner: localization
     build_type: ament_python
@@ -42,7 +42,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [interfaces, salus_interfaces]
-    status: 48v_battery_policy_and_explicit_uart_mvp_profile_ported_hardware_cutover_pending
+    status: external_bms_source_and_48v_battery_policy_and_explicit_uart_mvp_profile_ported_hardware_cutover_pending
   salus_navigation:
     owner: autonomy
     build_type: ament_python

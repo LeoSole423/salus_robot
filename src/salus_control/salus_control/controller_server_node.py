@@ -4,6 +4,7 @@ import json
 import math
 import time
 from dataclasses import asdict
+from copy import deepcopy
 
 import rclpy
 from salus_interfaces.msg import (
@@ -34,6 +35,7 @@ from .canonical_command_consumer import (
     CanonicalCommandSample,
     desired_command_from_canonical,
 )
+from .external_battery import external_battery_sample
 from .serial_port_resolver import resolve_serial_port
 from .transport_backends import create_transport_backend
 
@@ -83,6 +85,8 @@ class ControllerServerNode(Node):
         self.declare_parameter("auto_drive_enabled", True)
         self.declare_parameter("estop_brake_pct", 100)
         self.declare_parameter("telemetry_stale_timeout_s", 0.5)
+        self.declare_parameter("battery_source", "transport")
+        self.declare_parameter("battery_backend_state_topic", "/battery/backend_state")
         self.declare_parameter("battery_state_topic", "/battery_state")
         self.declare_parameter("battery_guard_topic", "/battery_mission_guard")
         self.declare_parameter("battery_full_voltage", 53.5)
@@ -203,6 +207,15 @@ class ControllerServerNode(Node):
         self._telemetry_stale_timeout_s = max(
             0.05, float(self.get_parameter("telemetry_stale_timeout_s").value)
         )
+        self._battery_source = str(self.get_parameter("battery_source").value)
+        if self._battery_source not in ("transport", "external"):
+            raise ValueError("battery_source must be transport or external")
+        self._external_battery = None
+        self._external_battery_subscription = None
+        if self._battery_source == "external":
+            self._external_battery_subscription = self.create_subscription(
+                BatteryState, str(self.get_parameter("battery_backend_state_topic").value),
+                self._on_external_battery, 10)
         self._battery_state_topic = str(self.get_parameter("battery_state_topic").value)
         self._battery_guard_topic = str(self.get_parameter("battery_guard_topic").value)
         self._battery_full_voltage = float(self.get_parameter("battery_full_voltage").value)
@@ -609,9 +622,32 @@ class ControllerServerNode(Node):
         msg.data = json.dumps(status, ensure_ascii=True)
         self._status_pub.publish(msg)
 
+    def _on_external_battery(self, msg) -> None:
+        stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+        age_s = self.get_clock().now().nanoseconds / 1e9 - stamp_s
+        if not 0 <= age_s <= self._battery_telemetry_stale_timeout_s:
+            return
+        if self._external_battery is not None:
+            previous = self._external_battery.message.header.stamp
+            if (msg.header.stamp.sec, msg.header.stamp.nanosec) <= (
+                    previous.sec, previous.nanosec):
+                return
+        if self._external_battery is not None:
+            if (time.monotonic() - self._external_battery.rx_monotonic_s
+                    > self._battery_telemetry_stale_timeout_s):
+                self._battery_estimator.break_continuity()
+        try:
+            self._external_battery = external_battery_sample(
+                msg, time.monotonic() - age_s)
+        except ValueError:
+            self._battery_estimator.break_continuity()
+            self._external_battery = None
+
     def _telemetry_tick(self) -> None:
         telemetry = self._client.get_latest_telemetry()
-        battery_telemetry = self._client.get_latest_battery_telemetry()
+        battery_telemetry = (
+            self._external_battery if self._battery_source == "external"
+            else self._client.get_latest_battery_telemetry())
         stats = self._client.get_stats()
         command_state = self._client.get_command_state()
         battery_payload = None
@@ -629,8 +665,12 @@ class ControllerServerNode(Node):
                 battery_telemetry.battery_voltage_v,
                 sample_time_s=float(battery_telemetry.rx_monotonic_s),
                 traction_active=traction_active,
+                sample_valid=(self._battery_source != "external" or (
+                    battery_link_fresh and not battery_telemetry.suspect)),
             )
-            battery_percentage = _clamp01(battery_estimate.filtered_percentage)
+            battery_percentage = (
+                battery_telemetry.percentage if self._battery_source == "external"
+                else _clamp01(battery_estimate.filtered_percentage))
             battery_state_text = battery_state_label(
                 ready=bool(battery_telemetry.ready),
                 fresh=bool(battery_telemetry.fresh),
@@ -689,6 +729,15 @@ class ControllerServerNode(Node):
                 }
             )
 
+            if self._battery_source == "external":
+                battery_payload.update({
+                    "percentage": battery_percentage,
+                    "raw_percentage": battery_percentage,
+                    "filtered_percentage": battery_percentage,
+                    "operator_soc_pct": 100 * battery_percentage,
+                    "operator_soc_model": "bms_capacity_ratio",
+                    "soc_model": "bms_capacity_ratio",
+                })
             battery_msg = BatteryState()
             battery_msg.header.stamp = self.get_clock().now().to_msg()
             battery_msg.present = bool(battery_telemetry.ready)
@@ -704,6 +753,17 @@ class ControllerServerNode(Node):
                 BatteryState.POWER_SUPPLY_TECHNOLOGY_UNKNOWN
             )
 
+            if self._battery_source == "external":
+                battery_msg = deepcopy(battery_telemetry.message)
+                if not battery_link_fresh:
+                    battery_msg.present = False
+                    battery_msg.percentage = math.nan
+                    battery_msg.voltage = math.nan
+                    battery_msg.current = math.nan
+                    battery_payload["percentage"] = None
+                    battery_payload["operator_soc_pct"] = None
+                    battery_payload["raw_percentage"] = None
+                    battery_payload["filtered_percentage"] = None
             battery_guard_msg = BatteryMissionGuard()
             battery_guard_msg.stamp = self.get_clock().now().to_msg()
             battery_guard_msg.ready = bool(battery_telemetry.ready)
@@ -728,7 +788,8 @@ class ControllerServerNode(Node):
                 battery_estimate.recovered_voltage_v
             )
             battery_guard_msg.operator_soc_pct = float(
-                battery_estimate.operator_soc_pct
+                100 * battery_percentage
+                if self._battery_source != "external" or battery_link_fresh else math.nan
             )
             battery_guard_msg.loaded_low_threshold_v = float(
                 self._battery_estimator.loaded_low_threshold_v
@@ -745,6 +806,22 @@ class ControllerServerNode(Node):
             battery_guard_msg.model_name = str(
                 battery_estimate.mission_guard_model_name
             )
+        if self._battery_source == "external" and battery_telemetry is None:
+            self._battery_estimator.break_continuity()
+            battery_msg = BatteryState()
+            battery_msg.header.stamp = self.get_clock().now().to_msg()
+            battery_msg.present = False
+            battery_msg.voltage = math.nan
+            battery_msg.percentage = math.nan
+            battery_msg.current = math.nan
+            battery_guard_msg = BatteryMissionGuard()
+            battery_guard_msg.stamp = self.get_clock().now().to_msg()
+            battery_guard_msg.state = "UNAVAILABLE"
+            battery_guard_msg.return_home_recommended = self._battery_estimator.guard_latched
+            battery_guard_msg.operator_soc_pct = math.nan
+            battery_payload = {"source": "external_bms", "ready": False,
+                               "fresh": False, "state": "UNAVAILABLE",
+                               "percentage": None}
         payload = {
             "source": self._last_source,
             "telemetry": telemetry.as_dict() if telemetry is not None else None,

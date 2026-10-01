@@ -104,3 +104,12 @@ nueva ventana controlada.
 Si un gate físico falla, detener el servicio, capturar evidencia mínima y
 restaurar legacy. No añadir reintentos, tuning ni comandos de movimiento al
 procedimiento.
+
+## BMS battery adapter
+
+Set `SALUS_BATTERY_SERIAL_PORT` to the Pylontech adapter independently of the
+drive adapter. The real profile requires this setting and maps its device into
+the container. Verify the host has `ch341` for CH340 adapters. Device enumeration
+can change; confirm the mapping before starting the physical profile. A stable
+host symlink must be mapped to a device path that also exists inside the container.
+No fallback to ESP32 ADC is performed when BMS measurements expire.

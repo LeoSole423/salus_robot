@@ -6,6 +6,21 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  pylontech_battery_backend:
+    source: Pylontech US2000 stationary RS485 measurements
+    target: salus_hardware and salus_control external battery source
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/pylontech-rs485-battery.md
+      - docs/decisions/0013-selectable-battery-backends.md
+      - src/salus_hardware/test/test_pylontech_battery.py
+      - src/salus_hardware/test/fixtures/pylontech_us2000_readings.json
+      - src/salus_control/test/test_external_battery.py
+    note: >-
+      Single-module BMS serial connectivity was observed on Jetson. Real MVP
+      selects an external replaceable backend instead of ESP32 ADC. SOC uses
+      BMS capacity ratio; voltage HOME thresholds remain unchanged. ROS
+      deployment, calibration accuracy and mission hardware parity are pending.
   ci_and_migration_harness:
     source: repository_infrastructure
     target: repository_infrastructure
@@ -88,7 +103,7 @@ components:
       - src/salus_control/test/test_sim_gazebo_backend.py
       - docs/migration-evidence/intent/mvp-48v-battery-and-uart-profile.md
     note: >-
-      The controller uses the calibrated 48 V ESP32 sample directly: no
+      Transport mode uses the calibrated 48 V ESP32/simulation sample directly: no
       lead-acid EMA remains. Its operator curve is 44.5/0%, 46.5/15%,
       48.0/35%, 50.0/60%, 52.0/85% and 53.5/100%; the typed mission guard
       latches at <=46.5 V for 30 s and clears at >=48.0 V for 30 s. Patrol

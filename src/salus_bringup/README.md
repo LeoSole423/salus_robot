@@ -242,3 +242,14 @@ después cargar la ruta guardada en el Cockpit usando el preset **Simulation**.
 Para trazabilidad de la migración, este launch reemplaza en simulación a
 `navegacion_gps/sim_global_v2_wifi.launch.py`: conserva la composición
 operativa remota, pero no sus configuraciones DDS/WiFi ni `/scan_wifi_debug`.
+
+### Real MVP battery selection
+
+`real_mvp.launch.py` composes the isolated hardware battery adapter and an external-
+battery controller. Required `battery_serial_port` identifies the battery USB
+adapter independently of drive `serial_port`; optional `battery_backend`
+(default `pylontech_us2000`), `battery_baud` (115200) and `battery_address` (2)
+select adapter settings. `tools/start_real_runtime.sh` requires
+`SALUS_BATTERY_SERIAL_PORT` and maps that device into the runtime container.
+Simulation launches are unchanged. This composition has not been deployed on
+hardware as part of the battery backend change.

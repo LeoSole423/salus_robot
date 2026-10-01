@@ -105,7 +105,7 @@ class BatteryEstimate:
 
 
 class BatteryEstimator:
-    """48 V LiFePO4 state from the ESP32's already-stabilized sample."""
+    """48 V LiFePO4 mission policy from calibrated voltage samples."""
 
     def __init__(
         self,
@@ -148,12 +148,23 @@ class BatteryEstimator:
     def recovered_low_persist_required_s(self) -> float:
         return self._guard_clear_persist_s
 
+    @property
+    def guard_latched(self) -> bool:
+        return self._mission_guard_latched
+
+    def break_continuity(self) -> None:
+        """Missing measurements cannot accrue low/clear persistence or clear a latch."""
+        self._last_sample_time_s = None
+        self._low_elapsed_s = 0.0
+        self._clear_elapsed_s = 0.0
+
     def update(
         self,
         raw_voltage_v: float,
         *,
         sample_time_s: float,
         traction_active: bool,
+        sample_valid: bool = True,
     ) -> BatteryEstimate:
         voltage_v = float(raw_voltage_v)
         dt_s = (
@@ -162,25 +173,28 @@ class BatteryEstimator:
             else max(0.0, float(sample_time_s) - self._last_sample_time_s)
         )
 
-        if not self._mission_guard_latched:
-            self._clear_elapsed_s = 0.0
-            if voltage_v <= self._return_home_voltage_v:
-                self._low_elapsed_s += dt_s
-            else:
-                self._low_elapsed_s = 0.0
-            if self._low_elapsed_s >= self._return_home_persist_s:
-                self._mission_guard_latched = True
+        if not sample_valid:
+            self.break_continuity()
         else:
-            if voltage_v >= self._guard_clear_voltage_v:
-                self._clear_elapsed_s += dt_s
+            if not self._mission_guard_latched:
+                self._clear_elapsed_s = 0.0
+                if voltage_v <= self._return_home_voltage_v:
+                    self._low_elapsed_s += dt_s
+                else:
+                    self._low_elapsed_s = 0.0
+                if self._low_elapsed_s >= self._return_home_persist_s:
+                    self._mission_guard_latched = True
             else:
-                self._clear_elapsed_s = 0.0
-            if self._clear_elapsed_s >= self._guard_clear_persist_s:
-                self._mission_guard_latched = False
-                self._low_elapsed_s = 0.0
-                self._clear_elapsed_s = 0.0
+                if voltage_v >= self._guard_clear_voltage_v:
+                    self._clear_elapsed_s += dt_s
+                else:
+                    self._clear_elapsed_s = 0.0
+                if self._clear_elapsed_s >= self._guard_clear_persist_s:
+                    self._mission_guard_latched = False
+                    self._low_elapsed_s = 0.0
+                    self._clear_elapsed_s = 0.0
 
-        self._last_sample_time_s = float(sample_time_s)
+            self._last_sample_time_s = float(sample_time_s)
         percentage = piecewise_soc_from_voltage(voltage_v, self._soc_curve_points)
         mission_guard_state = (
             "LOW_ENERGY_GO_HOME" if self._mission_guard_latched else "OK"
