@@ -16,6 +16,7 @@ and old zoom-save behavior; use separate Uniarch preset file on deployment to
 avoid reinterpreting Hikvision calibrations. Real launch selects camera_backend,
 default remains isapi. Video transport remains external MediaMTX.
 
-Hardware evidence and remaining axis/orientation calibration will be recorded
-after deployment. Presets must be set from the installed robot orientation;
+Deployment and bounded movement evidence are recorded in
+[2026-10-10 validation](../uniarch-camera-validation-20261010.md).
+Axis/orientation calibration remains pending. Presets must be set from the installed robot orientation;
 default coordinates are not calibration. No robot driving is part of this task.
