@@ -9,6 +9,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
+        DeclareLaunchArgument("camera_backend", default_value="isapi"),
         DeclareLaunchArgument("camera_host", default_value=""),
         DeclareLaunchArgument("camera_port", default_value="0"),
         DeclareLaunchArgument("camera_channel", default_value="0"),
@@ -22,7 +23,7 @@ def generate_launch_description() -> LaunchDescription:
             name="salus_camera",
             output="screen",
             parameters=[{
-                "backend": "isapi",
+                "backend": LaunchConfiguration("camera_backend"),
                 "camera_host": LaunchConfiguration("camera_host"),
                 "camera_port": ParameterValue(
                     LaunchConfiguration("camera_port"), value_type=int

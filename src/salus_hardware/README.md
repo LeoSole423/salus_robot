@@ -117,3 +117,8 @@ unknown (the US2000 provides grouped temperature sensors). Only CID2 0x42 reques
 Stationary serial evidence on 2026-10-01: five checksum-valid frames captured in
 `test/fixtures/pylontech_us2000_readings.json`. This is not ROS deployment or
 mission hardware parity.
+
+Uniarch mobile PTZ: `camera_backend:=onvif_uniarch`, camera channel 2,
+profile `media_profile2_1`. Uses external credentials and ONVIF PanTilt only;
+zoom is unsupported. Directional presets front/right/rear/left are editable.
+Use a new presets file when replacing a camera to preserve previous calibration.

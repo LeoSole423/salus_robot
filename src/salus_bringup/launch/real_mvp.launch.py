@@ -61,6 +61,7 @@ def generate_launch_description() -> LaunchDescription:
             default_value="/odometry/global",
             description="Map-aligned odometry heading used for the GPS-backed Cockpit pose",
         ),
+        DeclareLaunchArgument("camera_backend", default_value="isapi"),
         DeclareLaunchArgument("camera_host", default_value=""),
         DeclareLaunchArgument("camera_port", default_value="0"),
         DeclareLaunchArgument("camera_channel", default_value="0"),
@@ -103,6 +104,7 @@ def generate_launch_description() -> LaunchDescription:
             "salus_hardware",
             "camera_real.launch.py",
             {
+                "camera_backend": LaunchConfiguration("camera_backend"),
                 "camera_host": camera_host,
                 "camera_port": camera_port,
                 "camera_channel": camera_channel,

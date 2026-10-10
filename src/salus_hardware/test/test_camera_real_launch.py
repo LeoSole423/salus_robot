@@ -25,7 +25,8 @@ def test_real_camera_has_one_isapi_owner_and_no_video_owner() -> None:
     assert len(nodes) == 1
     assert 'executable="camera_node"' in source
     assert 'name="salus_camera"' in source
-    assert '"backend": "isapi"' in source
+    assert 'default_value="isapi"' in source
+    assert '"backend": LaunchConfiguration("camera_backend")' in source
     assert '"use_sim_time": False' in source
     assert "mediamtx" not in source.lower()
     assert "image_raw" not in source

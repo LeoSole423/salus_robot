@@ -29,6 +29,8 @@ from .camera_backend import (
     IsapiCameraConfig,
     SimCameraBackend,
 )
+from .camera_onvif import OnvifCameraBackend
+
 from .camera_domain import (
     CameraCommandResult,
     CameraLimits,
@@ -124,7 +126,7 @@ class CameraNode(Node):
         try:
             if backend_name == "sim":
                 self._backend = SimCameraBackend(self._limits, initial)
-            elif backend_name == "isapi":
+            elif backend_name in ("isapi", "onvif_uniarch"):
                 host = (
                     str(self.get_parameter("camera_host").value).strip()
                     or os.environ.get("CAMERA_HOST", "").strip()
@@ -139,9 +141,11 @@ class CameraNode(Node):
                     channel=_parameter_or_env_int(self, "camera_channel", "CAMERA_CHANNEL"),
                     timeout_s=float(self.get_parameter("camera_timeout_s").value),
                 )
-                self._backend = IsapiCameraBackend(config, self._limits)
+                self._backend = (OnvifCameraBackend(config, self._limits)
+                                 if backend_name == "onvif_uniarch"
+                                 else IsapiCameraBackend(config, self._limits))
             else:
-                raise ValueError("backend must be sim or isapi")
+                raise ValueError("backend must be sim, isapi or onvif_uniarch")
         except (OSError, ValueError):
             self._backend = None
             self._state = CameraState(

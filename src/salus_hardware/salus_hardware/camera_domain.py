@@ -62,7 +62,7 @@ class CameraCommandResult:
 
 
 PRESET_ALIASES = {"center": "home", "back": "rear"}
-SAVEABLE_PRESETS = frozenset({"home", "left", "right"})
+SAVEABLE_PRESETS = frozenset({"home", "front", "left", "right", "rear"})
 
 
 def normalize_pan(angle_deg: float, limits: CameraLimits) -> float:
@@ -161,7 +161,7 @@ def saved_preset(
     effective_save_zoom = preset.saves_zoom
     if canonical == "home" and not save_zoom:
         raise ValueError("home preset must save zoom")
-    if canonical in {"left", "right"} and save_zoom:
+    if canonical in {"front", "left", "right", "rear"} and save_zoom:
         raise ValueError(f"preset '{canonical}' must preserve its configured zoom")
     normalized = normalize_pose(current, limits)
     zoom = normalized.zoom_level if effective_save_zoom else preset.pose.zoom_level
@@ -188,10 +188,10 @@ def default_presets(
         return PresetDefinition(name, pose, editable, saves_zoom)
     return {
         "home": make("home", 0.0, True, True),
-        "front": make("front", 0.0, False, False),
+        "front": make("front", 0.0, True, False),
         "left": make("left", 90.0, True, False),
         "right": make("right", 270.0, True, False),
-        "rear": make("rear", 180.0, False, False),
+        "rear": make("rear", 180.0, True, False),
     }
 
 

@@ -555,6 +555,7 @@ components:
     evidence:
       - docs/migration-evidence/intent/camera-ptz-presets.md
       - docs/decisions/0006-camera-ptz-control-boundaries.md
+      - docs/migration-evidence/intent/uniarch-mobile-ptz.md
       - docs/migration-evidence/intent/camera-ptz-real-runtime-20260907.md
       - src/salus_hardware/salus_hardware/camera_node.py
       - src/salus_hardware/launch/camera_real.launch.py

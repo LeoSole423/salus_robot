@@ -1,4 +1,3 @@
-import pytest
 
 from salus_hardware.camera_domain import (
     CameraLimits, PtzPose, default_presets, matching_preset, normalize_pan,
@@ -33,5 +32,6 @@ def test_save_policy_preserves_lateral_zoom() -> None:
     assert left.pose == PtzPose(120.0, 12.0, 1.0)
     home = saved_preset("home", PtzPose(20.0, 5.0, 3.0), presets, limits, save_zoom=True)
     assert home.pose.zoom_level == 3.0
-    with pytest.raises(ValueError, match="cannot be overwritten"):
-        saved_preset("rear", PtzPose(0.0, 0.0, 1.0), presets, limits, save_zoom=False)
+    for name in ("front", "rear"):
+        saved = saved_preset(name, PtzPose(150.0, 20.0, 3.0), presets, limits, save_zoom=False)
+        assert saved.pose == PtzPose(150.0, 20.0, 1.0)
