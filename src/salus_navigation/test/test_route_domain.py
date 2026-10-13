@@ -201,6 +201,50 @@ def test_tangent_dispatch_uses_approach_for_first_automatic_key_only():
                          approach_heading_deg=0.0, curve_tangent=True) == [0.0]
 
 
+def test_intermediate_tangent_does_not_freeze_heading_before_a_corner():
+    # Second real loop incident, 2026-09-24 23:58:46 UTC. Translate waypoint
+    # 14 to the origin; its route bisector is -73.03 degrees. At dispatch,
+    # heading -11.88 differs by just over 60 degrees, but the approach leg
+    # already points into the corner. Freezing -11.88 in the Nav2 goal makes
+    # a later Dubins replan loop even with an empty costmap.
+    incoming = RouteWaypoint(0, 0, nan, 13,
+                             map_x=-6.616110946284, map_y=9.586214930750)
+    corner = RouteWaypoint(0, 0, nan, 14, map_x=0.0, map_y=0.0)
+    following = RouteWaypoint(0, 0, nan, 15,
+                              map_x=-0.395025787409, map_y=-33.647418680601)
+    prepared = resolve_yaws([incoming, corner, following], False,
+                            curve_tangent=True)
+    yaws = dispatch_yaws(tuple(prepared[1:]),
+                         approach_xy=(-8.712631563707, 10.828976852433),
+                         approach_heading_deg=-11.878457454678,
+                         curve_tangent=True)
+    assert isclose(yaws[0], -73.0301924613, abs_tol=1e-6)
+    assert yaws[1] == prepared[2].yaw_deg
+
+
+def test_intermediate_approach_rule_preserves_explicit_and_legacy_yaws():
+    points = (
+        RouteWaypoint(0, 0, -73.0, 14, map_x=0.0, map_y=0.0,
+                      yaw_explicit=True),
+        RouteWaypoint(0, 0, -90.0, 15, map_x=0.0, map_y=-34.0),
+    )
+    kwargs = dict(approach_xy=(-9.0, 11.0), approach_heading_deg=-12.0)
+    assert dispatch_yaws(points, curve_tangent=True, **kwargs) == [-73.0, -90.0]
+    assert dispatch_yaws(points, curve_tangent=False, **kwargs) == [-73.0, -90.0]
+
+
+def test_intermediate_lateral_join_keeps_robot_heading_reference():
+    # Existing wide-turn smoke: a northward first leg while facing east needs
+    # the established sharp-entry protection, not its 90 degree leg bearing.
+    points = (
+        RouteWaypoint(0, 0, 90.0, 0, map_x=0.0, map_y=6.0),
+        RouteWaypoint(0, 0, 45.0, 1, map_x=8.0, map_y=6.0),
+    )
+    assert dispatch_yaws(points, approach_xy=(0.0, 0.0),
+                         approach_heading_deg=0.0,
+                         curve_tangent=True) == [0.0, 45.0]
+
+
 def test_finite_chunk_changes_only_an_automatic_terminal_yaw_to_its_incoming_leg():
     chunk = (
         RouteWaypoint(0, 0, 0.0, 0, map_x=0.0, map_y=0.0),

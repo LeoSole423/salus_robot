@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "source": "salus_nav_loops_20260924T235727Z, 2026-09-24 23:58:42 and 23:58:46 UTC; a0940cb",
+  "coordinate_system": "map translated so waypoint 14 is (0,0); meters and radians",
+  "incoming_point": [-6.616110946284, 9.586214930750],
+  "first_point": [0.0, 0.0],
+  "next_point": [-0.395025787409, -33.647418680601],
+  "captured_yaws_deg": [-11.878457454677546, -90.34616584500944],
+  "initial_start": [-8.712631563706964, 10.828976852432788, -0.2073181926421883],
+  "replan_start": [-5.23092223902313, 8.952240789759344, -0.6474945422591984],
+  "initial_map": {"width": 1200, "height": 1200, "resolution": 0.25, "origin_x": -160.82918326818617, "origin_y": -139.01269730366766},
+  "replan_map": {"width": 1200, "height": 1200, "resolution": 0.25, "origin_x": -156.32918326818617, "origin_y": -140.26269730366766}
+}
