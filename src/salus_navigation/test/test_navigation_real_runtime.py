@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from collections import deque
 from pathlib import Path
 
 # This must happen before importing or initializing rclpy.
@@ -108,6 +109,8 @@ class SyntheticNavigationInputs(Node):
         self.local_costmaps: list[Costmap] = []
         self.global_costmaps: list[Costmap] = []
         self.input_cycles = 0
+        self.sensor_trace = deque(maxlen=40)
+        self.costmap_trace = deque(maxlen=40)
         self.monitor_states: list[CollisionMonitorState] = []
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.scan_pub = self.create_publisher(
@@ -123,7 +126,7 @@ class SyntheticNavigationInputs(Node):
             DiagnosticArray, "/navigation_startup/diagnostics", self._on_startup, 10
         )
         self.create_subscription(
-            Costmap, "/local_costmap/costmap_raw", self.local_costmaps.append, 10
+            Costmap, "/local_costmap/costmap_raw", self._on_local_costmap, 10
         )
         self.create_subscription(
             Costmap, "/global_costmap/costmap_raw", self.global_costmaps.append, 10
@@ -136,6 +139,23 @@ class SyntheticNavigationInputs(Node):
         )
         self._tf_broadcaster = TransformBroadcaster(self)
         self._timer = self.create_timer(0.05, self._publish_inputs)
+
+    def _on_local_costmap(self, message: Costmap) -> None:
+        self.local_costmaps.append(message)
+        self.costmap_trace.append((
+            time.monotonic(), message.header.stamp.sec,
+            message.header.stamp.nanosec,
+            _lethal_side_return_cells(message, 1),
+            _lethal_side_return_cells(message, -1),
+        ))
+
+    def input_diagnostics(self) -> str:
+        return (
+            f"domain={_DOMAIN_ID}; sensors={list(self.sensor_trace)}; "
+            f"local_history={list(self.costmap_trace)}; "
+            f"scan_publishers={[endpoint.node_name for endpoint in self.get_publishers_info_by_topic('/scan_clean')]}; "
+            f"tf_publishers={[endpoint.node_name for endpoint in self.get_publishers_info_by_topic('/tf')]}"
+        )
 
     def _on_final(self, message: CmdVelFinal) -> None:
         self.final.append(message)
@@ -193,6 +213,12 @@ class SyntheticNavigationInputs(Node):
                 for index in range(176, 185):
                     scan.ranges[index] = self.obstacle_range
             self.scan_pub.publish(scan)
+            if self.input_cycles % 10 == 0:
+                self.sensor_trace.append((
+                    time.monotonic(), stamp.sec, stamp.nanosec,
+                    sum(math.isfinite(value) for value in scan.ranges[:180]),
+                    sum(math.isfinite(value) for value in scan.ranges[180:]),
+                ))
         if self.command_enabled:
             command = Twist()
             command.linear.x = 1.0
@@ -372,6 +398,7 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
                     f"marked={_lethal_side_return_cells(fixture.local_costmaps[-1], side)}; "
                     f"costmaps={len(fixture.local_costmaps)}; "
                     f"scan_subscribers={fixture.scan_pub.get_subscription_count()}; "
+                    f"{fixture.input_diagnostics()}; "
                     f"launch_log={log_path.read_text(encoding='utf-8')[-8000:]}"
                 ) from exc
             marked_cells = _lethal_side_return_cells(fixture.local_costmaps[-1], side)
@@ -392,6 +419,7 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
                     f"input_cycles={fixture.input_cycles}; "
                     f"costmaps={len(fixture.local_costmaps)}; "
                     f"scan_subscribers={fixture.scan_pub.get_subscription_count()}; "
+                    f"{fixture.input_diagnostics()}; "
                     f"launch_log={log_path.read_text(encoding='utf-8')[-8000:]}"
                 ) from exc
             assert marked_cells >= 10
