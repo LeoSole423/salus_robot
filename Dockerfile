@@ -50,6 +50,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liburdfdom-tools \
     && rm -rf /var/lib/apt/lists/*
 
+# geometry2 0.25.23 introduced an ABBA deadlock between a costmap's scan
+# MessageFilter and its TF listener (ros2/geometry2#992, fixed by #990).
+# Keep this separate from the cached dependency layer so existing CI images
+# also receive the fix. Fail the build if the apt repository lacks it.
+RUN dpkg-query -W ros-humble-tf2 ros-humble-tf2-ros \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ros-humble-tf2 ros-humble-tf2-ros \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2)" ge 0.25.24 \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2-ros)" ge 0.25.24 \
+    && dpkg-query -W ros-humble-tf2 ros-humble-tf2-ros \
+    && rm -rf /var/lib/apt/lists/*
+
 # MAVROS needs the GeographicLib datasets before a physical Pixhawk owner can
 # be started. Use the script shipped by the installed package, not a fetched
 # copy, while the image is still root.
