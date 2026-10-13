@@ -116,3 +116,37 @@ Only the first intermediate heading changed in this A/B. Reducing the loop
 does not establish a universal no-detour policy or justify bypassing an
 obstacle. Local artifact paths and sensitive map coordinates are not included
 in this portable evidence; the fixture is translated to waypoint 14 at (0,0).
+
+
+## CI follow-up on PR #323
+
+Run `38409913941` failed the real navigation fixture's tilted-return marking
+check and the canonical navigation smoke's right-turn plan wait. The latter
+log contains goal preemption. Nav2 Humble's NavigateToPose navigator creates
+its own `goal_pose` subscriber and sends that pose to its own action server;
+SALUS also received the public topic and sent an action. A single public
+publication therefore had two competing goal submission paths.
+
+Both core launches now remap only bt_navigator's direct RViz input to
+`/nav2/internal_goal_pose`. SALUS publishes nothing there. Public `/goal_pose`
+continues through the existing arbiter, including keepout/manual checks,
+without changing action names or the command chain. The real PC fixture and
+canonical smoke require exactly `nav_command_server` in the public topic's
+subscription graph. This is an endpoint regression gate rather than a source
+text assertion. Upstream reference:
+https://github.com/ros-navigation/navigation2/blob/humble/nav2_bt_navigator/src/navigators/navigate_to_pose.cpp
+
+The costmap fixture now visits only the measured observation rectangle.
+A full-grid oracle checks identical cell counts at positive/negative sides
+and clipped grid boundaries; lethal counts, clearing percentages and timeouts
+are unchanged. Measured local evaluation is about 0.28 ms instead of 0.91 ms
+on a 300x300 grid. Failure output also includes input cycles, marked-cell count,
+scan discovery and launch logs. This optimization removes unnecessary observer
+work but does not by itself prove the cause of the original CI marking failure.
+
+Local validation after these changes: full build and suite in a 4-CPU isolated
+container passed (1245 tests, 2 skips); the canonical navigation smoke passed
+in a 2-CPU isolated container and verified the single public goal subscriber.
+An additional 2-CPU full-suite stress run had an unrelated control comparison
+failure; it is retained in artifacts and not counted as a passing suite.
+The final GitHub run remains the acceptance gate; no Jetson deployment.

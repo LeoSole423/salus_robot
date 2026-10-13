@@ -39,6 +39,11 @@ autoridad de velocidad.
   la referencia a la orientación actual del robot, también usada como fallback
   si falta una aproximación geométrica válida. Los siguientes checkpoints
   conservan la bisectriz. Los yaws manuales siempre prevalecen.
+- `/goal_pose` es entrada pública exclusiva de `nav_command_server`. El
+  listener directo de RViz que Nav2 crea por defecto se remapea a
+  `/nav2/internal_goal_pose`, sin productor SALUS; así una publicación no
+  genera dos goals ni saltea el arbitraje. Los cores real y sim comparten
+  esta frontera, verificada en el grafo por el test real de PC y el smoke.
 - Recuperación de rutas bloqueadas mediante una política pura con espera por
   datos, cooldown, limpieza de costmaps y límite de intentos observable en los
   campos `blocked_*`. El retry conserva el sufijo del chunk activo posterior a
