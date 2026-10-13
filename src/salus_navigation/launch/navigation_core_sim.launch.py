@@ -38,7 +38,11 @@ def generate_launch_description() -> LaunchDescription:
         ),
     ]
     actions.extend(
-        Node(package=package, executable=executable, name=name, output="screen", parameters=params, remappings=remappings)
+        Node(package=package, executable=executable, name=name, output="screen", parameters=params,
+             remappings=remappings + (
+                 [("goal_pose", "/nav2/internal_goal_pose")]
+                 if name == "bt_navigator" else []
+             ))
         for package, executable, name in nodes
     )
     actions.append(Node(

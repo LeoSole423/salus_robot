@@ -82,25 +82,42 @@ def dispatch_yaws(
         return yaws
 
     first = points[0]
-    if (curve_tangent and first.key and not first.yaw_explicit
-            and approach_heading_deg is not None
-            and isfinite(approach_heading_deg)):
-        turn = abs((yaws[0] - approach_heading_deg + 180.0) % 360.0 - 180.0)
-        if turn > 60.0:
-            yaws[0] = float(approach_heading_deg)
-        return yaws
-    if approach_xy is not None and not first.yaw_explicit and (
-        first.key or not curve_tangent
-    ):
+    approach_yaw = None
+    if approach_xy is not None:
         values = (approach_xy[0], approach_xy[1], first.map_x, first.map_y)
         if all(value is not None and isfinite(value) for value in values):
             dx = float(first.map_x) - float(approach_xy[0])
             dy = float(first.map_y) - float(approach_xy[1])
             if hypot(dx, dy) > 1e-9:
                 approach_yaw = degrees(atan2(dy, dx))
-                turn = abs((yaws[0] - approach_yaw + 180.0) % 360.0 - 180.0)
-                if not curve_tangent or turn > 60.0:
-                    yaws[0] = approach_yaw
+    if (curve_tangent and first.key and not first.yaw_explicit
+            and approach_heading_deg is not None
+            and isfinite(approach_heading_deg)):
+        # An intermediate corner is approached along a finite leg. Comparing
+        # its tangent with today's robot heading can freeze a pre-turn heading
+        # in the goal and force a later Dubins replan to loop back into it.
+        # Keep the existing sharp-join rule, but measure that join against the
+        # approach leg when that leg itself is not a sharp lateral join.
+        # A singleton or sharp lateral join retains the established reference.
+        approach_turn = (
+            abs((approach_yaw - approach_heading_deg + 180.0) % 360.0 - 180.0)
+            if approach_yaw is not None else None
+        )
+        reference_yaw = (
+            approach_yaw if len(points) > 1 and approach_turn is not None
+            and approach_turn <= 60.0
+            else approach_heading_deg
+        )
+        turn = abs((yaws[0] - reference_yaw + 180.0) % 360.0 - 180.0)
+        if turn > 60.0:
+            yaws[0] = float(reference_yaw)
+        return yaws
+    if approach_yaw is not None and not first.yaw_explicit and (
+        first.key or not curve_tangent
+    ):
+        turn = abs((yaws[0] - approach_yaw + 180.0) % 360.0 - 180.0)
+        if not curve_tangent or turn > 60.0:
+            yaws[0] = approach_yaw
 
     if curve_tangent:
         return yaws

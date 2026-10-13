@@ -12,7 +12,9 @@ import os
 import signal
 import subprocess
 import tempfile
+import threading
 import time
+from collections import deque
 from pathlib import Path
 
 # This must happen before importing or initializing rclpy.
@@ -31,6 +33,7 @@ from nav2_msgs.action import ComputePathToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState, Costmap  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 from rclpy.action import ActionClient  # noqa: E402
+from rclpy.executors import SingleThreadedExecutor  # noqa: E402
 from rclpy.node import Node  # noqa: E402
 from rclpy.qos import (  # noqa: E402
     DurabilityPolicy,
@@ -61,7 +64,10 @@ SNAPSHOT_STARTUP_ERRORS = (
 def _spin_until(node: Node, predicate, timeout_s: float, description: str) -> None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.05)
+        if getattr(node, "_fixture_executor_running", False):
+            time.sleep(0.01)
+        else:
+            rclpy.spin_once(node, timeout_sec=0.05)
         if predicate():
             return
     raise AssertionError(f"timeout waiting for {description}")
@@ -103,6 +109,8 @@ class SyntheticNavigationInputs(Node):
         self.local_costmaps: list[Costmap] = []
         self.global_costmaps: list[Costmap] = []
         self.input_cycles = 0
+        self.sensor_trace = deque(maxlen=40)
+        self.costmap_trace = deque(maxlen=40)
         self.monitor_states: list[CollisionMonitorState] = []
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.scan_pub = self.create_publisher(
@@ -118,7 +126,7 @@ class SyntheticNavigationInputs(Node):
             DiagnosticArray, "/navigation_startup/diagnostics", self._on_startup, 10
         )
         self.create_subscription(
-            Costmap, "/local_costmap/costmap_raw", self.local_costmaps.append, 10
+            Costmap, "/local_costmap/costmap_raw", self._on_local_costmap, 10
         )
         self.create_subscription(
             Costmap, "/global_costmap/costmap_raw", self.global_costmaps.append, 10
@@ -131,6 +139,23 @@ class SyntheticNavigationInputs(Node):
         )
         self._tf_broadcaster = TransformBroadcaster(self)
         self._timer = self.create_timer(0.05, self._publish_inputs)
+
+    def _on_local_costmap(self, message: Costmap) -> None:
+        self.local_costmaps.append(message)
+        self.costmap_trace.append((
+            time.monotonic(), message.header.stamp.sec,
+            message.header.stamp.nanosec,
+            _lethal_side_return_cells(message, 1),
+            _lethal_side_return_cells(message, -1),
+        ))
+
+    def input_diagnostics(self) -> str:
+        return (
+            f"domain={_DOMAIN_ID}; sensors={list(self.sensor_trace)}; "
+            f"local_history={list(self.costmap_trace)}; "
+            f"scan_publishers={[endpoint.node_name for endpoint in self.get_publishers_info_by_topic('/scan_clean')]}; "
+            f"tf_publishers={[endpoint.node_name for endpoint in self.get_publishers_info_by_topic('/tf')]}"
+        )
 
     def _on_final(self, message: CmdVelFinal) -> None:
         self.final.append(message)
@@ -188,6 +213,12 @@ class SyntheticNavigationInputs(Node):
                 for index in range(176, 185):
                     scan.ranges[index] = self.obstacle_range
             self.scan_pub.publish(scan)
+            if self.input_cycles % 10 == 0:
+                self.sensor_trace.append((
+                    time.monotonic(), stamp.sec, stamp.nanosec,
+                    sum(math.isfinite(value) for value in scan.ranges[:180]),
+                    sum(math.isfinite(value) for value in scan.ranges[180:]),
+                ))
         if self.command_enabled:
             command = Twist()
             command.linear.x = 1.0
@@ -249,20 +280,55 @@ def _lethal_side_return_cells(costmap: Costmap, side: int) -> int:
     resolution = metadata.resolution
     width = metadata.size_x
     count = 0
-    for row in range(metadata.size_y):
+    # Visit only the observation rectangle; iterating the whole rolling grid
+    # on every spin needlessly competes with this node's sensor/TF timer.
+    low_y, high_y = ((1.0, 4.5) if side > 0 else (-4.5, -1.0))
+    first_row = max(0, math.floor((low_y - metadata.origin.position.y) / resolution - 0.5))
+    last_row = min(metadata.size_y, math.ceil((high_y - metadata.origin.position.y) / resolution - 0.5) + 1)
+    first_col = max(0, math.floor((5.5 - metadata.origin.position.x) / resolution - 0.5))
+    last_col = min(width, math.ceil((12.5 - metadata.origin.position.x) / resolution - 0.5) + 1)
+    for row in range(first_row, last_row):
         y = metadata.origin.position.y + (row + 0.5) * resolution
         if not 1.0 <= side * y <= 4.5:
             continue
-        for col in range(width):
+        for col in range(first_col, last_col):
             x = metadata.origin.position.x + (col + 0.5) * resolution
             if 5.5 <= x <= 12.5 and costmap.data[row * width + col] == 254:
                 count += 1
     return count
 
 
+def test_side_return_counter_matches_full_grid_at_region_boundaries() -> None:
+    for origin_x, origin_y in ((-15.0, -15.0), (5.5, -4.5), (12.5, 4.5)):
+        grid = Costmap()
+        grid.metadata.resolution = 0.25
+        grid.metadata.size_x = grid.metadata.size_y = 120
+        grid.metadata.origin.position.x = origin_x
+        grid.metadata.origin.position.y = origin_y
+        grid.data = [254 if index % 3 == 0 else 253 for index in range(120 * 120)]
+        for side in (-1, 1):
+            # Independent full-grid oracle retains the original spatial rule,
+            # including both boundaries and only lethal (254) cells.
+            expected = sum(
+                value == 254
+                and 5.5 <= origin_x + (col + 0.5) * 0.25 <= 12.5
+                and 1.0 <= side * (origin_y + (row + 0.5) * 0.25) <= 4.5
+                for row in range(120)
+                for col, value in enumerate(grid.data[row * 120:(row + 1) * 120])
+            )
+            assert _lethal_side_return_cells(grid, side) == expected
+
+
 def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
     rclpy.init(domain_id=int(_DOMAIN_ID))
     fixture = SyntheticNavigationInputs()
+    # Sensor/TF publication must continue independently of service waits and
+    # costmap assertions. Other physical-input fixtures use the same pattern.
+    executor = SingleThreadedExecutor()
+    executor.add_node(fixture)
+    spinner = threading.Thread(target=executor.spin, daemon=True)
+    fixture._fixture_executor_running = True
+    spinner.start()
     launch_process = _launch(
         PACKAGE_LAUNCH
         + [
@@ -303,6 +369,14 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             _assert_lifecycle_active(fixture, node_name)
         _spin_until(
             fixture,
+            lambda: {endpoint.node_name for endpoint in
+                     fixture.get_subscriptions_info_by_topic("/goal_pose")}
+            == {"nav_command_server"},
+            10.0,
+            "unique SALUS public goal subscription",
+        )
+        _spin_until(
+            fixture,
             lambda: bool(fixture.local_costmaps) and bool(fixture.global_costmaps),
             20.0,
             "local and global costmaps",
@@ -310,23 +384,44 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         for roll_deg, side in ((8.0, 1), (-8.0, -1)):
             assert _lethal_side_return_cells(fixture.local_costmaps[-1], side) <= 1
             fixture.scan_ranges_override = _tilted_low_returns_scan(roll_deg)
-            _spin_until(
-                fixture,
-                lambda: bool(fixture.local_costmaps)
-                and _lethal_side_return_cells(fixture.local_costmaps[-1], side) >= 10,
-                10.0,
-                "tilted low returns marked in local costmap",
-            )
+            try:
+                _spin_until(
+                    fixture,
+                    lambda: bool(fixture.local_costmaps)
+                    and _lethal_side_return_cells(fixture.local_costmaps[-1], side) >= 10,
+                    10.0,
+                    "tilted low returns marked in local costmap",
+                )
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{exc}; side={side}; input_cycles={fixture.input_cycles}; "
+                    f"marked={_lethal_side_return_cells(fixture.local_costmaps[-1], side)}; "
+                    f"costmaps={len(fixture.local_costmaps)}; "
+                    f"scan_subscribers={fixture.scan_pub.get_subscription_count()}; "
+                    f"{fixture.input_diagnostics()}; "
+                    f"launch_log={log_path.read_text(encoding='utf-8')[-8000:]}"
+                ) from exc
             marked_cells = _lethal_side_return_cells(fixture.local_costmaps[-1], side)
             fixture.scan_ranges_override = None
-            _spin_until(
-                fixture,
-                lambda: bool(fixture.local_costmaps)
-                and _lethal_side_return_cells(fixture.local_costmaps[-1], side)
-                <= max(2, marked_cells // 20),
-                10.0,
-                "at least 95 percent of tilted returns cleared from local costmap",
-            )
+            try:
+                _spin_until(
+                    fixture,
+                    lambda: bool(fixture.local_costmaps)
+                    and _lethal_side_return_cells(fixture.local_costmaps[-1], side)
+                    <= max(2, marked_cells // 20),
+                    10.0,
+                    "at least 95 percent of tilted returns cleared from local costmap",
+                )
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{exc}; side={side}; domain={_DOMAIN_ID}; marked={marked_cells}; "
+                    f"remaining={_lethal_side_return_cells(fixture.local_costmaps[-1], side)}; "
+                    f"input_cycles={fixture.input_cycles}; "
+                    f"costmaps={len(fixture.local_costmaps)}; "
+                    f"scan_subscribers={fixture.scan_pub.get_subscription_count()}; "
+                    f"{fixture.input_diagnostics()}; "
+                    f"launch_log={log_path.read_text(encoding='utf-8')[-8000:]}"
+                ) from exc
             assert marked_cells >= 10
         snapshot_client = fixture.create_client(
             GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
@@ -529,6 +624,8 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         assert launch_process.poll() is None
     finally:
         _stop_launch(launch_process)
+        executor.shutdown(timeout_sec=5.0)
+        spinner.join(timeout=5.0)
         fixture.destroy_node()
         rclpy.shutdown()
 

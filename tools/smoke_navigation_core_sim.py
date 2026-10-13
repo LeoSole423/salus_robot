@@ -362,6 +362,14 @@ def main() -> int:
         wait_for_action_server(node, node.navigate_action, "/navigate_to_pose")
         wait_for_action_server(node, node.plan_action, "/compute_path_to_pose")
         wait_for_action_server(node, node.follow_action, "/follow_path")
+        wait_for(
+            node,
+            lambda: {endpoint.node_name for endpoint in
+                     node.get_subscriptions_info_by_topic("/goal_pose")}
+            == {"nav_command_server"},
+            8.0,
+            "public RViz goal must have only the SALUS arbiter as subscriber",
+        )
         # The integrated smoke has already exercised manual control and braking.
         # Restore the navigation precondition explicitly before sending its goal.
         response = call(
