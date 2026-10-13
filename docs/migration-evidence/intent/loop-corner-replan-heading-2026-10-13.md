@@ -166,3 +166,51 @@ node/context destruction. Detection and 95-percent-clearing criteria, input
 rates and timeouts remain unchanged. A clearing failure now records side,
 domain, initial/remaining cells, publication cycles, discovery and launch logs.
 The focused runtime tests passed in an isolated 2-CPU container (3 tests).
+
+## CI blocker: confirmed geometry2 deadlock
+
+The executor change did not resolve run `38415190281`, including its rerun.
+Main comparison `38437054966` passed the navigation test once, so neither
+runner load nor a pre-existing test failure was assumed to be the cause.
+
+Diagnostic run `38438566430` instead failed clearing: after publishing empty
+scans for ten seconds, twelve fresh local costmaps retained exactly 52 lethal
+cells. Input timestamps advanced; the graph contained only the fixture's scan
+and TF producers. This isolated a frozen observation path rather than missing
+input publication or a stale costmap subscription.
+
+The next image build recorded the actual CI dependency mismatch:
+
+| Environment | tf2 core | tf2_ros | Result |
+|---|---|---|---|
+| Original local image | 0.25.22 | 0.25.22 | Full suite passes |
+| Cached CI dependency layer | 0.25.23 | 0.25.24 | Observation processing freezes |
+| Local source overlay, upstream tag 0.25.23, two CPU | 0.25.23 | 0.25.23 | Same runtime test fails; GDB confirms deadlock in both Nav2 servers |
+| Updated local image | 0.25.24 | 0.25.24 | Full suite: 1245 tests, zero failures, two skips; five two-CPU fixture repetitions pass |
+| CI run `38439698156`, head `848fa52` | 0.25.24 | 0.25.24 | build-unit and all six selected smokes pass; 1245 tests, zero failures, one skip |
+
+The failing overlay used unchanged repository code, with only `tf2` and
+`tf2_ros` rebuilt from the upstream tag outside the repository. GDB captured
+the scan executor blocked in `BufferCore::addTransformableRequest`
+(`buffer_core.cpp:1299`), called by `Buffer::waitForTransform`
+(`buffer.cpp:255`). The TF listener was simultaneously blocked in that
+buffer's transform-ready callback (`buffer.cpp:219`), called under
+`BufferCore::testTransformableRequests` (`buffer_core.cpp:1442`). The two
+threads belonged to the same buffer instance; both planner and controller
+showed this lock inversion. The costmap update thread can continue publishing
+the last observations, explaining both persistent cells during clearing and
+zero new cells during marking. Lifecycle ACTIVE and subscriber discovery do
+not establish that the observation callbacks are making progress.
+
+Upstream [geometry2 issue 992](https://github.com/ros2/geometry2/issues/992)
+documents this ABBA inversion. [Fix 990](https://github.com/ros2/geometry2/pull/990)
+in release 0.25.24 moves transform-ready callbacks outside the core mutexes.
+Updating only `tf2_ros` is insufficient because the fix is in `tf2` core.
+
+The Dockerfile now upgrades both packages from apt and enforces a minimum
+0.25.24 for each. Its separate layer updates existing cached CI dependencies
+and reports before/after versions; a repository lacking the fix fails the
+image build. No retries, detection/clearing thresholds, timeouts, scan rates,
+Nav2 parameters or TF stamps were changed. Bounded fixture traces remain for
+future failures. This is PC/container evidence; the Jetson's installed
+versions and physical navigation remain unvalidated and were not changed.
