@@ -150,3 +150,19 @@ in a 2-CPU isolated container and verified the single public goal subscriber.
 An additional 2-CPU full-suite stress run had an unrelated control comparison
 failure; it is retained in artifacts and not counted as a passing suite.
 The final GitHub run remains the acceptance gate; no Jetson deployment.
+
+
+The follow-up run `38412861641` passed all six runtime smokes, including
+canonical navigation. Its build-unit fixture instead failed the clearing
+phase after successfully marking the tilted returns. Thus the ROI counting
+optimization was not sufficient to resolve the fixture failure.
+
+The fixture's external sensor/TF publication is now run by a dedicated
+SingleThreadedExecutor thread, matching the other physical-input runtime
+fixtures. Service/observation waits no longer control whether the fixture's
+input timer can execute, and no node is spun by two executors. Inputs remain
+active during normal shutdown; the executor is stopped and joined before
+node/context destruction. Detection and 95-percent-clearing criteria, input
+rates and timeouts remain unchanged. A clearing failure now records side,
+domain, initial/remaining cells, publication cycles, discovery and launch logs.
+The focused runtime tests passed in an isolated 2-CPU container (3 tests).

@@ -12,6 +12,7 @@ import os
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -31,6 +32,7 @@ from nav2_msgs.action import ComputePathToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState, Costmap  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 from rclpy.action import ActionClient  # noqa: E402
+from rclpy.executors import SingleThreadedExecutor  # noqa: E402
 from rclpy.node import Node  # noqa: E402
 from rclpy.qos import (  # noqa: E402
     DurabilityPolicy,
@@ -61,7 +63,10 @@ SNAPSHOT_STARTUP_ERRORS = (
 def _spin_until(node: Node, predicate, timeout_s: float, description: str) -> None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.05)
+        if getattr(node, "_fixture_executor_running", False):
+            time.sleep(0.01)
+        else:
+            rclpy.spin_once(node, timeout_sec=0.05)
         if predicate():
             return
     raise AssertionError(f"timeout waiting for {description}")
@@ -291,6 +296,13 @@ def test_side_return_counter_matches_full_grid_at_region_boundaries() -> None:
 def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
     rclpy.init(domain_id=int(_DOMAIN_ID))
     fixture = SyntheticNavigationInputs()
+    # Sensor/TF publication must continue independently of service waits and
+    # costmap assertions. Other physical-input fixtures use the same pattern.
+    executor = SingleThreadedExecutor()
+    executor.add_node(fixture)
+    spinner = threading.Thread(target=executor.spin, daemon=True)
+    fixture._fixture_executor_running = True
+    spinner.start()
     launch_process = _launch(
         PACKAGE_LAUNCH
         + [
@@ -364,14 +376,24 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
                 ) from exc
             marked_cells = _lethal_side_return_cells(fixture.local_costmaps[-1], side)
             fixture.scan_ranges_override = None
-            _spin_until(
-                fixture,
-                lambda: bool(fixture.local_costmaps)
-                and _lethal_side_return_cells(fixture.local_costmaps[-1], side)
-                <= max(2, marked_cells // 20),
-                10.0,
-                "at least 95 percent of tilted returns cleared from local costmap",
-            )
+            try:
+                _spin_until(
+                    fixture,
+                    lambda: bool(fixture.local_costmaps)
+                    and _lethal_side_return_cells(fixture.local_costmaps[-1], side)
+                    <= max(2, marked_cells // 20),
+                    10.0,
+                    "at least 95 percent of tilted returns cleared from local costmap",
+                )
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{exc}; side={side}; domain={_DOMAIN_ID}; marked={marked_cells}; "
+                    f"remaining={_lethal_side_return_cells(fixture.local_costmaps[-1], side)}; "
+                    f"input_cycles={fixture.input_cycles}; "
+                    f"costmaps={len(fixture.local_costmaps)}; "
+                    f"scan_subscribers={fixture.scan_pub.get_subscription_count()}; "
+                    f"launch_log={log_path.read_text(encoding='utf-8')[-8000:]}"
+                ) from exc
             assert marked_cells >= 10
         snapshot_client = fixture.create_client(
             GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
@@ -574,6 +596,8 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
         assert launch_process.poll() is None
     finally:
         _stop_launch(launch_process)
+        executor.shutdown(timeout_sec=5.0)
+        spinner.join(timeout=5.0)
         fixture.destroy_node()
         rclpy.shutdown()
 
