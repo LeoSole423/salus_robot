@@ -26,7 +26,18 @@ def test_sweep_waits_for_left_then_traverses_right_preserving_tilt():
     assert feature.phase == "sweeping_right"
     backend.read_state.return_value = PtzPose(0, 23, 1)
     feature.tick(13)
+    assert feature.running
+    assert feature.phase == "sweeping_left"
+    assert backend.write_absolute.call_args.args[0] == left
+    backend.read_state.return_value = left
+    feature.tick(14)
+    assert feature.phase == "sweeping_right"
+    assert feature.deadline == 134
+    feature.stop()
+    calls = backend.write_absolute.call_count
+    feature.tick(15)
     assert not feature.running
+    assert backend.write_absolute.call_count == calls
     backend.stop.assert_called_once()
 
 

@@ -42,7 +42,8 @@ fases acotadas (ir al extremo izquierdo, recorrer hacia el derecho), conserva
 tilt/zoom y puede detenerse. Los comandos PT manuales cancelan el paneo.
 Un timer del nodo serializa sus operaciones con el backend, sin hilo oculto
 en Cockpit. Encender/iniciar requiere lease; apagar/detener permanece accesible
-sin lease. El recorrido es finito y no se reinicia por desconexión de Cockpit.
+sin lease. El recorrido alterna ambos extremos hasta detenerse; desconectar Cockpit no
+lo detiene ni crea una nueva orden de inicio.
 
 La luz fija renueva órdenes temporales. La luz móvil usa configuración de
 imagen: selecciona blanco y fuerza noche; antes de mutar guarda atómicamente
@@ -51,3 +52,9 @@ arranque posterior restaura el perfil. Un cierre abrupto puede dejar la luz
 móvil activa hasta la recuperación posterior: no tiene timeout físico probado.
 Ante fallo de red se informa estado desconocido y no se reintenta indefinidamente.
 El estado de luces representa intención reconocida, no telemetría óptica.
+
+Actualización 2026-10-14: el paneo alterna derecha/izquierda continuamente
+hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
+Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
+Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
+ONVIF 0.65 para paneo; flechas manuales conservan 0.15.

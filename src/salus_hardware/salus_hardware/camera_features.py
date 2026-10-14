@@ -25,7 +25,7 @@ class CameraFeaturesController:
 
     @property
     def running(self):
-        return self.phase in ("moving_left", "sweeping_right")
+        return self.phase in ("moving_left", "sweeping_right", "sweeping_left")
 
     def _require_supported(self):
         if not self.supported:
@@ -80,13 +80,16 @@ class CameraFeaturesController:
                     raise CameraBackendError("camera sweep timed out")
                 pose = self.backend.read_state()
                 if abs(pose.pan_deg - self.target.pan_deg) <= self.PAN_TOLERANCE_DEG:
-                    if self.phase == "moving_left":
+                    if self.phase in ("moving_left", "sweeping_left"):
                         self.target = PtzPose(self.right, self.target.tilt_deg,
                                               self.target.zoom_level)
                         self._write_target()
                         self.phase, self.deadline = "sweeping_right", now + self.LEG_TIMEOUT_S
                     else:
-                        self.stop()
+                        self.target = PtzPose(self.left, self.target.tilt_deg,
+                                              self.target.zoom_level)
+                        self._write_target()
+                        self.phase, self.deadline = "sweeping_left", now + self.LEG_TIMEOUT_S
             except CameraBackendError as error:
                 try:
                     self.stop()

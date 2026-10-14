@@ -151,3 +151,9 @@ respaldado, apagar móvil no cambia una configuración ajena a este adaptador.
 La móvil puede quedar activa ante caída abrupta hasta recuperación; el control
 de imagen modifica su reproducción nocturna, no sólo un LED independiente.
 GET LightCtrl no se usa como estado físico. Video sigue externo en MediaMTX.
+
+Actualización 2026-10-14: el paneo alterna derecha/izquierda continuamente
+hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
+Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
+Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
+ONVIF 0.65 para paneo; flechas manuales conservan 0.15.

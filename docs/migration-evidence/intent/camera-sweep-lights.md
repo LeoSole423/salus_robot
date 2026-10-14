@@ -1,6 +1,6 @@
 # Camera sweep and steady lights
 
-Intent: Cockpit commands one full mobile pan from physical left to right,
+Intent: Cockpit commands continuous mobile pan between physical left and right,
 preserving tilt, with an explicit stop. Separate steady light controls use physically verified mechanisms for
 the fixed and mobile lenses.
 MediaMTX remains the video owner; salus_hardware owns ONVIF/LAPI and secrets.
@@ -39,3 +39,9 @@ grid, corrected PTZ and rear stream are already integrated. The older migration
 branch diverges; an attempted integration on a new branch was aborted cleanly
 and changes are isolated on agent/camera-sweep-lights-current, preserving main.
 
+
+Actualización 2026-10-14: el paneo alterna derecha/izquierda continuamente
+hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
+Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
+Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
+ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
