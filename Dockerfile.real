@@ -60,6 +60,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liburdfdom-tools \
     && rm -rf /var/lib/apt/lists/*
 
+# Apply the same geometry2 deadlock fix as the development image, including
+# cached real dependency layers. Do not accept an affected runtime version.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ros-humble-tf2 ros-humble-tf2-ros ros-humble-tf2-py \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2)" ge 0.25.24 \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2-ros)" ge 0.25.24 \
+    && dpkg-query -W ros-humble-tf2 ros-humble-tf2-ros ros-humble-tf2-py \
+    && rm -rf /var/lib/apt/lists/*
+
 # Use the installer shipped by the package while the image is still root.
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
     && ros2 run mavros install_geographiclib_datasets.sh

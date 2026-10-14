@@ -1,6 +1,7 @@
 """Conservative 3D ground removal before the cloud is projected to a LaserScan."""
 from __future__ import annotations
 import rclpy
+import numpy as np
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rcl_interfaces.msg import SetParametersResult
@@ -20,6 +21,20 @@ def ground_filter_input_qos() -> QoSProfile:
     return QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1,
                       reliability=ReliabilityPolicy.BEST_EFFORT,
                       durability=DurabilityPolicy.VOLATILE)
+
+
+def cloud_xyz_points(msg: PointCloud2) -> np.ndarray:
+    """Keep read_points' field/NaN policy without Python work per point.
+
+    Float64 matches the former float(row) conversion before transformation.
+    Field names, rather than memory reinterpretation, preserve padded layouts.
+    """
+    rows = point_cloud2.read_points(
+        msg, field_names=("x", "y", "z"), skip_nans=True
+    )
+    return np.column_stack((rows["x"], rows["y"], rows["z"])).astype(
+        np.float64, copy=False
+    )
 
 
 def rotate_translate(point: tuple[float, float, float], transform) -> tuple[float, float, float]:
@@ -65,12 +80,7 @@ class ScanGroundFilter(Node):
         try: transform=self.buffer.lookup_transform(self.target,msg.header.frame_id,rclpy.time.Time(),timeout=Duration(seconds=0.05))
         except TransformException as error:
             self.get_logger().warn("LiDAR cloud rejected: missing transform to %s (%s)"%(self.target,error),throttle_duration_sec=2.0);return
-        points = [
-            (float(row[0]), float(row[1]), float(row[2]))
-            for row in point_cloud2.read_points(
-                msg, field_names=("x", "y", "z"), skip_nans=True
-            )
-        ]
+        points = cloud_xyz_points(msg)
         rotation = transform.transform.rotation
         translation = transform.transform.translation
         transformed = rotate_translate_points(
