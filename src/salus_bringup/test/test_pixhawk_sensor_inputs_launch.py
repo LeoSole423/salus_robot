@@ -25,7 +25,8 @@ def test_pixhawk_sensor_launch_supports_independent_expected_frames() -> None:
     assert '"imu_expected_frame": imu_expected_frame' in launch
     assert '"gnss_expected_frame": gnss_expected_frame' in launch
     assert '"primary_frame": imu_expected_frame' in launch
-    assert '"primary_frame": gnss_expected_frame' in launch
+    assert '"primary_frame": gnss_output_frame' in launch
+    assert '"gnss_output_frame": gnss_output_frame' in launch
 
 
 def test_real_observation_keeps_base_link_compatibility() -> None:
@@ -47,3 +48,10 @@ def test_wrong_pixhawk_frames_remain_fail_closed() -> None:
     fix.header.frame_id = "imu_link"
     assert validate_imu(imu, expected_frame="imu_link") == "unexpected_frame"
     assert validate_gnss(fix, expected_frame="gps_link") == "unexpected_frame"
+
+
+def test_real_hardware_identifies_raw_gnss_at_antenna_only() -> None:
+    launch = (Path(__file__).parents[1] / "launch" / "real_hardware.launch.py").read_text()
+    assert '"imu_expected_frame": "base_link"' in launch
+    assert '"gnss_expected_frame": "base_link"' in launch
+    assert '"gnss_output_frame": "gps_link"' in launch
