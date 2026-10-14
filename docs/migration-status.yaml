@@ -448,6 +448,7 @@ components:
       - src/salus_perception/salus_perception/radial_ground.py
       - docs/migration-evidence/intent/radial-ground-segmentation-2026-09-24.md
       - docs/migration-evidence/intent/radial-throughput-320-2026-10-14.md
+      - docs/migration-evidence/radial-throughput-320-2026-10-14.md
       - src/salus_perception/test/test_cloud_xyz_points.py
     note: >-
       Reduced 8-channel Gazebo model and 3D local pipeline are ported.
@@ -460,6 +461,14 @@ components:
       safety and snapshot smokes pass. Full-navigation performance and physical
       obstacle-classification validation remain unvalidated; no subsystem-wide
       hardware parity is claimed.
+      The authorized stationary deployment at 2a3c189 with tf2 0.25.24 sustained
+      10.00 Hz for 600 s on approximately 7.8k-point input clouds, with zero missing
+      source stamps in the common observation window (5999 pairs). A fresh
+      120 s original baseline on approximately 7.7k points delivered 9.44 Hz.
+      Scan-clean p99 age improved 355 to 246 ms and filter mean CPU 79.8 to 53.8
+      percent of one core; all 6000 wheel-odometry samples reported zero velocity.
+      This bounded deployed branch excludes PR 324 and PR 325; the larger-cloud
+      and full-navigation throughput gates are not claimed passed.
   rs16_real_owner:
     source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 RS16 deployment
     target: salus_hardware/rslidar_sdk raw owner

@@ -51,5 +51,9 @@ nombre y float64, evitando la conversión por punto a tuplas Python. Conserva
 clasificación, orden, stamp, frame y QoS de entrada depth=1. La evidencia de
 rendimiento estacionario y sus límites se documentan en
 [`radial-throughput-320-2026-10-14.md`](../../docs/migration-evidence/intent/radial-throughput-320-2026-10-14.md).
+La [medición estacionaria en Jetson](../../docs/migration-evidence/radial-throughput-320-2026-10-14.md)
+sostuvo 10 Hz durante diez minutos con nubes de unas 7800 puntos, sin stamps
+perdidos dentro de la ventana común comparada. La edad p99 de `/scan_clean`
+bajó de 355 a 246 ms frente a una baseline nueva de tamaño similar.
 El perfil desconectado y las pruebas de equivalencia no demuestran por sí solos
 la tasa del pipeline bajo navegación completa.
