@@ -1,0 +1,20 @@
+{
+  "base_commit": "2fc6973beee79c2f1643531acaaccf1ed6a1863c",
+  "plan_commit": "b55ab4c",
+  "image_id": "sha256:2e5810ab7335d8a7998ea77e8a784dd7593aac738d7339bd9aaffaff3311d51a",
+  "source_sha256": {
+    "src/salus_localization/salus_localization/gps_course_heading.py": "2f6a821d0502fab94b3e7ff78b83df3aa70b36dacb8777925391c18280e6c5ae",
+    "src/salus_localization/config/localization_local_sim.yaml": "c2fd95534014623542f73eea00359d602607a3d0d622a96b9f540e93b81f042a",
+    "src/salus_localization/config/localization_global_sim.yaml": "92ae4d4921571cccebf06bcc5d30f5221390a696020b0bc8f505a8e20a8d56e6",
+    "src/salus_localization/launch/global_localization_sim.launch.py": "13313ade26405ec6b30a24059f35fb9ed7398fe0043815ecb3fe072a572ce766",
+    "src/salus_simulation/config/sensor_profiles/clean.yaml": "0537348c3fa2e52b5942ef0c2f052fb74965c8e15df425213005c1bf7129a1de",
+    "tools/capture_heading_baseline.py": "5ae75f215aa26a4e7259be7c27b4a61d3d19b1698c1750337e3986d164177c77",
+    "tools/summarize_heading_capture.py": "ce7b6d47c337e48fe3291b4917bbc43c8a76fc0291d0ece261702a1bc44a5c56"
+  },
+  "domain_id": 117,
+  "network": "none",
+  "cpu_limit": 4,
+  "seed": 6400,
+  "profile": "clean",
+  "build_install": "Read-only reuse of existing build/install; Python symlinks resolve into isolated worktree /ros2_ws/src"
+}

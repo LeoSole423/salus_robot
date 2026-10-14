@@ -1,0 +1,30 @@
+{
+  "start_sim_s": 5.5200000000000005,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "strong_turn",
+      4.5,
+      1.2,
+      0.35
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "scenario": "left"
+}

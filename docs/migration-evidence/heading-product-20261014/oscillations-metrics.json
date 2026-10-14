@@ -1,0 +1,204 @@
+{
+  "timestamp_pairing": "interpolation of /odom_raw at measurement header stamp; no extrapolation",
+  "phases": {
+    "straight_before": {
+      "raw_yaw_start_deg": 1.4390056119089369e-26,
+      "raw_yaw_end_deg": 0.4238951709994058,
+      "errors": {
+        "/odometry/local": {
+          "paired_samples": 240,
+          "abs_yaw_error_p95_deg": 0.029376130486721743,
+          "abs_yaw_error_max_deg": 0.03371985267081328
+        },
+        "/odometry/global": {
+          "paired_samples": 239,
+          "abs_yaw_error_p95_deg": 0.8285642711946097,
+          "abs_yaw_error_max_deg": 1.1036325406759107
+        },
+        "/gps/course_heading": {
+          "paired_samples": 41,
+          "abs_yaw_error_p95_deg": 1.518293855523977,
+          "abs_yaw_error_max_deg": 1.6114294100450677
+        },
+        "/diagnostic/global_no_gps_position": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_compensated_gps": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_delayed_gps_reference": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        }
+      },
+      "gps_heading_samples": 41,
+      "gps_first_elapsed_s": 1.8809999999999998
+    },
+    "strong_turn": {
+      "raw_yaw_start_deg": 0.4157146276785557,
+      "raw_yaw_end_deg": 0.4615193905528168,
+      "errors": {
+        "/odometry/local": {
+          "paired_samples": 136,
+          "abs_yaw_error_p95_deg": 0.03464381592183865,
+          "abs_yaw_error_max_deg": 0.03699501235476783
+        },
+        "/odometry/global": {
+          "paired_samples": 136,
+          "abs_yaw_error_p95_deg": 0.6650917061275838,
+          "abs_yaw_error_max_deg": 1.2359889766508065
+        },
+        "/gps/course_heading": {
+          "paired_samples": 30,
+          "abs_yaw_error_p95_deg": 1.2066480761940364,
+          "abs_yaw_error_max_deg": 2.3472014015001172
+        },
+        "/diagnostic/global_no_gps_position": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_compensated_gps": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_delayed_gps_reference": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        }
+      },
+      "gps_heading_samples": 30,
+      "gps_first_elapsed_s": 8.078999999999999
+    },
+    "straight_after": {
+      "raw_yaw_start_deg": 0.4700380681666404,
+      "raw_yaw_end_deg": 0.40638159604021873,
+      "errors": {
+        "/odometry/local": {
+          "paired_samples": 240,
+          "abs_yaw_error_p95_deg": 0.035677700084754835,
+          "abs_yaw_error_max_deg": 0.03811324275508523
+        },
+        "/odometry/global": {
+          "paired_samples": 237,
+          "abs_yaw_error_p95_deg": 0.7951826517319928,
+          "abs_yaw_error_max_deg": 1.0089247758561286
+        },
+        "/gps/course_heading": {
+          "paired_samples": 54,
+          "abs_yaw_error_p95_deg": 1.6273077731110717,
+          "abs_yaw_error_max_deg": 2.2015240404627967
+        },
+        "/diagnostic/global_no_gps_position": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_compensated_gps": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_delayed_gps_reference": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        }
+      },
+      "gps_heading_samples": 54,
+      "gps_first_elapsed_s": 12.578999999999999
+    },
+    "stop": {
+      "raw_yaw_start_deg": 0.4153732609896663,
+      "raw_yaw_end_deg": 0.4444120188175293,
+      "errors": {
+        "/odometry/local": {
+          "paired_samples": 90,
+          "abs_yaw_error_p95_deg": 0.02919752130260473,
+          "abs_yaw_error_max_deg": 0.029198491919423204
+        },
+        "/odometry/global": {
+          "paired_samples": 90,
+          "abs_yaw_error_p95_deg": 0.7629183341059306,
+          "abs_yaw_error_max_deg": 0.7650555022739703
+        },
+        "/gps/course_heading": {
+          "paired_samples": 2,
+          "abs_yaw_error_p95_deg": 0.8366893999831139,
+          "abs_yaw_error_max_deg": 1.3929361371363937
+        },
+        "/diagnostic/global_no_gps_position": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_compensated_gps": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        },
+        "/diagnostic/global_delayed_gps_reference": {
+          "paired_samples": 0,
+          "abs_yaw_error_p95_deg": null,
+          "abs_yaw_error_max_deg": null
+        }
+      },
+      "gps_heading_samples": 2,
+      "gps_first_elapsed_s": 20.679000000000002
+    }
+  },
+  "gate": {
+    "transitions": [
+      {
+        "elapsed_s": 0.08400000000000007,
+        "state": "NORMAL"
+      }
+    ],
+    "strong_turn_debug_samples": 0,
+    "valid_during_strong_turn": 0,
+    "held_samples": 0,
+    "window_generations": [
+      0
+    ],
+    "reasons": {
+      "distance_below_threshold": 9,
+      "ok": 127,
+      "speed_below_threshold": 21
+    }
+  },
+  "measured_turn": {
+    "rate_threshold_rps": 0.18,
+    "first_elapsed_s": null,
+    "last_elapsed_s": null,
+    "errors": {}
+  },
+  "continuity": {
+    "/odometry/local": {
+      "samples": 706,
+      "max_gap_s": 0.04200000000000159,
+      "max_step_deg": 0.0374627985864808
+    },
+    "/odometry/global": {
+      "samples": 701,
+      "max_gap_s": 0.08400000000000052,
+      "max_step_deg": 1.0225206673373959
+    },
+    "/tf/map/odom": {
+      "samples": 701,
+      "max_gap_s": 0.08400000000000052,
+      "max_step_deg": 1.0237392230297444
+    },
+    "/tf/odom/base_footprint": {
+      "samples": 706,
+      "max_gap_s": 0.04200000000000159,
+      "max_step_deg": 0.0374627985864808
+    }
+  }
+}

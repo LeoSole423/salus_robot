@@ -1,0 +1,21 @@
+/gps_course_heading:
+  ros__parameters:
+    base_frame: base_footprint
+    debug_topic: /gps/course_heading/debug
+    drive_telemetry_topic: /controller/drive_telemetry
+    gps_topic: /gps/fix
+    invalid_hold_s: 0.8
+    max_abs_steer_deg: 3.0
+    max_abs_yaw_rate_rps: 0.05
+    max_fix_age_s: 0.5
+    max_sample_dt_s: 2.5
+    min_distance_m: 2.0
+    min_speed_mps: 0.8
+    odom_topic: /odometry/local
+    output_topic: /gps/course_heading
+    require_rtk: true
+    rtk_status_max_age_s: 2.5
+    rtk_status_topic: /gps/rtk_status
+    rtk_status_wire_type: legacy_string
+    use_sim_time: true
+

@@ -1,0 +1,8 @@
+{
+  "global-ekf-debug.log": "f5c5d4b271190c514118bcbef1a78ee295738f306dc0f25ee65eccc528ad5b51",
+  "compensated_gps-ekf-debug.log": "b4ec43484e3c79e57c338e44169c46ed9cbb71f99716cb896acecb2195c352d6",
+  "delayed_gps_reference-ekf-debug.log": "2832bb5330225492d5d371210ea28200d2e2c6fca89881cc8efea1c79ceff671",
+  "no_gps_position-ekf-debug.log": "4fa7828e4cfc1dedc0071cd251180dcf8d178f20dbd9f0a1310b3c56798c9dba",
+  "local-ekf-debug.log": "42e31c55247817db7cac16a96a146832e73a288a28f3383ac01e40c43153d82c",
+  "samples.jsonl": "85d02e3f200f7d99e0a31cbdccd51af28a59ad8e7427c5483c3dccaa4263be69"
+}
