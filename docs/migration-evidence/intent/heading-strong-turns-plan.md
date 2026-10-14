@@ -7,7 +7,8 @@ Plan solicitado por el operador el 2026-10-14. Rama
 `main@2fc6973beee79c2f1643531acaaccf1ed6a1863c`.
 No incorporar cambios del checkout de #277 sin revisar su PR y su integración.
 No desplegar ni mover hardware. Este documento no acredita implementación ni
-pruebas ejecutadas del cambio.
+pruebas ejecutadas del cambio. Sí existe una captura baseline del código
+original, documentada a continuación; conservarla antes de implementar.
 
 Objetivo: suspender exclusivamente la corrección de orientación GPS durante
 giros fuertes. La estimación de yaw local/global sigue actualizándose con la
@@ -31,6 +32,68 @@ el giroscopio no crea por sí solo una referencia norte.
   Suspender GPS no equivale a autoridad exclusiva de IMU sobre la fusión local.
 - Los gates actuales de 3 grados y 0,05 rad/s son de admisibilidad de rumbo GPS;
   no deben reutilizarse automáticamente como definición de giro fuerte.
+
+## Referencia de simulación ya ejecutada
+
+Leer [heading-baseline-2026-10-14.md](heading-baseline-2026-10-14.md).
+Instrumentación y reporte versionados en `0d2da33`, posterior al plan inicial
+`b55ab4c`. Ninguno modifica el código de localización.
+
+La captura baseline está en `artifacts/heading-baseline-20261014/` dentro del
+worktree. Artefactos ignorados por Git: conservarlos, no sobrescribirlos ni
+suponer que estarán disponibles al clonar en otra máquina. Incluye datos crudos
+`samples.jsonl`, secuencia, parámetros efectivos de heading GPS, hashes/image ID,
+métricas emparejadas por timestamp y gráficas `heading.html` y `heading.svg`.
+
+Secuencia ejecutada en Gazebo, world free, perfil clean y seed 6400:
+
+| Fase | Duración simulada | Velocidad pedida | Giro pedido |
+| --- | ---: | ---: | ---: |
+| Recta inicial | 8 s | 1,2 m/s | 0 rad/s |
+| Curva derecha fuerte | 4,5 s | 1,2 m/s | -0,35 rad/s |
+| Recta de salida | 8 s | 1,2 m/s | 0 rad/s |
+| Stop | 3 s | 0 m/s | 0 rad/s |
+
+Giro medido de unos 69,3 grados, no los 90 nominales: la dirección responde
+gradualmente y el giro continúa brevemente al comenzar la recta de salida.
+Evaluar el detector usando el movimiento medido, no solamente fase de comando.
+
+Resultados de referencia:
+
+- Recta inicial: error global máximo 1,11 grados; 41 correcciones GPS.
+- Curva: error local máximo 3,37 grados, global 9,69 grados; 8 correcciones GPS
+  al inicio, incluyendo cinco estados `hold_steer_too_high` en el debug.
+- Recta de salida: errores máximos local 3,90 y global 9,93 grados. Primera
+  corrección GPS a t=14,481 s, unos 1,98 s después del cambio de comando a recta.
+- Stop: error global máximo 1,86 grados. Los EKF publicaron heading durante
+  toda la maniobra; ausencia de corrección GPS no congeló la orientación.
+
+Estos resultados no atribuyen todo el desfase a GPS: ya hay error local.
+La IMU clean deriva de ground truth, sin ruido/sesgo. Esta captura es open-loop
+sin Nav2; no mide pared, costmap, misión ni obstáculos fantasma.
+
+## Orden de trabajo para el nuevo chat
+
+1. Continuar en este worktree y rama; revisar status, instrucciones y este plan.
+   El checkout canónico fue usado por otra tarea de #277: no cambiar su rama,
+   resetearlo ni copiar sus modificaciones. Si se actualiza la base, documentar
+   qué cambió y recapturar baseline cuando afecte este experimento.
+2. Comprobar que el bundle baseline existe y leer provenance/metrics/gráfica.
+   Antes de editar, repetir la secuencia original en otra carpeta para observar
+   dispersión entre corridas; mismo seed no garantiza scheduling idéntico.
+3. Implementar primero gating/ventanas/frescura y regresiones causales. Conservar
+   máscaras y covarianzas EKF en la primera comparación para aislar el efecto.
+   Revisar covarianza de heading GPS después si la medición lo justifica.
+4. Repetir exactamente recta-curva-recta con código nuevo, preservar baseline,
+   comparar por timestamp y publicar gráficas con las mismas escalas. Reportar
+   error local/global por fase y alineado al giro realmente observado; actividad
+   GPS, hold, tiempo de reacquisición y variación map/odom.
+5. Añadir los controles de oscilaciones pequeñas, curva suave y curva izquierda.
+   Son necesarios: la referencia actual sólo tiene una curva derecha fuerte.
+6. Si pasa la comparación principal, ampliar a IMU con sesgo/ruido y después a
+   pared/costmap. No confundir esas etapas con evidencia ya obtenida.
+7. Completar gates y abrir Draft PR acotado con evidencia y limitaciones; detenerse
+   antes de merge o despliegue.
 
 ## Diseño propuesto
 
@@ -98,6 +161,26 @@ casos causales; no una gran matriz de unitarios que replique la implementación.
 Leer src/salus_evaluation/README.md y usar harness aislado por dominio/partición,
 una versión por ensayo. Misma escena, seed, velocidad, sensores y configuración
 salvo política. Baseline y cambio deben recibir las mismas entradas.
+
+Primera comparación obligatoria: reproducir el bundle ya capturado usando
+`tools/run_heading_capture.sh` y `tools/summarize_heading_capture.py`. Ejemplo:
+
+```bash
+bash tools/run_heading_capture.sh /ruta/al/workspace-compatible heading-after-change 118
+```
+
+El primer argumento aporta build/install compatibles; verificar qué fuentes
+resuelven los symlinks. Recompilar si cambian entry points, contratos, config
+instalada o código compilado. No sobrescribir `heading-baseline-20261014`.
+Guardar provenance de la versión nueva y parámetros efectivos; no asumir que
+el mismo tag Docker identifica la misma imagen.
+
+Criterios de esta comparación: eliminar rumbo retenido publicado con stamp
+nuevo en giro fuerte; orientación continua; ventana post-curva limpia; no
+introducir un atraso fijo adicional al de reunir una ventana fiable. Evaluar
+mejora global frente a la dispersión baseline y ausencia de regresión en recta.
+No usar 9,69 grados como umbral inventado de seguridad. Si el error global no
+mejora, investigar y reportarlo antes de añadir otros ajustes al EKF.
 
 - Recta y recta con oscilaciones pequeñas: no STRONG_TURN, sin reinicios
   repetidos de ventana; disponibilidad de correcciones y error de yaw no peores
