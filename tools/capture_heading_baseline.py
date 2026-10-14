@@ -28,7 +28,12 @@ def yaw(q):
     return math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z))
 
 class Probe(Node):
-    def __init__(self, directory):
+    def __init__(self, directory, scenario="right"):
+        self.scenario = scenario
+        self.sequence = list(SEQUENCE)
+        if scenario in ("left", "gentle", "oscillations"):
+            rate = {"left": 0.35, "gentle": -0.10, "oscillations": 0.0}[scenario]
+            self.sequence[1] = ("strong_turn", 4.5, 1.2, rate)
         super().__init__('heading_baseline_probe', parameter_overrides=[Parameter('use_sim_time', value=True)])
         self.directory = directory
         self.stream = (directory / 'samples.jsonl').open('w')
@@ -86,15 +91,17 @@ class Probe(Node):
                 return
             self.start = self.now()
             self.directory.joinpath('sequence.json').write_text(json.dumps(
-                dict(start_sim_s=self.start, sequence=SEQUENCE), indent=2))
+                dict(start_sim_s=self.start, sequence=self.sequence, scenario=self.scenario), indent=2))
         elapsed = self.now()-self.start
         boundary = 0
         command = Twist()
-        for phase, duration, speed, rate in SEQUENCE:
+        for phase, duration, speed, rate in self.sequence:
             boundary += duration
             if elapsed < boundary:
                 self.phase = phase
                 command.linear.x, command.angular.z = speed, rate
+                if self.scenario == "oscillations" and speed > 0:
+                    command.angular.z = 0.06 * math.sin(2*math.pi*elapsed/1.0)
                 break
         else:
             self.done = True
@@ -105,10 +112,11 @@ class Probe(Node):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--scenario', choices=['right', 'left', 'gentle', 'oscillations'], default='right')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     rclpy.init()
-    node = Probe(args.output)
+    node = Probe(args.output, args.scenario)
     deadline = time.monotonic()+180
     try:
         while not node.done and time.monotonic()<deadline:

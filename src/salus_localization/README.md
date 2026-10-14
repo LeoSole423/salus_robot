@@ -164,3 +164,51 @@ no representa un modelo físico de ruido ni se usa con hardware real.
 - Estado: perfiles de simulación portados; el EKF local físico en shadow quedó validado en hardware de forma estacionaria, sin autoridad TF ni de control; odometría canónica calibrada, localización global y drivers siguen pendientes.
 - Prueba: `colcon test --packages-select salus_localization`.
 - Migración: caracterizar primero TF, datum fijo y gating de heading.
+
+### Course GPS durante maniobras
+
+`gps_course_heading` clasifica `NORMAL → STRONG_TURN → REACQUIRE` con política
+pura timestamped. Usa yaw-rate **fusionado de `/odometry/local`**, velocidad y
+steering medido fresco; ese EKF conserva sus fuentes IMU/ruedas y covarianzas.
+No introduce otra integración de orientación publicada ni modifica GPS posición,
+TF o safety. La integral relativa interna sólo verifica excursión de la ventana.
+
+En STRONG_TURN no publica ni guarda heading GPS. Invalida una vez la ventana al
+entrar y una vez al salir; REACQUIRE reúne exclusivamente fixes posteriores a
+la salida confirmada. Acepta la primera ventana fiable de al menos 2 m, sin
+cooldown adicional. Señales ausentes, atrasadas, futuras o no monotónicas son
+incertidumbre. Un intervalo de movimiento inválido rompe la cobertura temporal.
+Pequeñas oscilaciones no reinician la ventana: se verifica el rango de la
+integral relativa, no la suma de magnitudes de yaw-rate. Curvas suaves pueden
+invalidar geometría GPS sin ser clasificadas como STRONG_TURN.
+
+Parámetros ROS compartidos por sim/real (todos `double`, finitos, rango > 0):
+
+| Parámetro | Default | Unidad | Significado |
+| --- | ---: | --- | --- |
+| `enter_rate_rps` | 0.18 | rad/s | Magnitud sostenida de entrada |
+| `exit_rate_rps` | 0.08 | rad/s | Salida; debe ser menor que entrada |
+| `enter_duration_s` | 0.25 | s | Confirmación temporal de entrada |
+| `exit_duration_s` | 0.35 | s | Confirmación temporal de salida |
+| `turn_min_speed_mps` | 0.3 | m/s | Movimiento mínimo para clasificar giro |
+| `min_steer_deg` | 5.0 | grados | Dirección que corrobora giro |
+| `max_motion_age_s` | 0.5 | s | Edad máxima y hueco de cobertura |
+| `max_window_excursion_rad` | 0.0872665 | rad | Excursión máxima de ventana GPS (5°) |
+
+**La velocidad para heading** sigue siendo `min_speed_mps=0.8` del estimador.
+El umbral de movimiento del detector se llama `turn_min_speed_mps` en ROS
+para distinguirlo. Estos valores son candidatos de simulación, no calibración
+validada de hardware. `max_abs_steer_deg`, `max_abs_yaw_rate_rps` e
+`invalid_hold_s` se conservan por compatibilidad de parámetros, sin efecto en
+la nueva política; ningún rumbo retenido es publicable.
+
+Debug JSON conserva los campos existentes y añade `turn_state`, `turn_reason`
+y `window_generation`; canal `/gps/course_heading/debug`, `std_msgs/String`,
+productor `gps_course_heading`, consumidores observadores, QoS reliable depth 10.
+El tópico IMU GPS y sus stamps originales/covarianza de yaw 0.05 rad² se conservan.
+
+Ensayos open-loop: `python3 tools/run_heading_queue.py "$PWD" <prefijo>`;
+`--jobs 2` sólo después de `tools/nav_eval.sh isolation <salida>`. La cola usa
+el mismo asignador y locks de dominios que la matriz Nav2 y preserva la secuencia
+recta/curva/recta/stop; `--scenarios right left gentle oscillations` selecciona
+controles. Los bundles están en `artifacts/`, ignorados por Git.

@@ -30,7 +30,7 @@ packages:
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description]
-    status: ported_global_simulation_selectable_kinematic_odometry_imu_and_heading_profiles_pending_hardware_validation
+    status: ported_global_simulation_selectable_kinematic_odometry_imu_and_heading_profiles_with_strong_turn_course_gating_pending_hardware_validation
   salus_perception:
     owner: perception
     build_type: ament_python

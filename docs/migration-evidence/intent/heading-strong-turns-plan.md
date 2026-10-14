@@ -226,3 +226,7 @@ despliegue ni afirmación de validación física como parte de este plan.
   versión Humble instalada al implementar; las referencias son documentación upstream.
 - https://novatel.com/solutions/velocity
   Diferencia entre dirección de movimiento GNSS y orientación del vehículo.
+
+## Ejecución 2026-10-14
+
+Implementación y comparación registradas en [resultados](heading-strong-turns-results-2026-10-14.md). Los invariantes de suspensión/continuidad pasan en simulación; el error global no mejora. Ruido/sesgo y pared/costmap permanecen pendientes según el paso 6. Draft, sin merge ni despliegue.

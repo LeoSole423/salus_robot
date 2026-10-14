@@ -40,6 +40,18 @@ def fix(stamp_s: int, east_m: float) -> NavSatFix:
     return message
 
 
+def receive_fix(node, message, receive_s=None):
+    stamp = message.header.stamp.sec + message.header.stamp.nanosec / 1e9
+    node.now = lambda: stamp if receive_s is None else receive_s
+    start = node.estimator.turn.last_stamp
+    start = stamp-1.0 if start is None else start+0.05
+    while start <= stamp+1e-8:
+        node.estimator.update_motion(stamp_s=round(start, 8), now_s=round(start, 8), speed_mps=node.speed,
+            steer_deg=node.steer, valid=node.steer_valid, yaw_rate_rps=node.yaw_rate)
+        start += 0.05
+    node.on_fix(message)
+
+
 def typed_status(fix_quality: int) -> GnssRtkStatus:
     message = GnssRtkStatus()
     message.fix_quality = fix_quality
@@ -93,13 +105,13 @@ def test_course_heading_evaluates_on_each_new_gps_fix() -> None:
         node.rtk_status = "rtk_fixed"
         node.rtk_at_monotonic = time.monotonic()
 
-        node.on_fix(fix(1, 0.0))
+        receive_fix(node, fix(1, 0.0))
         assert debug.messages
         first = json.loads(debug.messages[-1].data)
         assert first["valid"] is False
         assert first["reason"] == "distance_below_threshold"
 
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(2, 3.0))
         second = json.loads(debug.messages[-1].data)
         assert second["valid"] is True
         assert second["reason"] == "ok"
@@ -125,8 +137,8 @@ def test_valid_heading_waits_for_selector_discovery_without_exceeding_fix_freshn
         node.rtk_status = "rtk_fixed"
         node.rtk_at_monotonic = time.monotonic()
 
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         assert not output.messages
         assert node._pending_output is not None
         payload = json.loads(debug.messages[-1].data)
@@ -158,8 +170,8 @@ def test_pending_heading_is_dropped_after_existing_fix_freshness_window() -> Non
         node.rtk_status = "rtk_fixed"
         node.rtk_at_monotonic = time.monotonic()
 
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         output.subscription_count = 1
         node.now = lambda: 3.0
         node._flush_pending_output()
@@ -202,8 +214,8 @@ def test_typed_rtk_fixed_fresh_allows_course_heading() -> None:
     try:
         prepare_for_heading(node)
         node.on_gnss_rtk_status(typed_status(GnssRtkStatus.RTK_FIXED))
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         payload = json.loads(node.debug.messages[-1].data)
         assert payload["valid"] is True
         assert payload["rtk_valid"] is True
@@ -229,8 +241,8 @@ def test_typed_non_fixed_quality_rejects_even_with_fresh_corrections(
     try:
         prepare_for_heading(node)
         node.on_gnss_rtk_status(typed_status(fix_quality))
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         payload = json.loads(node.debug.messages[-1].data)
         assert payload["valid"] is False
         assert payload["rtk_valid"] is False
@@ -249,8 +261,8 @@ def test_typed_rtk_fixed_stale_rejects_course_heading() -> None:
         node.on_gnss_rtk_status(typed_status(GnssRtkStatus.RTK_FIXED))
         node.rtk_at_monotonic = time.monotonic() - 3.0
         node.on_rtk(String(data="rtk_fixed"))
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         payload = json.loads(node.debug.messages[-1].data)
         assert payload["valid"] is False
         assert payload["rtk_valid"] is False
@@ -266,12 +278,57 @@ def test_typed_wire_does_not_fallback_to_a_later_legacy_string() -> None:
     try:
         prepare_for_heading(node)
         node.on_rtk(String(data="rtk_fixed"))
-        node.on_fix(fix(1, 0.0))
-        node.on_fix(fix(2, 3.0))
+        receive_fix(node, fix(1, 0.0))
+        receive_fix(node, fix(2, 3.0))
         payload = json.loads(node.debug.messages[-1].data)
         assert payload["valid"] is False
         assert payload["rtk_valid"] is False
         assert not node.output.messages
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_delayed_fix_is_rejected_using_reception_clock():
+    rclpy.init()
+    node = typed_node()
+    try:
+        prepare_for_heading(node)
+        node.on_gnss_rtk_status(typed_status(GnssRtkStatus.RTK_FIXED))
+        receive_fix(node, fix(1, 0), receive_s=2.0)
+        assert json.loads(node.debug.messages[-1].data)['reason'] == 'stale_or_future_fix'
+        assert not node.output.messages
+        assert not node.estimator.fixes
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_fix_future_and_duplicate_stamps_never_publish():
+    rclpy.init()
+    node = typed_node()
+    try:
+        prepare_for_heading(node)
+        node.on_gnss_rtk_status(typed_status(GnssRtkStatus.RTK_FIXED))
+        receive_fix(node, fix(1, 0))
+        receive_fix(node, fix(2, 3))
+        assert len(node.output.messages) == 1
+        node.on_fix(fix(2, 4))
+        assert json.loads(node.debug.messages[-1].data)['reason'] == 'non_monotonic_fix'
+        node.on_fix(fix(3, 5))
+        assert json.loads(node.debug.messages[-1].data)['reason'] == 'stale_or_future_fix'
+        assert len(node.output.messages) == 1
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def test_turn_motion_threshold_does_not_replace_heading_speed_threshold():
+    rclpy.init()
+    node = typed_node()
+    try:
+        assert node.estimator.min_speed_mps == 0.8
+        assert node.estimator.turn.config.min_speed_mps == 0.3
     finally:
         node.destroy_node()
         rclpy.shutdown()
