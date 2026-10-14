@@ -491,6 +491,8 @@ components:
       - src/salus_navigation/config/navigation_through_poses.xml
       - docs/migration-evidence/intent/route-executor.md
       - docs/decisions/0011-route-automatic-yaw-policy.md
+      - docs/migration-evidence/intent/scan-freshness-277-2026-10-14.md
+      - docs/migration-evidence/scan-freshness-277-2026-10-14.md
       - docs/migration-evidence/intent/loop-corner-replan-heading-2026-10-13.md
       - docs/decisions/0012-synthetic-navigation-subgoals.md
     note: >-
@@ -502,6 +504,10 @@ components:
       geometric approach leg; singleton and explicit-heading behavior remains
       unchanged. Planner evidence is offline and does not validate physical
       execution or close issue 307.
+      Issue 277 offline analysis separates historical timestamp warnings from later bags.
+      The final arbiter now accounts for source stamp age rather than receipt alone;
+      continuously received expired scans produce safety zero in the existing PC runtime
+      test. Original robot warning causality and physical stopping remain unvalidated.
       The PR 323 PC runtime CI blocker was reproduced with geometry2 0.25.23;
       GDB confirmed the upstream TF MessageFilter ABBA deadlock. The development
       image now requires tf2 core and tf2_ros >=0.25.24. Run 38439698156 passed
