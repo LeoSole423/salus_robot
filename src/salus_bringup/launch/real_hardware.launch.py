@@ -50,6 +50,7 @@ def generate_launch_description() -> LaunchDescription:
             {
                 "imu_expected_frame": "base_link",
                 "gnss_expected_frame": "base_link",
+                "gnss_output_frame": "gps_link",
             },
         ),
         _include(

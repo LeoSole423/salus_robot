@@ -170,10 +170,11 @@ components:
       - /salus/gps/fix
     evidence:
       - docs/migration-evidence/intent/pixhawk-sensor-input-adapter.md
+      - docs/migration-evidence/intent/real-gnss-antenna-frame.md
       - src/salus_hardware/test/test_pixhawk_sensor_domain.py
       - src/salus_localization/test/test_gnss_selection_policy.py
       - src/salus_bringup/test/test_pixhawk_sensor_inputs_launch.py
-    note: Read-only Pixhawk/MAVROS adapter preserves the observed base_link frame, timestamps, covariance and honest NO_FIX state. Explicit selectors never fall back. A bounded Jetson run beside ROS2_SALUS confirmed one publisher per namespaced output, approximately 10 Hz IMU and 2 Hz GNSS, preserved frame/status and clean shutdown. This hardware validation covers only sensor inputs; real bringup, localization and actuation remain unvalidated.
+    note: Read-only Pixhawk/MAVROS adapter preserves timestamps, covariance and honest NO_FIX state. The generic observation profile preserves base_link; real_hardware explicitly identifies raw GNSS at gps_link for native navsat lever-arm removal, with IMU unchanged. Physical turn accuracy of that correction remains pending. Explicit selectors never fall back. A bounded Jetson run beside ROS2_SALUS confirmed one publisher per namespaced output, approximately 10 Hz IMU and 2 Hz GNSS, preserved frame/status and clean shutdown. This hardware validation covers only sensor inputs; real bringup, localization and actuation remain unvalidated.
   pixhawk_mavros_real_owner:
     source: ROS2_SALUS@f35834989b041f51dd325c626d2338e2232d9e53 sensores/mavros.launch.py
     target: salus_hardware/pixhawk_real.launch.py

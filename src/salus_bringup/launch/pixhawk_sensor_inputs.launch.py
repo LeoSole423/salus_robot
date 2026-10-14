@@ -12,6 +12,7 @@ def generate_launch_description():
     sensor_frame = LaunchConfiguration("sensor_frame")
     imu_expected_frame = LaunchConfiguration("imu_expected_frame")
     gnss_expected_frame = LaunchConfiguration("gnss_expected_frame")
+    gnss_output_frame = LaunchConfiguration("gnss_output_frame")
     return LaunchDescription([
         DeclareLaunchArgument("imu_input_topic", default_value="/imu/data"),
         DeclareLaunchArgument(
@@ -23,6 +24,9 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "gnss_expected_frame", default_value=sensor_frame
+        ),
+        DeclareLaunchArgument(
+            "gnss_output_frame", default_value=gnss_expected_frame
         ),
         Node(
             package="salus_hardware",
@@ -36,6 +40,7 @@ def generate_launch_description():
                 "gnss_input_topic": gnss_input,
                 "gnss_output_topic": "/hardware/gnss_primary/fix",
                 "gnss_expected_frame": gnss_expected_frame,
+                "gnss_output_frame": gnss_output_frame,
             }],
         ),
         Node(
@@ -58,7 +63,7 @@ def generate_launch_description():
             parameters=[{
                 "selected_source": "gnss_primary",
                 "primary_topic": "/hardware/gnss_primary/fix",
-                "primary_frame": gnss_expected_frame,
+                "primary_frame": gnss_output_frame,
                 "output_topic": "/salus/gps/fix",
             }],
         ),

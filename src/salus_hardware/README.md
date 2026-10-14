@@ -7,8 +7,13 @@
 - `pixhawk_sensor_adapter` consume las salidas MAVROS configuradas de IMU y
   GNSS y las publica con identidad estable en `/hardware/imu_primary/data` y
   `/hardware/gnss_primary/fix`. Es read-only: no inicia MAVROS, NTRIP, puertos,
-  TF ni actuadores. Conserva `base_link`, timestamps, covarianzas y `NO_FIX`;
-  otro frame requiere calibración física.
+  TF ni actuadores. Conserva timestamps, covarianzas y `NO_FIX`.
+  `gnss_output_frame` (string, default vacío = conservar frame esperado; nombre
+  TF no vacío cuando se configura, sin unidad) identifica el origen físico de
+  GNSS raw. El perfil real acepta `base_link` de MAVROS y publica `gps_link`,
+  permitiendo que navsat_transform quite el brazo de antena del URDF. No
+  transforma coordenadas ni se aplica a posiciones fusionadas; IMU conserva
+  `base_link`. El perfil genérico de observación mantiene la identidad original.
 - `pixhawk_real.launch.py` es el owner físico parcial del MVP: inicia una sola
   instancia sensor-only de `mavros_node` con el FCU configurable (default
   `/dev/ttyACM0:921600`), remaps históricos de IMU/GNSS/velocidad/odometría y

@@ -27,6 +27,7 @@ class PixhawkSensorAdapterNode(Node):
             "gnss_input_topic": "/global_position/raw/fix",
             "gnss_output_topic": "/hardware/gnss_primary/fix",
             "gnss_expected_frame": "base_link",
+            "gnss_output_frame": "",
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -35,10 +36,13 @@ class PixhawkSensorAdapterNode(Node):
             return str(self.get_parameter(name).value).strip()
 
         values = {name: parameter(name) for name in defaults}
-        if not all(values.values()):
+        if not all(value for name, value in values.items() if name != "gnss_output_frame"):
             raise ValueError("Pixhawk sensor topics and expected frames must not be empty")
         self._imu_expected_frame = values["imu_expected_frame"]
         self._gnss_expected_frame = values["gnss_expected_frame"]
+        self._gnss_output_frame = (
+            values["gnss_output_frame"] or self._gnss_expected_frame
+        )
         self._imu_publisher = self.create_publisher(
             Imu, values["imu_output_topic"], qos_profile_sensor_data
         )
@@ -77,7 +81,12 @@ class PixhawkSensorAdapterNode(Node):
     def _on_gnss(self, message: NavSatFix) -> None:
         reason = validate_gnss(message, expected_frame=self._gnss_expected_frame)
         if reason == "accepted":
-            self._gnss_publisher.publish(deepcopy(message))
+            output = deepcopy(message)
+            # Raw GPS_RAW_INT is the antenna position, even when MAVROS labels
+            # it base_link. Identify its physical origin; navsat removes the
+            # lever arm through TF. Never alter LLA, covariance or timestamp.
+            output.header.frame_id = self._gnss_output_frame
+            self._gnss_publisher.publish(output)
         else:
             self._reject("gnss", reason)
 
