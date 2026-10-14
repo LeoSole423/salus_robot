@@ -45,3 +45,11 @@ composición externa.
 - Estado: pipeline 3D y segmentación radial del filtro histórico portados; falta validación de comportamiento en Jetson.
 - Prueba: `colcon test --packages-select salus_perception`.
 - Migración: la clasificación agrupa puntos por azimut y radio y evalúa pendientes local/global; perfiles urban/rural 10°/13°/0,20 m y 15°/18°/0,25 m. El cambio no modifica el stop por nube vencida.
+
+La conversión XYZ conserva la matriz de `read_points` y utiliza campos por
+nombre y float64, evitando la conversión por punto a tuplas Python. Conserva
+clasificación, orden, stamp, frame y QoS de entrada depth=1. La evidencia de
+rendimiento estacionario y sus límites se documentan en
+[`radial-throughput-320-2026-10-14.md`](../../docs/migration-evidence/intent/radial-throughput-320-2026-10-14.md).
+El perfil desconectado y las pruebas de equivalencia no demuestran por sí solos
+la tasa del pipeline bajo navegación completa.
