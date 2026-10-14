@@ -31,13 +31,19 @@ class CameraFeaturesController:
         if not self.supported:
             raise CameraBackendError("camera auxiliary controls unsupported")
 
+    def _write_target(self):
+        writer = getattr(self.backend, "write_sweep_absolute", None)
+        if not callable(writer):
+            writer = self.backend.write_absolute
+        writer(self.target)
+
     def start(self, now):
         self._require_supported()
         if self.running:
             raise CameraBackendError("camera sweep already running")
         pose = self.backend.read_state()
         self.target = PtzPose(self.left, pose.tilt_deg, pose.zoom_level)
-        self.backend.write_absolute(self.target)
+        self._write_target()
         self.phase, self.deadline, self.error = "moving_left", now + self.LEG_TIMEOUT_S, ""
 
     def stop(self):
@@ -77,7 +83,7 @@ class CameraFeaturesController:
                     if self.phase == "moving_left":
                         self.target = PtzPose(self.right, self.target.tilt_deg,
                                               self.target.zoom_level)
-                        self.backend.write_absolute(self.target)
+                        self._write_target()
                         self.phase, self.deadline = "sweeping_right", now + self.LEG_TIMEOUT_S
                     else:
                         self.stop()

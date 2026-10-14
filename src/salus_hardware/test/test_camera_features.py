@@ -8,7 +8,7 @@ from salus_hardware.camera_features import CameraFeaturesController
 
 
 def controller():
-    backend = Mock()
+    backend = Mock(spec=["read_state", "write_absolute", "stop", "set_light"])
     backend.read_state.return_value = PtzPose(220, 23, 1)
     return CameraFeaturesController(backend, CameraLimits()), backend
 

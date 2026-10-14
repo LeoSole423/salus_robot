@@ -102,3 +102,13 @@ def test_mobile_failed_exposure_restores_original_and_keeps_recovery(tmp_path):
         b.set_light("mobile", True, 60)
     assert data == original
     assert b.light_backup.exists()
+
+
+def test_sweep_uses_faster_speed_without_changing_manual_moves():
+    b = backend()
+    calls = []
+    b._call = lambda *args: calls.append(args)
+    b.write_sweep_absolute(PtzPose(300, 0, 1))
+    b.write_absolute(PtzPose(290, 0, 1))
+    assert 'x="0.65" y="0.65"' in calls[0][1]
+    assert 'x="0.15" y="0.15"' in calls[1][1]

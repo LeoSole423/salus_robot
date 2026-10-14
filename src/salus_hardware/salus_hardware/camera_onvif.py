@@ -59,6 +59,12 @@ class OnvifCameraBackend:
             raise CameraBackendError("Invalid ONVIF pan/tilt position") from error
 
     def write_absolute(self, pose):
+        return self._write_absolute(pose, 0.15)
+
+    def write_sweep_absolute(self, pose):
+        return self._write_absolute(pose, 0.65)
+
+    def _write_absolute(self, pose, speed):
         target = normalize_pose(pose, self.limits)
         if target.zoom_level != 1:
             raise CameraBackendError("Uniarch zoom is not supported by this adapter")
@@ -68,7 +74,7 @@ class OnvifCameraBackend:
             "AbsoluteMove",
             f"<p:ProfileToken>{self.PROFILE}</p:ProfileToken>"
             f'<p:Position><t:PanTilt x="{x}" y="{y}"/></p:Position>'
-            '<p:Speed><t:PanTilt x="0.15" y="0.15"/></p:Speed>',
+            f'<p:Speed><t:PanTilt x="{speed}" y="{speed}"/></p:Speed>',
         )
         return PtzPose((x + 1) * 180, (y + 1) * 45, 1)
 
