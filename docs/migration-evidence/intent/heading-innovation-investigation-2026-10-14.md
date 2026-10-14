@@ -189,3 +189,82 @@ El cambio final deberá:
 
 El resto del error (≈2–3° global, ≈4° local) permanece abierto. No merge ni
 hardware; esta entrega es investigación y tooling de diagnóstico en Draft #325.
+
+## Implementación autorizada y preparación de merge
+
+El operador autorizó aplicar las correcciones, pasar CI y mergear a main.
+Se integró `origin/main@16a3b4a` (#277) en la rama, sin tocar su checkout.
+La compensación productiva mantiene la proyección/datum y /fromLL existentes;
+usa TF base→frame GPS y orientación **map** de /odometry/global alineada al
+stamp del fix. El callback de /localization/orientation sólo confirma que hubo
+inicialización absoluta válida; no se inventa norte a partir de una IMU local.
+Después de inicializar, el yaw map sigue el giro con el EKF aunque heading GPS
+esté suspendido. Sin cobertura, TF o covarianza válidos, se omite la medición;
+no se publica la antena como si fuera la base.
+
+Se propaga varianza yaw con el Jacobiano de la rotación del montaje y varianza
+configurable del montaje; la covarianza GNSS se rota según datum y conserva un
+piso explícito de 0.05 m². No se publica una segunda autoridad yaw/TF.
+La compensación es sim-only: no se modifica el adaptador ni launch real.
+Se eligió esta frontera porque navsat_transform sigue separado del proveedor
+sim /fromLL y su salida no es la que consume el global actual; sustituirlo
+implicaría cambiar también la convención/proveedor del mapa y datum.
+
+Regresiones: geometría/montajes alternativos, rotación/covarianzas, frame map
+independiente de odom, wrap angular, inicialización absoluta, ventana alineada,
+TF ausente, expiración, stamps originales, fix/covarianza inválidos y /fromLL
+sin desplazamiento de antena. Repetir captura productiva clean y
+independent_nominal antes de promover. Los YAML diagnósticos no se promueven.
+
+### Validación de la compensación productiva
+
+Capturas finales con código productivo, sin shadows ni ground truth de entrada:
+world free, seed 6400, la misma secuencia recta/curva/recta/stop. Metadatos y
+hashes verifican las fuentes efectivas. Se conservó el baseline original.
+
+| Perfil / giro | Máximo global recta inicial | Curva | Recta salida | Stop |
+| --- | ---: | ---: | ---: | ---: |
+| Clean derecha | 1.10° | **2.09°** | 2.38° | 1.69° |
+| Clean izquierda | 1.18° | **2.21°** | 2.50° | 2.25° |
+| Independent nominal derecha | 1.03° | **2.06°** | 2.74° | 2.04° |
+| Independent nominal izquierda | 1.03° | **1.98°** | 2.44° | 2.09° |
+| Clean curva suave | 1.14° | 1.28° | 1.39° | 0.59° |
+| Clean oscilaciones | 1.10° | 1.24° | 1.01° | 0.76° |
+
+Referencia derecha previa sin compensación: 9.69° curva original, 9.48°
+repetición, 11.07° con sólo el gate. La reducción del producto aparece en ambos
+sentidos y en independent_nominal (gyro bias 0.002 rad/s, noise 0.005 rad/s,
+latencia IMU 0.010 s; también wheel/steering con ruido y latencia), sin afirmar
+estadística de confiabilidad ni validación física con este número de ensayos.
+
+En todos los giros fuertes finales: cero holds y cero correcciones GPS heading
+válidas durante STRONG_TURN; GPS posición compensada y EKFs siguen activos.
+Gentle/oscilaciones permanecen NORMAL y generación de ventana cero.
+Métricas/figuras/provenance versionadas en
+[heading-product-20261014](../heading-product-20261014/clean-right-metrics.json).
+Crudos y logs: `artifacts/heading-product-final-*`, ignorados por Git.
+
+Verificación final local:
+
+- `tools/build.sh`: 14 paquetes.
+- `tools/test.sh`: 1269 tests colcon, cero errores/fallos, 2 skipped, más los
+  siete tests de investigación y los selftests del harness pasados.
+- Smoke de navegación (dominio 128): todos los gates goal/cancel/manual pasados.
+- Seis capturas finales pasadas; primer nominal-right tuvo timeout de discovery
+  y se conservó antes de repetir la cola nominal serial, sin retries globales
+  ni aumentar timeouts.
+- `git diff --check`, validate_repository, bash -n y py_compile pasados.
+
+CI previo `38579967266` se clasificó con logs antes de editar:
+
+- build-unit: assertions de descripción pasaron, luego Python abortó durante
+  teardown. El test destruía el nodo antes de detener el executor en un hilo
+  daemon y nunca hacía join. Se corrigió el orden: shutdown, join verificado,
+  retirar/destruir nodo, shutdown del contexto. No cambia descripción/runtime.
+- navigation_canonical: el job agotó 20 minutos descargando una capa Docker
+  de 625 MB; el escenario no llegó a ejecutarse. Es infraestructura externa,
+  no evidencia de un fallo de navegación. No se ampliaron tiempos ni gates.
+
+La autorización posterior del operador permite merge **únicamente después de
+CI verde del HEAD final**. Esta autorización reemplaza el punto de parada en
+Draft de la fase de investigación, sin autorizar despliegue al robot.

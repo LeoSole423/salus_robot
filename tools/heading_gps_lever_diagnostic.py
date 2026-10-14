@@ -38,6 +38,8 @@ class Diagnostic(Node):
         self.flush()
 
     def on_gps(self, msg):
+        if msg.child_frame_id == 'base_footprint':
+            raise ValueError('diagnostic requires raw antenna position; refusing double compensation')
         self.pending.append(deepcopy(msg))
         self.flush()
 

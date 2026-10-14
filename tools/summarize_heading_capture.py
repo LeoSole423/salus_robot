@@ -9,6 +9,8 @@ root = Path(sys.argv[1])
 rows = [json.loads(x) for x in (root/'samples.jsonl').read_text().splitlines()]
 seq = json.loads((root/'sequence.json').read_text())
 start = seq['start_sim_s']
+provenance_path = root/'provenance.json'
+capture_profile = json.loads(provenance_path.read_text()).get('profile','clean') if provenance_path.exists() else 'clean'
 series = {}
 for r in rows:
     series.setdefault(r['topic'], []).append(r)
@@ -102,7 +104,7 @@ parts=[f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBo
  '<rect width="100%" height="100%" fill="white"/>',
  '<style>text{font-family:Arial,sans-serif;fill:#243247;font-size:13px}</style>',
  '<text x="85" y="28" font-size="21">SALUS — heading: recta → curva fuerte → recta</text>',
- '<text x="85" y="50">Simulación clean · GPS course-over-ground · seed 6400 · orientación medida, no validación física</text>']
+ f'<text x="85" y="50">Simulación {capture_profile} · GPS course-over-ground · seed 6400 · orientación medida, no validación física</text>']
 phases=[('Recta inicial','#f1f5f9'),('Curva fuerte','#fff1d6'),('Recta de salida','#f1f5f9'),('Stop','#e9eef5')]
 for top,low,high,label in [(110,yaw_low,yaw_high,'Heading [°]'),(390,rate_low,rate_high,'Velocidad de giro [rad/s]')]:
     begin=0
@@ -133,7 +135,7 @@ for i,(topic,label) in enumerate([('/odom_raw','Gazebo real'),('/odometry/local'
     x=85+i*200
     parts.append(f'<rect x="{x}" y="650" width="15" height="4" fill="{colors[topic]}"/><text x="{x+21}" y="657">{label}</text>')
 parts.append('<text x="85" y="692">Puntos GPS: mediciones publicadas. Los huecos significan ausencia de corrección, no ausencia de heading.</text>')
-parts.append('<text x="85" y="715">Captura open-loop, sin Nav2; IMU clean derivada de odometría Gazebo. Ver informe y métricas para limitaciones.</text></svg>')
+parts.append('<text x="85" y="715">Captura open-loop, sin Nav2; IMU derivada de Gazebo con el perfil declarado. Ver informe y métricas para limitaciones.</text></svg>')
 root.joinpath('heading.svg').write_text('\n'.join(parts))
 root.joinpath('heading.html').write_text('<!doctype html><meta charset="utf-8"><title>SALUS heading baseline</title><body style="margin:24px;background:#edf2f7">'+ '\n'.join(parts)+'</body>')
 print(json.dumps(metrics,indent=2))

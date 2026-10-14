@@ -212,3 +212,54 @@ Ensayos open-loop: `python3 tools/run_heading_queue.py "$PWD" <prefijo>`;
 el mismo asignador y locks de dominios que la matriz Nav2 y preserva la secuencia
 recta/curva/recta/stop; `--scenarios right left gentle oscillations` selecciona
 controles. Los bundles están en `artifacts/`, ignorados por Git.
+
+### Posición GNSS: antena → base en simulación
+
+`map_gps_absolute_measurement` publica la **posición de base_footprint**, no la
+posición de la antena. Obtiene base→frame del fix mediante TF (montaje de la
+URDF), rota ese desplazamiento con yaw de `/odometry/global` en frame `map`
+alineado al stamp GPS y lo resta a la proyección geográfica. No usa yaw de
+`odom` como si fuese yaw de `map`, ni ground truth como entrada.
+
+La primera orientación válida de `/localization/orientation` confirma la
+inicialización absoluta. Antes de ella omite GPS posición; después, la orientación
+map sigue la estimación EKF durante STRONG_TURN aunque no haya heading GPS nuevo.
+No publica orientación fusionable ni TF, y conserva las máscaras EKF.
+`/fromLL` transforma un punto geográfico: **no** aplica el montaje de antena.
+El cambio sólo está compuesto en simulación; el camino real no se modifica.
+
+La covarianza horizontal GNSS se rota según datum, conserva el piso existente
+0.05 m² e incorpora incertidumbre de yaw con `J var(yaw) Jᵀ`, donde
+`J=(offset_y,-offset_x)`, más varianza del montaje. La interpolación usa el
+máximo de varianza de sus extremos correlacionados; no inventa precisión por
+promediar muestras de un mismo filtro. El modelo de compensación es planar.
+
+| Parámetro | Tipo | Default | Unidad / rango | Significado |
+| --- | --- | --- | --- | --- |
+| `map_odom_topic` | string | `/odometry/global` | tópico no vacío | Orientación/covarianza en map |
+| `map_frame` | string | `map` | frame no vacío | Marco de salida y orientación requerida |
+| `base_frame` | string | `base_footprint` | frame no vacío | Base destino del montaje TF |
+| `orientation_topic` | string | `/localization/orientation` | tópico no vacío | Confirmación de inicialización absoluta |
+| `max_fix_age_s` | double | 0.5 | s, >0 | Edad máxima antes de omitir posición |
+| `max_odom_age_s` | double | 0.5 | s, >0 | Edad máxima del heading map disponible |
+| `max_heading_gap_s` | double | 0.2 | s, >0 | Hueco máximo para interpolar yaw; sin extrapolación |
+| `future_tolerance_s` | double | 0.05 | s, ≥0 | Margen de orden de entrega clock/sensores |
+| `mount_variance_m2` | double | 0.0 | m², ≥0 | Varianza isotrópica XY del montaje; URDF sim exacta |
+| `covariance_xy` | double | 0.05 | m², >0 | Piso XY y fallback explícito para covarianza GNSS desconocida |
+| `debug_topic` | string | `/gps/odometry_map/debug` | tópico no vacío | Motivo, yaw map, montaje y covarianza efectivos |
+
+Contratos: entradas `/gps/fix` (`NavSatFix`, reliable10), `/odometry/global`
+(`Odometry`, reliable10), orientación (`Imu`, sensor-data) y TF de montaje.
+Salida `/gps/odometry_map` (`Odometry`, reliable10), header `map`, child
+`base_footprint`, stamp original; consumidor EKF global. Debug (`String`,
+reliable10) es observacional. Una cola acotada a 20 fixes espera cobertura/TF,
+con timer 0.05 s y expiración según max_fix_age_s. Fix/frames/covarianzas
+inválidos no producen posición; un retroceso del reloj borra historial,
+inicialización y pendientes. No hay dato retenido publicado con stamp nuevo.
+Un reinicio de la autoridad global requiere reinitializar también el adaptador;
+la política general de reset/loss de orientación permanece en #272.
+
+La investigación previa con `--shadows` se reproduce sobre el snapshot
+`f062c15`, anterior a esta compensación. El harness/helper rechazan compensar
+una medición cuyo child frame ya declara la base para impedir aplicar dos veces
+el montaje. Para validar producto se usa la cola normal sin shadows.

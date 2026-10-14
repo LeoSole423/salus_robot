@@ -37,6 +37,10 @@ docker run --rm --network none --cpus 4 \
     smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py world:=${free_world} launch_navigation:=false rviz:=false orientation_source:=course_over_ground sim_sensor_profile:=${HEADING_PROFILE} sim_sensor_seed:=6400 ${debug_args}"
     smoke_wait_node /gps_course_heading 60
     if [[ "$HEADING_SHADOWS" == true ]]; then
+      if ros2 param get /map_gps_absolute_measurement map_odom_topic >/dev/null 2>&1; then
+        echo "Historical shadows require the pre-compensation mapper (f062c15); refusing double compensation."
+        exit 2
+      fi
       [[ "$HEADING_EKF_DEBUG" == true ]] || { echo "shadows require debug configs"; exit 2; }
       smoke_start_launch gps_compensation "python3 tools/heading_gps_lever_diagnostic.py --ros-args -p use_sim_time:=true"
       for variant in no_gps_position compensated_gps delayed_gps_reference; do
@@ -48,6 +52,7 @@ docker run --rm --network none --cpus 4 \
     smoke_run heading_capture "python3 tools/capture_heading_baseline.py --output ${HEADING_CAPTURE_DIR} --scenario ${HEADING_SCENARIO}"
     ros2 param dump /ekf_filter_node_local > "$HEADING_CAPTURE_DIR/local-ekf-parameters.yaml"
     ros2 param dump /ekf_filter_node_global > "$HEADING_CAPTURE_DIR/global-ekf-parameters.yaml"
+    ros2 param dump /map_gps_absolute_measurement > "$HEADING_CAPTURE_DIR/gps-map-parameters.yaml"
     dpkg-query -W ros-humble-robot-localization > "$HEADING_CAPTURE_DIR/robot-localization-version.txt"
     smoke_note heading_baseline_captured
   ' > "$capture_dir/run.log" 2>&1
@@ -58,7 +63,10 @@ root = pathlib.Path('.')
 files = [*root.glob('src/salus_localization/salus_localization/*heading*.py'),
          *root.glob('src/salus_localization/config/localization_*sim.yaml'),
          root/'tools/capture_heading_baseline.py', root/'tools/run_heading_capture.sh',
-         root/'tools/prepare_heading_debug.py', root/'tools/heading_gps_lever_diagnostic.py']
+         root/'tools/prepare_heading_debug.py', root/'tools/heading_gps_lever_diagnostic.py',
+         root/'src/salus_localization/salus_localization/map_gps_absolute_measurement.py',
+         root/'src/salus_localization/salus_localization/gnss_antenna_compensation.py',
+         root/'src/salus_description/urdf/components/sensor_mounts.xacro']
 provenance = dict(head=subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
     image_id=subprocess.check_output(['docker','image','inspect','salus-robot:humble-dev','--format','{{.Id}}'],text=True).strip(),
     source_sha256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in files},

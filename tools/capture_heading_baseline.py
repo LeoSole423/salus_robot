@@ -61,8 +61,9 @@ class Probe(Node):
                     yaw_rad=yaw(m.orientation), yaw_rate=m.angular_velocity.z,
                     yaw_variance=m.orientation_covariance[8],
                     gyro_variance=m.angular_velocity_covariance[8]), qos_profile_sensor_data))
-        self.subs.append(self.create_subscription(String, '/gps/course_heading/debug',
-            lambda m: self.record('/gps/course_heading/debug', self.now(), **json.loads(m.data)), 10))
+        for topic in ['/gps/course_heading/debug', '/gps/odometry_map/debug']:
+            self.subs.append(self.create_subscription(String, topic,
+                lambda m,t=topic: self.on_debug(t,m), 10))
         self.subs.append(self.create_subscription(NavSatFix, '/gps/fix',
             lambda m: self.record('/gps/fix', stamp_s(m.header.stamp),
                 lat=m.latitude, lon=m.longitude), qos_profile_sensor_data))
@@ -84,6 +85,13 @@ class Probe(Node):
         self.counts[topic] = self.counts.get(topic, 0) + 1
         self.stream.write(json.dumps(dict(topic=topic, stamp_s=stamp,
             receive_sim_s=self.now(), phase=self.phase, **values))+'\n')
+
+    def on_debug(self, topic, message):
+        payload = json.loads(message.data)
+        original_stamp = payload.pop('stamp_s', None)
+        if original_stamp is not None:
+            payload['measurement_stamp_s'] = original_stamp
+        self.record(topic, self.now(), **payload)
 
     def on_tf(self, msg):
         for t in msg.transforms:

@@ -271,7 +271,11 @@ def test_description_real_publishes_only_the_required_static_tf(tmp_path) -> Non
     finally:
         if process is not None:
             _stop(process)
+        # Stop the executor before destroying objects still reachable by its
+        # background spinner. Otherwise interpreter teardown races ROS handles.
+        executor.shutdown(timeout_sec=5.0)
+        spinner.join(timeout=5.0)
+        assert not spinner.is_alive(), "description probe executor did not stop"
         executor.remove_node(probe)
         probe.destroy_node()
-        executor.shutdown()
         rclpy.shutdown()
