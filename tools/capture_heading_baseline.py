@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import os
 import time
 from pathlib import Path
 
@@ -42,17 +43,24 @@ class Probe(Node):
         self.counts = {}
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.subs = []
-        for topic in ['/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry']:
+        for topic in ['/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry', '/odometry/local_global', '/gps/odometry_map',
+                      '/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps',
+                      '/diagnostic/gps_base_position', '/diagnostic/global_delayed_gps_reference',
+                      '/diagnostic/gps_ant_position_delayed']:
             self.subs.append(self.create_subscription(Odometry, topic,
                 lambda m, t=topic: self.record(t, stamp_s(m.header.stamp),
                     yaw_rad=yaw(m.pose.pose.orientation), x=m.pose.pose.position.x,
                     y=m.pose.pose.position.y, yaw_rate=m.twist.twist.angular.z,
-                    speed=m.twist.twist.linear.x), 10))
+                    speed=m.twist.twist.linear.x, lateral_speed=m.twist.twist.linear.y,
+                    pose_covariance=list(m.pose.covariance),
+                    twist_covariance=list(m.twist.covariance),
+                    frame_id=m.header.frame_id, child_frame_id=m.child_frame_id), 10))
         for topic in ['/imu/data', '/gps/course_heading', '/localization/orientation']:
             self.subs.append(self.create_subscription(Imu, topic,
                 lambda m, t=topic: self.record(t, stamp_s(m.header.stamp),
                     yaw_rad=yaw(m.orientation), yaw_rate=m.angular_velocity.z,
-                    yaw_variance=m.orientation_covariance[8]), qos_profile_sensor_data))
+                    yaw_variance=m.orientation_covariance[8],
+                    gyro_variance=m.angular_velocity_covariance[8]), qos_profile_sensor_data))
         self.subs.append(self.create_subscription(String, '/gps/course_heading/debug',
             lambda m: self.record('/gps/course_heading/debug', self.now(), **json.loads(m.data)), 10))
         self.subs.append(self.create_subscription(NavSatFix, '/gps/fix',
@@ -87,6 +95,8 @@ class Probe(Node):
         if self.start is None:
             required = ['/odom_raw', '/odometry/local', '/odometry/global',
                         '/gps/fix', '/imu/data', '/controller/drive_telemetry']
+            if os.environ.get('HEADING_SHADOWS') == 'true':
+                required += ['/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps', '/diagnostic/global_delayed_gps_reference']
             if self.pub.get_subscription_count() < 1 or not all(self.counts.get(t,0)>2 for t in required):
                 return
             self.start = self.now()

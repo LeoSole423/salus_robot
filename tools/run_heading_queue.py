@@ -17,12 +17,12 @@ from salus_evaluation.isolation import allocated_trial_isolation
 
 
 def run_trial(item):
-    workspace, prefix, scenario = item
+    workspace, prefix, scenario, debug, shadows = item
     trial = f'{prefix}-{scenario}'
     with allocated_trial_isolation(REPO/'artifacts'/trial,
             run_token=prefix, trial_id=scenario) as isolation:
         result = subprocess.run(['bash', str(REPO/'tools/run_heading_capture.sh'),
-            workspace, trial, str(isolation.ros_domain_id), scenario], cwd=REPO)
+            workspace, trial, str(isolation.ros_domain_id), scenario, 'clean', str(debug).lower(), str(shadows).lower()], cwd=REPO)
         return dict(scenario=scenario, domain=isolation.ros_domain_id,
                     returncode=result.returncode, artifact=f'artifacts/{trial}')
 
@@ -34,11 +34,15 @@ def main():
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--scenarios', nargs='+', choices=['right','left','gentle','oscillations'],
                         default=['right','left','gentle','oscillations'])
+    parser.add_argument('--ekf-debug', action='store_true')
+    parser.add_argument('--shadows', action='store_true')
     args = parser.parse_args()
+    if args.shadows and not args.ekf_debug:
+        parser.error('--shadows requires --ekf-debug')
     if not 1 <= args.jobs <= 4:
         parser.error('jobs must be in 1..4; validate isolation before parallel runs')
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        outcomes = list(pool.map(run_trial, [(args.workspace,args.prefix,s) for s in args.scenarios]))
+        outcomes = list(pool.map(run_trial, [(args.workspace,args.prefix,s,args.ekf_debug,args.shadows) for s in args.scenarios]))
     output = REPO/'artifacts'/f'{args.prefix}-queue.json'
     output.write_text(json.dumps(outcomes, indent=2))
     return int(any(o['returncode'] for o in outcomes))

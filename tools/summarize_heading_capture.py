@@ -33,7 +33,9 @@ for phase,duration,speed,rate in seq['sequence']:
     phase_rows=[r for r in raw if r['phase']==phase]
     result={'raw_yaw_start_deg':math.degrees(phase_rows[0]['yaw_rad']),
             'raw_yaw_end_deg':math.degrees(phase_rows[-1]['yaw_rad']), 'errors':{}}
-    for topic in ['/odometry/local','/odometry/global','/gps/course_heading']:
+    for topic in ['/odometry/local','/odometry/global','/gps/course_heading',
+                  '/diagnostic/global_no_gps_position','/diagnostic/global_compensated_gps',
+                  '/diagnostic/global_delayed_gps_reference']:
         errors=[]
         for r in series.get(topic,[]):
             if r['phase']!=phase: continue

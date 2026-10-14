@@ -1,0 +1,24 @@
+{
+  "head": "dbef09cf5b77b7f40c217af02363d7a1bcef1f79",
+  "image_id": "sha256:2e5810ab7335d8a7998ea77e8a784dd7593aac738d7339bd9aaffaff3311d51a",
+  "source_sha256": {
+    "src/salus_localization/salus_localization/sim_external_heading_from_odom.py": "3e800c9897c2685a19218af61e5dc612f25e6864b5ed4df904b56466f51008c8",
+    "src/salus_localization/salus_localization/gps_course_heading.py": "b36ab11844f5fd1b00f99f2058499a7d85abefef45174c0cd56c71e7caa1f5ef",
+    "src/salus_localization/salus_localization/heading_turn_policy.py": "2fa0a6a6c421695ec352dfcbd9a6ffafe2feecedda6702067dddb79e4303bc0d",
+    "src/salus_localization/config/localization_global_sim.yaml": "92ae4d4921571cccebf06bcc5d30f5221390a696020b0bc8f505a8e20a8d56e6",
+    "src/salus_localization/config/localization_local_sim.yaml": "c2fd95534014623542f73eea00359d602607a3d0d622a96b9f540e93b81f042a",
+    "tools/capture_heading_baseline.py": "73d722490f951b087b60a426e608c03781299c0b888e59168674ffd5402b3da8",
+    "tools/run_heading_capture.sh": "2ef5cfe780193cf2bbd7262df5162dcf82007aef608e675d557a920b3d3efe36",
+    "tools/prepare_heading_debug.py": "3d9f35f70ddee41ef9ec59fedb81ca258c1c218def750b9d5c189e589b844408",
+    "tools/heading_gps_lever_diagnostic.py": "87b25fb6b46427e38200ce54cdcea70efba0a528e2a9376b544aec0fbc160a89"
+  },
+  "domain_id": 75,
+  "scenario": "left",
+  "profile": "clean",
+  "seed": 6400,
+  "network": "none",
+  "cpu_limit": 4,
+  "ekf_debug": "true",
+  "diagnostic_shadows": "true",
+  "dirty_diff_sha256": "e23a2657522fa22d493308dfed186a65348994e9bbd76c4fd323a015890798ca"
+}

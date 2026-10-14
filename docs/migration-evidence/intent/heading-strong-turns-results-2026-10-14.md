@@ -152,3 +152,7 @@ El diagnóstico usa yaw-rate del EKF local, no autoridad IMU exclusiva.
 
 Estado: `ported`, no `parity_passed` ni `hardware_validated`. Draft PR; revisión
 sensible y mejora del yaw global pendientes. Detener antes de merge/despliegue.
+
+## Investigación posterior de la causa
+
+La [investigación de innovaciones](heading-innovation-investigation-2026-10-14.md) identificó una contribución dominante de posición GPS sin compensación del montaje de antena en el adaptador simulado. Controles simultáneos en ambos sentidos bajan el error de curva de ≈10° a ≈2° al compensar la geometría. Es diagnóstico, no cambio productivo ni validación física; el gate de heading por sí solo sigue sin acreditar la mejora.
