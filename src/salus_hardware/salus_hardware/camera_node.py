@@ -14,6 +14,7 @@ from rclpy.node import Node
 from std_srvs.srv import Trigger
 
 from salus_interfaces.srv import (
+    CameraFeatures,
     CameraPan,
     CameraPreset,
     CameraPtz,
@@ -44,6 +45,7 @@ from .camera_domain import (
     target_pose,
 )
 from .camera_presets import PresetRepository
+from .camera_features import CameraFeaturesController
 
 
 class CameraNode(Node):
@@ -104,6 +106,9 @@ class CameraNode(Node):
             "camera not initialized",
         )
         self._configure_backend()
+        self._features = CameraFeaturesController(self._backend, self._limits)
+        self.create_service(CameraFeatures, "/camara/camera_features", self._on_features)
+        self.create_timer(0.5, self._tick_features)
         self.create_service(CameraPan, "/camara/camera_pan", self._on_pan)
         self.create_service(Trigger, "/camara/camera_zoom_toggle", self._on_zoom_toggle)
         self.create_service(CameraStatus, "/camara/camera_status", self._on_status)
@@ -141,12 +146,17 @@ class CameraNode(Node):
                     channel=_parameter_or_env_int(self, "camera_channel", "CAMERA_CHANNEL"),
                     timeout_s=float(self.get_parameter("camera_timeout_s").value),
                 )
-                self._backend = (OnvifCameraBackend(config, self._limits)
-                                 if backend_name == "onvif_uniarch"
-                                 else IsapiCameraBackend(config, self._limits))
+                if backend_name == "onvif_uniarch":
+                    self._backend = OnvifCameraBackend(
+                        config, self._limits, presets_path_for_light(self)
+                    )
+                else:
+                    self._backend = IsapiCameraBackend(config, self._limits)
+                if backend_name == "onvif_uniarch":
+                    self._backend.set_light("mobile", False, 60)
             else:
                 raise ValueError("backend must be sim, isapi or onvif_uniarch")
-        except (OSError, ValueError):
+        except (OSError, ValueError, CameraBackendError):
             self._backend = None
             self._state = CameraState(
                 False, None, False, "none", "",
@@ -201,6 +211,8 @@ class CameraNode(Node):
                     self._state,
                 )
             try:
+                if self._features.running:
+                    self._features.stop()
                 operation(self._state.pose)
                 refreshed = self._backend.read_state()
                 self._state = self._state_from_pose(refreshed, last_command=label)
@@ -359,6 +371,44 @@ class CameraNode(Node):
     def _backend_write(self, pose: PtzPose) -> PtzPose:
         assert self._backend is not None
         return self._backend.write_absolute(normalize_pose(pose, self._limits))
+
+    def _tick_features(self) -> None:
+        with self._operation_lock:
+            self._features.tick(time.monotonic())
+
+    def _on_features(self, request, response):
+        with self._operation_lock:
+            response.ok = True
+            try:
+                if request.command == CameraFeatures.Request.SWEEP_START:
+                    self._features.start(time.monotonic())
+                elif request.command == CameraFeatures.Request.SWEEP_STOP:
+                    self._features.stop()
+                elif request.command == CameraFeatures.Request.LIGHT:
+                    self._features.set_light(request.lens, request.enabled, time.monotonic())
+                elif request.command != CameraFeatures.Request.STATE:
+                    raise ValueError("invalid camera feature command")
+            except (CameraBackendError, ValueError) as error:
+                response.ok, response.error = False, str(error)
+            response.supported = self._features.supported
+            response.sweep_running = self._features.running
+            response.sweep_phase = self._features.phase
+            response.fixed_light = self._features.lights["fixed"]
+            response.mobile_light = self._features.lights["mobile"]
+            if not response.error:
+                response.error = self._features.error
+            return response
+
+    def destroy_node(self):
+        with self._operation_lock:
+            self._features.shutdown()
+        return super().destroy_node()
+
+
+def presets_path_for_light(node):
+    return Path(str(node.get_parameter("camera_presets_file").value)).with_name(
+        "mobile-light-backup.json"
+    )
 
 
 def _camera_password() -> str:

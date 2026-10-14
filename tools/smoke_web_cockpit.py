@@ -225,6 +225,22 @@ async def scenario(evidence: dict) -> dict:
         }
         evidence["operations"].append("camera_ptz")
 
+        features = await first.request("get_camera_features")
+        require_ok(features, "get_camera_features")
+        if features.get("payload", {}).get("supported") is not True:
+            raise RuntimeError("sim camera auxiliary controls unavailable")
+        for lens in ("fixed", "mobile"):
+            light = await first.request("camera_light", {"lens": lens, "enabled": True})
+            require_ok(light, "camera_light")
+            if light.get("payload", {}).get(f"{lens}_light") != 1:
+                raise RuntimeError(f"light intent missing: {light}")
+            require_ok(await second.request("camera_light", {"lens": lens, "enabled": False}),
+                       "camera_light_off_without_lease")
+        require_ok(await first.request("camera_sweep", {"enabled": True}), "camera_sweep")
+        require_ok(await second.request("camera_sweep", {"enabled": False}),
+                   "camera_sweep_stop_without_lease")
+        evidence["operations"].append("camera_features")
+
         require_ok(await first.request("control_heartbeat"), "control_heartbeat")
         state = await first.request("get_state", timeout_s=15.0)
         require_ok(state, "get_state")

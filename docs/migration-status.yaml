@@ -598,6 +598,8 @@ components:
       - docs/migration-evidence/intent/camera-ptz-presets.md
       - docs/decisions/0006-camera-ptz-control-boundaries.md
       - docs/migration-evidence/intent/uniarch-mobile-ptz.md
+      - docs/migration-evidence/intent/camera-sweep-lights.md
+      - src/salus_hardware/test/test_camera_features.py
       - docs/migration-evidence/uniarch-camera-validation-20261010.md
       - docs/migration-evidence/battery-runtime-validation-20261010.md
       - docs/migration-evidence/intent/camera-ptz-real-runtime-20260907.md

@@ -24,6 +24,7 @@ KNOWN_OPERATIONS = frozenset(
         "set_manual_mode", "set_manual_cmd", "get_nav_snapshot", "set_sensor_info_view",
         "camera_pan", "camera_zoom_toggle", "get_camera_status", "camera_ptz_move",
         "camera_ptz_preset", "camera_ptz_set_preset", "get_camera_ptz_state",
+        "camera_sweep", "camera_light", "get_camera_features",
     }
 )
 FIXED_DATUM_MUTATIONS = frozenset(
@@ -127,6 +128,13 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
             raise ProtocolError(
                 "invalid_request", "tab must be a string", request.op, request.request_id
             )
+    elif request.op == "camera_sweep":
+        _require_bool(fields, "enabled", request)
+    elif request.op == "camera_light":
+        _require_bool(fields, "enabled", request)
+        if fields.get("lens") not in {"fixed", "mobile"}:
+            raise ProtocolError("invalid_request", "lens must be fixed or mobile",
+                                request.op, request.request_id)
     elif request.op == "camera_pan":
         fields["angle"] = _finite_number(fields, "angle", request)
     elif request.op == "camera_ptz_move":
@@ -185,6 +193,8 @@ def ack(
 def is_controlled_operation(request: OperatorRequest) -> bool:
     """Return whether the web lock must authorize this particular request."""
 
+    if request.op in {"camera_sweep", "camera_light"}:
+        return request.fields.get("enabled") is True
     if request.op in {
         "set_goal_ll", "set_route_ll", "set_patrol_ll", "set_navigation_profile",
         "request_return_home", "set_manual_cmd", "camera_pan", "camera_zoom_toggle",
