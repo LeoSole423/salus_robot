@@ -1,3 +1,5 @@
+import pytest
+
 from geometry_msgs.msg import Twist
 from nav2_msgs.msg import CollisionMonitorState
 from salus_interfaces.msg import CmdVelFinal
@@ -29,7 +31,7 @@ def test_automatic_command_requires_fresh_safety_scan() -> None:
 
 def test_automatic_command_passes_with_a_fresh_safety_scan() -> None:
     arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
-    arbiter.set_scan_received(5.0)
+    arbiter.set_scan_received(5.0, source_age_s=0.0)
     twist = Twist()
     twist.linear.x = 0.75
     command, reason = arbiter.automatic_output(twist, 5.2)
@@ -42,7 +44,7 @@ def test_stop_state_overrides_automatic_command() -> None:
     arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
     state = CollisionMonitorState()
     state.action_type = CollisionMonitorState.STOP
-    arbiter.set_scan_received(5.0)
+    arbiter.set_scan_received(5.0, source_age_s=0.0)
     arbiter.set_monitor_state(state, 5.0)
     command, reason = arbiter.automatic_output(Twist(), 5.1)
     assert reason == "collision_stop"
@@ -69,7 +71,28 @@ def test_manual_mode_blocks_auto_and_times_out_once() -> None:
 def test_path_health_stop_blocks_only_automatic_commands() -> None:
     arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
     health = PathHealth(); health.state = PathHealth.STOP_AND_WAIT; health.reason = "costmap_stale"
-    arbiter.set_scan_received(5.0); arbiter.set_path_health(health)
+    arbiter.set_scan_received(5.0, source_age_s=0.0); arbiter.set_path_health(health)
     command, reason = arbiter.automatic_output(Twist(), 5.1)
     assert reason == "path_health_stop"
     assert command.twist.linear.x == 0.0
+
+
+@pytest.mark.parametrize("age", [1.1, -0.1, float("nan"), float("inf")])
+def test_received_expired_or_invalid_stamp_cannot_renew_safety(age: float) -> None:
+    arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
+    arbiter.set_scan_received(5.0, source_age_s=0.0)
+    arbiter.set_scan_received(5.0, source_age_s=age)
+    twist = Twist()
+    twist.linear.x = 1.0
+    command, reason = arbiter.automatic_output(twist, 5.0)
+    assert reason == "scan_stale"
+    assert command.source == CmdVelFinal.SOURCE_SAFETY
+    assert command.twist.linear.x == command.twist.angular.z == 0.0
+
+
+def test_source_age_preserves_remaining_watchdog_budget() -> None:
+    arbiter = CommandArbiter(manual_timeout_s=0.4, monitor_timeout_s=1.0)
+    arbiter.set_scan_received(5.0, source_age_s=0.5)
+    assert arbiter.scan_is_fresh(5.5)
+    assert not arbiter.scan_is_fresh(5.500001)
+    assert not arbiter.scan_is_fresh(4.4)

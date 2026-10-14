@@ -33,6 +33,7 @@ from nav2_msgs.action import ComputePathToPose  # noqa: E402
 from nav2_msgs.msg import CollisionMonitorState, Costmap  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 from rclpy.action import ActionClient  # noqa: E402
+from rclpy.duration import Duration  # noqa: E402
 from rclpy.executors import SingleThreadedExecutor  # noqa: E402
 from rclpy.node import Node  # noqa: E402
 from rclpy.qos import (  # noqa: E402
@@ -101,6 +102,7 @@ class SyntheticNavigationInputs(Node):
         self.obstacle_range: float | None = None
         self.scan_ranges_override: list[float] | None = None
         self.scan_enabled = True
+        self.scan_age_s = 0.0
         self.command_enabled = False
         self.safe: list[Twist] = []
         self.final: list[CmdVelFinal] = []
@@ -198,7 +200,9 @@ class SyntheticNavigationInputs(Node):
 
         if self.scan_enabled:
             scan = LaserScan()
-            scan.header.stamp = stamp
+            scan.header.stamp = (
+                self.get_clock().now() - Duration(seconds=self.scan_age_s)
+            ).to_msg()
             scan.header.frame_id = "base_footprint"
             scan.angle_min = -math.pi / 2.0
             scan.angle_max = math.pi / 2.0
@@ -569,6 +573,46 @@ def _run_navigation_real_runtime(log_path: Path, runtime_dir: Path) -> None:
             ),
             10.0,
             "forward command through /cmd_vel_final",
+        )
+
+        # A live publisher with expired source stamps must not refresh safety.
+        # Keep commands and TF flowing, and verify the monitor actually rejects
+        # the source while the final arbiter holds a zero command.
+        fixture.scan_age_s = 2.0
+        fixture.final.clear()
+        fixture.final_times.clear()
+        expired_started = time.monotonic()
+        _spin_until(
+            fixture,
+            lambda: time.monotonic() - expired_started > 1.8,
+            3.0,
+            "continuously received scans with expired source stamps",
+        )
+        expired_outputs = [
+            message for message, timestamp in zip(fixture.final, fixture.final_times)
+            if timestamp >= expired_started + 1.1
+        ]
+        assert expired_outputs, "expired source must produce explicit stop output"
+        positive = [m.twist.linear.x for m in expired_outputs if m.twist.linear.x > 0.0]
+        assert not positive, f"expired source allowed positive commands: {positive}"
+        assert all(
+            message.source == CmdVelFinal.SOURCE_SAFETY
+            and message.twist.linear.x == 0.0
+            and message.twist.angular.z == 0.0
+            for message in expired_outputs
+        ), "receiving expired scans must not authorize automatic motion"
+        assert "Ignoring the source" in log_path.read_text()
+        fixture.scan_age_s = 0.0
+        fixture.final.clear()
+        _spin_until(
+            fixture,
+            lambda: any(
+                message.source == CmdVelFinal.SOURCE_AUTO
+                and message.twist.linear.x > 0.5
+                for message in fixture.final
+            ),
+            5.0,
+            "automatic command recovers after fresh source stamps return",
         )
 
         # Let the safety owner observe the cluster before asserting the final
