@@ -174,3 +174,20 @@ Pruebas: `colcon test --packages-select salus_navigation` y
 y `./tools/smoke_route_executor_sim.sh`. El retorno integrado se valida con
 `./tools/smoke_patrol_battery_sim.sh` usando una guardia sintética aislada.
 El snapshot se prueba por separado con `./tools/smoke_navigation_snapshot.sh`.
+
+### Frescura de la observación de safety
+
+Con `obstacle_detection_required=true`, `/scan_clean` habilita comandos
+automáticos sólo mientras la edad de su `header.stamp` no supera
+`collision_monitor_timeout_s` (existente: 1,0 s). Recibir repetidamente scans
+con stamps vencidos no renueva esa autorización. Stamps cero o futuros no
+habilitan automático. El adaptador calcula edad en reloj ROS y la proyecta al
+reloj monotónico del árbitro para que el watchdog conserve el presupuesto
+restante de la observación; no compara directamente ambas bases temporales.
+
+En Nav2 Humble 1.1.20, ignorar una fuente vencida no impone por sí solo una
+parada: el árbitro final aplica el stop por frescura. Esta protección no prueba
+que Collision Monitor haya podido transformar el scan ni que su callback esté
+progresando. La prueba PC de `test_navigation_real_runtime.py` cubre fuente
+vencida recibida continuamente, recuperación y ausencia de scans; no acredita
+parada física. Ver [evidencia de #277](../../docs/migration-evidence/scan-freshness-277-2026-10-14.md).

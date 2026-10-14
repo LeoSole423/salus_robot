@@ -85,10 +85,20 @@ class CommandArbiter:
         self.path_health_reason = "path_health_unavailable"
 
     def scan_is_fresh(self, now_s: float) -> bool:
-        return self.scan_stamp_s is not None and now_s - self.scan_stamp_s <= self.monitor_timeout_s
+        return (
+            self.scan_stamp_s is not None
+            and 0.0 <= now_s - self.scan_stamp_s <= self.monitor_timeout_s
+        )
 
-    def set_scan_received(self, now_s: float) -> None:
-        self.scan_stamp_s = now_s
+    def set_scan_received(self, now_s: float, *, source_age_s: float) -> None:
+        # Project ROS source age onto the steady watchdog clock. Never compare
+        # an epoch/sim stamp directly with time.monotonic(). Receipt alone
+        # cannot renew an observation that the monitor rejects.
+        self.scan_stamp_s = (
+            now_s - source_age_s
+            if math.isfinite(source_age_s) and source_age_s >= 0.0
+            else None
+        )
 
     def set_monitor_state(self, message: CollisionMonitorState, _now_s: float | None = None) -> None:
         self.monitor_action = int(message.action_type)
@@ -272,9 +282,17 @@ class NavCommandServer(Node):
         with self._lock:
             self._arbiter.set_monitor_state(message)
 
-    def _on_scan(self, _message: LaserScan) -> None:
+    def _on_scan(self, message: LaserScan) -> None:
         with self._lock:
-            self._arbiter.set_scan_received(self._now_s())
+            stamp = message.header.stamp
+            stamp_ns = stamp.sec * 1_000_000_000 + stamp.nanosec
+            source_age_s = (
+                (self.get_clock().now().nanoseconds - stamp_ns) / 1e9
+                if stamp_ns > 0 else math.inf
+            )
+            self._arbiter.set_scan_received(
+                self._now_s(), source_age_s=source_age_s
+            )
 
     def _on_gps(self, message: NavSatFix) -> None:
         if math.isfinite(message.latitude) and math.isfinite(message.longitude):
