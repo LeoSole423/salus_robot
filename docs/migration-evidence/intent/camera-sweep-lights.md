@@ -78,3 +78,11 @@ recovering mantiene sweep_running=true para que Stop y PTZ manual cancelen
 la recuperación pendiente; shutdown también la cancela. Si Stop no se confirma,
 no se programa recuperación. El tercer intento fallido o nuevo fallo tras agotar
 presupuesto termina en error. No recupera por reinicio del nodo.
+
+Validación recuperación: 16 pruebas puras de política, build 16 paquetes,
+suite propia 1318 tests sin fallos/errores (1 skip), smoke web-cockpit passed.
+Cockpit build y 205 passed/1 skipped. Backend 38d92d5 desplegado en Jetson,
+servicio active y consulta WebSocket ok/supported/idle/error vacío. Cockpit
+commits 6a152bc y 5a73fd5 en agent/camera-sweep-recovery; no merge a main.
+Fallos de red inyectados sólo en mocks; recuperación física ante fallo real
+queda pendiente de observación del operador. Ningún paneo se inició al desplegar.
