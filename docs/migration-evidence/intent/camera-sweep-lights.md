@@ -98,3 +98,13 @@ Start captura Frente guardado, centra primero y luego alterna izquierda/derecha;
 conserva tilt y zoom de Frente. Un centro cuyos ±120 no entren en límites se
 rechaza antes de mover, sin wrap por detrás. Recuperación conserva destino y
 fase centering/moving_left/sweeping_*; cambios de preset no alteran sesión activa.
+
+Validación sector: 17 pruebas de política, build 16 paquetes, suite propia
+1319 tests (1 skip); primera ejecución halló estilo corregido y timeout en
+prueba RTK ajena bajo smokes concurrentes; repetición aislada de salus_hardware
+198 sin errores/fallos. Smoke web-cockpit passed tras calibrar Frente de fixture
+simulada; Cockpit build y 205 passed/1 skipped. Backend 4fcd2ff desplegado,
+servicio active y consulta CameraFeatures ok/supported/idle. Preset real Frente
+223.94999556 guardado por servicio con respuesta ok; HOME intacto. UI 226b1ec
+commiteada en agent/camera-sweep-recovery. Recorrido físico nuevo pendiente de
+observación del operador; no iniciado automáticamente durante despliegue.

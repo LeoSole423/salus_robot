@@ -157,3 +157,11 @@ hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
 Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
 Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
 ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
+
+
+Paneo sectorial: Start usa el preset Frente guardado, centra primero y alterna
+Frente+120° (izquierda) / Frente−120° (derecha), conservando tilt y zoom de
+ese preset. No cruza el límite físico: rechaza centros cuyo sector no entre
+en el rango. Recuperación automática: espera 5 s, hasta 3 intentos por sesión,
+retoma destino/fase interrumpidos; Stop, PTZ manual y shutdown cancelan la
+espera. Stop fallido cancela recuperación. No se reinicia al arrancar el nodo.
