@@ -13,21 +13,21 @@ def controller():
     return CameraFeaturesController(backend, CameraLimits()), backend
 
 
-def test_sweep_centers_then_alternates_120_degrees_each_side():
+def test_sweep_centers_then_alternates_90_degrees_each_side():
     feature, backend = controller()
     feature.start(10, PtzPose(223.95, 5, 1))
     assert feature.target == PtzPose(223.95, 5, 1)
     assert feature.phase == "centering"
     backend.read_state.return_value = feature.target
     feature.tick(11)
-    assert feature.target == PtzPose(343.95, 5, 1)
+    assert feature.target == PtzPose(313.95, 5, 1)
     backend.read_state.return_value = feature.target
     feature.tick(12)
-    assert feature.target == PtzPose(103.94999999999999, 5, 1)
+    assert feature.target == PtzPose(133.95, 5, 1)
     assert feature.phase == "sweeping_right"
     backend.read_state.return_value = feature.target
     feature.tick(13)
-    assert feature.target.pan_deg == 343.95
+    assert feature.target.pan_deg == 313.95
     assert feature.phase == "sweeping_left"
     feature.stop()
     calls = backend.write_absolute.call_count

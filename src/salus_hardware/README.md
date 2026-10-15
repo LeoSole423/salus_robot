@@ -160,7 +160,7 @@ ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
 
 
 Paneo sectorial: Start usa el preset Frente guardado, centra primero y alterna
-Frente+120° (izquierda) / Frente−120° (derecha), conservando tilt y zoom de
+Frente+90° (izquierda) / Frente−90° (derecha), conservando tilt y zoom de
 ese preset. No cruza el límite físico: rechaza centros cuyo sector no entre
 en el rango. Recuperación automática: espera 5 s, hasta 3 intentos por sesión,
 retoma destino/fase interrumpidos; Stop, PTZ manual y shutdown cancelan la

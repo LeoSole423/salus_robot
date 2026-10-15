@@ -108,3 +108,7 @@ servicio active y consulta CameraFeatures ok/supported/idle. Preset real Frente
 223.94999556 guardado por servicio con respuesta ok; HOME intacto. UI 226b1ec
 commiteada en agent/camera-sweep-recovery. Recorrido físico nuevo pendiente de
 observación del operador; no iniciado automáticamente durante despliegue.
+
+Ajuste solicitado: reducir sector a ±90° desde Frente (180° totales).
+Centro real conservado 223.94999556; límites 133.94999556..313.94999556.
+Timeout por tramo sigue en 120 s; recuperación y cancelación intactas.

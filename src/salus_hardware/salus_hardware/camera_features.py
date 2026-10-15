@@ -58,11 +58,11 @@ class CameraFeaturesController:
             raise CameraBackendError("camera sweep already running")
         pose = self.backend.read_state()
         center = pose if center is None else center
-        self.left = center.pan_deg + 120.0
-        self.right = center.pan_deg - 120.0
+        self.left = center.pan_deg + 90.0
+        self.right = center.pan_deg - 90.0
         if self.right < self.limits.pan_min_deg or self.left > min(
                 self.limits.pan_max_deg, 349.99999524):
-            raise CameraBackendError("front preset cannot fit a 120-degree sweep on each side")
+            raise CameraBackendError("front preset cannot fit a 90-degree sweep on each side")
         self.target = center
         self._write_target()
         self.phase, self.deadline = "centering", now + self.LEG_TIMEOUT_S
