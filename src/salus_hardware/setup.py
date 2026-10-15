@@ -10,6 +10,8 @@ setup(name=package_name, version="0.1.0", packages=find_packages(),
       install_requires=["setuptools"], extras_require={"test": ["pytest"]}, zip_safe=True,
       maintainer="SALUS maintainers", maintainer_email="leonel.sole423@gmail.com",
       description="Hardware adapters for SALUS.", license="MIT", entry_points={"console_scripts": [
+          "bmi088_observer = salus_hardware.bmi088_node:main",
+          "imu_comparison = salus_hardware.imu_comparison_node:main",
           "battery_node = salus_hardware.battery_node:main",
           "camera_node = salus_hardware.camera_node:main",
           "camera_stream_profile_tool = salus_hardware.camera_stream_profile_tool:main",

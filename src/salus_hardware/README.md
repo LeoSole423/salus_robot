@@ -127,3 +127,15 @@ Uniarch mobile PTZ: `camera_backend:=onvif_uniarch`, camera channel 2,
 profile `media_profile2_1`. Uses external credentials and ONVIF PanTilt only;
 zoom is unsupported. Directional presets front/right/rear/left are editable.
 Use a new presets file when replacing a camera to preserve previous calibration.
+
+## BMI088 USB: observación y comparación
+
+`bmi088_observer` publica giro, aceleración y temperatura en
+`/hardware/imu_bmi088/`, con calibración v1 opcional y consulta USB temporizada.
+Es un dueño exclusivo del puerto S3 que solo solicita diagnóstico; no controla
+actuadores ni cambia la fuente del EKF. `imu_comparison` compara giro contra
+Pixhawk usando TF y timestamps, sin declarar paridad automática.
+
+Ver [contratos, parámetros y procedimiento](../../docs/bmi088-ros.md).
+La validación física, gateway único control/IMU de alta tasa y GNSS directo
+siguen pendientes. No conectar simultáneamente el lector clásico al mismo USB.
