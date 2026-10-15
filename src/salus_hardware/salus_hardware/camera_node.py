@@ -374,7 +374,15 @@ class CameraNode(Node):
 
     def _tick_features(self) -> None:
         with self._operation_lock:
+            before = (self._features.phase, self._features.error)
             self._features.tick(time.monotonic())
+            after = (self._features.phase, self._features.error)
+            if after != before:
+                message = f"Camera sweep phase={after[0]} error={after[1] or 'none'}"
+                if after[1]:
+                    self.get_logger().warning(message)
+                else:
+                    self.get_logger().info(message)
 
     def _on_features(self, request, response):
         with self._operation_lock:

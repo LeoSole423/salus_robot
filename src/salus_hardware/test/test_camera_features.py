@@ -99,3 +99,61 @@ def test_unsupported_backend_does_not_claim_auxiliary_capabilities():
     assert not feature.supported
     with pytest.raises(CameraBackendError):
         feature.start(0)
+
+
+def test_isolated_status_failures_do_not_cancel_or_repeat_motion():
+    feature, backend = controller()
+    feature.start(0)
+    backend.read_state.side_effect = CameraBackendError("status timeout")
+    feature.tick(1)
+    feature.tick(2)
+    assert feature.running
+    assert feature.deadline == 120
+    assert backend.write_absolute.call_count == 1
+    backend.stop.assert_not_called()
+    backend.read_state.side_effect = None
+    backend.read_state.return_value = feature.target
+    feature.tick(3)
+    assert feature.phase == "sweeping_right"
+    assert feature.status_failures == 0
+
+
+def test_persistent_status_failure_stops_and_light_renewal_preserves_error():
+    feature, backend = controller()
+    feature.start(0)
+    feature.set_light("fixed", True, 0)
+    backend.read_state.side_effect = CameraBackendError("status timeout")
+    feature.tick(38)
+    feature.tick(39)
+    feature.tick(40)
+    assert feature.phase == "error"
+    assert feature.error == "status timeout"
+    backend.stop.assert_called_once()
+    backend.set_light.assert_called_with("fixed", True, 60)
+    feature.set_light("fixed", False, 41)
+    assert feature.error == "status timeout"
+
+
+def test_move_failure_stops_immediately():
+    feature, backend = controller()
+    feature.start(0)
+    backend.read_state.return_value = feature.target
+    backend.write_absolute.side_effect = CameraBackendError("move rejected")
+    feature.tick(1)
+    assert feature.phase == "error"
+    assert feature.error == "move rejected"
+    backend.stop.assert_called_once()
+
+
+def test_light_errors_are_independent_of_other_lens_and_sweep():
+    feature, backend = controller()
+    backend.set_light.side_effect = CameraBackendError("lost")
+    with pytest.raises(CameraBackendError):
+        feature.set_light("mobile", True, 0)
+    backend.set_light.side_effect = None
+    feature.set_light("fixed", True, 1)
+    feature.start(2)
+    feature.stop()
+    assert "mobile" in feature.error
+    feature.set_light("mobile", False, 3)
+    assert not feature.error

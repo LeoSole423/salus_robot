@@ -9,6 +9,7 @@ class CameraFeaturesController:
     LIGHT_DURATION_S = 60
     LIGHT_RENEW_S = 40.0
     PAN_TOLERANCE_DEG = 0.8
+    MAX_STATUS_FAILURES = 3
 
     def __init__(self, backend, limits):
         self.backend = backend
@@ -17,11 +18,17 @@ class CameraFeaturesController:
         self.left = min(limits.pan_max_deg, 349.99999524)
         self.right = limits.pan_min_deg
         self.phase = "idle"
-        self.error = ""
+        self.sweep_error = ""
+        self.light_errors = {}
+        self.status_failures = 0
         self.lights = {"fixed": -1, "mobile": -1}
         self.renew_at = {}
         self.deadline = 0.0
         self.target = None
+
+    @property
+    def error(self):
+        return "; ".join(filter(None, [self.sweep_error, *self.light_errors.values()]))
 
     @property
     def running(self):
@@ -44,7 +51,9 @@ class CameraFeaturesController:
         pose = self.backend.read_state()
         self.target = PtzPose(self.left, pose.tilt_deg, pose.zoom_level)
         self._write_target()
-        self.phase, self.deadline, self.error = "moving_left", now + self.LEG_TIMEOUT_S, ""
+        self.phase, self.deadline = "moving_left", now + self.LEG_TIMEOUT_S
+        self.sweep_error = ""
+        self.status_failures = 0
 
     def stop(self):
         self._require_supported()
@@ -52,9 +61,9 @@ class CameraFeaturesController:
         self.phase = "idle"
         try:
             self.backend.stop()
-            self.error = ""
+            self.sweep_error = ""
         except CameraBackendError:
-            self.phase, self.error = "error", "camera stop failed"
+            self.phase, self.sweep_error = "error", "camera stop failed"
             raise
 
     def set_light(self, lens, enabled, now):
@@ -67,10 +76,10 @@ class CameraFeaturesController:
             self.lights[lens] = int(enabled)
             if enabled:
                 self.renew_at[lens] = now + self.LIGHT_RENEW_S
-            self.error = ""
+            self.light_errors.pop(lens, None)
         except CameraBackendError:
             self.lights[lens] = -1
-            self.error = "camera light command failed"
+            self.light_errors[lens] = f"camera {lens} light command failed"
             raise
 
     def tick(self, now):
@@ -78,8 +87,17 @@ class CameraFeaturesController:
             try:
                 if now >= self.deadline:
                     raise CameraBackendError("camera sweep timed out")
-                pose = self.backend.read_state()
-                if abs(pose.pan_deg - self.target.pan_deg) <= self.PAN_TOLERANCE_DEG:
+                try:
+                    pose = self.backend.read_state()
+                except CameraBackendError:
+                    self.status_failures += 1
+                    if self.status_failures >= self.MAX_STATUS_FAILURES:
+                        raise
+                    pose = None
+                else:
+                    self.status_failures = 0
+                if (pose is not None
+                        and abs(pose.pan_deg - self.target.pan_deg) <= self.PAN_TOLERANCE_DEG):
                     if self.phase in ("moving_left", "sweeping_left"):
                         self.target = PtzPose(self.right, self.target.tilt_deg,
                                               self.target.zoom_level)
@@ -95,7 +113,7 @@ class CameraFeaturesController:
                     self.stop()
                 except CameraBackendError:
                     pass
-                self.phase, self.error = "error", str(error)
+                self.phase, self.sweep_error = "error", str(error)
         for lens, due in list(self.renew_at.items()):
             if now >= due:
                 try:

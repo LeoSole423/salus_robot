@@ -45,3 +45,18 @@ hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
 Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
 Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
 ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
+
+
+Corrección de fiabilidad 2026-10-14: operador informa paradas que requieren
+reiniciar paneo. Estado real observado: sweep_phase=error, sweep_running=false,
+error vacío con ambas luces activas. La renovación exitosa de luces borraba
+el error compartido; no se puede recuperar la causa de esa parada anterior.
+Separar errores por paneo y lente, registrar transiciones/errores en ROS.
+La política anterior detenía ante una sola lectura GetStatus fallida. Ahora
+permite dos fallos consecutivos de lectura sin emitir nuevas órdenes ni
+renovar el deadline; la tercera lectura fallida detiene. Una lectura válida
+reinicia el contador. Rechazos de movimiento y timeout de 120 s mantienen
+parada inmediata. No reinicia automáticamente recorridos terminados.
+Pruebas simulan fallos aislados/persistentes, errores de movimiento y renovación
+de luces simultánea; no actúan sobre hardware. Causa física y aceptación
+prolongada pendientes de nueva evidencia de runtime.
