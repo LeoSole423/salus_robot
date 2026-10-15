@@ -56,7 +56,7 @@ def test_sweep_deadline_stops_without_claiming_completion():
     feature, backend = controller()
     feature.start(0)
     feature.tick(120)
-    assert feature.phase == "error"
+    assert feature.phase == "recovering"
     assert "timed out" in feature.error
     backend.stop.assert_called_once()
 
@@ -126,7 +126,7 @@ def test_persistent_status_failure_stops_and_light_renewal_preserves_error():
     feature.tick(38)
     feature.tick(39)
     feature.tick(40)
-    assert feature.phase == "error"
+    assert feature.phase == "recovering"
     assert feature.error == "status timeout"
     backend.stop.assert_called_once()
     backend.set_light.assert_called_with("fixed", True, 60)
@@ -140,7 +140,7 @@ def test_move_failure_stops_immediately():
     backend.read_state.return_value = feature.target
     backend.write_absolute.side_effect = CameraBackendError("move rejected")
     feature.tick(1)
-    assert feature.phase == "error"
+    assert feature.phase == "recovering"
     assert feature.error == "move rejected"
     backend.stop.assert_called_once()
 
@@ -157,3 +157,62 @@ def test_light_errors_are_independent_of_other_lens_and_sweep():
     assert "mobile" in feature.error
     feature.set_light("mobile", False, 3)
     assert not feature.error
+
+
+def test_recovery_waits_and_resumes_interrupted_target_with_bounded_budget():
+    feature, backend = controller()
+    feature.start(0)
+    target = feature.target
+    feature.tick(120)
+    assert feature.phase == "recovering"
+    feature.tick(124)
+    assert backend.write_absolute.call_count == 1
+    feature.tick(125)
+    assert feature.phase == "moving_left"
+    assert backend.write_absolute.call_args.args[0] == target
+    assert feature.deadline == 245
+    assert not feature.error
+    # A successful restart does not reset the total budget of this sweep.
+    for deadline in (245, 370):
+        feature.tick(deadline)
+        feature.tick(deadline + 5)
+    assert feature.recovery_attempts == 3
+    feature.tick(495)
+    assert feature.phase == "error"
+    assert "exhausted" in feature.error
+
+
+@pytest.mark.parametrize("cancel", ["stop", "shutdown"])
+def test_cancel_during_recovery_prevents_later_motion(cancel):
+    feature, backend = controller()
+    feature.start(0)
+    feature.tick(120)
+    getattr(feature, cancel)()
+    feature.tick(130)
+    assert not feature.running
+    assert backend.write_absolute.call_count == 1
+
+
+def test_failed_stop_prevents_automatic_recovery():
+    feature, backend = controller()
+    feature.start(0)
+    backend.stop.side_effect = CameraBackendError("offline")
+    feature.tick(120)
+    feature.tick(130)
+    assert feature.phase == "error"
+    assert "recovery cancelled" in feature.error
+    assert backend.write_absolute.call_count == 1
+
+
+def test_failed_restart_exhausts_budget_without_busy_loop():
+    feature, backend = controller()
+    feature.start(0)
+    feature.tick(120)
+    backend.read_state.side_effect = CameraBackendError("offline")
+    for now in (125, 130, 135):
+        feature.tick(now)
+    assert feature.phase == "error"
+    assert feature.recovery_attempts == 3
+    calls = backend.read_state.call_count
+    feature.tick(200)
+    assert backend.read_state.call_count == calls

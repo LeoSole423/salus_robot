@@ -68,3 +68,13 @@ con operador confirmando robot detenido; servicio active, readiness real
 ACTIVE y WebSocket CameraFeatures ok/supported, sweep idle y error vacío.
 No se inició paneo físico durante esta verificación. Respaldo de fuente y
 prepared.env disponible en el directorio de diagnóstico de la Jetson.
+
+
+Recuperación solicitada por operador: esperar 5 segundos después de una parada
+por fallo, verificar posición y reenviar el destino interrumpido. Máximo tres
+intentos durante toda la sesión iniciada por el operador, sin resetear presupuesto
+al completar un tramo. Nuevo Start explícito reinicia presupuesto. Estado
+recovering mantiene sweep_running=true para que Stop y PTZ manual cancelen
+la recuperación pendiente; shutdown también la cancela. Si Stop no se confirma,
+no se programa recuperación. El tercer intento fallido o nuevo fallo tras agotar
+presupuesto termina en error. No recupera por reinicio del nodo.

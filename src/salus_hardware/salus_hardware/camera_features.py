@@ -10,6 +10,8 @@ class CameraFeaturesController:
     LIGHT_RENEW_S = 40.0
     PAN_TOLERANCE_DEG = 0.8
     MAX_STATUS_FAILURES = 3
+    MAX_RECOVERY_ATTEMPTS = 3
+    RECOVERY_DELAY_S = 5.0
 
     def __init__(self, backend, limits):
         self.backend = backend
@@ -25,6 +27,9 @@ class CameraFeaturesController:
         self.renew_at = {}
         self.deadline = 0.0
         self.target = None
+        self.recovery_attempts = 0
+        self.recovery_at = None
+        self.resume_phase = None
 
     @property
     def error(self):
@@ -32,7 +37,7 @@ class CameraFeaturesController:
 
     @property
     def running(self):
-        return self.phase in ("moving_left", "sweeping_right", "sweeping_left")
+        return self.phase in ("moving_left", "sweeping_right", "sweeping_left", "recovering")
 
     def _require_supported(self):
         if not self.supported:
@@ -54,11 +59,14 @@ class CameraFeaturesController:
         self.phase, self.deadline = "moving_left", now + self.LEG_TIMEOUT_S
         self.sweep_error = ""
         self.status_failures = 0
+        self.recovery_attempts = 0
+        self.recovery_at = None
 
     def stop(self):
         self._require_supported()
         # Cancel policy first even if network Stop fails. Never resume old targets.
         self.phase = "idle"
+        self.recovery_at = None
         try:
             self.backend.stop()
             self.sweep_error = ""
@@ -82,8 +90,40 @@ class CameraFeaturesController:
             self.light_errors[lens] = f"camera {lens} light command failed"
             raise
 
+    def _recover_after_failure(self, now, error):
+        if self.phase != "recovering":
+            self.resume_phase = self.phase
+        self.sweep_error = str(error)
+        try:
+            self.backend.stop()
+        except CameraBackendError:
+            self.phase = "error"
+            self.recovery_at = None
+            self.sweep_error += "; camera stop failed; automatic recovery cancelled"
+            return
+        if self.recovery_attempts >= self.MAX_RECOVERY_ATTEMPTS:
+            self.phase = "error"
+            self.recovery_at = None
+            self.sweep_error += "; automatic recovery exhausted"
+        else:
+            self.phase = "recovering"
+            self.recovery_at = now + self.RECOVERY_DELAY_S
+
     def tick(self, now):
-        if self.running:
+        if self.phase == "recovering":
+            if now >= self.recovery_at:
+                self.recovery_attempts += 1
+                try:
+                    # Read current position before retrying the interrupted target.
+                    self.backend.read_state()
+                    self._write_target()
+                    self.phase = self.resume_phase
+                    self.deadline = now + self.LEG_TIMEOUT_S
+                    self.status_failures = 0
+                    self.sweep_error = ""
+                except CameraBackendError as error:
+                    self._recover_after_failure(now, error)
+        elif self.running:
             try:
                 if now >= self.deadline:
                     raise CameraBackendError("camera sweep timed out")
@@ -109,11 +149,7 @@ class CameraFeaturesController:
                         self._write_target()
                         self.phase, self.deadline = "sweeping_left", now + self.LEG_TIMEOUT_S
             except CameraBackendError as error:
-                try:
-                    self.stop()
-                except CameraBackendError:
-                    pass
-                self.phase, self.sweep_error = "error", str(error)
+                self._recover_after_failure(now, error)
         for lens, due in list(self.renew_at.items()):
             if now >= due:
                 try:
