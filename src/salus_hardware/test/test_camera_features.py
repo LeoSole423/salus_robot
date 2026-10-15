@@ -13,32 +13,33 @@ def controller():
     return CameraFeaturesController(backend, CameraLimits()), backend
 
 
-def test_sweep_waits_for_left_then_traverses_right_preserving_tilt():
+def test_sweep_centers_then_alternates_120_degrees_each_side():
     feature, backend = controller()
-    feature.start(10)
-    left = backend.write_absolute.call_args.args[0]
-    assert left == PtzPose(feature.left, 23, 1)
+    feature.start(10, PtzPose(223.95, 5, 1))
+    assert feature.target == PtzPose(223.95, 5, 1)
+    assert feature.phase == "centering"
+    backend.read_state.return_value = feature.target
     feature.tick(11)
-    assert backend.write_absolute.call_count == 1
-    backend.read_state.return_value = left
+    assert feature.target == PtzPose(343.95, 5, 1)
+    backend.read_state.return_value = feature.target
     feature.tick(12)
-    assert backend.write_absolute.call_args.args[0] == PtzPose(0, 23, 1)
+    assert feature.target == PtzPose(103.94999999999999, 5, 1)
     assert feature.phase == "sweeping_right"
-    backend.read_state.return_value = PtzPose(0, 23, 1)
+    backend.read_state.return_value = feature.target
     feature.tick(13)
-    assert feature.running
+    assert feature.target.pan_deg == 343.95
     assert feature.phase == "sweeping_left"
-    assert backend.write_absolute.call_args.args[0] == left
-    backend.read_state.return_value = left
-    feature.tick(14)
-    assert feature.phase == "sweeping_right"
-    assert feature.deadline == 134
     feature.stop()
     calls = backend.write_absolute.call_count
-    feature.tick(15)
-    assert not feature.running
+    feature.tick(14)
     assert backend.write_absolute.call_count == calls
-    backend.stop.assert_called_once()
+
+
+def test_invalid_center_rejects_without_movement():
+    feature, backend = controller()
+    with pytest.raises(CameraBackendError, match="cannot fit"):
+        feature.start(0, PtzPose(0, 0, 1))
+    backend.write_absolute.assert_not_called()
 
 
 def test_stop_cancels_future_motion_even_if_network_stop_fails():
@@ -114,7 +115,7 @@ def test_isolated_status_failures_do_not_cancel_or_repeat_motion():
     backend.read_state.side_effect = None
     backend.read_state.return_value = feature.target
     feature.tick(3)
-    assert feature.phase == "sweeping_right"
+    assert feature.phase == "moving_left"
     assert feature.status_failures == 0
 
 
@@ -168,7 +169,7 @@ def test_recovery_waits_and_resumes_interrupted_target_with_bounded_budget():
     feature.tick(124)
     assert backend.write_absolute.call_count == 1
     feature.tick(125)
-    assert feature.phase == "moving_left"
+    assert feature.phase == "centering"
     assert backend.write_absolute.call_args.args[0] == target
     assert feature.deadline == 245
     assert not feature.error

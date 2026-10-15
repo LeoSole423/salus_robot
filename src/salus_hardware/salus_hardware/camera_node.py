@@ -389,7 +389,7 @@ class CameraNode(Node):
             response.ok = True
             try:
                 if request.command == CameraFeatures.Request.SWEEP_START:
-                    self._features.start(time.monotonic())
+                    self._features.start(time.monotonic(), self._presets["front"].pose)
                 elif request.command == CameraFeatures.Request.SWEEP_STOP:
                     self._features.stop()
                 elif request.command == CameraFeatures.Request.LIGHT:

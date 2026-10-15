@@ -15,6 +15,7 @@ class CameraFeaturesController:
 
     def __init__(self, backend, limits):
         self.backend = backend
+        self.limits = limits
         self.supported = all(callable(getattr(backend, name, None))
                              for name in ("stop", "set_light"))
         self.left = min(limits.pan_max_deg, 349.99999524)
@@ -37,7 +38,9 @@ class CameraFeaturesController:
 
     @property
     def running(self):
-        return self.phase in ("moving_left", "sweeping_right", "sweeping_left", "recovering")
+        return self.phase in (
+            "moving_left", "sweeping_right", "sweeping_left", "recovering", "centering",
+        )
 
     def _require_supported(self):
         if not self.supported:
@@ -49,14 +52,20 @@ class CameraFeaturesController:
             writer = self.backend.write_absolute
         writer(self.target)
 
-    def start(self, now):
+    def start(self, now, center=None):
         self._require_supported()
         if self.running:
             raise CameraBackendError("camera sweep already running")
         pose = self.backend.read_state()
-        self.target = PtzPose(self.left, pose.tilt_deg, pose.zoom_level)
+        center = pose if center is None else center
+        self.left = center.pan_deg + 120.0
+        self.right = center.pan_deg - 120.0
+        if self.right < self.limits.pan_min_deg or self.left > min(
+                self.limits.pan_max_deg, 349.99999524):
+            raise CameraBackendError("front preset cannot fit a 120-degree sweep on each side")
+        self.target = center
         self._write_target()
-        self.phase, self.deadline = "moving_left", now + self.LEG_TIMEOUT_S
+        self.phase, self.deadline = "centering", now + self.LEG_TIMEOUT_S
         self.sweep_error = ""
         self.status_failures = 0
         self.recovery_attempts = 0
@@ -138,7 +147,12 @@ class CameraFeaturesController:
                     self.status_failures = 0
                 if (pose is not None
                         and abs(pose.pan_deg - self.target.pan_deg) <= self.PAN_TOLERANCE_DEG):
-                    if self.phase in ("moving_left", "sweeping_left"):
+                    if self.phase == "centering":
+                        self.target = PtzPose(self.left, self.target.tilt_deg,
+                                              self.target.zoom_level)
+                        self._write_target()
+                        self.phase, self.deadline = "moving_left", now + self.LEG_TIMEOUT_S
+                    elif self.phase in ("moving_left", "sweeping_left"):
                         self.target = PtzPose(self.right, self.target.tilt_deg,
                                               self.target.zoom_level)
                         self._write_target()

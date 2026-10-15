@@ -86,3 +86,15 @@ servicio active y consulta WebSocket ok/supported/idle/error vacío. Cockpit
 commits 6a152bc y 5a73fd5 en agent/camera-sweep-recovery; no merge a main.
 Fallos de red inyectados sólo en mocks; recuperación física ante fallo real
 queda pendiente de observación del operador. Ningún paneo se inició al desplegar.
+
+
+Paneo sectorial solicitado: partir de Frente, ir 120 grados físicos a izquierda
+(incremento pan) y 120 grados a derecha (decremento pan); alternar continuamente.
+2026-10-14 operador corrigió referencia: antiguo Frente 0 no representaba frente,
+HOME sí. Lectura real con cámara centrada pan=223.94999556, tilt=0, zoom=1;
+se guardó Frente por servicio camera_save_preset sin modificar HOME. Límites
+resultantes 103.94999556 y 343.94999556, dentro del rango ONVIF leído 0..350.
+Start captura Frente guardado, centra primero y luego alterna izquierda/derecha;
+conserva tilt y zoom de Frente. Un centro cuyos ±120 no entren en límites se
+rechaza antes de mover, sin wrap por detrás. Recuperación conserva destino y
+fase centering/moving_left/sweeping_*; cambios de preset no alteran sesión activa.
