@@ -60,3 +60,11 @@ parada inmediata. No reinicia automáticamente recorridos terminados.
 Pruebas simulan fallos aislados/persistentes, errores de movimiento y renovación
 de luces simultánea; no actúan sobre hardware. Causa física y aceptación
 prolongada pendientes de nueva evidencia de runtime.
+
+Validación de corrección: build de 16 paquetes; suite colcon de 15 paquetes,
+1313 tests de fuentes propias, cero errores/fallos y un skip; salus_hardware
+192 y salus_web 73. Smoke web-cockpit passed. Desplegado 40fd3a7 en Jetson
+con operador confirmando robot detenido; servicio active, readiness real
+ACTIVE y WebSocket CameraFeatures ok/supported, sweep idle y error vacío.
+No se inició paneo físico durante esta verificación. Respaldo de fuente y
+prepared.env disponible en el directorio de diagnóstico de la Jetson.
