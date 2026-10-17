@@ -21,7 +21,6 @@ packages:
     status: ported_motion_description_with_primary_imu_identity_and_real_static_tf_owner
   salus_hardware:
     owner: hardware_adapters
-    bmi088_observation: timed_diagnostic_only_ros_and_tf_comparison_no_cutover
     build_type: ament_python
     language: python
     may_depend_on: [interfaces, salus_interfaces, salus_description]
@@ -84,7 +83,6 @@ packages:
     status: ported_sim_evaluation_foundation
   salus_bringup:
     owner: system_composition
-    bmi088_observation: isolated_comparison_without_control_or_source_selection
     build_type: ament_cmake
     language: launch
     may_depend_on:

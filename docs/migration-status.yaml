@@ -24,22 +24,6 @@ components:
       and existing blocked fields preserve mission/checkpoints and command
       authority. PC evidence only; stopping distance, physical latency and
       robot performance remain unvalidated. No Jetson deployment or EKF tuning.
-  bmi088_ros_observation:
-    source: ESP32-S3 BMI088 timed diagnostic and host calibration schema v1
-    target: salus_hardware and salus_bringup
-    state: ported
-    evidence:
-      - docs/migration-evidence/intent/2026-10-15-bmi088-ros-shadow.md
-      - docs/decisions/0015-bmi088-observation-usb-timing.md
-      - docs/bmi088-ros.md
-      - src/salus_hardware/test/test_bmi088_domain.py
-      - src/salus_hardware/test/test_bmi088_node.py
-      - src/salus_hardware/test/test_bmi088_serial.py
-      - src/salus_bringup/test/test_imu_comparison_launch.py
-    note: >-
-      Exclusive diagnostic-only USB observation, separate DRDY timestamps,
-      optional calibrated vectors and TF-based gyro comparison. No physical
-      parity, operational IMU selection, control gateway or GNSS direct USB.
   pylontech_battery_backend:
     source: Pylontech US2000 stationary RS485 measurements
     target: salus_hardware and salus_control external battery source

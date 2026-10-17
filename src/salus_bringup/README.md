@@ -253,10 +253,3 @@ select adapter settings. `tools/start_real_runtime.sh` requires
 `SALUS_BATTERY_SERIAL_PORT` and maps that device into the runtime container.
 Simulation launches are unchanged. This composition has not been deployed on
 hardware as part of the battery backend change.
-
-## Observación BMI088/Pixhawk
-
-`imu_comparison.launch.py` inicia solo observador S3 y comparador. Requiere
-puerto explícito; conserva la fuente operativa y no inicia control/MAVROS/EKF.
-El montaje TF se reutiliza o declara explícitamente; no se publica por defecto.
-Ver [guía de comparación](../../docs/bmi088-ros.md).
