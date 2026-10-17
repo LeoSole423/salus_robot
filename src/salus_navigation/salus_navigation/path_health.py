@@ -431,6 +431,8 @@ class PathHealthNode(Node):
         message.wait_remaining_s = decision.remaining_s
         self._pub.publish(message)
         response.health = PathHealth()
+        response.health.stamp = message.stamp
+        response.health.wait_remaining_s = decision.remaining_s
         response.health.state, response.health.reason = result.state, result.reason
         response.health.costmap_age_s = result.costmap_age_s
         response.health.max_cost = result.max_cost

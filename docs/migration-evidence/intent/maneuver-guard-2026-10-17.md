@@ -61,3 +61,11 @@ Pruebas: política geométrica y temporal pura, adaptador/árbitro/recovery,
 BT y proyección web; build, suite completa y smokes proporcionales en contenedor.
 Registrar resultados efectivos y limitaciones en evidencia. Sin evidencia física
 ni declaración de seguridad de frenado antes de una campaña posterior.
+
+## Resultado de la implementación
+
+Ver `../maneuver-guard-2026-10-17.md` y ADR 0016 para resultados, el rulo R4
+capturado y fallos preexistentes. La inspección de la rama remota de migración
+de Cockpit en 383f3ce confirmó nombres de estado antiguos; el PR separado
+AEyeSecurity/cockpit#26 corrige panel/mapa/polling sin modificar su main ni el
+checkout activo. La matriz no se suaviza para aprobar una llegada bloqueada.

@@ -17,6 +17,7 @@ components:
       - src/salus_navigation/test/test_maneuver_adapter.py
       - src/salus_navigation_bt/test/test_guarded_control.cpp
       - tools/smoke_maneuver_guard_runtime.py
+      - docs/migration-evidence/maneuver-guard-2026-10-17.md
     note: >-
       Pure geometry distinguishes ordered requested patrol visits from inserted
       planner returns. A monotonic total wait, guarded controller cancellation

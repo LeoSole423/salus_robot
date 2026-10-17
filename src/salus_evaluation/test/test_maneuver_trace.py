@@ -29,8 +29,10 @@ def test_collector_persists_complete_plan_and_health_with_source_stamps(tmp_path
                         wait_remaining_s=12.)
     health.stamp = path.header.stamp
     collector._path_health(health)
-    write_artifacts(tmp_path, {}, {}, {'plans': collector.plan_samples,
-                                      'path_health': collector.path_health_samples})
+    write_artifacts(tmp_path, {}, {}, {
+        'plans': collector.plan_samples,
+        'path_health': collector.path_health_samples,
+    })
     rows = list(csv.DictReader((tmp_path / 'plans.csv').open()))
     assert len(rows) == 4
     assert [row['plan_index'] for row in rows] == ['0', '0', '1', '1']

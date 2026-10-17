@@ -125,3 +125,16 @@ def test_loop_after_opposite_turn_is_not_hidden_by_signed_cancellation():
 
 def test_open_three_quarter_arc_is_not_mislabeled_as_a_closed_loop():
     assert inspect_maneuver(arc(270), robot_yaw=0).reason != 'PLANNER_LOOP'
+
+
+def test_captured_smac_r4_request_is_a_loop_not_a_valid_quarter_circle():
+    import json
+    from pathlib import Path
+    fixture = json.loads((Path(__file__).parent / 'fixtures/planner_right_r4_loop.json').read_text())
+    points = tuple(tuple(point) for point in fixture['points'])
+    result = inspect_maneuver(points, robot_yaw=fixture['robot_yaw_rad'],
+                              goals=(tuple(fixture['goal_xy']),))
+    assert result.reason == fixture['expected']
+    assert sum(math.dist(a, b) for a, b in zip(points, points[1:])) > 30
+    # The same nominal request has an ideal admissible R4 quarter circle.
+    assert not inspect_maneuver(arc(90, sign=-1), robot_yaw=0, goals=((4, -4),)).reason

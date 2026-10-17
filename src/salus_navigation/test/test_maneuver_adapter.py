@@ -20,7 +20,9 @@ def node_fixture(monkeypatch):
     node._costmap_frame = 'map'
     node._costmap = CostmapView(10., 20, 20, -100., -100., 10., (0,) * 400)
     node._keepout_revision = None
-    node.get_clock = lambda: NS(now=lambda: NS(nanoseconds=10_000_000_000, to_msg=lambda: PathHealth().stamp))
+    stamp = PathHealth().stamp
+    stamp.sec = 10
+    node.get_clock = lambda: NS(now=lambda: NS(nanoseconds=10_000_000_000, to_msg=lambda: stamp))
     node.get_parameter = lambda name: NS(value='base_footprint' if name == 'base_frame' else 1.5)
     node._tf_buffer = NS(lookup_transform_core=lambda *_args: NS(
         header=NS(stamp=NS(sec=10, nanosec=0)),
