@@ -11,7 +11,7 @@ from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point, PoseStamped, Twist
 from nav_msgs.msg import Odometry, Path as NavPath
 from rclpy.node import Node
-from salus_interfaces.msg import (CmdVelFinal, DriveTelemetry, NavEvent,
+from salus_interfaces.msg import (PathHealth, CmdVelFinal, DriveTelemetry, NavEvent,
                                   NavTelemetry, VehicleCommand)
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
@@ -382,6 +382,7 @@ class EvaluationRunner(Node):
         self.controller_status, self.controller_telemetry = [], []
         self.controller_json_errors = []
         self.plans, self.events = [], []
+        self.plan_samples, self.path_health_samples = [], []
         self.goal = None
         self.start_pose = None
         self.goal_sent_s = None
@@ -414,6 +415,7 @@ class EvaluationRunner(Node):
             String, "/controller/telemetry", self._controller_telemetry, 20
         )
         self.create_subscription(NavPath, "/plan", self._plan, 10)
+        self.create_subscription(PathHealth, "/path_health", self._path_health, 20)
         self.create_subscription(NavEvent, "/nav_command_server/events", self._event, 20)
         self.create_subscription(
             NavTelemetry, "/nav_command_server/telemetry", self._telemetry, 20
@@ -490,11 +492,21 @@ class EvaluationRunner(Node):
         else:
             self.controller_telemetry.append(snapshot)
 
+    def _path_health(self, message):
+        self.path_health_samples.append(dict(
+            stamp_s=_stamp(message), state=message.state, reason=message.reason,
+            wait_remaining_s=message.wait_remaining_s))
+
     def _plan(self, message):
         points = tuple(Pose2D(item.pose.position.x, item.pose.position.y,
                               _yaw(item.pose.orientation))
                        for item in message.poses)
         if points:
+            index = len(self.plans)
+            self.plan_samples.extend(dict(
+                plan_index=index, pose_index=i, stamp_s=_stamp(message),
+                frame_id=message.header.frame_id, x_m=p.x_m, y_m=p.y_m, yaw_rad=p.yaw_rad)
+                for i, p in enumerate(points))
             self.plans.append(points)
             if (self.mode == "observe" and self.goal is not None and
                     self.expected_turn == ExpectedTurn.ANY and
@@ -693,16 +705,17 @@ class EvaluationRunner(Node):
                 "odometry_global", "odometry_raw", "odometry_local", "commands",
                 "commands_safe", "commands_final", "vehicle_commands",
                 "drive_telemetry", "controller_status", "controller_telemetry",
-                "command_chain_alignment",
+                "command_chain_alignment", "plans", "path_health",
             ],
             "topics": [
                 "/plan", "/cmd_vel", "/cmd_vel_safe", "/cmd_vel_final",
                 "/vehicle/command_shadow", "/controller/drive_telemetry",
                 "/controller/status", "/controller/telemetry", "/odom_raw",
-                "/odometry/local", "/odometry/global",
+                "/odometry/local", "/odometry/global", "/path_health",
             ],
         }
-        streams = {"odometry_global": global_poses, "odometry_raw": raw_poses,
+        streams = {"plans": self.plan_samples, "path_health": self.path_health_samples,
+                   "odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands,
                    "commands_safe": safe_commands, "commands_final": final_commands,
                    "vehicle_commands": vehicle_commands,

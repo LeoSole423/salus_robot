@@ -1,0 +1,9 @@
+# Diagnostic: the nominal R4 request can generate a winding Smac path. Keep
+# ordinary functional gates and preserve a failure when admission stops it.
+schema_version: 1
+id: maneuver_guard_r4_probe_v1
+repetitions: 1
+max_speed_mps: 1.6
+speeds_mps: [0.8]
+cases:
+  - {id: right_tight_valid, scenario: scenarios/right_tight_valid.yaml, direction: right, requested_radius_m: 4.0}
