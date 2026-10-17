@@ -1,4 +1,5 @@
 import threading
+from concurrent.futures import Future as CompletedFuture
 from types import SimpleNamespace
 
 from action_msgs.msg import GoalStatus
@@ -68,6 +69,10 @@ def make_server(*, handle=None, pending=False, manual=False, timeout_s=0.01):
     server.get_logger = lambda: SimpleNamespace(error=lambda _message: None)
     server._goal_in_keepout = lambda _x, _y: False
     server._navigate_client = SimpleNamespace(server_is_ready=lambda: True)
+    reset_result = CompletedFuture()
+    reset_result.set_result(SimpleNamespace())
+    server._path_guard_client = SimpleNamespace(
+        service_is_ready=lambda: True, call_async=lambda _request: reset_result)
     return server
 
 

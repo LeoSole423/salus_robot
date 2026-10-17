@@ -5,10 +5,15 @@ cd "${repo_dir}"
 route_scenario="${SMOKE_ROUTE_SCENARIO:-open}"
 default_goal_horizon="120.0"
 default_leg_spacing="2.0"
+default_auto_yaws="0"
 if [[ "${route_scenario}" == "horizon" ]]; then
   default_goal_horizon="30.0"
 elif [[ "${route_scenario}" == "loop" ]]; then
   default_leg_spacing="0.0"
+  # A closed patrol follows its geometric tangents. Forcing east-facing
+  # headings at every vertex introduces planner U turns on the return leg.
+  # SMOKE_ROUTE_AUTO_YAWS=0 remains available as explicit negative evidence.
+  default_auto_yaws="1"
 fi
 docker compose run --rm \
   -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-47}" \
@@ -20,7 +25,7 @@ docker compose run --rm \
   -e SMOKE_ROUTE_LEG_SPACING_M="${SMOKE_ROUTE_LEG_SPACING_M:-${default_leg_spacing}}" \
   -e SMOKE_ROUTE_CHUNK_SPAN_M="${SMOKE_ROUTE_CHUNK_SPAN_M:-4.5}" \
   -e SMOKE_ROUTE_CHUNK_MAX_WAYPOINTS="${SMOKE_ROUTE_CHUNK_MAX_WAYPOINTS:-3}" \
-  -e SMOKE_ROUTE_AUTO_YAWS="${SMOKE_ROUTE_AUTO_YAWS:-0}" \
+  -e SMOKE_ROUTE_AUTO_YAWS="${SMOKE_ROUTE_AUTO_YAWS:-${default_auto_yaws}}" \
   -e SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-adaptive_dense}" \
   -e SMOKE_NAV_GOAL_HORIZON_M="${SMOKE_NAV_GOAL_HORIZON_M:-${default_goal_horizon}}" \
   -e FASTDDS_BUILTIN_TRANSPORTS="${FASTDDS_BUILTIN_TRANSPORTS:-DEFAULT}" \

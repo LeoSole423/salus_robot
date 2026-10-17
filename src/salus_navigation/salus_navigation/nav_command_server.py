@@ -22,6 +22,7 @@ from robot_localization.srv import FromLL
 from sensor_msgs.msg import LaserScan, NavSatFix
 from salus_interfaces.msg import CmdVelFinal, NavEvent, NavTelemetry, PathHealth, ProjectedKeepoutState
 from salus_interfaces.srv import (
+    EvaluatePathHealth,
     BrakeNav,
     CancelNavGoal,
     GetNavState,
@@ -129,7 +130,8 @@ class CommandArbiter:
         if self.obstacle_detection_required and not self.scan_is_fresh(now_s):
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "scan_stale"
         if self.path_health_state == PathHealth.STOP_AND_WAIT:
-            return self.stop(CmdVelFinal.SOURCE_SAFETY), "path_health_stop"
+            return self.stop(CmdVelFinal.SOURCE_SAFETY,
+                             100 if self.path_health_reason.startswith("maneuver:") else 0), "path_health_stop"
         if self.monitor_action == CollisionMonitorState.STOP:
             return self.stop(CmdVelFinal.SOURCE_SAFETY), "collision_stop"
         return self.command(message.linear.x, message.angular.z, 0, CmdVelFinal.SOURCE_AUTO), "auto"
@@ -227,6 +229,8 @@ class NavCommandServer(Node):
         self.create_subscription(PoseStamped, str(p("rviz_goal_topic")), self._on_rviz_goal, 10)
         self._service_group = MutuallyExclusiveCallbackGroup()
         self._client_group = ReentrantCallbackGroup()
+        self._path_guard_client = self.create_client(
+            EvaluatePathHealth, "/path_health/evaluate", callback_group=self._client_group)
         keepout_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -302,6 +306,13 @@ class NavCommandServer(Node):
     def _on_path_health(self, message: PathHealth) -> None:
         with self._lock:
             self._arbiter.set_path_health(message)
+            stop = (message.state == PathHealth.STOP_AND_WAIT
+                    and not self._arbiter.manual_enabled)
+            if stop:
+                # Publish within the mode lock so a takeover cannot interleave
+                # between deciding on an automatic stop and publishing it.
+                self._publish(self._arbiter.stop(
+                    CmdVelFinal.SOURCE_SAFETY, 100 if message.reason.startswith("maneuver:") else 0))
 
     def _on_rosout(self, message: Log) -> None:
         with self._lock:
@@ -563,6 +574,22 @@ class NavCommandServer(Node):
                 GoalStatus.STATUS_UNKNOWN,
                 "sending navigation goal",
             )
+        reset = EvaluatePathHealth.Request()
+        reset.context = EvaluatePathHealth.Request.RESET
+        ready = threading.Event()
+        if not self._path_guard_client.service_is_ready():
+            with self._lock:
+                self._goal_pending = False
+                self._goal_terminal_event.set()
+            return "path admission service unavailable"
+        reset_future = self._path_guard_client.call_async(reset)
+        reset_future.add_done_callback(lambda _done: ready.set())
+        if (not ready.wait(1.0) or reset_future.exception() is not None
+                or reset_future.result() is None):
+            with self._lock:
+                self._goal_pending = False
+                self._goal_terminal_event.set()
+            return "path admission reset failed"
         poses = [self._map_pose(x_m, y_m, yaw_deg) for x_m, y_m, yaw_deg in waypoints]
         self._send_map_goals(poses, epoch, client, action_name)
         return ""

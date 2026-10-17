@@ -191,3 +191,53 @@ que Collision Monitor haya podido transformar el scan ni que su callback esté
 progresando. La prueba PC de `test_navigation_real_runtime.py` cubre fuente
 vencida recibida continuamente, recuperación y ausencia de scans; no acredita
 parada física. Ver [evidencia de #277](../../docs/migration-evidence/scan-freshness-277-2026-10-14.md).
+
+## Protección contra retornos del planner (ADR 0016)
+
+Los dos BT validan U/rulos antes de adoptar el candidato y cancelan el follower
+anterior ante STOP, incluso mientras planifican. El árbitro existente mantiene
+freno automático 100% mientras se buscan alternativas. Un candidato sano sólo
+libera ese stop después de aparecer como path activo; la misión no cambia.
+
+La detección usa heading TF, tangentes, retorno longitudinal y giro firmado en
+piernas delimitadas por poses pedidas. Una patrulla cerrada intencional con sus
+poses no se confunde con un rulo agregado. Ver los fixtures reproducibles en
+`test_maneuver_guard.py`; no hay tuning del EKF ni de la dirección.
+
+Parámetros de arranque de `path_health` (no dinámicos):
+
+| Nombre | Tipo/default | Unidad/rango | Significado |
+| --- | --- | --- | --- |
+| maneuver_wait_s | float, 15.0 | s, finito >0 | Plazo total monotónico; argumento en ambos launches de navigation_core |
+| maneuver_return_m | float, 1.17 | m, finito >0 | Retorno mínimo, una longitud del footprint |
+| maneuver_opposing_rad | float, 2.3561944902 | rad, (pi/2, pi) | Tangente en cuadrante posterior |
+| maneuver_loop_rad | float, 4.7123889804 | rad, (pi, 2pi] | Acumulación firmada dentro de una pierna |
+
+El cursor activo busca 4 m hacia delante, acorde con RPP. Los candidatos se
+comprueban completos. El reloj de espera es monotónico aun con use_sim_time;
+pausar /clock no concede tiempo extra. Rechazos y datos stale no reinician el
+plazo. `PathHealth.wait_remaining_s` proyecta el tiempo en blocked_wait_remaining_s.
+
+Al vencer queda NEEDS_OPERATOR con PLANNER_U_TURN/PLANNER_LOOP y explicación
+visible mediante los campos blocked_* existentes de Cockpit. No hay retry,
+reanchor ni progreso acreditado como salida de la maniobra. CANCEL y un nuevo
+START explícito, después de revisar el recorrido, reinician la admisión; recibir
+un path sano después del vencimiento no reanuda nada. Manual, cancelación,
+E-stop y Collision Monitor mantienen precedencia. No se incorpora Spin.
+
+EvaluatePathHealth añade goals y RESET; PathHealth añade wait_remaining_s.
+Reconstruir salus_interfaces y todos sus consumidores juntos. RESET se confirma
+antes de un pedido nuevo y deja stop hasta disponer de path evaluado. No se
+solicita desde replans del mismo pedido. El dominio no publica velocidades.
+
+Validación adicional de I/O sin hardware ni movimiento:
+
+```bash
+docker compose run --rm -e ROS_DOMAIN_ID=83 ros2 bash -lc \
+ 'source /opt/ros/humble/setup.bash && source install/setup.bash && python3 tools/smoke_maneuver_guard_runtime.py'
+```
+
+Ese probe sólo ejecuta nodos software y estimula cmd_vel_safe en un DDS aislado;
+no lanza controller/UART/simulador. El artefacto conserva el payload de ruta que
+salus_web entrega a Cockpit. La ejecución física y la distancia de frenado no
+están validadas.

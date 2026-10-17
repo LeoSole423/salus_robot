@@ -559,6 +559,10 @@ class RouteExecutorNode(Node):
             ):
                 return
             self._last_result_event_id = int(message.nav_result_event_id)
+            if (message.nav_result_text == "succeeded"
+                    and self._path_health is not None
+                    and self._path_health.reason.startswith("maneuver:")):
+                return  # A terminal controller result cannot escape admission.
             if message.nav_result_text == "succeeded":
                 self._recovery.reset()
                 self._recovery_checkpoint_reached = False
@@ -596,6 +600,7 @@ class RouteExecutorNode(Node):
                 now_s=self._steady_now(),
                 path_state=PathHealth.KEEP_PATH if health is None else int(health.state),
                 path_reason=reason,
+                path_wait_remaining_s=0.0 if health is None else health.wait_remaining_s,
                 nav_failure_code=self._nav_failure_code,
                 collision_stop=self._collision_stop,
                 tf_fresh=tf_fresh,
@@ -605,7 +610,8 @@ class RouteExecutorNode(Node):
             )
             decision = self._recovery.observe(observation)
             if (
-                decision.state != RecoveryState.CLEAR
+                not reason.startswith("maneuver:")
+                and decision.state != RecoveryState.CLEAR
                 and self._chunk is not None
                 and self._pose is not None
                 and checkpoint_within_tolerance(
@@ -1259,6 +1265,11 @@ class RouteExecutorNode(Node):
             response.blocked_state = recovery.state.value
             response.blocked_reason_code = recovery.reason
             response.blocked_reason_text = operator_block_reason(recovery.reason) if recovery.reason else mission.pause_reason
+            if (recovery.state == RecoveryState.WAITING_DATA
+                    and recovery.reason in ("PLANNER_U_TURN", "PLANNER_LOOP", "MANEUVER_GEOMETRY_INVALID")):
+                response.blocked_reason_text = (
+                    "Robot detenido: esperando un replan sin giro en U o rulo. "
+                    "La misión y sus puntos pendientes se conservan.")
             response.blocked_retry_attempt = recovery.attempt
             response.blocked_retry_max_attempts = self._recovery.max_attempts
             response.blocked_wait_remaining_s = recovery.wait_remaining_s

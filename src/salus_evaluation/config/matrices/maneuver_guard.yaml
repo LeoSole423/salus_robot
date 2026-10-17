@@ -1,0 +1,9 @@
+schema_version: 1
+id: maneuver_guard_curves_v1
+repetitions: 1
+max_speed_mps: 1.6
+speeds_mps: [0.8]
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_tight_valid, scenario: scenarios/left_tight_valid.yaml, direction: left, requested_radius_m: 4.0}
+  - {id: right_tight_valid, scenario: scenarios/right_tight_valid.yaml, direction: right, requested_radius_m: 4.0}

@@ -29,6 +29,7 @@ def generate_launch_description() -> LaunchDescription:
         ("nav2_behaviors", "behavior_server", "behavior_server"),
     ]
     actions = [
+        DeclareLaunchArgument("maneuver_wait_s", default_value="15.0"),
         DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
         DeclareLaunchArgument("obstacle_detection_required", default_value="true"),
@@ -57,6 +58,7 @@ def generate_launch_description() -> LaunchDescription:
             # reloads.  Five seconds still fails safe, but avoids treating a
             # healthy startup or atomic mask reload as a permanent obstacle.
             "costmap_timeout_s": 5.0,
+            "maneuver_wait_s": ParameterValue(LaunchConfiguration("maneuver_wait_s"), value_type=float),
             "max_distance_m": 18.0,
         }],
     ))
