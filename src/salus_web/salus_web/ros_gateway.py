@@ -60,6 +60,7 @@ from salus_interfaces.srv import (
     SetRouteMissionLL,
     SetZonesGeoJson,
     CameraPan,
+    CameraFeatures,
     CameraStatus,
     CameraPtz,
     CameraPreset,
@@ -477,6 +478,9 @@ class CockpitRosGateway(Node):
                 GetNavSnapshot, "/nav_snapshot_server/get_nav_snapshot"
             ),
             "camera_pan": self.create_client(CameraPan, "/camara/camera_pan"),
+            "camera_sweep": self.create_client(CameraFeatures, "/camara/camera_features"),
+            "camera_light": self.create_client(CameraFeatures, "/camara/camera_features"),
+            "get_camera_features": self.create_client(CameraFeatures, "/camara/camera_features"),
             "camera_zoom_toggle": self.create_client(Trigger, "/camara/camera_zoom_toggle"),
             "get_camera_status": self.create_client(CameraStatus, "/camara/camera_status"),
             "camera_ptz_move": self.create_client(CameraPtz, "/camara/camera_ptz"),
@@ -567,7 +571,7 @@ class CockpitRosGateway(Node):
                 return [await self._snapshot(request)]
             if (
                 request.op.startswith("camera_")
-                or request.op in {"get_camera_status", "get_camera_ptz_state"}
+                or request.op in {"get_camera_status", "get_camera_ptz_state", "get_camera_features"}
             ):
                 return [await self._camera(request)]
             return [await self._dispatch_service(request)]
@@ -599,6 +603,9 @@ class CockpitRosGateway(Node):
         values = _message_dict(response)
         success = bool(values.get("ok", values.get("success", False)))
         error = str(values.get("error", values.get("message", "")) or "")
+        if request.op in {"camera_sweep", "camera_light", "get_camera_features"}:
+            return ack(request, ok=success, error=None if success else error,
+                       payload=values)
         if not success:
             return ack(
                 request,
@@ -947,6 +954,15 @@ class CockpitRosGateway(Node):
 
 def build_ros_request(request: OperatorRequest) -> Any:
     fields = request.fields
+    if request.op in {"camera_sweep", "camera_light", "get_camera_features"}:
+        result = CameraFeatures.Request()
+        if request.op == "camera_sweep":
+            result.command = (CameraFeatures.Request.SWEEP_START if fields["enabled"]
+                              else CameraFeatures.Request.SWEEP_STOP)
+        elif request.op == "camera_light":
+            result.command = CameraFeatures.Request.LIGHT
+            result.lens, result.enabled = fields["lens"], fields["enabled"]
+        return result
     if request.op == "camera_pan":
         result = CameraPan.Request()
         result.angle_deg = float(fields["angle"])

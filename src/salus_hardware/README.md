@@ -127,3 +127,41 @@ Uniarch mobile PTZ: `camera_backend:=onvif_uniarch`, camera channel 2,
 profile `media_profile2_1`. Uses external credentials and ONVIF PanTilt only;
 zoom is unsupported. Directional presets front/right/rear/left are editable.
 Use a new presets file when replacing a camera to preserve previous calibration.
+# Paneo y luces auxiliares
+
+`/camara/camera_features` (`salus_interfaces/srv/CameraFeatures`) es servido
+por `salus_camera` y consumido por `salus_web`. Servicio ROS con QoS de servicio
+predeterminado, disponible durante la vida del nodo. Comandos STATE=0,
+SWEEP_START=1, SWEEP_STOP=2, LIGHT=3; lens `fixed`/`mobile`, enabled booleano.
+Respuesta: supported, sweep_running/phase, error y fixed_light/mobile_light
+(-1 desconocido, 0 última orden de apagado aceptada, 1 encendido aceptado).
+
+Uniarch: paneo físico izquierdo→derecho, pan máximo acotado a 350°, tilt/zoom
+conservados, timeout de 120 s por fase, tolerancia 0.8°, Stop explícito y
+cancelación por comando PT manual. No mide velocidad ni garantiza calidad
+de imagen durante movimiento; prueba física del paneo nuevo pendiente.
+Simulación implementa la misma API sin hardware. ISAPI no anuncia esta extensión.
+
+Luz fija: LightCtrl general, duración 60 s y renovación cada 40 s.
+Luz móvil: LampCtrl/Video canal 2 en blanco más Exposure/Video noche forzada.
+Se conserva un respaldo persistente `mobile-light-backup.json` junto al archivo
+de presets; apagar/restaurar al siguiente inicio recupera el perfil anterior.
+Nunca eliminar ese respaldo mientras haya recuperación pendiente. Sin perfil
+respaldado, apagar móvil no cambia una configuración ajena a este adaptador.
+La móvil puede quedar activa ante caída abrupta hasta recuperación; el control
+de imagen modifica su reproducción nocturna, no sólo un LED independiente.
+GET LightCtrl no se usa como estado físico. Video sigue externo en MediaMTX.
+
+Actualización 2026-10-14: el paneo alterna derecha/izquierda continuamente
+hasta Stop explícito, un comando PTZ manual, error o cierre del nodo.
+Mantiene el timeout de 120 s por tramo; cada llegada renueva el plazo.
+Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
+ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
+
+
+Paneo sectorial: Start usa el preset Frente guardado, centra primero y alterna
+Frente+90° (izquierda) / Frente−90° (derecha), conservando tilt y zoom de
+ese preset. No cruza el límite físico: rechaza centros cuyo sector no entre
+en el rango. Recuperación automática: espera 5 s, hasta 3 intentos por sesión,
+retoma destino/fase interrumpidos; Stop, PTZ manual y shutdown cancelan la
+espera. Stop fallido cancela recuperación. No se reinicia al arrancar el nodo.

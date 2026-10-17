@@ -12,7 +12,7 @@
   `SetZonesGeoJson`, `GetZonesState` y
   `PathHealth`, `NavSnapshotLayers`, `GetNavSnapshot`, `CameraPan`,
   `CameraStatus`, `CameraPtz`, `CameraPreset`, `CameraSavePreset` y
-  `CameraPtzState` (más el `Trigger` estándar de zoom).
+  `CameraPtzState`, `CameraFeatures` (más el `Trigger` estándar de zoom).
 - `PathHealth` es un contrato interno de runtime: explica si Nav2 conserva,
   recalcula o detiene temporalmente un path; no es una API de Cockpit.
 - `SetRouteMissionLL.auto_yaw_policy` es aditivo: vacío conserva la política

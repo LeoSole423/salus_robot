@@ -43,3 +43,72 @@ def test_malformed_status_fails_explicitly():
     b._call = lambda *args: ET.fromstring("<Status/>")
     with pytest.raises(CameraBackendError):
         b.read_state()
+
+
+def test_fixed_light_uses_characterized_general_channel():
+    b = backend()
+    calls = []
+    b._lapi = lambda *args: calls.append(args)
+    b.set_light("fixed", True, 60)
+    assert calls == [("PUT", "/LAPI/V1.0/Channels/0/System/LightCtrl",
+                      {"Type": 1, "Action": 1, "Mode": 2, "Interval": 60})]
+
+
+def test_mobile_light_preserves_and_recovers_profile_across_restart(tmp_path):
+    from copy import deepcopy
+    b = backend()
+    b.light_backup = tmp_path / "backup.json"
+    lamp = {"Type": 6, "LampList": [{"Type": 6}], "Mode": 0}
+    exposure = {"DayNight": {"Mode": 0, "Sensitivity": 5}, "Gain": 20}
+    data = {"lamp": deepcopy(lamp), "exposure": deepcopy(exposure)}
+
+    def lapi(method, path, value=None):
+        key = "lamp" if "LampCtrl" in path else "exposure"
+        if method == "PUT":
+            data[key] = deepcopy(value)
+        return deepcopy(data[key])
+
+    b._lapi = lapi
+    b.set_light("mobile", True, 60)
+    assert data["lamp"]["Type"] == 1
+    assert data["exposure"]["DayNight"]["Mode"] == 2
+    b.set_light("mobile", True, 60)
+    # A new adapter can restore the original file, never the renewed on profile.
+    restarted = backend()
+    restarted.light_backup, restarted._lapi = b.light_backup, lapi
+    restarted.set_light("mobile", False, 60)
+    assert data == {"lamp": lamp, "exposure": exposure}
+    assert not b.light_backup.exists()
+
+
+def test_mobile_failed_exposure_restores_original_and_keeps_recovery(tmp_path):
+    from copy import deepcopy
+    b = backend()
+    b.light_backup = tmp_path / "backup.json"
+    original = {"lamp": {"Type": 6, "LampList": [{"Type": 6}]},
+                "exposure": {"DayNight": {"Mode": 0}}}
+    data = deepcopy(original)
+
+    def lapi(method, path, value=None):
+        key = "lamp" if "LampCtrl" in path else "exposure"
+        if method == "PUT":
+            if key == "exposure" and value["DayNight"]["Mode"] == 2:
+                raise CameraBackendError("rejected")
+            data[key] = deepcopy(value)
+        return deepcopy(data[key])
+
+    b._lapi = lapi
+    with pytest.raises(CameraBackendError):
+        b.set_light("mobile", True, 60)
+    assert data == original
+    assert b.light_backup.exists()
+
+
+def test_sweep_uses_faster_speed_without_changing_manual_moves():
+    b = backend()
+    calls = []
+    b._call = lambda *args: calls.append(args)
+    b.write_sweep_absolute(PtzPose(300, 0, 1))
+    b.write_absolute(PtzPose(290, 0, 1))
+    assert 'x="0.65" y="0.65"' in calls[0][1]
+    assert 'x="0.15" y="0.15"' in calls[1][1]
