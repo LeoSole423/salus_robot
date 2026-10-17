@@ -6,11 +6,13 @@ context. Only the input /cmd_vel_safe is stimulated; output has no controller.
 """
 import json
 import math
+import os
 import time
 from pathlib import Path
 import threading
 
 import rclpy
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
@@ -29,8 +31,10 @@ from tf2_ros import TransformBroadcaster
 
 
 def main():
+    paused_clock = os.environ.get('MANEUVER_SMOKE_PAUSED_CLOCK') == '1'
     rclpy.init(args=['--ros-args', '-p', 'obstacle_detection_required:=false',
-                    '-p', 'maneuver_wait_s:=2.0'])
+                    '-p', 'maneuver_wait_s:=2.0',
+                    '-p', f'use_sim_time:={str(paused_clock).lower()}'])
     probe = Node('maneuver_fault_injection')
     health, arbiter, route = PathHealthNode(), NavCommandServer(), RouteExecutorNode()
     executor = MultiThreadedExecutor(num_threads=6)
@@ -69,7 +73,7 @@ def main():
         command.linear.x = 0.5
         command_pub.publish(command)
 
-    probe.create_timer(.05, inputs)
+    probe.create_timer(.05, inputs, clock=Clock(clock_type=ClockType.STEADY_TIME))
     thread = threading.Thread(target=executor.spin, daemon=True)
     thread.start()
 
@@ -143,9 +147,13 @@ def main():
         cancelled = call(state, GetRouteMissionState.Request())
         assert cancelled.status == 'CANCELLED' and cancelled.reached_checkpoint_count == 0
         assert evaluate(good, 1).state == 2  # Cancel does not authorize an old path.
-        output = Path('artifacts/maneuver-guard-runtime.json')
+        if paused_clock:
+            assert all(node.get_clock().now().nanoseconds == 0
+                       for node in (probe, health, arbiter, route))
+        suffix = '-paused-clock' if paused_clock else ''
+        output = Path(f'artifacts/maneuver-guard-runtime{suffix}.json')
         output.parent.mkdir(exist_ok=True)
-        output.write_text(json.dumps({'passed': True, 'route_mission': payload,
+        output.write_text(json.dumps({'passed': True, 'paused_ros_clock': paused_clock, 'route_mission': payload,
                                      'output_samples': len(outputs), 'manual_and_cancel_precedence': True}, indent=2))
         print('maneuver_runtime: PASS (stop, adoption, total timeout, mission, Cockpit payload)')
     finally:

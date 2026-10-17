@@ -1,7 +1,7 @@
-# Checkpoint pausado por el operador — 17/10/2026
+# Estado de revisión después de retomar — 17/10/2026
 
-No continuar hasta que el operador retome el trabajo. No hay despliegue ni
-movimiento físico autorizados.
+El operador retomó y autorizó completar PC/simulación y preparar revisión.
+No hay despliegue ni movimiento físico autorizados.
 
 ## Ubicación y ramas
 
@@ -38,16 +38,17 @@ en una compilación limpia de c6bed23 sin este cambio. Evidencia y límites en
 ../maneuver-guard-2026-10-17.md (relativo al directorio superior de evidencia).
 No se atribuye al guard ni se declara ese smoke aprobado.
 
-## Pendiente al retomar
+## Revisión publicada
 
-1. Revisión final del diff/contratos y del fixture capturado.
-2. Publicar la rama backend y abrir PR draft con resultados y limitaciones;
-   todavía NO existe PR backend ni se publicó este checkpoint.
-3. Enlazar los dos PRs y actualizar el cuerpo del PR Cockpit con el enlace backend.
-4. Inspeccionar CI. No merge automático ni promoción hardware; dejar explícitos
-   el fallo preexistente Patrol/HOME y el rechazo intencional R4.
-5. Actualizar la evidencia si aparecen resultados adicionales. No repetir
-   campañas ya aprobadas salvo cambios, nuevos fallos o incertidumbre concreta.
+- Backend: PR draft https://github.com/LeoSole423/salus_robot/pull/329.
+- Cockpit: PR draft https://github.com/AEyeSecurity/cockpit/pull/26.
+- Ambos PRs están enlazados y adjuntos al chat. Revisión final de contratos,
+  fixture y diff completada. El primer CI backend pasó todos sus jobs.
+- En el cierre se corrigieron los timers de admisión/recuperación para usar
+  STEADY_TIME y se agregó fault injection con /clock inmóvil en cero: PASS.
+  La actualización debe conservar CI verde antes de merge.
+- Queda revisión humana y decisión de integración de ambos PRs. No hacer
+  merge automático ni promoción hardware; mantener explícitos el fallo
+  preexistente Patrol/HOME y el rechazo intencional R4.
 
-Al pausar se verificó que no quedaban contenedores de pruebas propios activos.
-Los contenedores ajenos/legacy no se tocaron. No se programó ningún seguimiento.
+Los contenedores ajenos/legacy no se tocaron. No se programó seguimiento.

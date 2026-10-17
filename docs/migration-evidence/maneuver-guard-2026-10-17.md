@@ -23,6 +23,7 @@ capturado en PC. No son umbrales físicos de frenado calibrados.
 | tools/build.sh | 14 paquetes compilados en Humble |
 | tools/test.sh | 1341 tests, cero errores/fallos, cuatro omitidos; harness aprobado |
 | smoke_maneuver_guard_runtime.py, DDS aislado 83 | PASS: freno, adopción, deadline total, causa en payload Cockpit, takeover/cancel y misión preservada |
+| mismo fault injection con MANEUVER_SMOKE_PAUSED_CLOCK=1 | PASS: reloj ROS inmóvil en cero, vencimiento y NEEDS_OPERATOR por reloj steady |
 | smoke_web_cockpit.sh | PASS: contrato WebSocket/estado operacional |
 | smoke_integration_sim.sh | PASS: contratos estructurales integrados |
 | smoke_safety_sim.sh | PASS: stop de Collision Monitor y arbitraje |
@@ -93,6 +94,11 @@ de su main y checkout de cámara, muestra WAITING_DATA/NEEDS_OPERATOR, causa,
 plazo y acción de operador; CLEAR retira el bloqueo. No inventa retries para
 la maniobra ni publica comandos. Build aprobado; 172 tests aprobados y uno
 omitido, incluyendo DOM del mapa y panel. Sin Tauri ni hardware.
+
+Los timers de admisión y recuperación usan explícitamente STEADY_TIME: el
+plazo vence y Cockpit recibe el estado terminal incluso con /clock pausado.
+El fault injection repetido sin publicador /clock comprueba que todos los
+relojes ROS permanecen en cero durante stop, adopción, timeout y cancelación.
 
 El plazo es monotónico y sólo nace con el primer rechazo. Datos stale,
 replans rechazados y causas distintas no lo renuevan. Un candidato sano no

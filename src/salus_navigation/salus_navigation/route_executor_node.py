@@ -15,6 +15,7 @@ from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.srv import ClearEntireCostmap
 from nav_msgs.msg import Odometry, Path
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -238,7 +239,9 @@ class RouteExecutorNode(Node):
         self.create_service(SetNavigationProfile, "/route_executor/set_navigation_profile",
                             self._set_profile, callback_group=self._profile_group)
         self.create_timer(0.1, self._tick_preparation)
-        self.create_timer(0.2, self._tick_recovery)
+        # Safety/recovery deadlines must advance even when /clock is paused.
+        self.create_timer(0.2, self._tick_recovery,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
         self.create_timer(0.05, self._tick_action)
 
     def _on_pose(self, message: Odometry) -> None:

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import rclpy
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Path
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.msg import PathHealth, ProjectedKeepoutState
@@ -292,7 +293,9 @@ class PathHealthNode(Node):
         self._maneuver_wait = ManeuverWait(self._maneuver_config)
         self._maneuver_key = None
         self._maneuver_progress_m = 0.0
-        self.create_timer(0.1, self._tick_maneuver_wait)
+        # Safety/recovery deadlines must advance even when /clock is paused.
+        self.create_timer(0.1, self._tick_maneuver_wait,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
         self._costmap = None
         self._keepout_revision = None
         self._policy = PathHealthPolicy(
