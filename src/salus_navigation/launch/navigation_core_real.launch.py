@@ -29,6 +29,7 @@ def generate_launch_description() -> LaunchDescription:
     }]
     remappings = [("/tf", "tf"), ("/tf_static", "tf_static")]
     actions = [
+        DeclareLaunchArgument("maneuver_wait_s", default_value="15.0"),
         DeclareLaunchArgument("use_keepout", default_value="true"),
     ]
     actions.extend(
@@ -58,7 +59,8 @@ def generate_launch_description() -> LaunchDescription:
             executable="path_health",
             name="path_health",
             output="screen",
-            parameters=[{"use_sim_time": False, "costmap_timeout_s": 5.0}],
+            parameters=[{"use_sim_time": False, "costmap_timeout_s": 5.0,
+                         "maneuver_wait_s": ParameterValue(LaunchConfiguration("maneuver_wait_s"), value_type=float)}],
         ),
         Node(
             package="salus_navigation",

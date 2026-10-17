@@ -10,3 +10,5 @@ float64 costmap_age_s
 int16 max_cost
 uint32 checked_samples
 float64 cross_track_error_m
+# Remaining monotonic maneuver-admission window; zero outside that wait.
+float64 wait_remaining_s

@@ -250,3 +250,19 @@ Al finalizar se conservan todas las celdas y el proceso devuelve non-zero si
 alguna tuvo setup failure o un gate funcional existente falló. Una métrica
 calibrating no cambia ese exit status. El error final de yaw no se aproxima en
 esta matriz: queda explícitamente para #63, que definirá su semántica.
+
+
+## Evidencia de admisión de U/rulos
+
+Los bundles también conservan `plans.csv` (plan_index, pose_index, frame,
+stamp y pose completa) y `path_health.csv` (stamp, estado, causa y plazo restante).
+Esto permite revisar un plan rechazado sin inferir su forma del resultado de
+misión ni publicar planes adicionales en el grafo. Son streams diagnósticos;
+los gates funcionales existentes no se cambian para aceptar un bloqueo.
+
+`maneuver_guard.yaml` conserva los casos recto y R4 de ambos sentidos.
+`maneuver_guard_gentle.yaml` añade curvas R8; `maneuver_guard_r4_probe.yaml`
+aísla la derecha R4 para investigar cuándo Smac devuelve un rodeo en lugar
+del arco solicitado. El radio del request no certifica la geometría obtenida.
+Un rechazo seguro de un path con rulo puede hacer fallar los gates de llegada:
+el bundle y el exit status fallido se conservan y deben caracterizarse.

@@ -32,7 +32,7 @@ def test_transient_controller_failure_has_local_wait_recovery() -> None:
 
 def test_transient_planner_failure_has_outer_wait_and_replan_recovery() -> None:
     outer = _tree().find(
-        ".//RecoveryNode[@name='NavigateRecovery']"
+        ".//GuardedRecovery[@name='NavigateRecovery']"
     )
     fallback = outer.find("ReactiveFallback[@name='RecoveryFallback']") if outer is not None else None
 

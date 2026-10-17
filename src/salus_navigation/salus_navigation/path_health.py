@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 import math
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 import rclpy
 from nav2_msgs.msg import Costmap
 from nav_msgs.msg import Path
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from salus_interfaces.msg import PathHealth, ProjectedKeepoutState
 from salus_interfaces.srv import EvaluatePathHealth
 from tf2_ros import Buffer, TransformException, TransformListener
+
+from .maneuver_guard import ManeuverConfig, ManeuverWait, inspect_maneuver, guard_reason, forward_suffix
 
 
 @dataclass(frozen=True)
@@ -276,6 +280,22 @@ class PathHealthNode(Node):
             "far_persistence_s": 1.0,
         }.items():
             self.declare_parameter(name, value)
+        self.declare_parameter("maneuver_wait_s", 15.0)
+        self.declare_parameter("maneuver_return_m", 1.17)
+        self.declare_parameter("maneuver_opposing_rad", 3 * math.pi / 4)
+        self.declare_parameter("maneuver_loop_rad", 3 * math.pi / 2)
+        self._maneuver_config = ManeuverConfig(
+            wait_s=float(self.get_parameter("maneuver_wait_s").value),
+            return_m=float(self.get_parameter("maneuver_return_m").value),
+            opposing_rad=float(self.get_parameter("maneuver_opposing_rad").value),
+            loop_rad=float(self.get_parameter("maneuver_loop_rad").value),
+        )
+        self._maneuver_wait = ManeuverWait(self._maneuver_config)
+        self._maneuver_key = None
+        self._maneuver_progress_m = 0.0
+        # Safety/recovery deadlines must advance even when /clock is paused.
+        self.create_timer(0.1, self._tick_maneuver_wait,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
         self._costmap = None
         self._keepout_revision = None
         self._policy = PathHealthPolicy(
@@ -305,7 +325,32 @@ class PathHealthNode(Node):
     def _on_keepouts(self, message):
         self._keepout_revision = int(message.revision)
 
+    def _tick_maneuver_wait(self):
+        decision = self._maneuver_wait.snapshot(time.monotonic())
+        if decision.state != "CLEAR":
+            message = PathHealth()
+            message.stamp = self.get_clock().now().to_msg()
+            message.state = PathHealth.STOP_AND_WAIT
+            message.reason = guard_reason(decision)
+            message.wait_remaining_s = decision.remaining_s
+            self._pub.publish(message)
+
     def _on_evaluate(self, request, response):
+        if request.context == EvaluatePathHealth.Request.RESET:
+            self._maneuver_wait.reset()
+            self._maneuver_key = None
+            self._maneuver_progress_m = 0.0
+            # Reset removes the terminal latch, but does not grant motion.
+            # Only an evaluated path may release the automatic stop.
+            message = PathHealth()
+            message.state = PathHealth.STOP_AND_WAIT
+            message.reason = "new_goal_pending_path"
+            message.stamp = self.get_clock().now().to_msg()
+            self._pub.publish(message)
+            response.health = message
+            return response
+        maneuver = None
+        key = None
         now_s = self.get_clock().now().nanoseconds * 1.0e-9
         path_frame = request.path.header.frame_id
         if len(request.path.poses) < 2:
@@ -332,6 +377,22 @@ class PathHealthNode(Node):
                 if age > float(self.get_parameter("tf_timeout_s").value):
                     raise TransformException("transform_stale")
                 point = transform.transform.translation
+                rotation = transform.transform.rotation
+                yaw = math.atan2(2 * (rotation.w * rotation.z + rotation.x * rotation.y),
+                                 1 - 2 * (rotation.y ** 2 + rotation.z ** 2))
+                points = tuple((pose.pose.position.x, pose.pose.position.y)
+                               for pose in request.path.poses)
+                key = (path_frame, points)  # sparse signatures miss inserted loops
+                remaining = points
+                if request.context == EvaluatePathHealth.Request.ACTIVE:
+                    if key != self._maneuver_key:
+                        self._maneuver_key, self._maneuver_progress_m = key, 0.0
+                    remaining, self._maneuver_progress_m = forward_suffix(
+                        points, (point.x, point.y), self._maneuver_progress_m)
+                maneuver = inspect_maneuver(
+                    remaining, robot_yaw=yaw,
+                    goals=tuple((p.pose.position.x, p.pose.position.y) for p in request.goals),
+                    config=self._maneuver_config)
                 result = self._policy.evaluate(
                     request.path, robot_x=point.x, robot_y=point.y,
                     costmap=self._costmap, now_s=now_s,
@@ -353,9 +414,33 @@ class PathHealthNode(Node):
                     PathHealth.STOP_AND_WAIT,
                     f"tf_unavailable:{type(exc).__name__}",
                     float("inf"), 0, 0, 0.0)
-        message = PathHealth(); message.stamp = self.get_clock().now().to_msg(); message.state, message.reason = result.state, result.reason
+        candidate = request.context == EvaluatePathHealth.Request.CANDIDATE
+        admissible = result.state == PathHealth.KEEP_PATH
+        decision = self._maneuver_wait.observe(
+            now_s=time.monotonic(), reason="" if maneuver is None else maneuver.reason,
+            key=key, candidate=candidate, valid=admissible)
+        published = result
+        if decision.state != "CLEAR":
+            published = self._policy._result(
+                PathHealth.STOP_AND_WAIT, guard_reason(decision), result.costmap_age_s,
+                result.max_cost, result.checked_samples, result.cross_track_error_m)
+            # A good candidate may be copied, but cannot release an old active
+            # path. Only its subsequent ACTIVE observation clears the stop.
+            if not (candidate and admissible and maneuver is not None
+                    and not maneuver.reason and decision.state == "WAITING_REPLAN"):
+                result = published
+        message = PathHealth(); message.stamp = self.get_clock().now().to_msg(); message.state, message.reason = published.state, published.reason
         message.costmap_age_s, message.max_cost, message.checked_samples, message.cross_track_error_m = result.costmap_age_s, result.max_cost, result.checked_samples, result.cross_track_error_m
-        self._pub.publish(message); response.health = message
+        message.wait_remaining_s = decision.remaining_s
+        self._pub.publish(message)
+        response.health = PathHealth()
+        response.health.stamp = message.stamp
+        response.health.wait_remaining_s = decision.remaining_s
+        response.health.state, response.health.reason = result.state, result.reason
+        response.health.costmap_age_s = result.costmap_age_s
+        response.health.max_cost = result.max_cost
+        response.health.checked_samples = result.checked_samples
+        response.health.cross_track_error_m = result.cross_track_error_m
         return response
 
 

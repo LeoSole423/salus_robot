@@ -29,7 +29,7 @@ def test_rpp_search_bound_is_explicit_and_shared_by_real_and_sim_profiles():
 
 def test_multi_pose_retry_budget_is_unchanged_pending_transient_fault_evidence():
     tree = ElementTree.parse(PACKAGE / "config" / "navigation_through_poses.xml")
-    recovery_nodes = tree.findall(".//RecoveryNode")
+    recovery_nodes = [node for node in tree.iter() if node.tag in ("RecoveryNode", "GuardedRecovery")]
     assert [node.attrib["number_of_retries"] for node in recovery_nodes] == [
         "3", "1", "1"
     ]

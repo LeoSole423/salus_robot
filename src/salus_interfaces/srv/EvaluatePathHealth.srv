@@ -1,8 +1,12 @@
 # Evaluate a Nav2 path without relying on call ordering.
 uint8 ACTIVE=0
 uint8 CANDIDATE=1
+# Explicit new navigation request; never sent by automatic replans.
+uint8 RESET=2
 
 nav_msgs/Path path
 uint8 context
+# Ordered requested poses, for distinguishing intentional route closure.
+geometry_msgs/PoseStamped[] goals
 ---
 salus_interfaces/PathHealth health

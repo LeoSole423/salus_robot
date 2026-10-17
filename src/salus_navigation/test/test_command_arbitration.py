@@ -96,3 +96,16 @@ def test_source_age_preserves_remaining_watchdog_budget() -> None:
     assert arbiter.scan_is_fresh(5.5)
     assert not arbiter.scan_is_fresh(5.500001)
     assert not arbiter.scan_is_fresh(4.4)
+
+
+def test_maneuver_stop_applies_brake_and_manual_still_precedes_it():
+    arbiter = CommandArbiter(manual_timeout_s=.4, monitor_timeout_s=1,
+                             obstacle_detection_required=False)
+    arbiter.set_path_health(PathHealth(state=2, reason='maneuver:WAITING_REPLAN:PLANNER_LOOP'))
+    command, reason = arbiter.automatic_output(Twist(), 1)
+    assert reason == 'path_health_stop' and command.brake_pct == 100
+    arbiter.set_manual_mode(True)
+    manual = CmdVelFinal()
+    manual.twist.linear.x = .25
+    assert arbiter.accept_manual(manual, 1).source == CmdVelFinal.SOURCE_MANUAL
+    assert arbiter.automatic_output(Twist(), 1) == (None, 'manual_enabled')

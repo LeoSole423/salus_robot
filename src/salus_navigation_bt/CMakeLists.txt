@@ -6,19 +6,26 @@ find_package(behaviortree_cpp_v3 REQUIRED)
 find_package(nav2_behavior_tree REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(salus_interfaces REQUIRED)
 
 add_library(salus_path_health_condition_bt_node SHARED
   src/path_health_condition.cpp
 )
+target_include_directories(salus_path_health_condition_bt_node PRIVATE include)
 target_compile_definitions(salus_path_health_condition_bt_node PRIVATE BT_PLUGIN_EXPORT)
 ament_target_dependencies(salus_path_health_condition_bt_node
-  behaviortree_cpp_v3 nav2_behavior_tree nav_msgs rclcpp salus_interfaces
+  behaviortree_cpp_v3 nav2_behavior_tree nav_msgs geometry_msgs rclcpp salus_interfaces
 )
 install(TARGETS salus_path_health_condition_bt_node LIBRARY DESTINATION lib)
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_guarded_control test/test_guarded_control.cpp)
+  target_include_directories(test_guarded_control PRIVATE include)
+  ament_target_dependencies(test_guarded_control
+    behaviortree_cpp_v3 nav2_behavior_tree nav_msgs geometry_msgs rclcpp salus_interfaces)
   find_package(ament_lint_auto REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()

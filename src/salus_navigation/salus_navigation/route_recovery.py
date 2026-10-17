@@ -67,6 +67,7 @@ class RecoveryObservation:
     now_s: float
     path_state: int = 0
     path_reason: str = ""
+    path_wait_remaining_s: float = 0.0
     nav_failure_code: str = ""
     collision_stop: bool = False
     tf_fresh: bool = True
@@ -116,9 +117,24 @@ class BlockedRecoveryPolicy:
         self._pending_since: float | None = None
         self._retry_at: float | None = None
         self._resume_state = RecoveryState.CLEAR
+        self._maneuver_remaining_s = 0.0
 
     def observe(self, observation: RecoveryObservation) -> RecoveryDecision:
         now = float(observation.now_s)
+        # Maneuver admission already owns its total deadline. Never use the
+        # obstacle retry/reanchor flow or geometric credit to escape this hold.
+        if self.state == RecoveryState.NEEDS_OPERATOR:
+            return self._decision(now)
+        if observation.path_reason.startswith("maneuver:"):
+            _, phase, cause = observation.path_reason.split(":", 2)
+            self.reason = cause
+            self._maneuver_remaining_s = observation.path_wait_remaining_s
+            if phase == "NEEDS_OPERATOR":
+                self.state = RecoveryState.NEEDS_OPERATOR
+                return self._decision(now, RecoveryAction.CANCEL_AND_BRAKE)
+            self.state = RecoveryState.WAITING_DATA
+            self._resume_state = RecoveryState.CLEAR
+            return self._decision(now)
         if not observation.tf_fresh or not observation.costmap_fresh:
             reason = "TF_STALE" if not observation.tf_fresh else "COSTMAP_STALE"
             if self.state != RecoveryState.WAITING_DATA:
@@ -184,7 +200,10 @@ class BlockedRecoveryPolicy:
 
     def _decision(self, now_s: float,
                   action: RecoveryAction = RecoveryAction.NONE) -> RecoveryDecision:
-        remaining = 0.0
+        remaining = (self._maneuver_remaining_s
+                     if self.state == RecoveryState.WAITING_DATA
+                     and self.reason in ("PLANNER_LOOP", "PLANNER_U_TURN", "MANEUVER_GEOMETRY_INVALID")
+                     else 0.0)
         if self.state == RecoveryState.WAITING_RETRY and self._retry_at is not None:
             remaining = max(0.0, self._retry_at - float(now_s))
         return RecoveryDecision(self.state, action, self.reason, self.attempt, remaining)

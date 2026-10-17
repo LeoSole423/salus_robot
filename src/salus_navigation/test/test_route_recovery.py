@@ -175,3 +175,31 @@ def test_retry_suffix_can_contain_only_synthetics_after_credit():
     assert pending.waypoints == points[1:]
     assert pending.checkpoint_occurrences == ()
     assert pending.iteration == 0
+
+
+def test_maneuver_wait_does_not_enter_retry_or_change_checkpoint_suffix():
+    policy = BlockedRecoveryPolicy(persistence_s=0, retry_wait_s=0)
+    waiting = policy.observe(observation(
+        0, path_reason='maneuver:WAITING_REPLAN:PLANNER_U_TURN',
+        path_wait_remaining_s=12, costmap_fresh=False,
+        nav_failure_code='NAV_ABORTED'))
+    assert waiting.state == RecoveryState.WAITING_DATA
+    assert waiting.action == RecoveryAction.NONE and waiting.attempt == 0
+    assert waiting.wait_remaining_s == 12
+    final = policy.observe(observation(
+        12, path_reason='maneuver:NEEDS_OPERATOR:PLANNER_U_TURN',
+        tf_fresh=False, costmap_fresh=False))
+    assert final.state == RecoveryState.NEEDS_OPERATOR
+    assert final.action == RecoveryAction.CANCEL_AND_BRAKE
+    assert final.reason == 'PLANNER_U_TURN'
+    assert policy.observe(observation(100)).state == RecoveryState.NEEDS_OPERATOR
+    policy.reset()  # Existing explicit cancel/new START rule.
+    assert policy.observe(observation(101)).state == RecoveryState.CLEAR
+
+
+def test_accepted_maneuver_replan_resumes_without_retry():
+    policy = BlockedRecoveryPolicy()
+    policy.observe(observation(0, path_reason='maneuver:WAITING_REPLAN:PLANNER_LOOP'))
+    decision = policy.observe(observation(2, path_reason='path_healthy'))
+    assert decision.state == RecoveryState.CLEAR
+    assert decision.action == RecoveryAction.RESUME and decision.attempt == 0

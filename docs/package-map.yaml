@@ -45,12 +45,14 @@ packages:
     status: external_bms_source_and_48v_battery_policy_and_explicit_uart_mvp_profile_ported_hardware_cutover_pending
   salus_navigation:
     owner: autonomy
+    maneuver_admission: pure_geometry_bounded_wait_and_latched_operator_block_pc_only
     build_type: ament_python
     language: python
     may_depend_on: [salus_interfaces, salus_description, salus_navigation_bt]
     status: ported_nav2_routes_recovery_capability_profiles_patrol_battery_home_and_snapshot_real_composed_pc_validated
   salus_navigation_bt:
     owner: autonomy_bt
+    maneuver_admission: guarded_pipeline_cancels_old_follower_during_replan_wait
     build_type: ament_cmake
     language: cpp
     may_depend_on: [salus_interfaces]

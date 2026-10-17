@@ -6,6 +6,24 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  planner_maneuver_admission:
+    source: path-health and issue 244/282/315 characterization
+    target: salus_navigation and salus_navigation_bt
+    state: ported
+    evidence:
+      - docs/decisions/0016-planner-maneuver-admission.md
+      - docs/migration-evidence/intent/maneuver-guard-2026-10-17.md
+      - src/salus_navigation/test/test_maneuver_guard.py
+      - src/salus_navigation/test/test_maneuver_adapter.py
+      - src/salus_navigation_bt/test/test_guarded_control.cpp
+      - tools/smoke_maneuver_guard_runtime.py
+      - docs/migration-evidence/maneuver-guard-2026-10-17.md
+    note: >-
+      Pure geometry distinguishes ordered requested patrol visits from inserted
+      planner returns. A monotonic total wait, guarded controller cancellation
+      and existing blocked fields preserve mission/checkpoints and command
+      authority. PC evidence only; stopping distance, physical latency and
+      robot performance remain unvalidated. No Jetson deployment or EKF tuning.
   pylontech_battery_backend:
     source: Pylontech US2000 stationary RS485 measurements
     target: salus_hardware and salus_control external battery source

@@ -27,6 +27,13 @@ class PlannerFailureEvidence:
 
 def operator_block_reason(code: str) -> str:
     """Describe the recovery state without guessing why a generic abort occurred."""
+    if code in ("PLANNER_U_TURN", "PLANNER_LOOP", "MANEUVER_GEOMETRY_INVALID"):
+        detail = {"PLANNER_U_TURN": "un giro en U", "PLANNER_LOOP": "un rulo",
+                  "MANEUVER_GEOMETRY_INVALID": "geometría inválida"}[code]
+        return (f"Navegación bloqueada: el planner propuso {detail}. "
+                "Se agotó la espera de un camino alternativo. "
+                "La misión conserva sus puntos pendientes. Cancelá y volvé a iniciar "
+                "explícitamente después de revisar el recorrido.")
     if code == "NO_VALID_PATH":
         return ("No se encontró un camino seguro al siguiente punto. "
                 "Revisá los obstáculos o elegí otra ruta.")
