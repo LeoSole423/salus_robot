@@ -33,9 +33,11 @@ git pull --ff-only origin main
 ```
 
 No sobrescribir cambios del usuario. No modificar `ROS2_SALUS`, firmware o
-Cockpit desde un PR de este repositorio. Cockpit nuevo se prueba únicamente en
-su rama `migration/salus-robot-cockpit`; su `main` conserva compatibilidad con
-el sistema anterior.
+Cockpit desde un PR de este repositorio. Por decisión explícita del operador
+del 17/10/2026, Cockpit promueve a `main` los cambios de
+`migration/salus-robot-cockpit` junto con cámara y protección de maniobras
+(PR AEyeSecurity/cockpit#26). `main` pasa a ser la rama de integración para
+el backend salus_robot; no asumir compatibilidad con el stack histórico.
 
 ## 3. Caracterizar antes de implementar
 
@@ -310,5 +312,6 @@ git log -1 --oneline
 - No guardar secretos como parámetros ROS, logs o artefactos.
 - No crear múltiples autoridades para TF o `/cmd_vel_final`.
 - No declarar paridad por una prueba visual aislada.
-- No modificar Cockpit `main` para facilitar la migración.
+- No promover cambios incompatibles de Cockpit a `main` sin decisión explícita
+  del operador y validación del conjunto integrado.
 - No activar hardware real sin solicitud explícita, checklist y E-stop.
