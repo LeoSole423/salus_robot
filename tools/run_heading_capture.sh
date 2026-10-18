@@ -20,6 +20,7 @@ fi
 capture_network="${HEADING_NETWORK:-none}"
 capture_localhost=1
 [[ "$capture_network" != bridge ]] || capture_localhost=0
+capture_status=0
 docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
   "${extra_mounts[@]}" -e HEADING_RECIPE -e HEADING_SEED -e HEADING_GLOBAL_CONFIG -e FASTDDS_BUILTIN_TRANSPORTS="${HEADING_FASTDDS_TRANSPORTS:-DEFAULT}" -e ROS_LOCALHOST_ONLY="$capture_localhost" -e ROS_DOMAIN_ID="$capture_domain" \
   -e GZ_PARTITION="salus-${capture_name}-${capture_domain}" \
@@ -58,14 +59,16 @@ docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
         smoke_wait_node "/ekf_global_${variant}" 60
       done
     fi
-    smoke_run heading_capture "python3 tools/capture_heading_baseline.py --output ${HEADING_CAPTURE_DIR} --scenario ${HEADING_SCENARIO}"
+    capture_status=0
+    smoke_run heading_capture "python3 tools/capture_heading_baseline.py --output ${HEADING_CAPTURE_DIR} --scenario ${HEADING_SCENARIO}" || capture_status=$?
     python3 tools/dump_heading_parameters.py "$HEADING_CAPTURE_DIR"
     dpkg-query -W ros-humble-robot-localization > "$HEADING_CAPTURE_DIR/robot-localization-version.txt"
     smoke_note heading_baseline_captured
-  ' > "$capture_dir/run.log" 2>&1
-if [[ -n "${HEADING_RECIPE:-}" ]]; then
+    exit "$capture_status"
+  ' > "$capture_dir/run.log" 2>&1 || capture_status=$?
+if [[ -n "${HEADING_RECIPE:-}" && -f "$capture_dir/sequence.json" ]]; then
   python3 tools/heading_turn_metrics.py "$capture_dir"
-else
+elif [[ -f "$capture_dir/sequence.json" ]]; then
   python3 tools/summarize_heading_capture.py "$capture_dir"
 fi
 python3 - "$capture_dir" "$capture_domain" "$capture_scenario" "$capture_profile" "$capture_ekf_debug" "$capture_shadows" <<'PYPROVENANCE'
@@ -74,7 +77,7 @@ root = pathlib.Path('.')
 files = [*root.glob('src/salus_localization/salus_localization/*heading*.py'),
          *root.glob('src/salus_localization/config/localization_*sim.yaml'),
          root/'tools/capture_heading_baseline.py', root/'tools/heading_turn_campaign.py', root/'tools/heading_turn_metrics.py', root/'tools/run_heading_capture.sh',
-         root/'tools/prepare_heading_debug.py', root/'tools/heading_gps_lever_diagnostic.py',
+         root/'tools/prepare_heading_debug.py', root/'tools/wait_heading_ready.py', root/'tools/dump_heading_parameters.py', root/'tools/heading_gps_lever_diagnostic.py',
          root/'src/salus_localization/salus_localization/map_gps_absolute_measurement.py',
          root/'src/salus_localization/salus_localization/gnss_antenna_compensation.py',
          root/'src/salus_description/urdf/components/sensor_mounts.xacro']
@@ -85,3 +88,5 @@ provenance = dict(head=subprocess.check_output(['git','rev-parse','HEAD'], text=
     network=__import__('os').environ.get('HEADING_NETWORK','none'), cpu_limit=int(__import__('os').environ.get('HEADING_CPUS','4')), ekf_debug=sys.argv[5], diagnostic_shadows=sys.argv[6], dirty_diff_sha256=hashlib.sha256(subprocess.check_output(['git','diff'])).hexdigest())
 pathlib.Path(sys.argv[1], 'provenance.json').write_text(json.dumps(provenance,indent=2))
 PYPROVENANCE
+
+exit "$capture_status"

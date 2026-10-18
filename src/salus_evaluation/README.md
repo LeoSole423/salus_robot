@@ -266,3 +266,14 @@ aísla la derecha R4 para investigar cuándo Smac devuelve un rodeo en lugar
 del arco solicitado. El radio del request no certifica la geometría obtenida.
 Un rechazo seguro de un path con rulo puede hacer fallar los gates de llegada:
 el bundle y el exit status fallido se conservan y deben caracterizarse.
+
+## Referencia EKF posterior a compensación GNSS (#328)
+
+La campaña de giros separa dos instrumentos: `heading_turn_campaign.py` conserva
+comandos open-loop de radio >=4 m para aislar localización, mientras
+`issue328_navigation_reference.yaml` ejecuta metas Nav2 con el guard de U/rulos
+vigente. No modificar ese guard para aceptar una referencia del estimador.
+Recetas, perfiles, comandos, semántica temporal, artefactos y limitaciones en
+[la guía de campaña](../../docs/migration-evidence/ekf-turns-20261018/README.md).
+No usar el tracking del modelo open-loop como error de localización ni presentar
+la captura como validación física. El EKF de referencia permanece intacto.

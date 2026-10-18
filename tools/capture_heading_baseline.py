@@ -142,10 +142,12 @@ def main():
     try:
         while not node.done and time.monotonic()<deadline:
             rclpy.spin_once(node, timeout_sec=0.05)
-        assert node.done, f'capture timeout; counts={node.counts}'
-        assert node.counts.get('/gps/course_heading',0)>0, 'no GPS heading measurements'
+        failures=[]
+        if not node.done: failures.append('capture timeout')
+        if node.counts.get('/gps/course_heading',0)==0: failures.append('no GPS heading measurements')
         args.output.joinpath('capture.json').write_text(json.dumps(
-            dict(success=True, counts=node.counts, scope='simulation, open-loop'), indent=2))
+            dict(success=not failures, failures=failures, counts=node.counts, scope='simulation, open-loop'), indent=2))
+        if failures: raise RuntimeError('; '.join(failures))
     finally:
         node.pub.publish(Twist())
         node.stream.close()

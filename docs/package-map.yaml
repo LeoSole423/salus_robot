@@ -76,6 +76,7 @@ packages:
     may_depend_on: [salus_interfaces, salus_description]
     status: ported_motion_simulation
   salus_evaluation:
+    compensated_turn_campaign: timestamp_paired_simulation_and_separate_nav2_reference_issue_328
     owner: simulation_evaluation
     build_type: ament_python
     language: python
