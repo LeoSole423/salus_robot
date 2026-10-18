@@ -227,7 +227,8 @@ def _resolve_ekf_params_file(matrix_path, configured_path):
 def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
                              local_ekf_params_file=None,
                              global_ekf_params_file=None,
-                             sim_sensor_profile=None, sim_sensor_seed=None):
+                             sim_sensor_profile=None, sim_sensor_seed=None,
+                             simulation_launch_file=None):
     """Build the existing integration launch command plus selected overlays."""
     args = [
         "ros2", "launch", "salus_bringup", "integration_sim.launch.py",
@@ -236,6 +237,8 @@ def _build_trial_launch_args(*, zones_runtime_dir, nav2_params_file=None,
         "worlds/free.world",
         f"zones_runtime_dir:={zones_runtime_dir}",
     ]
+    if simulation_launch_file is not None:
+        args[2:4] = [str(simulation_launch_file)]
     if nav2_params_file is not None:
         args.append(f"nav2_no_obstacles_params_file:={nav2_params_file}")
     if sim_sensor_profile is not None:
@@ -330,7 +333,8 @@ def evaluation_command(scenario, trial_dir, ground_truth_topic="/odom_raw"):
 
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                          planner_minimum_turning_radius, isolation, source_sha,
-                         evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None):
+                         evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None,
+                         simulation_launch_file=None):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
     metadata = _trial_metadata(cell, scenario, isolation, source_sha)
     metadata["evaluation_ground_truth_topic"] = evaluation_ground_truth_topic
@@ -340,6 +344,9 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
     environment = build_trial_env(os.environ, isolation)
+    if simulation_launch_file is not None:
+        metadata["simulation_launch_file"] = str(simulation_launch_file)
+        metadata["simulation_launch_sha256"] = _sha256(simulation_launch_file)
     base_params = Path(get_package_share_directory("salus_navigation")) / "config" / (
         "nav2_core_no_obstacles_sim.yaml"
     )
@@ -389,6 +396,7 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
             global_ekf_params_file=selected_global_ekf_params,
             sim_sensor_profile=cell.sim_sensor_profile,
             sim_sensor_seed=cell.repetition_seed,
+            simulation_launch_file=simulation_launch_file,
         )
         with (trial_dir.parent / f"{cell.trial_id}-launch.log").open("w") as launch_log:
             launch = subprocess.Popen(
@@ -445,8 +453,16 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():
+                    parameter_env = dict(environment, HEADING_NAVIGATION_PARAMETERS="true")
+                    capture = _run(
+                        ["python3", "/ros2_ws/tools/dump_heading_parameters.py", str(trial_dir)],
+                        check=False, capture=True, env=parameter_env,
+                    )
+                    metadata["parameter_capture"] = {
+                        "returncode": capture.returncode, "stderr": capture.stderr,
+                    }
                     outcome = (
-                        "passed" if evaluation.returncode == 0
+                        "passed" if evaluation.returncode == 0 and capture.returncode == 0
                         else "functional_failure"
                     )
                     metadata["result"] = outcome
@@ -474,7 +490,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
 
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
               planner_minimum_turning_radius, run_token, source_sha,
-              evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None):
+              evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None,
+              simulation_launch_file=None):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -489,6 +506,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 isolation=isolation, source_sha=source_sha,
                 evaluation_ground_truth_topic=evaluation_ground_truth_topic,
                 experimental_nav2_params=experimental_nav2_params,
+                simulation_launch_file=simulation_launch_file,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
@@ -510,6 +528,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("matrix", help="strict matrix YAML")
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
+    parser.add_argument("--simulation-launch-file", help="simulation-only experiment wrapper")
     parser.add_argument("--experimental-nav2-params", help="simulation-only full Nav2 overlay")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
     parser.add_argument("--planner-minimum-turning-radius", type=float)
@@ -550,6 +569,7 @@ def main(argv=None):
         "source_sha": _repository_sha(),
         "evaluation_ground_truth_topic": args.evaluation_ground_truth_topic,
         "experimental_nav2_params": args.experimental_nav2_params,
+        "simulation_launch_file": args.simulation_launch_file,
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in selected_cells]

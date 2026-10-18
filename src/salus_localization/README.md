@@ -273,3 +273,10 @@ las dos referencias separadas. Véase ADR0017 y `docs/migration-evidence/ekf-tur
 IMU simulada sigue derivando de odometría cinemática; sus errores comunes con
 rueda no prueban deriva de una IMU real ni justifican reabrir máscaras #60/#266
 o duplicar yaw-rate global #61/#268. No se cambian defaults EKF en esta campaña.
+
+Simulation diagnostic only: `map_gps_absolute_measurement` parameter
+`compensate_antenna_position` (bool, default true) permits a paired mean-position
+control with compensation disabled. False retains covariance propagation,
+heading, sensor transport and mount geometry; it never changes the real navsat
+path. Use only an explicit experimental wrapper, preserve its readback/debug
+`compensation_enabled`, and never promote false as a product configuration.

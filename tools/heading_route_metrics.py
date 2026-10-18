@@ -63,6 +63,14 @@ def main():
              abs(r['speed']) > .1]
     end = max((r['stamp_s'] for r in curve), default=None)
     result['curve_end_stamp_s'] = end
+    for stream in ['commands', 'commands_safe', 'commands_final']:
+        commanded = [float(r['linear_x_mps']) for r in read(args.bundle/f'{stream}.csv')
+                     if start is not None and end is not None and
+                     start <= float(r['stamp_s']) <= end]
+        moving = [v for v in commanded if v > .05]
+        result[stream+'_positive_below_1p2_fraction'] = (
+            sum(v < 1.2-1e-6 for v in moving)/len(moving) if moving else None)
+        result[stream+'_stop_samples'] = sum(abs(v) <= .05 for v in commanded)
     truth = Interpolator([dict(r, x=r['x_m'], y=r['y_m']) for r in rows])
     result['curve_localization'] = {}
     for name in ['local', 'global']:

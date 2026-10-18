@@ -1,5 +1,6 @@
 """Capture effective parameters through services, waiting for discovery once."""
 import sys
+import os
 from array import array
 from pathlib import Path
 import rclpy
@@ -17,6 +18,10 @@ NODES={
  'ekf_filter_node_local':'local-ekf-parameters.yaml',
  'ekf_filter_node_global':'global-ekf-parameters.yaml',
  'map_gps_absolute_measurement':'gps-map-parameters.yaml'}
+
+if os.environ.get('HEADING_NAVIGATION_PARAMETERS') == 'true':
+ NODES.update(controller_server='nav-controller-parameters.yaml',
+              planner_server='nav-planner-parameters.yaml')
 
 rclpy.init();node=Node('heading_parameter_capture')
 try:

@@ -295,3 +295,17 @@ Los escenarios route_pilot tienen adquisición20 m, entrada hasta28 m y salida
 16 m: sus métricas geométricas se obtienen con heading_route_metrics.py.
 Un terminal Nav2 success todavía requiere comprobar curva físicamente completa,
 adquisición absoluta y velocidad real; el evaluador no clampa frenados a1.2.
+
+`--simulation-launch-file /ros2_ws/tools/<wrapper>.launch.py` permite seleccionar
+un wrapper de simulación explícito, registrado con SHA256. No cambia el launch
+por defecto. Los experimentos pueden usar heading_manual_envelope.launch.py
+(techo manual30°) o heading_no_compensation.launch.py (control causal de posición,
+sin cambiar covarianza). Toda matriz nueva exporta además parámetros efectivos
+de sensores, heading, mapper, EKF, controller_server y planner_server antes del
+cleanup; fallo de exportación no se considera trial válido.
+
+`tools/generate_heading_route_matrix.py artifacts/<config-nueva> --radius R
+--speeds 1.2 1.6 1.8 --repetitions 3 --seed 6500` genera escenarios/matriz
+portables. Admite quarter/straight/s; rechaza velocidades nominales menores1.2
+o mayores2.0 y radios que excedan el máximo manual30°. Generar2.0 no autoriza
+saltarse la progresión experimental: ejecutarlo sólo tras validar1.8.

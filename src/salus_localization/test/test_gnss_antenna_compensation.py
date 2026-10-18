@@ -40,3 +40,11 @@ def test_invalid_geometry_or_covariance_does_not_create_a_measurement():
         compensate_antenna(0,0,MapHeading(1,0,0.1),math.nan,0,(0.1,0,0.1))
     with pytest.raises(ValueError):
         rotate_covariance(0.01,0.2,0.01,0)
+
+
+def test_diagnostic_no_compensation_preserves_covariance_and_antenna_position():
+    args = (10.66,20.2,MapHeading(1,0,0.1),0.66,0.2,(0.05,0,0.05))
+    corrected = compensate_antenna(*args)
+    diagnostic = compensate_antenna(*args,compensate_position=False)
+    assert diagnostic[:2] == pytest.approx((10.66,20.2))
+    assert diagnostic[2] == corrected[2]

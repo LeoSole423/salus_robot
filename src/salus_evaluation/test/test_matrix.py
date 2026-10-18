@@ -527,3 +527,12 @@ def test_physical_reference_remap_is_scoped_to_evaluation_command():
     assert evaluation_command("case.yaml", "trial")[-1] == "/odom_raw:=/odom_raw"
     with pytest.raises(ValueError):
         evaluation_command("case.yaml", "trial", "/odometry/global")
+
+
+def test_experiment_launch_replaces_only_launch_entrypoint():
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+    args = _build_trial_launch_args(zones_runtime_dir='/tmp/test',
+                                    simulation_launch_file='/tmp/manual.launch.py')
+    assert args[:3] == ['ros2', 'launch', '/tmp/manual.launch.py']
+    assert 'capability_profile:=no_obstacle_detection' in args
+    assert 'integration_sim.launch.py' not in args

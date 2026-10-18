@@ -66,6 +66,7 @@ def compensate_antenna(
     x_m: float, y_m: float, heading: MapHeading,
     lever_x_m: float, lever_y_m: float,
     covariance_xy: tuple[float,float,float], mount_variance_m2: float = 0.0,
+    *, compensate_position: bool = True,
 ) -> tuple[float,float,tuple[float,float,float]]:
     values = (x_m,y_m,heading.yaw_rad,heading.variance_rad2,lever_x_m,lever_y_m,mount_variance_m2)
     if not all(math.isfinite(v) for v in values) or heading.variance_rad2 < 0 or mount_variance_m2 < 0:
@@ -80,4 +81,6 @@ def compensate_antenna(
     covariance = (xx+variance*dx*dx+mount_variance_m2,
                   xy+variance*dx*dy,
                   yy+variance*dy*dy+mount_variance_m2)
+    if not compensate_position:
+        return x_m,y_m,covariance
     return x_m-offset_x,y_m-offset_y,covariance
