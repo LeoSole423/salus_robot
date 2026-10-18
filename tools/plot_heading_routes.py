@@ -52,6 +52,33 @@ def main():
                  'Sin ajuste de desfase ni alineación espacial; denominadores incluyen setup fallido')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, dpi=160)
+    fig, ax = plt.subplots(figsize=(8, 6), layout='constrained')
+    envelope = [
+        ('route-r3-reference', 'R4, auto18°', 'o'),
+        ('radius2p5-auto18', 'R2.5, auto18° (diagnóstico)', 's'),
+        ('coherent24', 'R2.5, auto24° / piloto', '^'),
+        ('coherent24-fast', 'R2.5, auto24° / 1.6–1.8', '^'),
+        ('coherent24-holdout', 'R2.5, auto24° / reservadas', 'D'),
+        ('speed2-nav', 'R4, piloto 2.0', '*'),
+    ]
+    for name, label, marker in envelope:
+        points = []
+        for row in rows:
+            if row['campaign'] != 'issue328-'+name:
+                continue
+            curve = row.get('curve', {})
+            speed = curve.get('curve_speed_median_mps')
+            radius = curve.get('central_physical_radius_m', {}).get('median')
+            if speed is not None and radius is not None:
+                points.append((speed, radius))
+        if points:
+            ax.scatter(*zip(*points), marker=marker, label=label, alpha=.75)
+    ax.axvline(1.2, linestyle='--', color='grey', label='Piso de consigna 1.2')
+    ax.set(xlabel='Velocidad física mediana en curva (m/s)',
+           ylabel='Radio físico central mediano (m)',
+           title='Capacidad observada en simulación; no es envolvente garantizada')
+    ax.grid(alpha=.25); ax.legend(fontsize=8)
+    fig.savefig(args.output.with_name(args.output.stem+'-envelope.png'), dpi=160)
 
 
 if __name__ == '__main__':

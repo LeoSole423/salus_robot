@@ -37,6 +37,7 @@ def _latency_override_metadata(requested, result):
     return {
         "requested_latency_s": requested, "effective_latency_s": effective,
         "get_returncode": result.returncode, "get_stderr": result.stderr,
+        "get_stdout": result.stdout,
         "matches_requested": bool(result.returncode == 0 and
                                   math.isfinite(requested) and requested >= 0 and
                                   effective is not None and

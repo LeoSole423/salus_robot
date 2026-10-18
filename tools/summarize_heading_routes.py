@@ -70,11 +70,31 @@ def main():
                   'completed_curve', 'heading_acquired_before_curve',
                   'compensated_gnss_continuous_before_curve',
                   'curve_speed_p05_mps', 'curve_speed_median_mps',
-                  'commands_positive_below_1p2_fraction']
+                  'commands_positive_below_1p2_fraction',
+                  'physical_radius_median_m', 'gnss_delivery_age_median_s',
+                  'local_heading_max_deg', 'local_heading_rms_deg',
+                  'local_position_max_m', 'local_position_rms_m',
+                  'global_heading_max_deg', 'global_heading_rms_deg',
+                  'global_position_max_m', 'global_position_rms_m',
+                  'causal_tracking_rms_m', 'causal_tracking_max_m',
+                  'local_max_gap_s', 'global_max_gap_s', 'imu_max_gap_s']
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
         for row in rows:
             values = dict(row, **row.get('curve', {}))
+            values['physical_radius_median_m'] = values.get('central_physical_radius_m', {}).get('median')
+            values['gnss_delivery_age_median_s'] = values.get('gnss_observed_delivery_age_s', {}).get('median')
+            for name in ['local', 'global']:
+                pose = values.get('curve_localization', {}).get(name, {})
+                for quantity, unit in [('heading', 'deg'), ('position', 'm')]:
+                    metric = pose.get(quantity+'_'+unit, {})
+                    values[f'{name}_{quantity}_max_{unit}'] = metric.get('maximum')
+                    values[f'{name}_{quantity}_rms_{unit}'] = metric.get('rms')
+            tracking = row.get('reference_observation', {}).get('causal_published_plan_tracking', {})
+            values['causal_tracking_rms_m'] = tracking.get('cross_track_rms_m')
+            values['causal_tracking_max_m'] = tracking.get('cross_track_max_m')
+            for name in ['local', 'global', 'imu']:
+                values[name+'_max_gap_s'] = values.get('stream_availability', {}).get(name, {}).get('max_gap_s')
             writer.writerow({k: values.get(k) for k in fields})
     provenance = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
                   for name in ['summarize_heading_routes.py', 'heading_route_metrics.py',
