@@ -1,0 +1,48 @@
+[
+  {
+    "name": "build",
+    "command": [
+      "./tools/build.sh"
+    ],
+    "returncode": 0
+  },
+  {
+    "name": "full-suite",
+    "command": [
+      "./tools/test.sh"
+    ],
+    "returncode": 0
+  },
+  {
+    "name": "navigation_core",
+    "command": [
+      "./tools/run_smoke.sh",
+      "./tools/smoke_navigation_core_sim.sh"
+    ],
+    "returncode": 0
+  },
+  {
+    "name": "localization",
+    "command": [
+      "./tools/run_smoke.sh",
+      "./tools/smoke_localization_sim.sh"
+    ],
+    "returncode": 0
+  },
+  {
+    "name": "safety",
+    "command": [
+      "./tools/run_smoke.sh",
+      "./tools/smoke_safety_sim.sh"
+    ],
+    "returncode": 0
+  },
+  {
+    "name": "route_executor",
+    "command": [
+      "./tools/run_smoke.sh",
+      "./tools/smoke_route_executor_sim.sh"
+    ],
+    "returncode": 0
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "coherent24-fast",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 8, \"functional_pass\": 5, \"completed_curves\": 8}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "coherent24-holdout",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 10, \"functional_pass\": 9, \"completed_curves\": 9}\n",
+    "analysis_stderr": ""
+  }
+]

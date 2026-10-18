@@ -1,6 +1,7 @@
 # #328 — navegación y EKF compensado, PC 18/10/2026
 
-Leer [resultados](RESULTS.md), [intención](../intent/ekf-turns-2026-10-18.md) y
+Leer la [continuación de navegación automática](continuation/RESULTS.md),
+los [resultados de la primera campaña](RESULTS.md), [intención](../intent/ekf-turns-2026-10-18.md) y
 [ADR0017](../../decisions/0017-simulation-motion-reference.md). Hardware no validado.
 
 ## Dos referencias que no deben mezclarse

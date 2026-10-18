@@ -14,6 +14,9 @@ inicial tiene límites de adquisición y llegada que deben resolverse antes de
 atribuir un techo a la navegación. Ver la continuación de objetivos en la
 [intención](../intent/ekf-turns-2026-10-18.md).
 
+La investigación de navegación continuó con rutas completas, radios menores y
+velocidades mayores: ver [resultados de continuación](continuation/RESULTS.md).
+
 ## Qué se corrigió y qué significa la referencia
 
 La referencia nueva usa `/simulation/ground_truth`, pose física `worldPose` de

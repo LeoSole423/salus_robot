@@ -1,0 +1,34 @@
+[
+  {
+    "id": "epoch-antenna-active",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 3, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "epoch-antenna-control",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "coherent24",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "coherent30",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  }
+]

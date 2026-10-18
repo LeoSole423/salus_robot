@@ -1,0 +1,114 @@
+[
+  {
+    "id": "analytic20-r4",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 2, \"completed_curves\": 2}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "analytic20-r3",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "radius3-planner2p5",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "radius2p5-auto18",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "radius2p5-manual30",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "radius2-manual30",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 2}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "radius1p65-manual30",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 0, \"completed_curves\": 0}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "no-compensation",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 8, \"functional_pass\": 8, \"completed_curves\": 7}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "lookahead1p6",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 8, \"functional_pass\": 4, \"completed_curves\": 6}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "latency300-nav",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "latency300-lagged-nav",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "s-nav",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 4, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "speed2-straight",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 1, \"functional_pass\": 1, \"completed_curves\": 0}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "speed2-nav",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 2, \"functional_pass\": 2, \"completed_curves\": 2}\n",
+    "analysis_stderr": ""
+  }
+]

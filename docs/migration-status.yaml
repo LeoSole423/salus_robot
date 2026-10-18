@@ -28,6 +28,7 @@ components:
       - docs/migration-evidence/intent/ekf-turns-2026-10-18.md
       - docs/migration-evidence/ekf-turns-20261018/README.md
       - docs/migration-evidence/ekf-turns-20261018/RESULTS.md
+      - docs/migration-evidence/ekf-turns-20261018/continuation/RESULTS.md
       - tools/heading_turn_campaign.py
       - tools/test_heading_turn_metrics.py
       - tools/test_heading_parameter_capture.py
@@ -37,7 +38,10 @@ components:
       product defaults preserved. Historical references hashed read-only;
       Independent world-pose campaign completed; retain EKF defaults after
       nominal recovery regressions of the lagged-data variant. Physical robot
-      accuracy and turn validation remain pending.
+      accuracy and turn validation remain pending. Automatic-navigation continuation
+      characterizes tighter turns through isolated steering/planner profiles, preserves
+      loop/U admission protections and the 1.2 m/s nominal curve command floor.
+      Higher speeds and tighter physical radii are experimental, not product defaults.
   planner_maneuver_admission:
     source: path-health and issue 244/282/315 characterization
     target: salus_navigation and salus_navigation_bt
