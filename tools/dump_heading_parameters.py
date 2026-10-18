@@ -31,8 +31,23 @@ try:
     future=getting.call_async(GetParameters.Request(names=names))
     rclpy.spin_until_future_complete(node,future,timeout_sec=10.)
     if not future.done():raise RuntimeError('get parameters timeout: '+name)
-    values=[parameter_value_to_python(v) for v in future.result().values]
+    values=future.result().values
+    uninitialized=[]
+    if len(values)!=len(names):
+        # Humble returns an empty batch if any declared typed array is unset.
+        values=[]
+        for parameter_name in names:
+            future=getting.call_async(GetParameters.Request(names=[parameter_name]))
+            rclpy.spin_until_future_complete(node,future,timeout_sec=10.)
+            if not future.done():raise RuntimeError('get parameter timeout: '+parameter_name)
+            response=future.result().values
+            if response:
+                values.append(parameter_value_to_python(response[0]))
+            else:
+                values.append(None);uninitialized.append(parameter_name)
+    else:
+        values=[parameter_value_to_python(v) for v in values]
     params=dict(zip(names,[list(v) if isinstance(v,array) else v for v in values]))
-    Path(sys.argv[1],filename).write_text(yaml.safe_dump({name:{'ros__parameters':params}}))
+    Path(sys.argv[1],filename).write_text(yaml.safe_dump({name:{'ros__parameters':params,'uninitialized_parameters':uninitialized}}))
 finally:
  node.destroy_node();rclpy.shutdown()

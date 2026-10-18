@@ -1,0 +1,258 @@
+[
+  {
+    "id": "right-v1.2-r3.0-clean-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.2-r3.0-clean-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.2-r3.0-clean-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "left-v1.2-r3.0-clean-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.2-r3.0-clean-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.2-r3.0-clean-s6402",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "right-v1.6-r3.0-clean-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r3.0-clean-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r3.0-clean-s6402",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "left-v1.6-r3.0-clean-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.6-r3.0-clean-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.6-r3.0-clean-s6402",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "right-v1.8-r3.0-clean-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.8-r3.0-clean-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.8-r3.0-clean-s6402",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "left-v1.8-r3.0-clean-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.8-r3.0-clean-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.8-r3.0-clean-s6402",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "right-v1.8-r4.0-clean-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.8-r4.0-clean-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.8-r4.0-clean-s6402",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "left-v1.8-r4.0-clean-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.8-r4.0-clean-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.8-r4.0-clean-s6402",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6402
+  },
+  {
+    "id": "right-v1.8-r3.0-nominal-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.8-r3.0-nominal-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.8-r3.0-nominal-s6402",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6402
+  },
+  {
+    "id": "left-v1.8-r3.0-nominal-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.8-r3.0-nominal-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.8-r3.0-nominal-s6402",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "nominal",
+    "seed": 6402
+  },
+  {
+    "id": "right-v1.8-r2.9-clean-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 2.9,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.8-r2.9-clean-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 2.9,
+    "profile": "clean",
+    "seed": 6400
+  }
+]

@@ -23,6 +23,7 @@ class ParameterCaptureTest(unittest.TestCase):
         for node in nodes:
             node.declare_parameter('array_probe',[1.,2.])
             node.declare_parameter('scalar_probe',.3)
+            node.declare_parameter('unset_array',rclpy.Parameter.Type.DOUBLE_ARRAY)
             executor.add_node(node)
         thread=threading.Thread(target=executor.spin);thread.start()
         try:
@@ -35,6 +36,7 @@ class ParameterCaptureTest(unittest.TestCase):
                     params=next(iter(yaml.safe_load(path.read_text()).values()))['ros__parameters']
                     self.assertEqual(params['array_probe'],[1.,2.])
                     self.assertEqual(params['scalar_probe'],.3)
+                    self.assertIsNone(params['unset_array'])
         finally:
             executor.shutdown();thread.join()
             for node in nodes:node.destroy_node()

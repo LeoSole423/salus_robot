@@ -50,11 +50,12 @@ class MetricsTest(unittest.TestCase):
             self.assertFalse(second['instrumentation_valid'])  # missing IMU/TF
 
     def test_geometry_respects_product_radius(self):
-        for speed in [.8,1.2,1.6]:
+        for speed in [.8,1.2,1.6,1.8]:
             for kind in ['right','left','s','half']:
                 for _,_,v,w in sequence(kind,speed):
                     if w:self.assertGreaterEqual(abs(v/w),4.)
-        with self.assertRaises(ValueError):sequence('right',1.2,3.)
+        self.assertTrue(sequence('right',1.8,2.9))
+        with self.assertRaises(ValueError):sequence('right',1.8,2.8)
     def test_individual_profiles_do_not_change_other_channels(self):
         base=sensor_profile('clean'); gyro=sensor_profile('gyro')
         self.assertEqual(base['sim_drive_sensor_adapter'],gyro['sim_drive_sensor_adapter'])

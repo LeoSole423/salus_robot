@@ -18,8 +18,8 @@ from salus_evaluation.isolation import allocated_trial_isolation
 def sequence(kind, speed, radius=4.0):
     if kind not in ('straight', 'oscillations', 'right', 'left', 's', 'half'):
         raise ValueError(kind)
-    if not 0.8 <= speed <= 1.6 or radius < 4 or not math.isfinite(radius):
-        raise ValueError('campaign requires 0.8..1.6 m/s and R>=4 m')
+    if not 0.8 <= speed <= 1.8 or radius < 2.9 or not math.isfinite(radius):
+        raise ValueError('campaign requires 0.8..1.8 m/s and R>=2.9 m (18 degree operational steering)')
     turn = math.pi / 2 * radius / speed
     rate = speed / radius
     phases = [('straight_before', 8., speed, 0.)]
@@ -87,7 +87,7 @@ def run(args):
             env['HEADING_GLOBAL_CONFIG'] = '/ros2_ws/'+str((directory/'global.yaml').relative_to(REPO))
         with allocated_trial_isolation(directory, run_token=root.name, trial_id=name) as isolation:
             rel = str(directory.relative_to(REPO/'artifacts'))
-            result = subprocess.run(['bash',str(REPO/'tools/run_heading_capture.sh'),str(REPO),rel,
+            result = subprocess.run(['bash','-c',(REPO/'tools/run_heading_capture.sh').read_text(),str(REPO/'tools/run_heading_capture.sh'),str(REPO),rel,
                                      str(isolation.ros_domain_id),
                                      'oscillations' if trial['kind']=='oscillations' else 'right',
                                      'independent_nominal'],env=env,cwd=REPO,timeout=300)

@@ -64,7 +64,8 @@ docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
     python3 tools/dump_heading_parameters.py "$HEADING_CAPTURE_DIR"
     dpkg-query -W ros-humble-robot-localization > "$HEADING_CAPTURE_DIR/robot-localization-version.txt"
     smoke_note heading_baseline_captured
-    exit "$capture_status"
+    # Natural completion preserves the status through login-shell logout hooks.
+    test "$capture_status" -eq 0
   ' > "$capture_dir/run.log" 2>&1 || capture_status=$?
 if [[ -n "${HEADING_RECIPE:-}" && -f "$capture_dir/sequence.json" ]]; then
   python3 tools/heading_turn_metrics.py "$capture_dir"
