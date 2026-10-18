@@ -55,6 +55,8 @@ class MetricsTest(unittest.TestCase):
                 for _,_,v,w in sequence(kind,speed):
                     if w:self.assertGreaterEqual(abs(v/w),4.)
         self.assertTrue(sequence('right',1.8,2.9))
+        self.assertTrue(sequence('right',1.8,1.65,manual_envelope=True))
+        with self.assertRaises(ValueError):sequence('right',1.8,1.6,manual_envelope=True)
         with self.assertRaises(ValueError):sequence('right',1.8,2.8)
     def test_individual_profiles_do_not_change_other_channels(self):
         base=sensor_profile('clean'); gyro=sensor_profile('gyro')

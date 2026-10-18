@@ -27,3 +27,10 @@
   ros_type_name: "sensor_msgs/msg/PointCloud2"
   gz_type_name: "gz.msgs.PointCloudPacked"
   direction: GZ_TO_ROS
+
+# Read-only world-pose reference; deliberately no /tf bridge or estimator remap.
+- ros_topic_name: "/simulation/ground_truth"
+  gz_topic_name: "/simulation/ground_truth"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS

@@ -318,10 +318,22 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
     }
 
 
+def evaluation_command(scenario, trial_dir, ground_truth_topic="/odom_raw"):
+    """Remap the observer only, never an estimator or simulation sensor."""
+    if ground_truth_topic not in ("/odom_raw", "/simulation/ground_truth"):
+        raise ValueError("unknown evaluation ground truth topic")
+    return ["ros2", "run", "salus_evaluation", "navigation_evaluation",
+            "--ros-args", "-p", "use_sim_time:=true", "-p", "mode:=run",
+            "-p", f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
+            "-r", f"/odom_raw:={ground_truth_topic}"]
+
+
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
-                         planner_minimum_turning_radius, isolation, source_sha):
+                         planner_minimum_turning_radius, isolation, source_sha,
+                         evaluation_ground_truth_topic="/odom_raw"):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
     metadata = _trial_metadata(cell, scenario, isolation, source_sha)
+    metadata["evaluation_ground_truth_topic"] = evaluation_ground_truth_topic
     trial_dir.mkdir(parents=True, exist_ok=True)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
@@ -423,10 +435,7 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                         "FollowPath.desired_linear_vel effective readback does not match request"
                     )
                 evaluation = _run(
-                    ["ros2", "run", "salus_evaluation", "navigation_evaluation",
-                     "--ros-args",
-                     "-p", "use_sim_time:=true", "-p", "mode:=run", "-p",
-                     f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}"],
+                    evaluation_command(scenario, trial_dir, evaluation_ground_truth_topic),
                     check=False, env=environment,
                 )
                 if (trial_dir / "summary.json").exists():
@@ -458,7 +467,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
 
 
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
-              planner_minimum_turning_radius, run_token, source_sha):
+              planner_minimum_turning_radius, run_token, source_sha,
+              evaluation_ground_truth_topic="/odom_raw"):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -471,6 +481,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 startup_timeout_s=startup_timeout_s,
                 planner_minimum_turning_radius=planner_minimum_turning_radius,
                 isolation=isolation, source_sha=source_sha,
+                evaluation_ground_truth_topic=evaluation_ground_truth_topic,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
@@ -494,6 +505,9 @@ def main(argv=None):
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
     parser.add_argument("--planner-minimum-turning-radius", type=float)
+    parser.add_argument("--evaluation-ground-truth-topic",
+                        choices=["/odom_raw", "/simulation/ground_truth"],
+                        default="/odom_raw", help="observer-only reference topic")
     parser.add_argument("--jobs", type=int, default=1,
                         help="maximum number of concurrent trials (default: 1)")
     parser.add_argument(
@@ -526,6 +540,7 @@ def main(argv=None):
         "planner_minimum_turning_radius": args.planner_minimum_turning_radius,
         "run_token": run_token,
         "source_sha": _repository_sha(),
+        "evaluation_ground_truth_topic": args.evaluation_ground_truth_topic,
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in selected_cells]

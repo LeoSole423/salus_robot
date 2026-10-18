@@ -399,7 +399,9 @@ class EvaluationRunner(Node):
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
-        self.create_subscription(Odometry, "/odom_raw", self._raw, 50)
+        self.raw_subscription = self.create_subscription(
+            Odometry, "/odom_raw", self._raw, 50
+        )
         self.create_subscription(Odometry, "/odometry/local", self._local, 50)
         self.create_subscription(Twist, "/cmd_vel", self._command, 50)
         self.create_subscription(Twist, "/cmd_vel_safe", self._safe_command, 50)
@@ -700,6 +702,7 @@ class EvaluationRunner(Node):
                    "controller_json_errors": controller_json_errors}
         manifest = {
             "schema_version": 2, "goal_stamp_s": self.goal_sent_s,
+            "ground_truth_topic": self.raw_subscription.topic_name,
             "mode": self.mode, "scenario": self.scenario_path,
             "streams": [
                 "odometry_global", "odometry_raw", "odometry_local", "commands",
@@ -710,7 +713,7 @@ class EvaluationRunner(Node):
             "topics": [
                 "/plan", "/cmd_vel", "/cmd_vel_safe", "/cmd_vel_final",
                 "/vehicle/command_shadow", "/controller/drive_telemetry",
-                "/controller/status", "/controller/telemetry", "/odom_raw",
+                "/controller/status", "/controller/telemetry", self.raw_subscription.topic_name,
                 "/odometry/local", "/odometry/global", "/path_health",
             ],
         }

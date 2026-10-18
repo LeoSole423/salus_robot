@@ -63,10 +63,11 @@ def analyze(directory):
     series={}
     for r in rows: series.setdefault(r['topic'],[]).append(r)
     for values in series.values(): values.sort(key=lambda r:r['stamp_s'])
-    raw=series.get('/odom_raw',[])
+    truth_topic=seq.get('truth_topic','/odom_raw')
+    raw=series.get(truth_topic,[])
     if not raw: raise ValueError('no ground truth')
-    if any(r['frame_id'] not in ('odom','salus_ackermann/odom') or r['child_frame_id'] not in ('base_footprint','salus_ackermann/base_footprint') for r in raw): raise ValueError('truth must be odom')
-    result=dict(schema_version=1,start_sim_s=start,duration_s=end-start,
+    if any(r['frame_id'] not in ('odom','salus_ackermann/odom','map') or r['child_frame_id'] not in ('base_footprint','salus_ackermann/base_footprint') for r in raw): raise ValueError('truth must be odom')
+    result=dict(schema_version=2,truth_topic=truth_topic,reference_kind='physical_world_pose' if truth_topic=='/simulation/ground_truth' else 'kinematic_odometry_not_independent_truth',start_sim_s=start,duration_s=end-start,
                 alignment='header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn',
                 localization={},continuity={},instrumentation_valid=True)
     after=next(a for n,a,b in phases if n=='straight_after')
@@ -99,7 +100,7 @@ def analyze(directory):
             yaw_variance_rad2=stats([(r['pose_covariance'][35] if 'pose_covariance' in r else r['pose_covariance_diagonal'][5]) for r in estimates if start<=r['stamp_s']<=end]),
             x_variance_m2=stats([(r['pose_covariance'][0] if 'pose_covariance' in r else r['pose_covariance_diagonal'][0]) for r in estimates if start<=r['stamp_s']<=end]))
         result['localization'][topic]=metrics
-    for topic in ['/odom_raw','/imu/data','/odometry/local','/odometry/global','/tf/map/odom','/tf/odom/base_footprint','/gps/fix','/gps/odometry_map']:
+    for topic in sorted(set([truth_topic,'/odom_raw','/imu/data','/odometry/local','/odometry/global','/tf/map/odom','/tf/odom/base_footprint','/gps/fix','/gps/odometry_map'])):
         c=continuity(series.get(topic,[]),start,end);result['continuity'][topic]=c
         if topic not in ('/gps/fix','/gps/odometry_map') and (c['samples']<10 or c['max_gap_s']>.5 or c['covered_fraction']<.95 or c['max_receive_age_s']>.5):
             result['instrumentation_valid']=False
@@ -137,6 +138,15 @@ def analyze(directory):
     result['motion']=dict(truth_distance_m=sum(math.hypot(b['x']-a['x'],b['y']-a['y']) for a,b in zip(raw,raw[1:]) if start<=a['stamp_s']<b['stamp_s']<=end),
         measured_speed_mps=stats([abs(r['speed']) for r in raw if start<=r['stamp_s']<=end]),
         steering_deg=stats([abs(r['steer']) for r in series.get('/controller/drive_telemetry',[]) if start<=r['stamp_s']<=end]))
+    radii=[abs(r['speed']/r['yaw_rate']) for r in raw if start<=r['stamp_s']<=end and abs(r['yaw_rate'])>=.1 and abs(r['speed'])>=.3]
+    result['motion']['observed_radius_m']=dict(minimum=min(radii) if radii else None,median=sorted(radii)[len(radii)//2] if radii else None)
+    reference_errors=[]
+    if truth_topic!='/odom_raw':
+        for r in series.get('/odom_raw',[]):
+            if not start<=r['stamp_s']<=end:continue
+            ref=interpolate(raw,r['stamp_s'])
+            if ref:reference_errors.append((abs(math.degrees(angle(r['yaw_rad'],ref['yaw_rad']))),math.hypot(r['x']-ref['x'],r['y']-ref['y'])))
+    result['kinematic_vs_physical']=dict(heading_deg=stats([h for h,p in reference_errors]),position_m=stats([p for h,p in reference_errors]))
     result['navigation']='not running: estimator-only, no planner decision inferred'
     (root/'turn-metrics.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     return result

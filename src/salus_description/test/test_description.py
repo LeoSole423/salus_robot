@@ -61,7 +61,7 @@ def test_simulation_plugin_keeps_ackermann_dimensions() -> None:
     robot = _expanded_robot()
     plugin = robot.find(".//plugin[@name='ignition::gazebo::systems::AckermannSteering']")
     assert plugin is not None
-    assert plugin.findtext("wheelbase") == "0.94"
+    assert plugin.findtext("wheel_base") == "0.94"
     assert plugin.findtext("wheel_separation") == "0.75"
     assert plugin.findtext("wheel_radius") == "0.24"
     assert plugin.findtext("topic") == "/cmd_vel_steer"

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "physical-r4-v1.6",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "physical-manual-r1.65-v1.8",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  }
+]

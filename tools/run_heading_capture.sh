@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Manual, isolated simulation experiment; no hardware/deployment.
 set -euo pipefail
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 runtime_workspace="${1:?Provide workspace containing a compatible build/ and install/}"
 capture_name="${2:-heading-capture}"
 capture_domain="${3:-117}"
@@ -22,7 +22,7 @@ capture_localhost=1
 [[ "$capture_network" != bridge ]] || capture_localhost=0
 capture_status=0
 docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
-  "${extra_mounts[@]}" -e HEADING_RECIPE -e HEADING_SEED -e HEADING_GLOBAL_CONFIG -e FASTDDS_BUILTIN_TRANSPORTS="${HEADING_FASTDDS_TRANSPORTS:-DEFAULT}" -e ROS_LOCALHOST_ONLY="$capture_localhost" -e ROS_DOMAIN_ID="$capture_domain" \
+  "${extra_mounts[@]}" -e HEADING_PHYSICAL_TRUTH -e HEADING_MANUAL_ENVELOPE -e HEADING_RECIPE -e HEADING_SEED -e HEADING_GLOBAL_CONFIG -e FASTDDS_BUILTIN_TRANSPORTS="${HEADING_FASTDDS_TRANSPORTS:-DEFAULT}" -e ROS_LOCALHOST_ONLY="$capture_localhost" -e ROS_DOMAIN_ID="$capture_domain" \
   -e GZ_PARTITION="salus-${capture_name}-${capture_domain}" \
   -e IGN_PARTITION="salus-${capture_name}-${capture_domain}" \
   -e SMOKE_ARTIFACT_ROOT="/ros2_ws/${capture_dir}/smokes" -e SMOKE_RUN_TOKEN="$capture_name" -e SMOKE_RUNTIME_DIR="/tmp/${capture_name}" \
@@ -42,7 +42,11 @@ docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
       python3 tools/prepare_heading_debug.py "$HEADING_CAPTURE_DIR"
       debug_args="local_ekf_params_file:=/ros2_ws/${HEADING_CAPTURE_DIR}/local-debug.yaml global_ekf_params_file:=/ros2_ws/${HEADING_CAPTURE_DIR}/global-debug.yaml"
     fi
-    smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py world:=${free_world} launch_navigation:=false rviz:=false orientation_source:=course_over_ground sim_sensor_profile:=${HEADING_PROFILE} sim_sensor_seed:=${HEADING_SEED:-6400} ${debug_args} ${HEADING_GLOBAL_CONFIG:+global_ekf_params_file:=${HEADING_GLOBAL_CONFIG}}"
+    integration_launch="salus_bringup integration_sim.launch.py"
+    if [[ "${HEADING_MANUAL_ENVELOPE:-false}" == true ]]; then
+      integration_launch="/ros2_ws/tools/heading_manual_envelope.launch.py"
+    fi
+    smoke_start_launch integration "ros2 launch ${integration_launch} world:=${free_world} launch_navigation:=false rviz:=false orientation_source:=course_over_ground sim_sensor_profile:=${HEADING_PROFILE} sim_sensor_seed:=${HEADING_SEED:-6400} ${debug_args} ${HEADING_GLOBAL_CONFIG:+global_ekf_params_file:=${HEADING_GLOBAL_CONFIG}}"
     # A persistent direct observer avoids poisoning ros2cli daemon discovery
     # when short-lived CLI processes are killed during parallel startup.
     python3 tools/wait_heading_ready.py

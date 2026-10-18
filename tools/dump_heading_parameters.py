@@ -9,6 +9,7 @@ from rcl_interfaces.srv import ListParameters, GetParameters
 import yaml
 
 NODES={
+ 'salus_controller':'controller-parameters.yaml',
  'sim_drive_sensor_adapter':'sim_drive_sensor_adapter-parameters.yaml',
  'sim_imu_from_odom':'sim_imu_from_odom-parameters.yaml',
  'sim_gps_normalizer':'sim_gps_normalizer-parameters.yaml',

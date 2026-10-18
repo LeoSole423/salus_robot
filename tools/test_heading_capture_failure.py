@@ -15,6 +15,9 @@ class CaptureFailureTest(unittest.TestCase):
             docker=bin_dir/'docker'
             docker.write_text('#!/bin/sh\nif [ "$1" = image ]; then echo sha256:fixture; exit 0; fi\nexit 9\n')
             docker.chmod(0o755)
+            git=bin_dir/'git'
+            git.write_text('#!/bin/sh\nif [ "$1" = rev-parse ]; then echo fixture-head; fi\nexit 0\n')
+            git.chmod(0o755)
             target=root/'trial'
             name=str(target.relative_to(repo/'artifacts'))
             env=dict(os.environ,PATH=str(bin_dir)+os.pathsep+os.environ['PATH'])

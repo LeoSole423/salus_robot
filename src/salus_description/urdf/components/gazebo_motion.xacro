@@ -8,7 +8,8 @@
         <left_joint>rear_left_wheel_joint</left_joint>
         <right_joint>rear_right_wheel_joint</right_joint>
         <wheel_separation>0.75</wheel_separation>
-        <wheelbase>0.94</wheelbase>
+        <wheel_base>0.94</wheel_base>
+        <kingpin_width>0.75</kingpin_width>
         <wheel_radius>0.24</wheel_radius>
         <steering_limit>0.5235987756</steering_limit>
         <topic>/cmd_vel_steer</topic>
@@ -16,6 +17,15 @@
         <odom_frame>odom</odom_frame>
         <robot_base_frame>base_footprint</robot_base_frame>
         <publish_odom_tf>false</publish_odom_tf>
+      </plugin>
+      <!-- Read-only physical reference, never an estimator or TF input. -->
+      <plugin filename="ignition-gazebo-odometry-publisher-system" name="ignition::gazebo::systems::OdometryPublisher">
+        <odom_topic>/simulation/ground_truth</odom_topic>
+        <odom_frame>map</odom_frame>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <odom_publish_frequency>50</odom_publish_frequency>
+        <dimensions>2</dimensions>
+        <tf_topic>/simulation/ground_truth_tf</tf_topic>
       </plugin>
       <plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher">
         <publish_frequency>50</publish_frequency>

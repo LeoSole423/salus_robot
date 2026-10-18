@@ -92,3 +92,12 @@ unknown percentage/voltage/current with present=false. Missing data resets volta
 persistence timers but never clears a latched HOME recommendation. The existing
 46.5 V / 30 s latch and 48 V / 30 s clear use BMS voltage; changing the mission
 policy to SOC would require a separate reviewed change.
+
+### Contrato Fortress corregido (#328 / ADR0017)
+
+El plugin Ackermann recibe Twist.angular.z en rad/s. El backend sim convierte
+el ángulo aplicado desde porcentaje de dirección mediante `v*tan(delta)/L`;
+antes se enviaba el ángulo en radianes y el radio dependía artificialmente de
+la velocidad. Freno, E-stop, signos y límites de actuador se conservan.
+El cambio es sólo simulado; no modifica UART ni firmware. `/odom_raw` del plugin
+integra articulaciones y no es una referencia física independiente.

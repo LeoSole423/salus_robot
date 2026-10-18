@@ -15,13 +15,17 @@ sys.path.insert(0, str(REPO / 'src/salus_evaluation'))
 from salus_evaluation.isolation import allocated_trial_isolation
 
 
-def sequence(kind, speed, radius=4.0):
+def sequence(kind, speed, radius=4.0, *, manual_envelope=False, hold_s=None):
     if kind not in ('straight', 'oscillations', 'right', 'left', 's', 'half'):
         raise ValueError(kind)
-    if not 0.8 <= speed <= 1.8 or radius < 2.9 or not math.isfinite(radius):
-        raise ValueError('campaign requires 0.8..1.8 m/s and R>=2.9 m (18 degree operational steering)')
+    minimum_radius=.94/math.tan(math.radians(30 if manual_envelope else 18))
+    if not 0.8 <= speed <= 1.8 or radius < minimum_radius or not math.isfinite(radius):
+        raise ValueError('campaign exceeds speed or selected steering envelope')
     turn = math.pi / 2 * radius / speed
     rate = speed / radius
+    if hold_s is not None:
+        if not manual_envelope or not 0 < hold_s <= 10: raise ValueError('hold requires manual envelope and <=10 s')
+        turn=max(turn,hold_s)
     phases = [('straight_before', 8., speed, 0.)]
     if kind in ('straight', 'oscillations'):
         phases += [('cruise', 8., speed, 0.)]
@@ -72,11 +76,11 @@ def run(args):
         name = trial['id']
         directory = root/name
         directory.mkdir()
-        recipe = dict(trial, sequence=sequence(trial['kind'], trial['speed'], trial.get('radius',4.)))
+        recipe = dict(trial, sequence=sequence(trial['kind'], trial['speed'], trial.get('radius',4.),manual_envelope=trial.get('manual_envelope',False),hold_s=trial.get('hold_s')))
         (directory/'recipe.json').write_text(json.dumps(recipe,indent=2))
         profile = sensor_profile(trial['profile'])
         (directory/'sensors.yaml').write_text(yaml.safe_dump(profile))
-        env = dict(os.environ, HEADING_CPUS='6', HEADING_NETWORK='bridge', HEADING_FASTDDS_TRANSPORTS='UDPv4', HEADING_RECIPE='/ros2_ws/'+str((directory/'recipe.json').relative_to(REPO)),
+        env = dict(os.environ, HEADING_PHYSICAL_TRUTH='true', HEADING_MANUAL_ENVELOPE=str(trial.get('manual_envelope',False)).lower(), HEADING_CPUS='6', HEADING_NETWORK='bridge', HEADING_FASTDDS_TRANSPORTS='UDPv4', HEADING_RECIPE='/ros2_ws/'+str((directory/'recipe.json').relative_to(REPO)),
                    HEADING_SEED=str(trial['seed']), HEADING_SENSOR_FILE=str(directory/'sensors.yaml'))
         if trial.get('variant','baseline') not in ('baseline','lagged'):
             raise ValueError('unknown EKF variant')

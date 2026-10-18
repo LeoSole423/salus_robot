@@ -6,6 +6,20 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  simulation_motion_physical_reference:
+    source: issue 328 simulator contract and ground truth characterization
+    target: salus_control simulated backend and salus_description and salus_simulation
+    state: ported
+    evidence:
+      - docs/decisions/0017-simulation-motion-reference.md
+      - src/salus_control/test/test_sim_gazebo_backend.py
+      - src/salus_simulation/test/test_motion_assets.py
+      - docs/migration-evidence/ekf-turns-20261018/README.md
+    note: >-
+      Fortress receives yaw rate, correct wheel_base and kingpin_width model keys.
+      Physical world pose is observed separately from integrated joint odometry.
+      The reference topic never feeds sensors, compensation, EKF, control or TF.
+      Real UART and physical configuration unchanged; hardware not validated.
   compensated_ekf_turn_evaluation:
     source: issue 328 after PR 325 and 327 GNSS antenna origin correction
     target: salus_evaluation simulation instrumentation

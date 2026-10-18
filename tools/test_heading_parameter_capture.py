@@ -16,7 +16,7 @@ except ImportError:
 class ParameterCaptureTest(unittest.TestCase):
     def test_effective_array_and_scalar_parameters(self):
         rclpy.init();executor=SingleThreadedExecutor()
-        names=['sim_drive_sensor_adapter','sim_imu_from_odom','sim_gps_normalizer',
+        names=['salus_controller','sim_drive_sensor_adapter','sim_imu_from_odom','sim_gps_normalizer',
                'gps_course_heading','ekf_filter_node_local','ekf_filter_node_global',
                'map_gps_absolute_measurement']
         nodes=[Node(name) for name in names]
@@ -31,7 +31,7 @@ class ParameterCaptureTest(unittest.TestCase):
                 script=Path(__file__).with_name('dump_heading_parameters.py')
                 result=subprocess.run(['python3',str(script),directory],capture_output=True,text=True,timeout=100)
                 self.assertEqual(result.returncode,0,result.stderr)
-                files=list(Path(directory).glob('*.yaml'));self.assertEqual(len(files),7)
+                files=list(Path(directory).glob('*.yaml'));self.assertEqual(len(files),8)
                 for path in files:
                     params=next(iter(yaml.safe_load(path.read_text()).values()))['ros__parameters']
                     self.assertEqual(params['array_probe'],[1.,2.])

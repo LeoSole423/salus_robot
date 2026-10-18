@@ -40,7 +40,7 @@ def test_motion_bridge_preserves_control_and_feedback_endpoints() -> None:
     ):
         assert endpoint in bridge
     assert "ROS_TO_GZ" in bridge
-    assert bridge.count("GZ_TO_ROS") == 4
+    assert bridge.count("GZ_TO_ROS") == 5
     assert 'ros_topic_name: "/scan_3d_raw"' in bridge
     assert 'gz_topic_name: "/lidar/points"' in bridge
     assert 'gz_type_name: "gz.msgs.PointCloudPacked"' in bridge
@@ -66,3 +66,20 @@ def test_motion_launch_keeps_simulation_as_an_isolated_partial_launch() -> None:
     assert "robot_state_publisher" in launch_file
     assert "control_sim.launch.py" not in launch_file
     assert "use_sim:=true" in launch_file
+
+
+def test_physical_reference_is_read_only_and_geometry_uses_fortress_keys():
+    description = SIMULATION_DIR.parent / "salus_description/urdf/components/gazebo_motion.xacro"
+    root = ET.parse(description).getroot()
+    plugins = {p.attrib["name"]: p for p in root.findall(".//plugin")}
+    ackermann = plugins["ignition::gazebo::systems::AckermannSteering"]
+    assert float(ackermann.findtext("wheel_base")) == 0.94
+    assert float(ackermann.findtext("kingpin_width")) == 0.75
+    assert ackermann.find("wheelbase") is None
+    truth = plugins["ignition::gazebo::systems::OdometryPublisher"]
+    assert truth.findtext("odom_topic") == "/simulation/ground_truth"
+    assert truth.findtext("tf_topic") != "/tf"
+    assert truth.findtext("odom_frame") == "map"
+    bridge = (SIMULATION_DIR / "config/motion_bridge.yaml").read_text()
+    assert 'ros_topic_name: "/simulation/ground_truth"' in bridge
+    assert 'ros_topic_name: "/tf"' not in bridge

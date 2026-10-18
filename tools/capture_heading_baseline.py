@@ -46,7 +46,7 @@ class Probe(Node):
         self.counts = {}
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.subs = []
-        for topic in ['/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry', '/odometry/local_global', '/gps/odometry_map',
+        for topic in ['/simulation/ground_truth', '/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry', '/odometry/local_global', '/gps/odometry_map',
                       '/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps',
                       '/diagnostic/gps_base_position', '/diagnostic/global_delayed_gps_reference',
                       '/diagnostic/gps_ant_position_delayed']:
@@ -106,13 +106,15 @@ class Probe(Node):
         if self.start is None:
             required = ['/odom_raw', '/odometry/local', '/odometry/global',
                         '/gps/fix', '/imu/data', '/controller/drive_telemetry']
+            if os.environ.get('HEADING_PHYSICAL_TRUTH') == 'true':
+                required += ['/simulation/ground_truth']
             if os.environ.get('HEADING_SHADOWS') == 'true':
                 required += ['/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps', '/diagnostic/global_delayed_gps_reference']
             if self.pub.get_subscription_count() < 1 or not all(self.counts.get(t,0)>2 for t in required):
                 return
             self.start = self.now()
             self.directory.joinpath('sequence.json').write_text(json.dumps(
-                dict(start_sim_s=self.start, sequence=self.sequence, scenario=self.scenario), indent=2))
+                dict(start_sim_s=self.start, sequence=self.sequence, scenario=self.scenario, truth_topic='/simulation/ground_truth' if os.environ.get('HEADING_PHYSICAL_TRUTH')=='true' else '/odom_raw'), indent=2))
         elapsed = self.now()-self.start
         boundary = 0
         command = Twist()

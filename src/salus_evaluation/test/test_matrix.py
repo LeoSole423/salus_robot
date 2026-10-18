@@ -516,3 +516,14 @@ def test_matrix_executor_rejects_more_workers_than_domain_pool(monkeypatch, tmp_
         matrix_executor.main([
             "matrix.yaml", str(tmp_path), "--jobs", str(pool_size + 1)
         ])
+
+
+def test_physical_reference_remap_is_scoped_to_evaluation_command():
+    from salus_evaluation.matrix_executor import evaluation_command
+
+    command = evaluation_command("case.yaml", "trial", "/simulation/ground_truth")
+    assert command[:4] == ["ros2", "run", "salus_evaluation", "navigation_evaluation"]
+    assert command[-2:] == ["-r", "/odom_raw:=/simulation/ground_truth"]
+    assert evaluation_command("case.yaml", "trial")[-1] == "/odom_raw:=/odom_raw"
+    with pytest.raises(ValueError):
+        evaluation_command("case.yaml", "trial", "/odometry/global")
