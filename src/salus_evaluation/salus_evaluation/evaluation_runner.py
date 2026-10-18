@@ -14,6 +14,8 @@ from rclpy.node import Node
 from salus_interfaces.msg import (PathHealth, CmdVelFinal, DriveTelemetry, NavEvent,
                                   NavTelemetry, VehicleCommand)
 from std_msgs.msg import String
+from sensor_msgs.msg import Imu
+from rclpy.qos import qos_profile_sensor_data
 from salus_interfaces.srv import SetNavGoalLL
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -400,6 +402,7 @@ class EvaluationRunner(Node):
         self.controller_status, self.controller_telemetry = [], []
         self.controller_json_errors = []
         self.gnss_heading_debug, self.gnss_map_debug = [], []
+        self.imu_samples = []
         self.plans, self.events = [], []
         self.plan_samples, self.path_health_samples = [], []
         self.goal = None
@@ -424,6 +427,7 @@ class EvaluationRunner(Node):
             Odometry, "/odom_raw", self._raw, 50
         )
         self.create_subscription(Odometry, "/odometry/local", self._local, 50)
+        self.create_subscription(Imu, "/imu/data", self._imu, qos_profile_sensor_data)
         self.create_subscription(Twist, "/cmd_vel", self._command, 50)
         self.create_subscription(Twist, "/cmd_vel_safe", self._safe_command, 50)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self._final_command, 50)
@@ -458,6 +462,11 @@ class EvaluationRunner(Node):
 
     def _raw(self, message):
         self.raw_poses.append(_timed_odometry(message))
+
+    def _imu(self, message):
+        self.imu_samples.append(dict(
+            stamp_s=_stamp(message), receive_sim_s=_now_s(self),
+            frame_id=message.header.frame_id, yaw_rate_rps=message.angular_velocity.z))
 
     def _local(self, message):
         self.local_poses.append(_timed_odometry(message))
@@ -797,17 +806,18 @@ class EvaluationRunner(Node):
                 "commands_safe", "commands_final", "vehicle_commands",
                 "drive_telemetry", "controller_status", "controller_telemetry",
                 "command_chain_alignment", "plans", "path_health",
-                "gnss_heading_debug", "gnss_map_debug",
+                "gnss_heading_debug", "gnss_map_debug", "imu_data",
             ],
             "topics": [
                 "/plan", "/cmd_vel", "/cmd_vel_safe", "/cmd_vel_final",
                 "/vehicle/command_shadow", "/controller/drive_telemetry",
                 "/controller/status", "/controller/telemetry", self.raw_subscription.topic_name,
                 "/odometry/local", "/odometry/global", "/path_health",
-                "/gps/course_heading/debug", "/gps/odometry_map/debug",
+                "/gps/course_heading/debug", "/gps/odometry_map/debug", "/imu/data",
             ],
         }
         streams = {"plans": self.plan_samples, "path_health": self.path_health_samples,
+                   "imu_data": [r for r in self.imu_samples if r["stamp_s"] >= self.goal_sent_s],
                    "gnss_heading_debug": gnss_heading_debug, "gnss_map_debug": gnss_map_debug,
                    "odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands,

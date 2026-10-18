@@ -5,9 +5,26 @@ import ast
 import csv
 import json
 import math
+import yaml
 from pathlib import Path
 
 from heading_turn_metrics import Interpolator, angle, stats, circle_radius, distribution
+
+
+def stream_coverage(stamps, start, end):
+    unique = sorted(set(t for t in stamps if start <= t <= end))
+    gaps = [b-a for a, b in zip([start]+unique, unique+[end])]
+    return dict(unique_stamps=len(unique), max_gap_s=max(gaps),
+                covered_fraction=(unique[-1]-unique[0])/(end-start)
+                if len(unique) > 1 and end > start else 0.)
+
+
+def minimum_model_radius(wheelbase, automatic_angle, joint_angle, width):
+    """Report central command and inner-wheel limits; never clamp a runtime command."""
+    central = wheelbase/math.tan(automatic_angle)
+    inner = wheelbase/math.tan(joint_angle)+width/2
+    return dict(central_command_radius_m=central, inner_joint_radius_m=inner,
+                minimum_model_radius_m=max(central, inner))
 
 
 def route_window(poses, radius, side, kind):
@@ -47,8 +64,20 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
     acquired = (bool(heading) and heading[-1][0]-heading[0][0] >= 1.7 and
                 all(r.get('valid', False) for _, r in heading) and
                 max((b[0]-a[0] for a, b in zip(heading, heading[1:])), default=0.) <= .3)
-    completed = bool(degrees and max(degrees) >= 81 and exits) if kind != 'straight' else bool(exits)
-    return dict(geometry_kind=kind, completed_route=completed, entry_stamp_s=entered, acquisition_checkpoint_stamp_s=acquisition,
+    increments = [math.degrees(angle(b['yaw_rad'], a['yaw_rad']))
+                  for a, b in zip(poses, poses[1:])]
+    variation = sum(abs(value) for value in increments)
+    unwrapped = [math.degrees(poses[0]['yaw_rad'])] if poses else [0.]
+    for value in increments:
+        unwrapped.append(unwrapped[-1]+value)
+    winding_range = max(unwrapped)-min(unwrapped)
+    excess_winding = winding_range > (90. if kind == 'straight' else 180.)
+    completed = (bool(degrees and max(degrees) >= 81 and exits)
+                 if kind != 'straight' else bool(exits)) and not excess_winding
+    return dict(geometry_kind=kind, completed_route=completed,
+                physical_yaw_total_variation_deg=variation, physical_unwrapped_yaw_range_deg=winding_range,
+                unwanted_winding=excess_winding,
+                entry_stamp_s=entered, acquisition_checkpoint_stamp_s=acquisition,
                 heading_acquired_before_curve=acquired,
                 compensated_gnss_continuous_before_curve=bool(map_valid and coverage),
                 completed_curve=completed if kind != 'straight' else None,
@@ -87,15 +116,20 @@ def main():
         commanded = [float(r['linear_x_mps']) for r in read(args.bundle/f'{stream}.csv')
                      if start is not None and end is not None and
                      start <= float(r['stamp_s']) <= end]
-        moving = [v for v in commanded if v > .05]
+        moving = [v for v in commanded if v > 1e-6]
         result[stream+'_positive_below_1p2_fraction'] = (
             sum(v < 1.2-1e-6 for v in moving)/len(moving) if moving else None)
-        result[stream+'_stop_samples'] = sum(abs(v) <= .05 for v in commanded)
+        result[stream+'_stop_samples'] = sum(abs(v) <= 1e-6 for v in commanded)
     truth = Interpolator([dict(r, x=r['x_m'], y=r['y_m']) for r in rows])
     result['curve_localization'] = {}
+    result['stream_availability'] = {}
     for name in ['local', 'global']:
         paired = []
-        for row in read(args.bundle/f'odometry_{name}.csv'):
+        estimated = read(args.bundle/f'odometry_{name}.csv')
+        if start is not None and end is not None:
+            result['stream_availability'][name] = stream_coverage(
+                [float(r['stamp_s']) for r in estimated], start, end)
+        for row in estimated:
             stamp = float(row['stamp_s'])
             if start is None or end is None or not start <= stamp <= end:
                 continue
@@ -107,7 +141,32 @@ def main():
                                for r, t in paired]),
             position_m=stats([math.hypot(r['x_m']-t['x'], r['y_m']-t['y'])
                               for r, t in paired]))
+    imu_path = args.bundle/'imu_data.csv'
+    if imu_path.exists() and start is not None and end is not None:
+        imu = read(imu_path)
+        result['stream_availability']['imu'] = stream_coverage(
+            [float(r['stamp_s']) for r in imu], start, end)
+        ages = [float(r['receive_sim_s'])-float(r['stamp_s']) for r in imu
+                if start <= float(r['stamp_s']) <= end]
+        result['stream_availability']['imu']['max_receive_age_s'] = max(ages) if ages else None
+    else:
+        result['stream_availability']['imu'] = {'unavailable': True}
+    controller_path = args.bundle/'controller-parameters.yaml'
+    planner_path = args.bundle/'nav-planner-parameters.yaml'
+    if controller_path.exists() and planner_path.exists():
+        controller = yaml.safe_load(controller_path.read_text())['salus_controller']['ros__parameters']
+        planner = yaml.safe_load(planner_path.read_text())['planner_server']['ros__parameters']
+        envelope = minimum_model_radius(controller['wheelbase_m'],
+                                        controller['operational_steering_limit_rad'],
+                                        controller['steering_limit_rad'], .75)
+        radius = planner['GridBased.minimum_turning_radius']
+        envelope.update(planner_radius_m=radius, kingpin_width_m=.75,
+                        planner_respects_model=radius >= envelope['minimum_model_radius_m']-1e-6,
+                        note='simulation geometric diagnosis; not a hardware radius guarantee')
+        result['kinematic_consistency'] = envelope
     radii = []
+    central_radii = []
+    central_stamps = []
     for row in curve:
         t = row['stamp_s']
         points = [truth(t+delta) for delta in [-.25, 0., .25]]
@@ -115,7 +174,20 @@ def main():
             radius = circle_radius(*points)
             if radius is not None:
                 radii.append(radius)
+                if 20 <= abs(math.degrees(row['yaw_rad'])) <= 70:
+                    central_radii.append(radius)
+                    central_stamps.append(t)
     result['curve_physical_radius_m'] = distribution(radii)
+    result['central_physical_radius_m'] = distribution(central_radii)
+    longest = 0.; begin = None; previous = None
+    for stamp in central_stamps:
+        if begin is None or (previous is not None and stamp-previous > .2):
+            begin = stamp
+        longest = max(longest, stamp-begin)
+        previous = stamp
+    result['central_radius_longest_support_s'] = longest
+    result['central_radius_definition'] = 'physical yaw magnitude 20..70 degrees; report only'
+
     (args.bundle/'route-observation.json').write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps(result, indent=2))
 

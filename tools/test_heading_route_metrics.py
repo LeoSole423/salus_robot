@@ -3,7 +3,8 @@ import unittest
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tools.heading_route_metrics import route_observation
+from tools.heading_route_metrics import route_observation, stream_coverage, minimum_model_radius
+import math
 from tools.generate_heading_route_matrix import route_goals
 from tools.archive_route_campaign import archive
 import tempfile
@@ -61,6 +62,31 @@ class RouteMetricsTest(unittest.TestCase):
         result = route_observation(straight, [], [], kind='straight')
         self.assertTrue(result['completed_route'])
         self.assertIsNone(result['completed_curve'])
+
+    def test_stream_gaps_and_inner_joint_bound_are_not_hidden(self):
+        frozen = stream_coverage([1., 1., 1.], 1., 3.)
+        self.assertEqual(frozen['max_gap_s'], 2.)
+        self.assertEqual(frozen['covered_fraction'], 0.)
+        manual = minimum_model_radius(.94, math.radians(30), math.radians(30), .75)
+        self.assertGreater(manual['inner_joint_radius_m'], 2.)
+        self.assertGreater(manual['minimum_model_radius_m'], manual['central_command_radius_m'])
+        auto = minimum_model_radius(.94, math.radians(18), math.radians(30), .75)
+        self.assertAlmostEqual(auto['minimum_model_radius_m'], .94/math.tan(math.radians(18)))
+
+    def test_a_physical_loop_is_not_a_successful_quarter_turn(self):
+        yaws = [0., math.pi/2, math.pi, -math.pi/2, 0., math.pi/2]
+        poses = [dict(x_m=28., y_m=0., yaw_rad=yaw, speed=1.6, stamp_s=i)
+                 for i, yaw in enumerate(yaws)]
+        poses.append(dict(x_m=32., y_m=10., yaw_rad=math.pi/2, speed=1.6, stamp_s=7))
+        result = route_observation(poses, [], [])
+        self.assertTrue(result['unwanted_winding'])
+        self.assertFalse(result['completed_curve'])
+
+    def test_small_repeated_oscillations_are_not_a_full_physical_loop(self):
+        poses = [dict(x_m=57., y_m=0., yaw_rad=math.radians(i % 2),
+                      speed=1.6, stamp_s=i) for i in range(250)]
+        result = route_observation(poses, [], [], kind='straight')
+        self.assertFalse(result['unwanted_winding'])
 
 
 if __name__ == '__main__':

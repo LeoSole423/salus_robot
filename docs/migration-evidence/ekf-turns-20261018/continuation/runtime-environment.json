@@ -1,0 +1,7 @@
+{
+  "image_id": "sha256:2e5810ab7335d8a7998ea77e8a784dd7593aac738d7339bd9aaffaff3311d51a",
+  "packages": "libignition-gazebo6-plugins:amd64\t6.18.0-1~jammy\nros-humble-nav2-regulated-pure-pursuit-controller\t1.1.20-1jammy.20260804.211511\nros-humble-nav2-smac-planner\t1.1.20-1jammy.20260804.211106\nros-humble-robot-localization\t3.5.4-1jammy.20260804.195527\n",
+  "query_stderr": "",
+  "query_returncode": 0,
+  "hardware_access": false
+}

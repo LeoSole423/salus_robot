@@ -1,4 +1,4 @@
-"""Estimator-only experiment: use the configured manual steering envelope.
+"""Simulation-only experiment: use the configured manual steering envelope.
 
 Never install or select as a product bringup. All I/O remains simulated.
 """
