@@ -374,6 +374,7 @@ class EvaluationRunner(Node):
     def __init__(self):
         super().__init__("navigation_evaluation")
         self.declare_parameter("scenario", "")
+        self.declare_parameter("trial_start_sim_s", 0.0)
         self.declare_parameter("route_datum_lat", -31.4858037)
         self.declare_parameter("route_datum_lon", -64.2410570)
         self.declare_parameter("route_datum_yaw_deg", 0.0)
@@ -382,6 +383,10 @@ class EvaluationRunner(Node):
         self.declare_parameter("goal_tolerance_m", 2.5)
         self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
+        self.trial_start_sim_s = float(self.get_parameter("trial_start_sim_s").value)
+        if not math.isfinite(self.trial_start_sim_s) or not 0 <= self.trial_start_sim_s <= 120:
+            raise ValueError("trial_start_sim_s must be within [0,120] seconds")
+        self.initial_state = {}
         self.scenario_path = str(self.get_parameter("scenario").value)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.mode = str(self.get_parameter("mode").value)
@@ -604,6 +609,27 @@ class EvaluationRunner(Node):
         self.get_logger().info("observing RViz goal")
 
     def _send_scenario_goal(self):
+        now = _now_s(self)
+        if self.trial_start_sim_s > 0:
+            if now < self.trial_start_sim_s:
+                return
+            if now > self.trial_start_sim_s + .25:
+                self._finished = True
+                write_artifacts(self.output_dir,
+                                {"schema_version": 2, "trial_start_sim_s": self.trial_start_sim_s,
+                                 "actual_ready_sim_s": now},
+                                {"schema_version": 2, "reason": "trial_start_epoch_missed",
+                                 "errors": ["graph was not ready within fixed start window"],
+                                 "terminal_status": None},
+                                {"odometry_raw": self.raw_poses,
+                                 "odometry_global": self.global_poses})
+                self.exit_code = 1
+                return
+        self.initial_state = {
+            "global": self.global_poses[-1] if self.global_poses else None,
+            "local": self.local_poses[-1] if self.local_poses else None,
+            "physical_reference": self.raw_poses[-1] if self.raw_poses else None,
+        }
         scenario = load_scenario(self.scenario_path)
         goal_spec = scenario.goals[-1]
         self.goal = absolute_goal(scenario.spawn, goal_spec)
@@ -799,6 +825,7 @@ class EvaluationRunner(Node):
                    "controller_json_errors": controller_json_errors}
         manifest = {
             "schema_version": 2, "goal_stamp_s": self.goal_sent_s,
+            "trial_start_sim_s": self.trial_start_sim_s, "initial_state": self.initial_state,
             "ground_truth_topic": self.raw_subscription.topic_name,
             "mode": self.mode, "scenario": self.scenario_path,
             "streams": [

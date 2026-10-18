@@ -47,7 +47,11 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
                  side*r['y_m'] >= 1.75*radius and abs(r['yaw_rad']) <= math.radians(9)]
     elif kind == 'straight':
         exits = [r for r in poses if r['x_m'] >= 56]
-    degrees = [side*math.degrees(r['yaw_rad']) for r in curve]
+    phase_degrees = [side*math.degrees(r['yaw_rad']) for r in curve]
+    exit_stamp = min((r['stamp_s'] for r in exits), default=None)
+    degrees = [side*math.degrees(r['yaw_rad']) for r in poses
+               if entered is not None and exit_stamp is not None and
+               entered <= r['stamp_s'] <= exit_stamp]
     speed = sorted(abs(r['speed']) for r in curve)
     acquisition = next((r['stamp_s'] for r in poses if r['x_m'] >= 20.), None)
     heading = []
@@ -72,6 +76,9 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
         unwrapped.append(unwrapped[-1]+value)
     winding_range = max(unwrapped)-min(unwrapped)
     excess_winding = winding_range > (90. if kind == 'straight' else 180.)
+    compensation_states = sorted(set(r['compensation_enabled'] for _, r in fixes
+                                     if 'compensation_enabled' in r))
+    compensation_enabled = compensation_states[0] if len(compensation_states) == 1 else None
     completed = (bool(degrees and max(degrees) >= 81 and exits)
                  if kind != 'straight' else bool(exits)) and not excess_winding
     return dict(geometry_kind=kind, completed_route=completed,
@@ -79,9 +86,13 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
                 unwanted_winding=excess_winding,
                 entry_stamp_s=entered, acquisition_checkpoint_stamp_s=acquisition,
                 heading_acquired_before_curve=acquired,
-                compensated_gnss_continuous_before_curve=bool(map_valid and coverage),
+                map_output_continuous_before_curve=bool(map_valid and coverage),
+                compensation_enabled=compensation_enabled,
+                compensated_gnss_continuous_before_curve=bool(
+                    map_valid and coverage and compensation_enabled is not False),
                 completed_curve=completed if kind != 'straight' else None,
                 turn_max_deg=max(degrees) if degrees else None,
+                command_phase_yaw_max_deg=max(phase_degrees) if phase_degrees else None,
                 curve_samples=len(curve),
                 curve_speed_p05_mps=speed[int(.05*(len(speed)-1))] if speed else None,
                 curve_speed_median_mps=speed[len(speed)//2] if speed else None,

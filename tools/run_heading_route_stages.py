@@ -2,6 +2,7 @@
 """Run bounded route-research stages sequentially through the isolated matrix harness."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -51,16 +52,21 @@ def main():
         flags = ['--jobs', '2', '--evaluation-ground-truth-topic', '/simulation/ground_truth']
         for field, flag in [('planner_radius', '--planner-minimum-turning-radius'),
                             ('nav2_params', '--experimental-nav2-params'),
-                            ('launch_file', '--simulation-launch-file')]:
+                            ('launch_file', '--simulation-launch-file'),
+                            ('trial_start_sim_s', '--trial-start-sim-s')]:
             if field in stage:
                 value = stage[field]
-                if field != 'planner_radius':
+                if field in ('nav2_params', 'launch_file'):
                     value = '/ros2_ws/'+value
                 flags += [flag, str(value)]
         command = ['./tools/nav_eval.sh', 'matrix', stage['matrix'], stage['output']]+flags
         print(json.dumps(dict(stage=stage['id'], command=command)), flush=True)
+        environment = dict(os.environ)
+        if 'sensor_profile_file' in stage:
+            environment['SALUS_NAV_EVAL_SENSOR_PROFILE_FILE'] = str(REPO/stage['sensor_profile_file'])
         with (args.output/(stage['id']+'.log')).open('w') as log:
-            result = subprocess.run(command, cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
+            result = subprocess.run(command, cwd=REPO, env=environment,
+                                    stdout=log, stderr=subprocess.STDOUT)
         analysis = subprocess.run([
             sys.executable, str(REPO/'tools/summarize_heading_routes.py'), str(output),
             '--output', str(output/'analysis')], cwd=REPO, capture_output=True, text=True)

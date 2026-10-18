@@ -47,14 +47,26 @@ def main():
                 row['selection_eligible'] = bool(
                     row['functional_pass'] and curve.get('completed_route') and
                     curve.get('heading_acquired_before_curve') and
-                    curve.get('compensated_gnss_continuous_before_curve') and
+                    curve.get('map_output_continuous_before_curve') and
                     curve.get('commands_positive_below_1p2_fraction') == 0. and
                     capture.get('returncode') == 0)
+                row['comparison_eligible'] = row['selection_eligible']
+                available = curve.get('stream_availability', {})
+                fresh = all(available.get(name, {}).get('max_gap_s', float('inf')) <= .2 and
+                            available.get(name, {}).get('covered_fraction', 0.) >= .9
+                            for name in ['local', 'global', 'imu'])
+                imu_age = available.get('imu', {}).get('max_receive_age_s')
+                row['recommendation_eligible'] = bool(
+                    row['comparison_eligible'] and fresh and imu_age is not None and
+                    -.05 <= imu_age <= .2 and curve.get('compensation_enabled') is True and
+                    curve.get('kinematic_consistency', {}).get('planner_respects_model') and
+                    curve.get('commands_stop_samples') == 0)
+
             rows.append(row)
     (args.output/'summary.json').write_text(json.dumps(rows, indent=2)+'\n')
     with (args.output/'summary.csv').open('w', newline='') as stream:
         fields = ['campaign', 'trial', 'reason', 'setup_failure', 'functional_pass',
-                  'nominal_speed_mps', 'requested_radius_m', 'seed', 'selection_eligible',
+                  'nominal_speed_mps', 'requested_radius_m', 'seed', 'selection_eligible', 'recommendation_eligible',
                   'completed_curve', 'heading_acquired_before_curve',
                   'compensated_gnss_continuous_before_curve',
                   'curve_speed_p05_mps', 'curve_speed_median_mps',

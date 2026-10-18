@@ -40,7 +40,16 @@ case "${mode}" in
     source_sha="$(git -C "${repo_dir}" rev-parse HEAD)"
     eval_lock_root="${TMPDIR:-/tmp}/salus-nav-evaluation-domains"
     mkdir -p "${eval_lock_root}"
-    exec docker compose run --rm \
+    sensor_mounts=()
+    sensor_override=false
+    if [[ -n "${SALUS_NAV_EVAL_SENSOR_PROFILE_FILE:-}" ]]; then
+      sensor_file="$(realpath "${SALUS_NAV_EVAL_SENSOR_PROFILE_FILE}")"
+      test -f "${sensor_file}" || { echo "Missing sensor profile: ${sensor_file}" >&2; exit 2; }
+      sensor_mounts+=(-v "${sensor_file}:/ros2_ws/src/salus_simulation/config/sensor_profiles/independent_nominal.yaml:ro")
+      sensor_override=true
+    fi
+    exec docker compose run --rm "${sensor_mounts[@]}" \
+      -e "SALUS_NAV_EVAL_SENSOR_PROFILE_OVERRIDE=${sensor_override}" \
       -e "SALUS_NAV_EVAL_RUN_TOKEN=${matrix_run_token}" \
       -e "SALUS_NAV_EVAL_SOURCE_SHA=${source_sha}" \
       -e SALUS_NAV_EVAL_LOCK_ROOT=/salus-nav-evaluation-domains \

@@ -536,3 +536,24 @@ def test_experiment_launch_replaces_only_launch_entrypoint():
     assert args[:3] == ['ros2', 'launch', '/tmp/manual.launch.py']
     assert 'capability_profile:=no_obstacle_detection' in args
     assert 'integration_sim.launch.py' not in args
+
+
+def test_fixed_epoch_changes_observer_args_only():
+    from salus_evaluation.matrix_executor import evaluation_command
+    args = evaluation_command('scenario', 'output', '/simulation/ground_truth', 60.)
+    assert 'trial_start_sim_s:=60.0' in args
+    assert '/odom_raw:=/simulation/ground_truth' in args
+
+
+@pytest.mark.parametrize('requested,readback,code,expected', [
+    (.3, 'Double value is: 0.3', 0, True),
+    (.3, 'Double value is: 0.1', 0, False),
+    (0., 'Double value is: 0.0', 0, True),
+    (-.1, 'Double value is: -0.1', 0, False),
+    (.3, 'Double value is: 0.3', 1, False),
+    (.3, 'unavailable', 0, False),
+])
+def test_latency_override_rejects_unapplied_intervention(requested, readback, code, expected):
+    from salus_evaluation.matrix_executor import _latency_override_metadata
+    result = SimpleNamespace(stdout=readback, stderr='', returncode=code)
+    assert _latency_override_metadata(requested, result)['matches_requested'] is expected

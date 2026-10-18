@@ -1,18 +1,7 @@
-"""Simulation-only sensitivity: inject 300 ms GNSS latency.
-
-Never install or select as a product bringup. All I/O remains simulated.
-"""
-from pathlib import Path
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_ros.actions import SetParameter
+"""Retired global override: explicit sensor YAML supersedes SetParameter in Humble."""
 
 
 def generate_launch_description():
-    integration=Path(get_package_share_directory('salus_bringup'))/'launch/integration_sim.launch.py'
-    return LaunchDescription([
-        SetParameter(name='gnss.latency_s',value=0.3),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource(str(integration))),
-    ])
+    raise RuntimeError(
+        "Ineffective latency wrapper retired. Use SALUS_NAV_EVAL_SENSOR_PROFILE_FILE "
+        "with issue328_sensors_nominal300.yaml and verify GNSS latency readback.")

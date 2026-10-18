@@ -88,6 +88,13 @@ class RouteMetricsTest(unittest.TestCase):
         result = route_observation(poses, [], [], kind='straight')
         self.assertFalse(result['unwanted_winding'])
 
+    def test_wider_tracking_does_not_hide_a_completed_physical_turn(self):
+        poses = [dict(x_m=27., y_m=0., yaw_rad=0., speed=1.6, stamp_s=1),
+                 dict(x_m=31., y_m=4.5, yaw_rad=math.radians(70), speed=1.6, stamp_s=2),
+                 dict(x_m=32., y_m=5.2, yaw_rad=math.pi/2, speed=1.6, stamp_s=3),
+                 dict(x_m=32., y_m=10., yaw_rad=math.pi/2, speed=1.6, stamp_s=4)]
+        self.assertTrue(route_observation(poses, [], [])['completed_curve'])
+
 
 if __name__ == '__main__':
     unittest.main()

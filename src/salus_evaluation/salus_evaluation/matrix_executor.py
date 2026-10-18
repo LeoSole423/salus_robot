@@ -6,6 +6,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -17,7 +18,8 @@ from ament_index_python.packages import get_package_share_directory
 import yaml
 
 from .matrix import (EFFECTIVE_SPEED_TOLERANCE_MPS, effective_numeric_matches,
-                     expand_matrix, matrix_exit_code, write_matrix_artifacts)
+                     expand_matrix, matrix_exit_code, write_matrix_artifacts,
+                     parse_effective_speed)
 from .isolation import (EVALUATION_DOMAIN_MAX, EVALUATION_DOMAIN_MIN,
                         allocated_trial_isolation, build_trial_env)
 
@@ -26,6 +28,20 @@ def _run(command, *, check=True, capture=False, env=None, timeout_s=None):
     options = {} if timeout_s is None else {"timeout": timeout_s}
     return subprocess.run(command, check=check, text=True, capture_output=capture,
                           env=env, **options)
+
+
+def _latency_override_metadata(requested, result):
+    """Verify a nonnegative latency, including zero, against one effective readback."""
+    requested = float(requested)
+    effective = parse_effective_speed(result.stdout)
+    return {
+        "requested_latency_s": requested, "effective_latency_s": effective,
+        "get_returncode": result.returncode, "get_stderr": result.stderr,
+        "matches_requested": bool(result.returncode == 0 and
+                                  math.isfinite(requested) and requested >= 0 and
+                                  effective is not None and
+                                  abs(effective-requested) <= 1e-6),
+    }
 
 
 class ReadinessError(RuntimeError):
@@ -322,29 +338,44 @@ def _trial_metadata(cell, scenario, isolation, source_sha):
     }
 
 
-def evaluation_command(scenario, trial_dir, ground_truth_topic="/odom_raw"):
+def evaluation_command(scenario, trial_dir, ground_truth_topic="/odom_raw",
+                       trial_start_sim_s=0.):
     """Remap the observer only, never an estimator or simulation sensor."""
     if ground_truth_topic not in ("/odom_raw", "/simulation/ground_truth"):
         raise ValueError("unknown evaluation ground truth topic")
-    return ["ros2", "run", "salus_evaluation", "navigation_evaluation",
-            "--ros-args", "-p", "use_sim_time:=true", "-p", "mode:=run",
-            "-p", f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
-            "-r", f"/odom_raw:={ground_truth_topic}"]
+    command = [
+        "ros2", "run", "salus_evaluation", "navigation_evaluation",
+        "--ros-args", "-p", "use_sim_time:=true", "-p", "mode:=run",
+        "-p", f"scenario:={scenario}", "-p", f"output_dir:={trial_dir}",
+        "-r", f"/odom_raw:={ground_truth_topic}",
+    ]
+    if trial_start_sim_s > 0:
+        command += ["-p", f"trial_start_sim_s:={trial_start_sim_s}"]
+    return command
 
 
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                          planner_minimum_turning_radius, isolation, source_sha,
                          evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None,
-                         simulation_launch_file=None):
+                         simulation_launch_file=None, trial_start_sim_s=0.):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
     metadata = _trial_metadata(cell, scenario, isolation, source_sha)
     metadata["evaluation_ground_truth_topic"] = evaluation_ground_truth_topic
+    metadata["trial_start_sim_s"] = trial_start_sim_s
     trial_dir.mkdir(parents=True, exist_ok=True)
     (trial_dir / "scenario.yaml").write_bytes(scenario.read_bytes())
     metadata["scenario_sha256"] = _sha256(scenario)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
     environment = build_trial_env(os.environ, isolation)
+    sensor_override = os.environ.get("SALUS_NAV_EVAL_SENSOR_PROFILE_OVERRIDE") == "true"
+    if sensor_override:
+        source = Path(get_package_share_directory("salus_simulation")) / (
+            "config/sensor_profiles/independent_nominal.yaml")
+        copied = trial_dir / "sensor-profile.yaml"
+        copied.write_bytes(source.read_bytes())
+        metadata["sensor_profile_override_sha256"] = _sha256(copied)
+
     if simulation_launch_file is not None:
         metadata["simulation_launch_file"] = str(simulation_launch_file)
         metadata["simulation_launch_sha256"] = _sha256(simulation_launch_file)
@@ -449,8 +480,22 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                     raise RuntimeError(
                         "FollowPath.desired_linear_vel effective readback does not match request"
                     )
+                if sensor_override:
+                    profile = yaml.safe_load((trial_dir / "sensor-profile.yaml").read_text())
+                    requested = profile["sim_gps_normalizer"]["ros__parameters"]["gnss.latency_s"]
+                    latency = _run(
+                        ["timeout", "8", "python3", "/ros2_ws/tools/ros_parameter_probe.py",
+                         "get", "/sim_gps_normalizer", "gnss.latency_s"],
+                        check=False, capture=True, env=environment,
+                    )
+                    metadata["gnss_latency_override"] = _latency_override_metadata(
+                        requested, latency)
+                    if not metadata["gnss_latency_override"]["matches_requested"]:
+                        raise RuntimeError("GNSS latency override did not match readback")
                 evaluation = _run(
-                    evaluation_command(scenario, trial_dir, evaluation_ground_truth_topic),
+                    evaluation_command(
+                        scenario, trial_dir, evaluation_ground_truth_topic, trial_start_sim_s
+                    ),
                     check=False, env=environment, timeout_s=240.,
                 )
                 if (trial_dir / "summary.json").exists():
@@ -466,6 +511,8 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                         "passed" if evaluation.returncode == 0 and capture.returncode == 0
                         else "functional_failure"
                     )
+                    if "gates" not in json.loads((trial_dir / "summary.json").read_text()):
+                        outcome = "setup_failure"
                     metadata["result"] = outcome
                     _record_metadata(trial_dir, metadata)
                     return outcome
@@ -492,7 +539,7 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
               planner_minimum_turning_radius, run_token, source_sha,
               evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None,
-              simulation_launch_file=None):
+              simulation_launch_file=None, trial_start_sim_s=0.):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -508,6 +555,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 evaluation_ground_truth_topic=evaluation_ground_truth_topic,
                 experimental_nav2_params=experimental_nav2_params,
                 simulation_launch_file=simulation_launch_file,
+                trial_start_sim_s=trial_start_sim_s,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
@@ -529,6 +577,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("matrix", help="strict matrix YAML")
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
+    parser.add_argument("--trial-start-sim-s", type=float, default=0.)
     parser.add_argument("--simulation-launch-file", help="simulation-only experiment wrapper")
     parser.add_argument("--experimental-nav2-params", help="simulation-only full Nav2 overlay")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
@@ -543,6 +592,8 @@ def main(argv=None):
         help="rerun only existing trials whose recorded outcome is setup_failure",
     )
     args = parser.parse_args(argv)
+    if not math.isfinite(args.trial_start_sim_s) or not 0 <= args.trial_start_sim_s <= 120:
+        parser.error("trial-start-sim-s must be within [0,120] seconds")
     if args.jobs < 1:
         parser.error("--jobs must be a positive integer")
     pool_size = EVALUATION_DOMAIN_MAX - EVALUATION_DOMAIN_MIN + 1
@@ -552,6 +603,9 @@ def main(argv=None):
             args.planner_minimum_turning_radius <= 0.0):
         parser.error("--planner-minimum-turning-radius must be positive")
     cells = expand_matrix(args.matrix)
+    if (os.environ.get("SALUS_NAV_EVAL_SENSOR_PROFILE_OVERRIDE") == "true" and
+            any(cell.sim_sensor_profile != "independent_nominal" for cell in cells)):
+        parser.error("sensor profile override requires independent_nominal pipeline")
     matrix_path, root = Path(args.matrix).resolve(), Path(args.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
     selected_cells = (
@@ -571,6 +625,7 @@ def main(argv=None):
         "evaluation_ground_truth_topic": args.evaluation_ground_truth_topic,
         "experimental_nav2_params": args.experimental_nav2_params,
         "simulation_launch_file": args.simulation_launch_file,
+        "trial_start_sim_s": args.trial_start_sim_s,
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in selected_cells]

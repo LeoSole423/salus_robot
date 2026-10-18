@@ -309,3 +309,20 @@ cleanup; fallo de exportación no se considera trial válido.
 portables. Admite quarter/straight/s; rechaza velocidades nominales menores1.2
 o mayores2.0 y radios que excedan el máximo manual30°. Generar2.0 no autoriza
 saltarse la progresión experimental: ejecutarlo sólo tras validar1.8.
+
+`--trial-start-sim-s 60` fija el despacho por reloj ROS a60±0.25 s (default0,
+arranque inmediato; rango0–120 s). Se usa para alinear las ventanas temporales
+de calidad del sensor en campañas pareadas. Si el grafo llega tarde, el bundle
+se clasifica setup fallido sin despachar; no se elige silenciosamente otra época.
+El manifiesto conserva estado inicial y stamp efectivo; no se alimenta truth.
+
+Para un perfil de sensores personalizado usar la variable host
+`SALUS_NAV_EVAL_SENSOR_PROFILE_FILE="$PWD/<perfil.yaml>"` al ejecutar matrix.
+Debe ser YAML completo para los nodos del perfil independent_nominal y esa
+pipeline debe estar seleccionada en la matriz. Se monta read-only sólo dentro
+del contenedor de esa matriz; el archivo del host permanece intacto. Se conserva
+copia/hash y se valida la latencia GNSS efectiva antes de despachar. Esto evita
+la precedencia que hacía ineficaz el antiguo wrapper SetParameter de latencia,
+ahora retirado. El parámetro experimental de compensación y los límites de
+steering se verifican igualmente en sus readbacks; nunca se asume un override
+sólo por estar escrito en un wrapper.
