@@ -43,3 +43,30 @@ def test_collector_persists_complete_plan_and_health_with_source_stamps(tmp_path
     states = list(csv.DictReader((tmp_path / 'path_health.csv').open()))
     assert states[0]['reason'] == health.reason
     assert states[0]['wait_remaining_s'] == '12.0'
+
+
+def test_ordered_service_rejection_is_terminal_failure():
+    from types import SimpleNamespace
+    from action_msgs.msg import GoalStatus
+    collector = object.__new__(EvaluationRunner)
+    collector.terminal_status = None
+    collector.get_logger = lambda: SimpleNamespace(error=lambda message: None)
+    future = SimpleNamespace(result=lambda: SimpleNamespace(ok=False, error='bad route'))
+    collector._ordered_goal_response(future)
+    assert collector.terminal_status == GoalStatus.STATUS_ABORTED
+
+
+def test_repeated_terminal_telemetry_does_not_restart_capture_window():
+    from types import SimpleNamespace
+    from action_msgs.msg import GoalStatus
+    collector = object.__new__(EvaluationRunner)
+    collector.goal_event_baseline = 1
+    collector.terminal_status = GoalStatus.STATUS_SUCCEEDED
+    collector.terminal_received_s = 5.
+    collector.success_s = 5.
+    collector.get_clock = lambda: SimpleNamespace(
+        now=lambda: SimpleNamespace(nanoseconds=9_000_000_000))
+    message = SimpleNamespace(nav_result_status=GoalStatus.STATUS_SUCCEEDED,
+                              nav_result_event_id=2)
+    collector._telemetry(message)
+    assert collector.terminal_received_s == 5.

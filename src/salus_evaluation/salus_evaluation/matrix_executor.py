@@ -330,18 +330,24 @@ def evaluation_command(scenario, trial_dir, ground_truth_topic="/odom_raw"):
 
 def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                          planner_minimum_turning_radius, isolation, source_sha,
-                         evaluation_ground_truth_topic="/odom_raw"):
+                         evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None):
     scenario = (matrix_path.parent.parent / cell.case.scenario).resolve()
     metadata = _trial_metadata(cell, scenario, isolation, source_sha)
     metadata["evaluation_ground_truth_topic"] = evaluation_ground_truth_topic
     trial_dir.mkdir(parents=True, exist_ok=True)
+    (trial_dir / "scenario.yaml").write_bytes(scenario.read_bytes())
+    metadata["scenario_sha256"] = _sha256(scenario)
     isolation.runtime_root.mkdir(parents=True, exist_ok=True)
     isolation.ros_log_dir.mkdir(parents=True, exist_ok=True)
     environment = build_trial_env(os.environ, isolation)
     base_params = Path(get_package_share_directory("salus_navigation")) / "config" / (
         "nav2_core_no_obstacles_sim.yaml"
     )
-    effective_params = None
+    if experimental_nav2_params is not None:
+        base_params = Path(experimental_nav2_params).resolve()
+        metadata["experimental_nav2_params"] = str(base_params)
+        metadata["experimental_nav2_sha256"] = _sha256(base_params)
+    effective_params = base_params if experimental_nav2_params is not None else None
     launch = None
     try:
         if planner_minimum_turning_radius is not None:
@@ -468,7 +474,7 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
 
 def run_trial(cell, *, matrix_path, root, startup_timeout_s,
               planner_minimum_turning_radius, run_token, source_sha,
-              evaluation_ground_truth_topic="/odom_raw"):
+              evaluation_ground_truth_topic="/odom_raw", experimental_nav2_params=None):
     """Run exactly one trial, including identity allocation and cleanup."""
     trial_dir = Path(root) / "trials" / cell.trial_id
     trial_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -482,6 +488,7 @@ def run_trial(cell, *, matrix_path, root, startup_timeout_s,
                 planner_minimum_turning_radius=planner_minimum_turning_radius,
                 isolation=isolation, source_sha=source_sha,
                 evaluation_ground_truth_topic=evaluation_ground_truth_topic,
+                experimental_nav2_params=experimental_nav2_params,
             )
     except Exception as exc:  # preserve the matrix result for allocator/worker errors
         _failure_bundle(trial_dir, str(exc), {
@@ -503,6 +510,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("matrix", help="strict matrix YAML")
     parser.add_argument("output_dir", help="directory for all trial and matrix artifacts")
+    parser.add_argument("--experimental-nav2-params", help="simulation-only full Nav2 overlay")
     parser.add_argument("--startup-timeout-s", type=float, default=90.0)
     parser.add_argument("--planner-minimum-turning-radius", type=float)
     parser.add_argument("--evaluation-ground-truth-topic",
@@ -541,6 +549,7 @@ def main(argv=None):
         "run_token": run_token,
         "source_sha": _repository_sha(),
         "evaluation_ground_truth_topic": args.evaluation_ground_truth_topic,
+        "experimental_nav2_params": args.experimental_nav2_params,
     }
     if args.jobs == 1:
         outcomes = [run_trial(cell, **arguments) for cell in selected_cells]

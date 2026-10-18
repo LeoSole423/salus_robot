@@ -277,3 +277,21 @@ Recetas, perfiles, comandos, semántica temporal, artefactos y limitaciones en
 [la guía de campaña](../../docs/migration-evidence/ekf-turns-20261018/README.md).
 No usar el tracking del modelo open-loop como error de localización ni presentar
 la captura como validación física. El EKF de referencia permanece intacto.
+
+### Investigación #328: recorridos ordenados
+
+El runner admite varias metas del esquema v1 y las despacha por
+`/nav_command_server/set_goal_ll` (NavigateThroughPoses y guard existentes).
+Una sola meta conserva el flujo `/goal_pose`. En el caso múltiple las metas son
+coordenadas de mapa relativas al spawn, convertidas al datum simulado mediante
+`route_datum_lat`/`route_datum_lon` (grados, defaults del world SALUS). `route_datum_yaw_deg` permite el datum rotado (default0°). No es conversor de bags o mapas reales arbitrarios.
+No hay publicación de cmd_vel ni TF desde el evaluador.
+
+`nav_eval.sh matrix ... --experimental-nav2-params /ros2_ws/<archivo>` selecciona
+un YAML Nav2 completo exclusivo del experimento, con ruta/hash registrados.
+El override de radio, si se pide, se aplica después. Un cambio de controlador o
+planner no se atribuye al EKF y no se promueve automáticamente a defaults.
+Los escenarios route_pilot tienen adquisición20 m, entrada hasta28 m y salida
+16 m: sus métricas geométricas se obtienen con heading_route_metrics.py.
+Un terminal Nav2 success todavía requiere comprobar curva físicamente completa,
+adquisición absoluta y velocidad real; el evaluador no clampa frenados a1.2.

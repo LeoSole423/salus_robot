@@ -14,6 +14,7 @@ from rclpy.node import Node
 from salus_interfaces.msg import (PathHealth, CmdVelFinal, DriveTelemetry, NavEvent,
                                   NavTelemetry, VehicleCommand)
 from std_msgs.msg import String
+from salus_interfaces.srv import SetNavGoalLL
 from visualization_msgs.msg import Marker, MarkerArray
 
 from .artifacts import write_artifacts
@@ -24,7 +25,8 @@ from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       covariance_summary, localization_metrics,
                       saturation_intervals,
                       steering_margin_summary,
-                      tracking_metrics, trial_data_finite, causal_tracking_metrics)
+                      tracking_metrics, trial_data_finite, causal_tracking_metrics,
+                      map_point_to_ll)
 from .models import (ExpectedTurn, Pose2D, TimedCommand,
                      TimedControllerStatus, TimedControllerTelemetry,
                      TimedDriveTelemetry, TimedFinalCommand,
@@ -370,6 +372,9 @@ class EvaluationRunner(Node):
     def __init__(self):
         super().__init__("navigation_evaluation")
         self.declare_parameter("scenario", "")
+        self.declare_parameter("route_datum_lat", -31.4858037)
+        self.declare_parameter("route_datum_lon", -64.2410570)
+        self.declare_parameter("route_datum_yaw_deg", 0.0)
         self.declare_parameter("output_dir", "")
         self.declare_parameter("mode", "run")
         self.declare_parameter("goal_tolerance_m", 2.5)
@@ -410,6 +415,8 @@ class EvaluationRunner(Node):
         self.goal_event_baseline = None
         self._finished = False
         self.exit_code = 1
+        self.ordered_goal_client = self.create_client(
+            SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
@@ -563,9 +570,10 @@ class EvaluationRunner(Node):
         if is_new_result and terminal in (
                 GoalStatus.STATUS_SUCCEEDED, GoalStatus.STATUS_ABORTED,
                 GoalStatus.STATUS_CANCELED):
-            self.terminal_status = terminal
             now = self.get_clock().now().nanoseconds / 1e9
-            self.terminal_received_s = now
+            if self.terminal_received_s is None or self.terminal_status != terminal:
+                self.terminal_received_s = now
+            self.terminal_status = terminal
             if terminal == GoalStatus.STATUS_SUCCEEDED and self.success_s is None:
                 self.success_s = now
 
@@ -588,9 +596,7 @@ class EvaluationRunner(Node):
 
     def _send_scenario_goal(self):
         scenario = load_scenario(self.scenario_path)
-        if len(scenario.goals) != 1:
-            raise ValueError("v1 runner supports exactly one goal per trial")
-        goal_spec = scenario.goals[0]
+        goal_spec = scenario.goals[-1]
         self.goal = absolute_goal(scenario.spawn, goal_spec)
         self.expected_turn = goal_spec.expected_turn
         self.reverse_allowed = goal_spec.reverse_allowed
@@ -604,8 +610,36 @@ class EvaluationRunner(Node):
         message.pose.position.x, message.pose.position.y = self.goal.x_m, self.goal.y_m
         message.pose.orientation.z = math.sin(self.goal.yaw_rad / 2.0)
         message.pose.orientation.w = math.cos(self.goal.yaw_rad / 2.0)
-        self.goal_pub.publish(message)
+        if len(scenario.goals) > 1:
+            if not self.ordered_goal_client.service_is_ready():
+                self.goal = None
+                return
+            request = SetNavGoalLL.Request()
+            latitude = float(self.get_parameter("route_datum_lat").value)
+            longitude = float(self.get_parameter("route_datum_lon").value)
+            datum_yaw = float(self.get_parameter("route_datum_yaw_deg").value)
+            for item in scenario.goals:
+                point = absolute_goal(scenario.spawn, item)
+                lat, lon = map_point_to_ll(point, latitude, longitude, datum_yaw)
+                request.lats.append(lat)
+                request.lons.append(lon)
+                request.yaws_deg.append(math.degrees(point.yaw_rad))
+            future = self.ordered_goal_client.call_async(request)
+            future.add_done_callback(self._ordered_goal_response)
+        else:
+            self.goal_pub.publish(message)
         self.goal_sent_s = self.get_clock().now().nanoseconds / 1e9
+
+    def _ordered_goal_response(self, future):
+        """Retain rejected route submissions as failures instead of silent timeouts."""
+        try:
+            response = future.result()
+            if not response.ok:
+                self.get_logger().error("ordered goals rejected: " + response.error)
+                self.terminal_status = GoalStatus.STATUS_ABORTED
+        except Exception as exc:
+            self.get_logger().error("ordered goal service failed: " + str(exc))
+            self.terminal_status = GoalStatus.STATUS_ABORTED
 
     def _tick(self):
         if self._finished:
@@ -617,6 +651,11 @@ class EvaluationRunner(Node):
         if self.goal is None or self.goal_sent_s is None:
             return
         now = self.get_clock().now().nanoseconds / 1e9
+        if (self.path_health_samples and
+                self.path_health_samples[-1]["stamp_s"] >= self.goal_sent_s and
+                "maneuver:NEEDS_OPERATOR:" in self.path_health_samples[-1]["reason"]):
+            self._finish("maneuver_needs_operator")
+            return
         if self.last_marker_s is None or now - self.last_marker_s >= 0.5:
             self._publish_markers()
             self.last_marker_s = now

@@ -266,7 +266,9 @@ def test_all_shipped_scenarios_are_strictly_valid():
     assert {item.scenario_id for item in scenarios} == {
         "straight_5m", "right_quarter", "left_quarter", "arrival_short",
         "left_gentle", "right_gentle", "left_tight_valid", "right_tight_valid",
-        "issue328_left_r3", "issue328_right_r3"}
+        "issue328_left_r3", "issue328_right_r3",
+        "issue328_route_left", "issue328_route_right",
+        "issue328_route_left_sparse", "issue328_route_right_sparse"}
 
 
 def test_schema_rejects_unknown_fields(tmp_path):
@@ -293,3 +295,12 @@ def test_tracking_never_compares_earlier_motion_with_a_future_replan():
     assert result["cross_track_rms_m"] == pytest.approx(math.sqrt(1/3))
     assert result["cross_track_max_m"] == pytest.approx(1.)
     assert causal_tracking_metrics(poses, ())["cross_track_rms_m"] is None
+
+
+def test_map_point_to_ll_rotated_datum_and_invalid_input():
+    from salus_evaluation.metrics import map_point_to_ll
+    lat, lon = map_point_to_ll(Pose2D(10., 0., 0.), -31., -64., 90.)
+    assert lat == pytest.approx(-31.+10./111320.)
+    assert lon == pytest.approx(-64.)
+    with pytest.raises(ValueError):
+        map_point_to_ll(Pose2D(0., 0., 0.), 90., 0., 0.)

@@ -11,6 +11,19 @@ COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S = 0.2
 COMMAND_CHAIN_EPSILON = 1.0e-6
 
 
+def map_point_to_ll(point, latitude, longitude, datum_yaw_deg):
+    """Invert the simulation datum projection, without consulting physical truth."""
+    values = (point.x_m, point.y_m, latitude, longitude, datum_yaw_deg)
+    if not all(math.isfinite(v) for v in values):
+        raise ValueError("map point and datum must be finite")
+    if abs(latitude) >= 89 or abs(longitude) > 180:
+        raise ValueError("simulation datum outside supported geographic range")
+    yaw = math.radians(datum_yaw_deg)
+    east = math.cos(yaw)*point.x_m - math.sin(yaw)*point.y_m
+    north = math.sin(yaw)*point.x_m + math.cos(yaw)*point.y_m
+    return latitude + north/111320., longitude + east/(111320.*math.cos(math.radians(latitude)))
+
+
 def angle_delta(a, b):
     """Return signed shortest angular difference a-b."""
     return math.atan2(math.sin(a - b), math.cos(a - b))

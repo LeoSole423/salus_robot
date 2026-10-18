@@ -1,0 +1,45 @@
+{
+  "entry_stamp_s": 40.005,
+  "heading_acquired_before_curve": true,
+  "compensated_gnss_continuous_before_curve": true,
+  "completed_curve": true,
+  "turn_max_deg": 95.93536202311891,
+  "curve_samples": 266,
+  "curve_speed_p05_mps": 1.2813360298344902,
+  "curve_speed_median_mps": 1.56245448575438,
+  "curve_speed_below_1p2_fraction": 0.0,
+  "curve_end_stamp_s": 45.57,
+  "curve_localization": {
+    "local": {
+      "heading_deg": {
+        "n": 167,
+        "maximum": 1.0586196594942168,
+        "rms": 0.6067116895091262
+      },
+      "position_m": {
+        "n": 167,
+        "maximum": 0.5180133158117599,
+        "rms": 0.49570268460606315
+      }
+    },
+    "global": {
+      "heading_deg": {
+        "n": 167,
+        "maximum": 2.201605068817586,
+        "rms": 1.1171819881514216
+      },
+      "position_m": {
+        "n": 167,
+        "maximum": 0.08544589977234082,
+        "rms": 0.05422444229760337
+      }
+    }
+  },
+  "curve_physical_radius_m": {
+    "n": 266,
+    "minimum": 3.586691082239413,
+    "p05": 3.654951454535627,
+    "median": 4.707503375745209,
+    "p95": 14.248553849191733
+  }
+}

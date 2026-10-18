@@ -11,4 +11,4 @@ python3 -m unittest \
   tools/test_real_mvp_readiness_probe.py \
   tools/test_real_runtime_container_identity.py
 docker compose run --rm ros2 bash -lc \
-  'source /opt/ros/humble/setup.bash && colcon build --symlink-install && source install/setup.bash && PYTHONPATH="tools:$PYTHONPATH" python3 -m unittest tools/test_heading_innovations.py tools/test_heading_turn_metrics.py tools/test_heading_parameter_capture.py tools/test_heading_capture_failure.py tools/test_heading_variant_comparison.py && colcon test --packages-skip rslidar_msg --event-handlers console_direct+ && colcon test-result --verbose && bash tools/test_smoke_harness.sh'
+  'source /opt/ros/humble/setup.bash && colcon build --symlink-install && source install/setup.bash && PYTHONPATH="tools:$PYTHONPATH" python3 -m unittest tools/test_heading_innovations.py tools/test_heading_turn_metrics.py tools/test_heading_parameter_capture.py tools/test_heading_capture_failure.py tools/test_heading_variant_comparison.py tools/test_heading_route_metrics.py && colcon test --packages-skip rslidar_msg --event-handlers console_direct+ && colcon test-result --verbose && bash tools/test_smoke_harness.sh'
