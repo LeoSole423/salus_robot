@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tools.heading_route_metrics import route_observation, stream_coverage, minimum_model_radius
+from tools.heading_route_metrics import route_observation, stream_coverage, minimum_model_radius, heading_states
 import math
 from tools.generate_heading_route_matrix import route_goals
 from tools.archive_route_campaign import archive
@@ -13,6 +13,15 @@ import tarfile
 
 
 class RouteMetricsTest(unittest.TestCase):
+    def test_gps_gate_suspension_and_missing_reacquisition_are_distinct(self):
+        debug = [dict(stamp_s='2.', data=json.dumps(dict(
+            valid=False, reason='strong_turn', turn_state='SUSPENDED', window_generation=1)))]
+        result = heading_states(debug, 1., 3.)
+        self.assertEqual(result['reasons'], {'strong_turn': 1})
+        self.assertIsNone(result['first_valid_after_curve_s'])
+        debug.append(dict(stamp_s='4.', data=json.dumps(dict(valid=True, reason='ok'))))
+        self.assertEqual(heading_states(debug, 1., 3.)['first_valid_after_curve_s'], 1.)
+
     def test_stationary_does_not_pass(self):
         result = route_observation([dict(x_m=0, y_m=0, yaw_rad=0,
                                          speed=0, stamp_s=1)], [], [])

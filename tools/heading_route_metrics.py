@@ -104,6 +104,19 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
                                                if speed else None))
 
 
+def heading_states(debug, start, end):
+    """Report GPS gate states; a missing reacquisition is not zero recovery time."""
+    rows = [(float(r['stamp_s']), json.loads(r['data'])) for r in debug]
+    phase = [d for t, d in rows if start is not None and end is not None and start <= t <= end]
+    after = [t-end for t, d in rows if end is not None and t >= end and d.get('valid')]
+    return dict(
+        reasons=dict(Counter(d.get('reason', 'unknown') for d in phase)),
+        turn_states=dict(Counter(d.get('turn_state', 'unknown') for d in phase)),
+        window_generations=sorted(set(d['window_generation'] for d in phase if 'window_generation' in d)),
+        first_valid_after_curve_s=min(after) if after else None,
+    )
+
+
 def read(path):
     return list(csv.DictReader(path.open()))
 
@@ -127,6 +140,8 @@ def main():
     curve = route_window(rows, args.radius, 1 if args.side != 'right' else -1, args.kind)
     end = max((r['stamp_s'] for r in curve), default=None)
     result['curve_end_stamp_s'] = end
+    result['gps_heading_states'] = heading_states(
+        read(args.bundle/'gnss_heading_debug.csv'), start, end)
     delivery_ages = []
     for row in read(args.bundle/'gnss_map_debug.csv'):
         received = float(row['stamp_s'])
