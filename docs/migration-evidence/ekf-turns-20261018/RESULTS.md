@@ -1,10 +1,18 @@
-# #328 — resultados de giros y EKF compensado
+# #328 — resultados de la primera campaña de giros y EKF compensado
 
 Campaña realizada en PC con ROS2 Humble/Fortress, sin Jetson, hardware,
-movimiento real, merge ni despliegue. Recomendación: **conservar las máscaras y
-los defaults del EKF**. El tratamiento de datos atrasados mejora mucho el caso
+movimiento real, merge ni despliegue. Recomendación de esta primera campaña:
+**conservar las máscaras y los defaults del EKF**. El tratamiento de datos atrasados mejora mucho el caso
 GNSS300 ms, pero incumple la no regresión nominal. Tampoco se promueve un radio
 menor ni velocidad de producto mayor por estos ensayos.
+
+El operador aclaró que el objetivo de la rama sigue siendo mejorar la
+localización y habilitar giros automáticos más pronunciados y mayor velocidad
+si se demuestra estabilidad. Esta recomendación sobre una variante del EKF no
+cierra esos objetivos ni descarta cambios de planner/controlador. La matriz Nav2
+inicial tiene límites de adquisición y llegada que deben resolverse antes de
+atribuir un techo a la navegación. Ver la continuación de objetivos en la
+[intención](../intent/ekf-turns-2026-10-18.md).
 
 ## Qué se corrigió y qué significa la referencia
 
