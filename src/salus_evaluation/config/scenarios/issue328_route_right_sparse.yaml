@@ -1,0 +1,32 @@
+schema_version: 1
+id: issue328_route_right_sparse
+world: free
+spawn:
+  x_m: 0.0
+  y_m: 0.0
+  yaw_rad: 0.0
+goals:
+- id: acquire
+  forward_m: 20
+  lateral_m: 0
+  yaw_offset_rad: 0
+  timeout_s: 120.0
+  expected_turn: any
+- id: entry
+  forward_m: 28
+  lateral_m: 0
+  yaw_offset_rad: 0
+  timeout_s: 120.0
+  expected_turn: any
+- id: curve_end
+  forward_m: 32
+  lateral_m: -4
+  yaw_offset_rad: -1.5707963267948966
+  timeout_s: 120.0
+  expected_turn: any
+- id: exit
+  forward_m: 32
+  lateral_m: -20
+  yaw_offset_rad: -1.5707963267948966
+  timeout_s: 120.0
+  expected_turn: any

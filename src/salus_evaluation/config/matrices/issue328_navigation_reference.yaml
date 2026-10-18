@@ -1,0 +1,9 @@
+schema_version: 1
+id: issue328_navigation_reference
+repetitions: 1
+max_speed_mps: 1.8
+speeds_mps: [1.2, 1.6, 1.8]
+cases:
+  - {id: straight, scenario: scenarios/straight.yaml, direction: straight, requested_radius_m: null}
+  - {id: left_r4, scenario: scenarios/left_tight_valid.yaml, direction: left, requested_radius_m: 4.0}
+  - {id: right_r4, scenario: scenarios/right_tight_valid.yaml, direction: right, requested_radius_m: 4.0}

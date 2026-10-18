@@ -1,0 +1,35 @@
+[
+  {
+    "id": "epoch-antenna-active",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_planner_pilot.yaml",
+    "output": "artifacts/issue328-epoch-antenna-active",
+    "planner_radius": 3,
+    "trial_start_sim_s": 60
+  },
+  {
+    "id": "epoch-antenna-control",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_planner_pilot.yaml",
+    "output": "artifacts/issue328-epoch-antenna-control",
+    "planner_radius": 3,
+    "trial_start_sim_s": 60,
+    "launch_file": "tools/heading_no_compensation.launch.py"
+  },
+  {
+    "id": "coherent24",
+    "matrix": "artifacts/issue328-radius2p5-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-coherent24",
+    "planner_radius": 2.2,
+    "trial_start_sim_s": 60,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_analytic20.yaml",
+    "launch_file": "tools/heading_auto24.launch.py"
+  },
+  {
+    "id": "coherent30",
+    "matrix": "artifacts/issue328-radius2p5-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-coherent30",
+    "planner_radius": 2.2,
+    "trial_start_sim_s": 60,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_analytic20.yaml",
+    "launch_file": "tools/heading_manual_envelope.launch.py"
+  }
+]

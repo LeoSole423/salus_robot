@@ -1,0 +1,9 @@
+[smoke-runner] hard timeout: 240s; domain: 83; partition: salus-smoke-20261018T181808-470794-23263; fastdds: UDPv4; command: ./tools/smoke_route_executor_sim.sh
+ Container salus_robot-issue-328-ros2-run-524a48442763 Creating 
+ Container salus_robot-issue-328-ros2-run-524a48442763 Created 
+[smoke:routes-free-world] launch_started:routes
+Smoke assertion route_executor passed; log: /ros2_ws/artifacts/smokes/routes-free-world-20261018T181809-1/route_executor.log
+[smoke:routes-free-world] passed:route_executor
+Smoke assertion navigation_profiles passed; log: /ros2_ws/artifacts/smokes/routes-free-world-20261018T181809-1/navigation_profiles.log
+[smoke:routes-free-world] passed:navigation_profiles
+[smoke:routes-free-world] route_mission_progress_valid

@@ -1,0 +1,41 @@
+{
+  "kind": "left",
+  "speed": 1.6,
+  "radius": 4.0,
+  "profile": "nominal",
+  "id": "h2-left-nominal-baseline-s6402",
+  "seed": 6402,
+  "variant": "baseline",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.6,
+      0.4
+    ],
+    [
+      "curve",
+      2.9269908169872414,
+      1.6,
+      0.4
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

@@ -1,0 +1,1650 @@
+[
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p2-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.780849138836825,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.780849138836825,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.06588305413334977,
+        "cross_track_p95_m": 0.06107528408307014,
+        "cross_track_rms_m": 0.025440429679661765,
+        "paired_samples": 1026,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 722
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 25.625304876235127,
+        "cross_track_p95_m": 23.784821063900225,
+        "cross_track_rms_m": 11.544917566185992,
+        "heading_p95_rad": 0.08449843218965296,
+        "path_efficiency": 0.9996723271904981,
+        "sample_count": 1748,
+        "traveled_m": 26.087944337391335
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p2-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.727577220213472,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.727577220213472,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.17870446396837986,
+        "cross_track_p95_m": 0.15225009265729478,
+        "cross_track_rms_m": 0.07870949316277163,
+        "paired_samples": 1760,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 2
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 25.625304876235127,
+        "cross_track_p95_m": 23.71700189585346,
+        "cross_track_rms_m": 11.466829860529675,
+        "heading_p95_rad": 0.2107226398294147,
+        "path_efficiency": 0.9992518481042368,
+        "sample_count": 1762,
+        "traveled_m": 26.089574681829784
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p2-rep03",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 24.324622835260655,
+        "first_entry_s": null,
+        "minimum_distance_m": 24.324622835260655,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1060715221084853,
+        "cross_track_rms_m": 0.04895527292891098,
+        "paired_samples": 1412,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 2
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 17.625443256837535,
+        "cross_track_p95_m": 16.153927554435317,
+        "cross_track_rms_m": 7.359900529292675,
+        "heading_p95_rad": 0.09998044244600221,
+        "path_efficiency": 0.9995074759872471,
+        "sample_count": 1414,
+        "traveled_m": 18.068549680003894
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p6-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.68590596057373,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.68590596057373,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.0976083065153797,
+        "cross_track_p95_m": 0.06950042519943238,
+        "cross_track_rms_m": 0.06320549791111464,
+        "paired_samples": 906,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 551
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 26.1252990413507,
+        "cross_track_p95_m": 24.143349544675377,
+        "cross_track_rms_m": 11.32884915607842,
+        "heading_p95_rad": 0.08924888005353045,
+        "path_efficiency": 0.9997564471430346,
+        "sample_count": 1457,
+        "traveled_m": 26.674493681092308
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p6-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.498768589306145,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.498768589306145,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.2199418767508346,
+        "cross_track_p95_m": 0.18198134270834118,
+        "cross_track_rms_m": 0.09452941228861926,
+        "paired_samples": 1488,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 8
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 26.1252990413507,
+        "cross_track_p95_m": 24.241029043830185,
+        "cross_track_rms_m": 11.28354869118627,
+        "heading_p95_rad": 0.12988228532477328,
+        "path_efficiency": 0.9993043100560579,
+        "sample_count": 1496,
+        "traveled_m": 26.89705310165394
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p6-rep03",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.602693409439482,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.602693409439482,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1522330834015614,
+        "cross_track_rms_m": 0.06531783593217212,
+        "paired_samples": 1480,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 5
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 25.87530193060556,
+        "cross_track_p95_m": 23.98539342072939,
+        "cross_track_rms_m": 11.152672676269626,
+        "heading_p95_rad": 0.16665901681242748,
+        "path_efficiency": 0.9995229714241192,
+        "sample_count": 1485,
+        "traveled_m": 26.53527998786685
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p8-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.735924528225894,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.735924528225894,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593695,
+        "paired_samples": 704,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 5
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593693,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 709,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p8-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.606693153725214,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.606693153725214,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.13421375973048333,
+        "cross_track_rms_m": 0.0656230445655381,
+        "paired_samples": 1397,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 3
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 25.87530193060556,
+        "cross_track_p95_m": 23.822188314775225,
+        "cross_track_rms_m": 10.818882211134671,
+        "heading_p95_rad": 0.24474337998087414,
+        "path_efficiency": 0.9997676765310936,
+        "sample_count": 1400,
+        "traveled_m": 26.733547729801693
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "left-left-r4-v1p8-rep03",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 20.695145098812375,
+        "first_entry_s": null,
+        "minimum_distance_m": 20.695145098812375,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.20073480582647787,
+        "cross_track_p95_m": 0.17599293560252854,
+        "cross_track_rms_m": 0.06868316459611744,
+        "paired_samples": 1402,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 3
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 25.625304876235127,
+        "cross_track_p95_m": 23.562728353445976,
+        "cross_track_rms_m": 10.645927773962413,
+        "heading_p95_rad": 0.18171897281019878,
+        "path_efficiency": 0.9996404186789069,
+        "sample_count": 1405,
+        "traveled_m": 26.381504526752213
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p2-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593706,
+        "paired_samples": 681,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 5
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593704,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 686,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p2-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593687,
+        "paired_samples": 719,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 5
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593684,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 724,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p2-rep03",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.2,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593695,
+        "paired_samples": 703,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 6
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593693,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 709,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p6-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.1767766952959373,
+        "paired_samples": 642,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 6
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593726,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 648,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p6-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": null,
+        "cross_track_p95_m": null,
+        "cross_track_rms_m": null,
+        "paired_samples": 0,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 614
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": null,
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p6-rep03",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.6,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593776,
+        "paired_samples": 570,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 11
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593767,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 581,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p8-rep01",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6500,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593762,
+        "paired_samples": 588,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 14
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593754,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 602,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p8-rep02",
+    "reason": "maneuver_needs_operator",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6501,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593776,
+        "paired_samples": 572,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 18
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593762,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 590,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  },
+  {
+    "campaign": "issue328-route-reference",
+    "trial": "right-right-r4-v1p8-rep03",
+    "reason": "timeout",
+    "setup_failure": false,
+    "nominal_speed_mps": 1.8,
+    "requested_radius_m": 4.0,
+    "seed": 6502,
+    "functional_pass": false,
+    "curve": {
+      "entry_stamp_s": null,
+      "heading_acquired_before_curve": false,
+      "compensated_gnss_continuous_before_curve": false,
+      "completed_curve": false,
+      "turn_max_deg": null,
+      "curve_samples": 0,
+      "curve_speed_p05_mps": null,
+      "curve_speed_median_mps": null,
+      "curve_speed_below_1p2_fraction": null,
+      "curve_end_stamp_s": null,
+      "commands_positive_below_1p2_fraction": null,
+      "commands_stop_samples": 0,
+      "commands_safe_positive_below_1p2_fraction": null,
+      "commands_safe_stop_samples": 0,
+      "commands_final_positive_below_1p2_fraction": null,
+      "commands_final_stop_samples": 0,
+      "curve_localization": {
+        "local": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        },
+        "global": {
+          "heading_deg": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          },
+          "position_m": {
+            "n": 0,
+            "maximum": null,
+            "rms": null
+          }
+        }
+      },
+      "curve_physical_radius_m": {
+        "n": 0,
+        "minimum": null,
+        "p05": null,
+        "median": null,
+        "p95": null
+      }
+    },
+    "parameter_capture": null,
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 37.73592452822694,
+        "first_entry_s": null,
+        "minimum_distance_m": 37.73592452822694,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593548,
+        "paired_samples": 5700,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 15
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593543,
+        "heading_p95_rad": 2.045550841493588e-12,
+        "path_efficiency": 1.0,
+        "sample_count": 5715,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    }
+  }
+]

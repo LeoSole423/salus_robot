@@ -1,0 +1,22 @@
+sim_imu_from_odom:
+  ros__parameters:
+    delivery_poll_period_s: 0.01
+    frame_id: imu_primary_link
+    imu.dropout_probability: 0.0
+    imu.forced_dropout_end_s: null
+    imu.forced_dropout_start_s: null
+    imu.gyro_bias_rad_s: 0.002
+    imu.gyro_noise_stddev_rad_s: 0.005
+    imu.jitter_s: 0.0
+    imu.latency_s: 0.0
+    imu_profile: ''
+    imu_topic: /hardware/imu_primary/data_raw
+    max_pending: 256
+    odom_topic: /odom_raw
+    random_seed: -1
+    sim_sensor_profile: independent_nominal
+    sim_sensor_seed: 6400
+    use_sim_time: true
+  uninitialized_parameters:
+  - imu.forced_dropout_start_s
+  - imu.forced_dropout_end_s

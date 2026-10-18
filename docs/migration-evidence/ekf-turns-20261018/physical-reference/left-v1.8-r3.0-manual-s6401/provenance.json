@@ -1,0 +1,31 @@
+{
+  "head": "0de5f53054cfee497a97b4af0c174a48c62db29c",
+  "image_id": "sha256:2e5810ab7335d8a7998ea77e8a784dd7593aac738d7339bd9aaffaff3311d51a",
+  "source_sha256": {
+    "src/salus_localization/salus_localization/sim_external_heading_from_odom.py": "3e800c9897c2685a19218af61e5dc612f25e6864b5ed4df904b56466f51008c8",
+    "src/salus_localization/salus_localization/gps_course_heading.py": "b36ab11844f5fd1b00f99f2058499a7d85abefef45174c0cd56c71e7caa1f5ef",
+    "src/salus_localization/salus_localization/heading_turn_policy.py": "2fa0a6a6c421695ec352dfcbd9a6ffafe2feecedda6702067dddb79e4303bc0d",
+    "src/salus_localization/config/localization_global_sim.yaml": "92ae4d4921571cccebf06bcc5d30f5221390a696020b0bc8f505a8e20a8d56e6",
+    "src/salus_localization/config/localization_local_sim.yaml": "c2fd95534014623542f73eea00359d602607a3d0d622a96b9f540e93b81f042a",
+    "tools/capture_heading_baseline.py": "817987c2fa5e0f548e25c8f4d5977cedfd3e034bd6146665a5c64c628d16f795",
+    "tools/heading_turn_campaign.py": "03554a859abe459464c7a78895b80c2a0aa9500017939bc7064300294b322c49",
+    "tools/heading_turn_metrics.py": "e16862edc64fc565bb13842d31dcee976b3c89dd3e2a9ffd7fc874814c185142",
+    "tools/run_heading_capture.sh": "8f65096277bd48870f43fcaea813de2017c1b89c11e0d694741643692e47faa1",
+    "tools/prepare_heading_debug.py": "3d9f35f70ddee41ef9ec59fedb81ca258c1c218def750b9d5c189e589b844408",
+    "tools/wait_heading_ready.py": "4307d96259ec1ae0ab3d86f14ba43e9ef1250a6ab611fc3633d540865ce33785",
+    "tools/dump_heading_parameters.py": "ac2312e01868679d15b4e7816c547c0787d9e0fa02ee990f7ffdd7aa171f3991",
+    "tools/heading_gps_lever_diagnostic.py": "5e670b88fd4e7d2aed39b92e3e0492cb4586febb838fb6cb57b94dbf3558271a",
+    "src/salus_localization/salus_localization/map_gps_absolute_measurement.py": "e22803988505343ba199aedf4f3b2a110e13a1799e7ff8beb53db4ff5c487c75",
+    "src/salus_localization/salus_localization/gnss_antenna_compensation.py": "c95b4ce1c2db1569cee9d813a431fab6ef5df6beebfba5455c686cf5c8691640",
+    "src/salus_description/urdf/components/sensor_mounts.xacro": "195ae095c82371da821f4f210995a118e17089e78688b77df7d02fa473678784"
+  },
+  "domain_id": 73,
+  "scenario": "right",
+  "profile": "independent_nominal",
+  "seed": 6401,
+  "network": "bridge",
+  "cpu_limit": 6,
+  "ekf_debug": "false",
+  "diagnostic_shadows": "false",
+  "dirty_diff_sha256": "8de88e04b1226c46cdac333e82d7d3fc2212adf46b12557a03121f3ba916cbd3"
+}

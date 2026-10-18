@@ -158,6 +158,7 @@ def translate_command_state_to_gazebo_twist(
     command_state: CommandState,
     max_steering_angle_rad: float,
     invert_actuation_steer_sign: bool,
+    wheelbase_m: float = DEFAULT_SIM_WHEELBASE_M,
 ) -> tuple[float, float]:
     if (not bool(command_state.drive_enabled)) or bool(command_state.estop):
         return (0.0, 0.0)
@@ -169,7 +170,13 @@ def translate_command_state_to_gazebo_twist(
     )
     if bool(invert_actuation_steer_sign):
         steering_angle_rad = -steering_angle_rad
-    return (float(command_state.speed_mps), steering_angle_rad)
+    # Fortress AckermannSteering consumes a Twist (m/s, rad/s), not a
+    # steering-angle message. Preserve the actuator percentage and convert
+    # its applied angle back to the plugin yaw-rate contract.
+    if not math.isfinite(wheelbase_m) or wheelbase_m <= 0.0:
+        raise ValueError("wheelbase_m must be finite and positive")
+    speed_mps = float(command_state.speed_mps)
+    return (speed_mps, speed_mps * math.tan(steering_angle_rad) / wheelbase_m)
 
 
 def shortest_angular_distance_rad(from_angle_rad: float, to_angle_rad: float) -> float:
@@ -614,6 +621,7 @@ class SimGazeboBackend:
             command_state=command_state,
             max_steering_angle_rad=self._max_steering_angle_rad,
             invert_actuation_steer_sign=self._invert_actuation_steer_sign,
+            wheelbase_m=self._wheelbase_m,
         )
         self._pub.publish(out)
         with self._state_lock:

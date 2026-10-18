@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Manual, isolated simulation experiment; no hardware/deployment.
 set -euo pipefail
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 runtime_workspace="${1:?Provide workspace containing a compatible build/ and install/}"
 capture_name="${2:-heading-capture}"
 capture_domain="${3:-117}"
@@ -13,11 +13,19 @@ capture_shadows="${7:-false}"
 cd "$repo_dir"
 test ! -e "$capture_dir/samples.jsonl" || { echo 'Refusing to overwrite capture'; exit 1; }
 mkdir -p "$capture_dir"
-docker run --rm --network none --cpus 4 \
-  -e ROS_LOCALHOST_ONLY=1 -e ROS_DOMAIN_ID="$capture_domain" \
+extra_mounts=()
+if [[ -n "${HEADING_SENSOR_FILE:-}" ]]; then
+  extra_mounts+=(-v "${HEADING_SENSOR_FILE}:/ros2_ws/src/salus_simulation/config/sensor_profiles/independent_nominal.yaml:ro")
+fi
+capture_network="${HEADING_NETWORK:-none}"
+capture_localhost=1
+[[ "$capture_network" != bridge ]] || capture_localhost=0
+capture_status=0
+docker run --rm --network "$capture_network" --cpus "${HEADING_CPUS:-4}" \
+  "${extra_mounts[@]}" -e HEADING_PHYSICAL_TRUTH -e HEADING_MANUAL_ENVELOPE -e HEADING_RECIPE -e HEADING_SEED -e HEADING_GLOBAL_CONFIG -e FASTDDS_BUILTIN_TRANSPORTS="${HEADING_FASTDDS_TRANSPORTS:-DEFAULT}" -e ROS_LOCALHOST_ONLY="$capture_localhost" -e ROS_DOMAIN_ID="$capture_domain" \
   -e GZ_PARTITION="salus-${capture_name}-${capture_domain}" \
   -e IGN_PARTITION="salus-${capture_name}-${capture_domain}" \
-  -e SMOKE_RUN_TOKEN="$capture_name" -e SMOKE_RUNTIME_DIR="/tmp/${capture_name}" \
+  -e SMOKE_ARTIFACT_ROOT="/ros2_ws/${capture_dir}/smokes" -e SMOKE_RUN_TOKEN="$capture_name" -e SMOKE_RUNTIME_DIR="/tmp/${capture_name}" \
   -e HEADING_SHADOWS="$capture_shadows" -e HEADING_EKF_DEBUG="$capture_ekf_debug" -e HEADING_CAPTURE_DIR="$capture_dir" -e HEADING_SCENARIO="$capture_scenario" -e HEADING_PROFILE="$capture_profile" \
   -v "$repo_dir:/ros2_ws" -v "$runtime_workspace/build:/ros2_ws/build:ro" \
   -v "$runtime_workspace/install:/ros2_ws/install:ro" -w /ros2_ws \
@@ -34,8 +42,15 @@ docker run --rm --network none --cpus 4 \
       python3 tools/prepare_heading_debug.py "$HEADING_CAPTURE_DIR"
       debug_args="local_ekf_params_file:=/ros2_ws/${HEADING_CAPTURE_DIR}/local-debug.yaml global_ekf_params_file:=/ros2_ws/${HEADING_CAPTURE_DIR}/global-debug.yaml"
     fi
-    smoke_start_launch integration "ros2 launch salus_bringup integration_sim.launch.py world:=${free_world} launch_navigation:=false rviz:=false orientation_source:=course_over_ground sim_sensor_profile:=${HEADING_PROFILE} sim_sensor_seed:=6400 ${debug_args}"
-    smoke_wait_node /gps_course_heading 60
+    integration_launch="salus_bringup integration_sim.launch.py"
+    if [[ "${HEADING_MANUAL_ENVELOPE:-false}" == true ]]; then
+      integration_launch="/ros2_ws/tools/heading_manual_envelope.launch.py"
+    fi
+    smoke_start_launch integration "ros2 launch ${integration_launch} world:=${free_world} launch_navigation:=false rviz:=false orientation_source:=course_over_ground sim_sensor_profile:=${HEADING_PROFILE} sim_sensor_seed:=${HEADING_SEED:-6400} ${debug_args} ${HEADING_GLOBAL_CONFIG:+global_ekf_params_file:=${HEADING_GLOBAL_CONFIG}}"
+    # A persistent direct observer avoids poisoning ros2cli daemon discovery
+    # when short-lived CLI processes are killed during parallel startup.
+    python3 tools/wait_heading_ready.py
+    smoke_note ready:node:/gps_course_heading
     if [[ "$HEADING_SHADOWS" == true ]]; then
       if ros2 param get /map_gps_absolute_measurement map_odom_topic >/dev/null 2>&1; then
         echo "Historical shadows require the pre-compensation mapper (f062c15); refusing double compensation."
@@ -48,29 +63,35 @@ docker run --rm --network none --cpus 4 \
         smoke_wait_node "/ekf_global_${variant}" 60
       done
     fi
-    ros2 param dump /gps_course_heading > "$HEADING_CAPTURE_DIR/gps-parameters.yaml"
-    smoke_run heading_capture "python3 tools/capture_heading_baseline.py --output ${HEADING_CAPTURE_DIR} --scenario ${HEADING_SCENARIO}"
-    ros2 param dump /ekf_filter_node_local > "$HEADING_CAPTURE_DIR/local-ekf-parameters.yaml"
-    ros2 param dump /ekf_filter_node_global > "$HEADING_CAPTURE_DIR/global-ekf-parameters.yaml"
-    ros2 param dump /map_gps_absolute_measurement > "$HEADING_CAPTURE_DIR/gps-map-parameters.yaml"
+    capture_status=0
+    smoke_run heading_capture "python3 tools/capture_heading_baseline.py --output ${HEADING_CAPTURE_DIR} --scenario ${HEADING_SCENARIO}" || capture_status=$?
+    python3 tools/dump_heading_parameters.py "$HEADING_CAPTURE_DIR"
     dpkg-query -W ros-humble-robot-localization > "$HEADING_CAPTURE_DIR/robot-localization-version.txt"
     smoke_note heading_baseline_captured
-  ' > "$capture_dir/run.log" 2>&1
-python3 tools/summarize_heading_capture.py "$capture_dir"
+    # Natural completion preserves the status through login-shell logout hooks.
+    test "$capture_status" -eq 0
+  ' > "$capture_dir/run.log" 2>&1 || capture_status=$?
+if [[ -n "${HEADING_RECIPE:-}" && -f "$capture_dir/sequence.json" ]]; then
+  python3 tools/heading_turn_metrics.py "$capture_dir"
+elif [[ -f "$capture_dir/sequence.json" ]]; then
+  python3 tools/summarize_heading_capture.py "$capture_dir"
+fi
 python3 - "$capture_dir" "$capture_domain" "$capture_scenario" "$capture_profile" "$capture_ekf_debug" "$capture_shadows" <<'PYPROVENANCE'
 import hashlib, json, pathlib, subprocess, sys
 root = pathlib.Path('.')
 files = [*root.glob('src/salus_localization/salus_localization/*heading*.py'),
          *root.glob('src/salus_localization/config/localization_*sim.yaml'),
-         root/'tools/capture_heading_baseline.py', root/'tools/run_heading_capture.sh',
-         root/'tools/prepare_heading_debug.py', root/'tools/heading_gps_lever_diagnostic.py',
+         root/'tools/capture_heading_baseline.py', root/'tools/heading_turn_campaign.py', root/'tools/heading_turn_metrics.py', root/'tools/run_heading_capture.sh',
+         root/'tools/prepare_heading_debug.py', root/'tools/wait_heading_ready.py', root/'tools/dump_heading_parameters.py', root/'tools/heading_gps_lever_diagnostic.py',
          root/'src/salus_localization/salus_localization/map_gps_absolute_measurement.py',
          root/'src/salus_localization/salus_localization/gnss_antenna_compensation.py',
          root/'src/salus_description/urdf/components/sensor_mounts.xacro']
 provenance = dict(head=subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
     image_id=subprocess.check_output(['docker','image','inspect','salus-robot:humble-dev','--format','{{.Id}}'],text=True).strip(),
     source_sha256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
-    domain_id=int(sys.argv[2]), scenario=sys.argv[3], profile=sys.argv[4], seed=6400,
-    network='none', cpu_limit=4, ekf_debug=sys.argv[5], diagnostic_shadows=sys.argv[6], dirty_diff_sha256=hashlib.sha256(subprocess.check_output(['git','diff'])).hexdigest())
+    domain_id=int(sys.argv[2]), scenario=sys.argv[3], profile=sys.argv[4], seed=int(__import__('os').environ.get('HEADING_SEED','6400')),
+    network=__import__('os').environ.get('HEADING_NETWORK','none'), cpu_limit=int(__import__('os').environ.get('HEADING_CPUS','4')), ekf_debug=sys.argv[5], diagnostic_shadows=sys.argv[6], dirty_diff_sha256=hashlib.sha256(subprocess.check_output(['git','diff'])).hexdigest())
 pathlib.Path(sys.argv[1], 'provenance.json').write_text(json.dumps(provenance,indent=2))
 PYPROVENANCE
+
+exit "$capture_status"

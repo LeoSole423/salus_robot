@@ -266,3 +266,63 @@ aísla la derecha R4 para investigar cuándo Smac devuelve un rodeo en lugar
 del arco solicitado. El radio del request no certifica la geometría obtenida.
 Un rechazo seguro de un path con rulo puede hacer fallar los gates de llegada:
 el bundle y el exit status fallido se conservan y deben caracterizarse.
+
+## Referencia EKF posterior a compensación GNSS (#328)
+
+La campaña de giros separa dos instrumentos: `heading_turn_campaign.py` conserva
+comandos open-loop de radio >=4 m para aislar localización, mientras
+`issue328_navigation_reference.yaml` ejecuta metas Nav2 con el guard de U/rulos
+vigente. No modificar ese guard para aceptar una referencia del estimador.
+Recetas, perfiles, comandos, semántica temporal, artefactos y limitaciones en
+[la guía de campaña](../../docs/migration-evidence/ekf-turns-20261018/README.md).
+No usar el tracking del modelo open-loop como error de localización ni presentar
+la captura como validación física. El EKF de referencia permanece intacto.
+
+### Investigación #328: recorridos ordenados
+
+El runner admite varias metas del esquema v1 y las despacha por
+`/nav_command_server/set_goal_ll` (NavigateThroughPoses y guard existentes).
+Una sola meta conserva el flujo `/goal_pose`. En el caso múltiple las metas son
+coordenadas de mapa relativas al spawn, convertidas al datum simulado mediante
+`route_datum_lat`/`route_datum_lon` (grados, defaults del world SALUS). `route_datum_yaw_deg` permite el datum rotado (default0°). No es conversor de bags o mapas reales arbitrarios.
+No hay publicación de cmd_vel ni TF desde el evaluador.
+
+`nav_eval.sh matrix ... --experimental-nav2-params /ros2_ws/<archivo>` selecciona
+un YAML Nav2 completo exclusivo del experimento, con ruta/hash registrados.
+El override de radio, si se pide, se aplica después. Un cambio de controlador o
+planner no se atribuye al EKF y no se promueve automáticamente a defaults.
+Los escenarios route_pilot tienen adquisición20 m, entrada hasta28 m y salida
+16 m: sus métricas geométricas se obtienen con heading_route_metrics.py.
+Un terminal Nav2 success todavía requiere comprobar curva físicamente completa,
+adquisición absoluta y velocidad real; el evaluador no clampa frenados a1.2.
+
+`--simulation-launch-file /ros2_ws/tools/<wrapper>.launch.py` permite seleccionar
+un wrapper de simulación explícito, registrado con SHA256. No cambia el launch
+por defecto. Los experimentos pueden usar heading_manual_envelope.launch.py
+(techo manual30°) o heading_no_compensation.launch.py (control causal de posición,
+sin cambiar covarianza). Toda matriz nueva exporta además parámetros efectivos
+de sensores, heading, mapper, EKF, controller_server y planner_server antes del
+cleanup; fallo de exportación no se considera trial válido.
+
+`tools/generate_heading_route_matrix.py artifacts/<config-nueva> --radius R
+--speeds 1.2 1.6 1.8 --repetitions 3 --seed 6500` genera escenarios/matriz
+portables. Admite quarter/straight/s; rechaza velocidades nominales menores1.2
+o mayores2.0 y radios que excedan el máximo manual30°. Generar2.0 no autoriza
+saltarse la progresión experimental: ejecutarlo sólo tras validar1.8.
+
+`--trial-start-sim-s 60` fija el despacho por reloj ROS a60±0.25 s (default0,
+arranque inmediato; rango0–120 s). Se usa para alinear las ventanas temporales
+de calidad del sensor en campañas pareadas. Si el grafo llega tarde, el bundle
+se clasifica setup fallido sin despachar; no se elige silenciosamente otra época.
+El manifiesto conserva estado inicial y stamp efectivo; no se alimenta truth.
+
+Para un perfil de sensores personalizado usar la variable host
+`SALUS_NAV_EVAL_SENSOR_PROFILE_FILE="$PWD/<perfil.yaml>"` al ejecutar matrix.
+Debe ser YAML completo para los nodos del perfil independent_nominal y esa
+pipeline debe estar seleccionada en la matriz. Se monta read-only sólo dentro
+del contenedor de esa matriz; el archivo del host permanece intacto. Se conserva
+copia/hash y se valida la latencia GNSS efectiva antes de despachar. Esto evita
+la precedencia que hacía ineficaz el antiguo wrapper SetParameter de latencia,
+ahora retirado. El parámetro experimental de compensación y los límites de
+steering se verifican igualmente en sus readbacks; nunca se asume un override
+sólo por estar escrito en un wrapper.

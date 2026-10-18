@@ -1,0 +1,18 @@
+[
+  {
+    "id": "verified300",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300.yaml",
+    "output": "artifacts/issue328-verified300",
+    "planner_radius": 3,
+    "trial_start_sim_s": 60,
+    "sensor_profile_file": "src/salus_evaluation/config/experiments/issue328_sensors_nominal300.yaml"
+  },
+  {
+    "id": "verified300-lagged",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300_lagged.yaml",
+    "output": "artifacts/issue328-verified300-lagged",
+    "planner_radius": 3,
+    "trial_start_sim_s": 60,
+    "sensor_profile_file": "src/salus_evaluation/config/experiments/issue328_sensors_nominal300.yaml"
+  }
+]

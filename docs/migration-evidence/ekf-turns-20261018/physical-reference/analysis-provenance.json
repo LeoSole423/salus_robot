@@ -1,0 +1,8 @@
+{
+  "head": "f02e1eff7cd97b68ab15ea48b9deee2d759c9139",
+  "source_sha256": {
+    "summarize_turn_campaign.py": "5a3cce3882ae2727690f8f43ec473d53b014af6e714a64f638209ac4554893bf",
+    "heading_turn_metrics.py": "a095c14e58e4bd24e05a4cbb74f3e6eb5e08d20ac719bbec1f5d40d14e16b3b9"
+  },
+  "data_encoding": "all samples, only covariance off-diagonal entries omitted; unmodified raw sha256 provided"
+}

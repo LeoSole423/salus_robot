@@ -1,0 +1,234 @@
+[INFO] [launch]: All log files can be found below /evaluation-artifacts/trials/left_r3-left-r3-v1p2-rep01/runtime/left_r3-left-r3-v1p2-rep01/ros-log/2026-10-18-15-52-26-222548-leosole-Dell-G15-5530-47
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [ign gazebo-1]: process started with pid [92]
+[INFO] [robot_state_publisher-2]: process started with pid [98]
+[INFO] [parameter_bridge-3]: process started with pid [102]
+[INFO] [parameter_bridge-4]: process started with pid [104]
+[INFO] [create-5]: process started with pid [109]
+[INFO] [controller_server_node-6]: process started with pid [112]
+[INFO] [legacy_vehicle_command_node-7]: process started with pid [115]
+[INFO] [vehicle_command_comparison_node-8]: process started with pid [122]
+[INFO] [canonical_command_dry_run_node-9]: process started with pid [126]
+[INFO] [sim_imu_from_odom-10]: process started with pid [142]
+[INFO] [imu_normalizer-11]: process started with pid [147]
+[INFO] [imu_selector-12]: process started with pid [149]
+[INFO] [ackermann_odometry-13]: process started with pid [169]
+[INFO] [ekf_node-14]: process started with pid [180]
+[INFO] [sim_gps_normalizer-15]: process started with pid [195]
+[INFO] [global_stationary_gates-16]: process started with pid [198]
+[INFO] [gps_course_heading-17]: process started with pid [206]
+[INFO] [orientation_source_selector-18]: process started with pid [258]
+[INFO] [map_gps_absolute_measurement-19]: process started with pid [274]
+[INFO] [navsat_transform_node-20]: process started with pid [288]
+[INFO] [ekf_node-21]: process started with pid [293]
+[INFO] [capability_profile-22]: process started with pid [310]
+[INFO] [safety_command_passthrough-23]: process started with pid [314]
+[INFO] [nav_command_server-24]: process started with pid [322]
+[INFO] [zones_manager-25]: process started with pid [325]
+[INFO] [planner_server-26]: process started with pid [329]
+[INFO] [controller_server-27]: process started with pid [334]
+[INFO] [bt_navigator-28]: process started with pid [337]
+[INFO] [behavior_server-29]: process started with pid [340]
+[INFO] [nav_observer-30]: process started with pid [345]
+[INFO] [path_health-31]: process started with pid [348]
+[INFO] [navigation_profile_coordinator-32]: process started with pid [352]
+[INFO] [lifecycle_manager-33]: process started with pid [354]
+[INFO] [nav2_startup_coordinator-34]: process started with pid [356]
+[robot_state_publisher-2] [INFO] [1792338746.650727641] [robot_state_publisher]: got segment base_footprint
+[robot_state_publisher-2] [INFO] [1792338746.650890273] [robot_state_publisher]: got segment base_link
+[robot_state_publisher-2] [INFO] [1792338746.650900670] [robot_state_publisher]: got segment front_left_steer_link
+[robot_state_publisher-2] [INFO] [1792338746.650905445] [robot_state_publisher]: got segment front_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792338746.650909800] [robot_state_publisher]: got segment front_right_steer_link
+[robot_state_publisher-2] [INFO] [1792338746.650914005] [robot_state_publisher]: got segment front_right_wheel_link
+[robot_state_publisher-2] [INFO] [1792338746.650918254] [robot_state_publisher]: got segment gps_link
+[robot_state_publisher-2] [INFO] [1792338746.650922208] [robot_state_publisher]: got segment imu_link
+[robot_state_publisher-2] [INFO] [1792338746.650926381] [robot_state_publisher]: got segment imu_primary_link
+[robot_state_publisher-2] [INFO] [1792338746.650929980] [robot_state_publisher]: got segment lidar_link
+[robot_state_publisher-2] [INFO] [1792338746.650934292] [robot_state_publisher]: got segment rear_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792338746.650938591] [robot_state_publisher]: got segment rear_right_wheel_link
+[create-5] [INFO] [1792338746.690081473] [spawn_salus_ackermann]: Requesting list of world names.
+[parameter_bridge-4] [INFO] [1792338746.837822200] [joint_state_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/model/salus_ackermann/joint_state (gz.msgs.Model) -> /world/salus_empty/model/salus_ackermann/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[controller_server-27] [INFO] [1792338746.926122980] [controller_server]: 
+[controller_server-27] 	controller_server lifecycle node launched. 
+[controller_server-27] 	Waiting on external lifecycle transitions to activate
+[controller_server-27] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[lifecycle_manager-33] [INFO] [1792338746.934173570] [lifecycle_manager_navigation]: Creating
+[bt_navigator-28] [INFO] [1792338746.938305661] [bt_navigator]: 
+[bt_navigator-28] 	bt_navigator lifecycle node launched. 
+[bt_navigator-28] 	Waiting on external lifecycle transitions to activate
+[bt_navigator-28] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[bt_navigator-28] [INFO] [1792338746.938451589] [bt_navigator]: Creating
+[lifecycle_manager-33] [INFO] [1792338746.943182741] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[controller_server-27] [INFO] [1792338746.953013274] [controller_server]: Creating controller server
+[controller_server-27] [INFO] [1792338746.987914270] [local_costmap.local_costmap]: 
+[controller_server-27] 	local_costmap lifecycle node launched. 
+[controller_server-27] 	Waiting on external lifecycle transitions to activate
+[controller_server-27] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338746.989129226] [planner_server]: 
+[planner_server-26] 	planner_server lifecycle node launched. 
+[planner_server-26] 	Waiting on external lifecycle transitions to activate
+[planner_server-26] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338746.995147597] [planner_server]: Creating
+[controller_server-27] [INFO] [1792338747.007784856] [local_costmap.local_costmap]: Creating Costmap
+[behavior_server-29] [INFO] [1792338747.087641575] [behavior_server]: 
+[behavior_server-29] 	behavior_server lifecycle node launched. 
+[behavior_server-29] 	Waiting on external lifecycle transitions to activate
+[behavior_server-29] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338747.088590747] [global_costmap.global_costmap]: 
+[planner_server-26] 	global_costmap lifecycle node launched. 
+[planner_server-26] 	Waiting on external lifecycle transitions to activate
+[planner_server-26] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338747.089791535] [global_costmap.global_costmap]: Creating Costmap
+[ekf_node-21] Warning: /imu/data_global is listed as an input topic, but all its update variables are false
+[create-5] [INFO] [1792338747.442862857] [spawn_salus_ackermann]: Requested creation of entity.
+[create-5] [INFO] [1792338747.442900120] [spawn_salus_ackermann]: OK creation of entity.
+[INFO] [create-5]: process has finished cleanly [pid 109]
+[parameter_bridge-3] [INFO] [1792338747.695772198] [motion_bridge]: Creating ROS->GZ Bridge: [/cmd_vel_gazebo (geometry_msgs/msg/Twist) -> /cmd_vel_steer (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338747.713506082] [motion_bridge]: Creating GZ->ROS Bridge: [/odom (gz.msgs.Odometry) -> /odom_raw (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338747.741485054] [motion_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338747.776249765] [motion_bridge]: Creating GZ->ROS Bridge: [/gps/fix_raw (gz.msgs.NavSat) -> /gps/fix_raw (sensor_msgs/msg/NavSatFix)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338747.785386442] [motion_bridge]: Creating GZ->ROS Bridge: [/lidar/points (gz.msgs.PointCloudPacked) -> /scan_3d_raw (sensor_msgs/msg/PointCloud2)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338747.788154360] [motion_bridge]: Creating GZ->ROS Bridge: [/simulation/ground_truth (gz.msgs.Odometry) -> /simulation/ground_truth (nav_msgs/msg/Odometry)] (Lazy 0)
+[controller_server_node-6] [INFO] [1792338747.882876246] [salus_controller]: controller serial port selected (reason=explicit, requested=/dev/null, resolved=/dev/null)
+[safety_command_passthrough-23] [WARN] [1792338747.884646218] [safety_command_passthrough]: local obstacle detection is disabled by explicit profile; commands are relayed without collision monitoring
+[controller_server_node-6] [INFO] [1792338747.906185807] [salus_controller]: controller_server ready (backend=sim_gazebo, serial=/dev/null@115200, input=legacy_cmd_vel, source=/cmd_vel_final)
+[controller_server_node-6] [INFO] [1792338747.906614454] [salus_controller]: sim battery services ready (/sim_battery/set_preset, /sim_battery/set_state)
+[nav_command_server-24] [INFO] [1792338748.470172052] [nav_command_server]: nav command server ready: safe/manual commands and LL route chunks
+[ign gazebo-1] [1;33mWarning [Utils.cc:129][0m [/sdf/model[@name="salus_ackermann"]/link[@name="base_footprint"]/sensor[@name="lidar_3d_sensor"]/lidar/noise[@type="gaussian"]:/tmp/salus_ackermann_az0gnft9.urdf:L0]: XML Attribute[type] in element[noise] not defined in SDF.
+[ign gazebo-1] MESA: error: Failed to query drm device.
+[ign gazebo-1] libGL error: glx: failed to create dri3 screen
+[ign gazebo-1] libGL error: failed to load driver: iris
+[ign gazebo-1] libGL error: failed to open /dev/dri/card1: No such file or directory
+[ign gazebo-1] libGL error: failed to load driver: iris
+[parameter_bridge-3] [INFO] [1792338749.477699272] [motion_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[navsat_transform_node-20] [INFO] [1792338749.514473018] [navsat_transform]: Datum (latitude, longitude, altitude) is (-31.49, -64.24, 0.00)
+[navsat_transform_node-20] [INFO] [1792338749.514699423] [navsat_transform]: Datum UTM coordinate is (20J, 382121.84, 6515889.94)
+[navsat_transform_node-20] [INFO] [1792338749.514819829] [navsat_transform]: Corrected for magnetic declination of 0, user-specified offset of 0 and meridian convergence of 0.0113143. Transform heading factor is now 0.0113143
+[lifecycle_manager-33] [INFO] [1792338750.061328550] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-33] [INFO] [1792338750.061448757] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[planner_server-26] [INFO] [1792338750.063222392] [planner_server]: Configuring
+[planner_server-26] [INFO] [1792338750.063299013] [global_costmap.global_costmap]: Configuring
+[planner_server-26] [INFO] [1792338750.103853787] [global_costmap.global_costmap]: Using plugin "obstacle_layer"
+[planner_server-26] [INFO] [1792338750.107722877] [global_costmap.global_costmap]: Subscribed to Topics: scan
+[planner_server-26] [INFO] [1792338750.120937303] [global_costmap.global_costmap]: Initialized plugin "obstacle_layer"
+[planner_server-26] [INFO] [1792338750.121000086] [global_costmap.global_costmap]: Using plugin "inflation_layer"
+[planner_server-26] [INFO] [1792338750.122420873] [global_costmap.global_costmap]: Initialized plugin "inflation_layer"
+[planner_server-26] [INFO] [1792338750.122473532] [global_costmap.global_costmap]: Using plugin "vector_keepout_layer"
+[planner_server-26] [INFO] [1792338750.133292211] [global_costmap.global_costmap]: Initialized plugin "vector_keepout_layer"
+[planner_server-26] [INFO] [1792338750.187147148] [planner_server]: Created global planner plugin GridBased of type nav2_smac_planner/SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338750.187221890] [planner_server]: Configuring GridBased of type SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338750.191173457] [planner_server]: Even sized heuristic lookup table size set 80.000000, increasing size by 1 to make odd
+[planner_server-26] [INFO] [1792338750.296730309] [planner_server]: Configured plugin GridBased of type SmacPlannerHybrid with maximum iterations 3000000, max on approach iterations 1000, and allowing unknown traversal. Tolerance 0.50.Using motion model: Dubin.
+[planner_server-26] [INFO] [1792338750.296809525] [planner_server]: Planner Server has GridBased  planners available.
+[lifecycle_manager-33] [INFO] [1792338750.360306496] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[controller_server-27] [INFO] [1792338750.360791993] [controller_server]: Configuring controller interface
+[controller_server-27] [INFO] [1792338750.361052182] [controller_server]: getting goal checker plugins..
+[controller_server-27] [INFO] [1792338750.361176923] [controller_server]: Controller frequency set to 20.0000Hz
+[controller_server-27] [INFO] [1792338750.361228944] [local_costmap.local_costmap]: Configuring
+[controller_server-27] [INFO] [1792338750.381566048] [local_costmap.local_costmap]: Using plugin "obstacle_layer"
+[controller_server-27] [INFO] [1792338750.386422013] [local_costmap.local_costmap]: Subscribed to Topics: scan
+[controller_server-27] [INFO] [1792338750.395423925] [local_costmap.local_costmap]: Initialized plugin "obstacle_layer"
+[controller_server-27] [INFO] [1792338750.396355695] [local_costmap.local_costmap]: Using plugin "inflation_layer"
+[controller_server-27] [INFO] [1792338750.398211626] [local_costmap.local_costmap]: Initialized plugin "inflation_layer"
+[controller_server-27] [INFO] [1792338750.398291191] [local_costmap.local_costmap]: Using plugin "vector_keepout_layer"
+[controller_server-27] [INFO] [1792338750.411995478] [local_costmap.local_costmap]: Initialized plugin "vector_keepout_layer"
+[controller_server-27] [INFO] [1792338750.457108759] [controller_server]: Created progress_checker : progress_checker of type nav2_controller::SimpleProgressChecker
+[controller_server-27] [INFO] [1792338750.457746103] [controller_server]: Created goal checker : general_goal_checker of type nav2_controller::PositionGoalChecker
+[controller_server-27] [INFO] [1792338750.457919626] [controller_server]: Controller Server has general_goal_checker  goal checkers available.
+[controller_server-27] [INFO] [1792338750.458316917] [controller_server]: Created controller : FollowPath of type nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-27] [INFO] [1792338750.476047401] [controller_server]: Controller Server has FollowPath  controllers available.
+[lifecycle_manager-33] [INFO] [1792338750.499724820] [lifecycle_manager_navigation]: [34m[1mConfiguring bt_navigator[0m[0m
+[bt_navigator-28] [INFO] [1792338750.502192963] [bt_navigator]: Configuring
+[lifecycle_manager-33] [INFO] [1792338750.702249792] [lifecycle_manager_navigation]: [34m[1mConfiguring behavior_server[0m[0m
+[behavior_server-29] [INFO] [1792338750.702920617] [behavior_server]: Configuring
+[behavior_server-29] [INFO] [1792338750.731890866] [behavior_server]: Creating behavior plugin wait of type nav2_behaviors/Wait
+[behavior_server-29] [INFO] [1792338750.732664301] [behavior_server]: Configuring wait
+[lifecycle_manager-33] [INFO] [1792338750.755639793] [lifecycle_manager_navigation]: [34m[1mActivating planner_server[0m[0m
+[planner_server-26] [INFO] [1792338750.756115978] [planner_server]: Activating
+[planner_server-26] [INFO] [1792338750.756190543] [global_costmap.global_costmap]: Activating
+[planner_server-26] [INFO] [1792338750.756227387] [global_costmap.global_costmap]: Checking transform
+[planner_server-26] [INFO] [1792338750.756377216] [global_costmap.global_costmap]: start
+[planner_server-26] [INFO] [1792338751.159469963] [planner_server]: Activating plugin GridBased of type SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338751.163167547] [planner_server]: Creating bond (planner_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338751.270726421] [lifecycle_manager_navigation]: Server planner_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338751.270808841] [lifecycle_manager_navigation]: [34m[1mActivating controller_server[0m[0m
+[controller_server-27] [INFO] [1792338751.271230724] [controller_server]: Activating
+[controller_server-27] [INFO] [1792338751.271275707] [local_costmap.local_costmap]: Activating
+[controller_server-27] [INFO] [1792338751.271294498] [local_costmap.local_costmap]: Checking transform
+[controller_server-27] [INFO] [1792338751.271437136] [local_costmap.local_costmap]: start
+[controller_server-27] [INFO] [1792338751.523879573] [controller_server]: Activating controller: FollowPath of type regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-27] [INFO] [1792338751.523974671] [controller_server]: Creating bond (controller_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338751.636484969] [lifecycle_manager_navigation]: Server controller_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338751.636550840] [lifecycle_manager_navigation]: [34m[1mActivating bt_navigator[0m[0m
+[bt_navigator-28] [INFO] [1792338751.636960290] [bt_navigator]: Activating
+[bt_navigator-28] [INFO] [1792338752.022492935] [bt_navigator]: Creating bond (bt_navigator) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338752.133613402] [lifecycle_manager_navigation]: Server bt_navigator connected with bond.
+[lifecycle_manager-33] [INFO] [1792338752.133682362] [lifecycle_manager_navigation]: [34m[1mActivating behavior_server[0m[0m
+[behavior_server-29] [INFO] [1792338752.133944220] [behavior_server]: Activating
+[behavior_server-29] [INFO] [1792338752.133968291] [behavior_server]: Activating wait
+[behavior_server-29] [INFO] [1792338752.133982977] [behavior_server]: Creating bond (behavior_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338752.242020057] [lifecycle_manager_navigation]: Server behavior_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338752.242104667] [lifecycle_manager_navigation]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-33] [INFO] [1792338752.242150594] [lifecycle_manager_navigation]: [34m[1mCreating bond timer...[0m[0m
+[bt_navigator-28] [INFO] [1792338768.665816449] [bt_navigator]: Begin navigating from current location (-0.00, -0.00) to (3.00, 3.00)
+[controller_server_node-6] [INFO] [1792338768.667583568] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=0 source=3 -> drive=1 estop=0 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=0
+[controller_server-27] [INFO] [1792338768.689749242] [controller_server]: Received a goal, begin computing control effort.
+[controller_server-27] [WARN] [1792338768.689846500] [controller_server]: No goal checker was specified in parameter 'current_goal_checker'. Server will use only plugin loaded general_goal_checker . This warning will appear once.
+[controller_server_node-6] [INFO] [1792338768.722889073] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.407 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=59 steer_deg=17.70 curvature=0.339 brake_pct=0
+[controller_server_node-6] [INFO] [1792338768.762884922] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.407 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=59 steer_deg=17.70 curvature=0.339 brake_pct=0
+[controller_server_node-6] [INFO] [1792338768.832943976] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.407 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=59 steer_deg=17.70 curvature=0.339 brake_pct=0
+[controller_server_node-6] [INFO] [1792338768.865200916] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.408 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=59 steer_deg=17.73 curvature=0.340 brake_pct=0
+[controller_server_node-6] [INFO] [1792338768.925816187] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.408 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=59 steer_deg=17.72 curvature=0.340 brake_pct=0
+[controller_server_node-6] [INFO] [1792338768.963805215] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.412 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=17.88 curvature=0.343 brake_pct=0
+[controller_server_node-6] [WARN] [1792338769.028987419] [salus_controller]: Ackermann steer saturated (linear_x=1.200 m/s, angular_z=0.417 rad/s, requested_curvature=0.348 1/m, requested_steer=18.09 deg, limit=18.00 deg)
+[controller_server_node-6] [INFO] [1792338769.030246885] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.417 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.068522351] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.420 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.137984862] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.427 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.165488993] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.431 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.228337975] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.439 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.262847764] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.446 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.321916214] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.459 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.366209104] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.467 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.432405014] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.476 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.464770800] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.478 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.524728282] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.480 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.564503246] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.481 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.622167688] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.489 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.663630232] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.487 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.734638093] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.499 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.762287236] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.501 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.825271050] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.505 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.864133748] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.506 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.932659614] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.517 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338769.964205428] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.518 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.033260269] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.526 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.064683999] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.527 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.124832187] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.531 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.164779667] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.535 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.223642600] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.542 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.267074412] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.542 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.333746893] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.549 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.367569602] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.551 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.422872092] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.560 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.466680755] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.560 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.523557431] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.569 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.569031009] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.568 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.632711359] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.576 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.663622031] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.574 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.724935957] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.581 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.763762133] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.581 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.823944560] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.587 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.865590987] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.584 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.934878580] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.598 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338770.962851680] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.606 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338771.035894255] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.617 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338771.065658623] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.621 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338771.124293296] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.638 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server-27] [INFO] [1792338771.160422175] [controller_server]: Reached the goal!
+[controller_server_node-6] [INFO] [1792338771.162878205] [salus_controller]: cmd_vel_final rx linear_x=1.200 angular_z=0.643 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=1.200 steer_pct=60 steer_deg=18.00 curvature=0.346 brake_pct=0
+[controller_server_node-6] [INFO] [1792338771.165190447] [salus_controller]: Ackermann steer saturation cleared
+[controller_server_node-6] [INFO] [1792338771.165688133] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=0 source=1 -> drive=1 estop=0 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=0
+[bt_navigator-28] [INFO] [1792338771.196447954] [bt_navigator]: Goal succeeded
+[controller_server_node-6] [INFO] [1792338771.202243408] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338771.301478670] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338771.402081900] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100

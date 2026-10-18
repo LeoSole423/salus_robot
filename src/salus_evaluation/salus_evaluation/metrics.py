@@ -1,5 +1,6 @@
 """Pure geometry and navigation metric calculations."""
 
+import bisect
 import math
 
 from .models import (ArrivalMetrics, ExpectedTurn, LocalizationCovarianceSummary,
@@ -8,6 +9,19 @@ from .models import (ArrivalMetrics, ExpectedTurn, LocalizationCovarianceSummary
 
 COMMAND_CHAIN_MAX_ALIGNMENT_GAP_S = 0.2
 COMMAND_CHAIN_EPSILON = 1.0e-6
+
+
+def map_point_to_ll(point, latitude, longitude, datum_yaw_deg):
+    """Invert the simulation datum projection, without consulting physical truth."""
+    values = (point.x_m, point.y_m, latitude, longitude, datum_yaw_deg)
+    if not all(math.isfinite(v) for v in values):
+        raise ValueError("map point and datum must be finite")
+    if abs(latitude) >= 89 or abs(longitude) > 180:
+        raise ValueError("simulation datum outside supported geographic range")
+    yaw = math.radians(datum_yaw_deg)
+    east = math.cos(yaw)*point.x_m - math.sin(yaw)*point.y_m
+    north = math.sin(yaw)*point.x_m + math.cos(yaw)*point.y_m
+    return latitude + north/111320., longitude + east/(111320.*math.cos(math.radians(latitude)))
 
 
 def angle_delta(a, b):
@@ -114,6 +128,33 @@ def tracking_metrics(poses, path):
                            _percentile(distances, .95), max(distances),
                            _percentile(heading_errors, .95), traveled,
                            direct / traveled if traveled else 1.0)
+
+
+def causal_tracking_metrics(poses, plan_observations):
+    """
+    Pair physical poses with the last plan received, never a future replan.
+
+    Observations are (receive timestamp, tuple of Pose2D). This measures the
+    published plan, without claiming knowledge of the controller's active path.
+    """
+    observations = sorted(plan_observations, key=lambda item: item[0])
+    stamps = [item[0] for item in observations]
+    distances = []
+    unpaired = 0
+    for pose in poses:
+        index = bisect.bisect_right(stamps, pose.stamp_s) - 1
+        if index < 0 or len(observations[index][1]) < 2:
+            unpaired += 1
+            continue
+        distances.append(_nearest(pose.pose, observations[index][1])[0])
+    return {
+        "reference": "latest_published_plan_by_receive_stamp",
+        "paired_samples": len(distances), "unpaired_samples": unpaired,
+        "cross_track_rms_m": math.sqrt(sum(x*x for x in distances) / len(distances))
+        if distances else None,
+        "cross_track_p95_m": _percentile(distances, .95) if distances else None,
+        "cross_track_max_m": max(distances) if distances else None,
+    }
 
 
 def command_response_sign(commands, poses, linear_min=0.1, angular_min=0.02,

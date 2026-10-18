@@ -1,0 +1,37 @@
+{
+  "start_sim_s": 2.721,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.8,
+      -1.090909090909091
+    ],
+    [
+      "curve",
+      5.0,
+      1.8,
+      -1.090909090909091
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "scenario": "right",
+  "truth_topic": "/simulation/ground_truth"
+}

@@ -1,0 +1,44 @@
+sim_drive_sensor_adapter:
+  ros__parameters:
+    sim_sensor_profile: independent_nominal
+    steering.bias_deg: 0.0
+    steering.dropout_probability: 0.0
+    steering.jitter_s: 0.0
+    steering.latency_s: 0.0
+    steering.noise_stddev_deg: 0.0
+    wheel.bias_mps: 0.0
+    wheel.dropout_probability: 0.0
+    wheel.jitter_s: 0.0
+    wheel.latency_s: 0.0
+    wheel.noise_stddev_mps: 0.0
+    wheel.traction_scale: 1.0
+sim_gps_normalizer:
+  ros__parameters:
+    gnss.covariance_m2: 0.0004
+    gnss.degraded_covariance_m2: 1.0
+    gnss.degraded_navsat_status: 0
+    gnss.degraded_rtk_status: RTK_FLOAT
+    gnss.degraded_vertical_noise_m: 1.5
+    gnss.dropout_probability: 0.0
+    gnss.forced_dropout_end_s: []
+    gnss.forced_dropout_start_s: []
+    gnss.jitter_s: 0.0
+    gnss.latency_s: 0.0
+    gnss.navsat_status: 2
+    gnss.noise_stddev_m: 0.02
+    gnss.quality_degraded_duration_s: 0.0
+    gnss.quality_transition_period_s: 0.0
+    gnss.rate_hz: 10.0
+    gnss.rtk_status: RTK_FIXED
+    gnss.vertical_noise_stddev_m: 0.04
+    sim_sensor_profile: independent_nominal
+sim_imu_from_odom:
+  ros__parameters:
+    imu.dropout_probability: 0.0
+    imu.forced_dropout_end_s: []
+    imu.forced_dropout_start_s: []
+    imu.gyro_bias_rad_s: 0.002
+    imu.gyro_noise_stddev_rad_s: 0.005
+    imu.jitter_s: 0.0
+    imu.latency_s: 0.0
+    sim_sensor_profile: independent_nominal

@@ -14,6 +14,9 @@ from rclpy.node import Node
 from salus_interfaces.msg import (PathHealth, CmdVelFinal, DriveTelemetry, NavEvent,
                                   NavTelemetry, VehicleCommand)
 from std_msgs.msg import String
+from sensor_msgs.msg import Imu
+from rclpy.qos import qos_profile_sensor_data
+from salus_interfaces.srv import SetNavGoalLL
 from visualization_msgs.msg import Marker, MarkerArray
 
 from .artifacts import write_artifacts
@@ -24,12 +27,26 @@ from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       covariance_summary, localization_metrics,
                       saturation_intervals,
                       steering_margin_summary,
-                      tracking_metrics, trial_data_finite)
+                      tracking_metrics, trial_data_finite, causal_tracking_metrics,
+                      map_point_to_ll)
 from .models import (ExpectedTurn, Pose2D, TimedCommand,
                      TimedControllerStatus, TimedControllerTelemetry,
                      TimedDriveTelemetry, TimedFinalCommand,
                      TimedPose, TimedVehicleCommand)
 from .schema import load_scenario
+
+
+def reference_tracking_observation(topic, poses, path, goal, tolerance, success_s):
+    """Measure actual reference motion separately from estimator-based gates."""
+    return {
+        "topic": topic,
+        "reference_kind": ("physical_world_pose" if topic == "/simulation/ground_truth"
+                           else "kinematic_odometry_not_independent_truth"),
+        "tracking_reference": "final_plan_snapshot_report_only",
+        "tracking": tracking_metrics(poses, path) if poses and path else None,
+        "arrival": arrival_metrics(poses, goal, tolerance, success_s)
+        if poses and goal else None,
+    }
 
 
 def _stamp(message):
@@ -357,11 +374,19 @@ class EvaluationRunner(Node):
     def __init__(self):
         super().__init__("navigation_evaluation")
         self.declare_parameter("scenario", "")
+        self.declare_parameter("trial_start_sim_s", 0.0)
+        self.declare_parameter("route_datum_lat", -31.4858037)
+        self.declare_parameter("route_datum_lon", -64.2410570)
+        self.declare_parameter("route_datum_yaw_deg", 0.0)
         self.declare_parameter("output_dir", "")
         self.declare_parameter("mode", "run")
         self.declare_parameter("goal_tolerance_m", 2.5)
         self.declare_parameter("precision_target_m", 0.25)
         self.declare_parameter("observe_timeout_s", 90.0)
+        self.trial_start_sim_s = float(self.get_parameter("trial_start_sim_s").value)
+        if not math.isfinite(self.trial_start_sim_s) or not 0 <= self.trial_start_sim_s <= 120:
+            raise ValueError("trial_start_sim_s must be within [0,120] seconds")
+        self.initial_state = {}
         self.scenario_path = str(self.get_parameter("scenario").value)
         self.output_dir = str(self.get_parameter("output_dir").value)
         self.mode = str(self.get_parameter("mode").value)
@@ -381,6 +406,8 @@ class EvaluationRunner(Node):
         self.vehicle_commands, self.drive_telemetry = [], []
         self.controller_status, self.controller_telemetry = [], []
         self.controller_json_errors = []
+        self.gnss_heading_debug, self.gnss_map_debug = [], []
+        self.imu_samples = []
         self.plans, self.events = [], []
         self.plan_samples, self.path_health_samples = [], []
         self.goal = None
@@ -396,11 +423,16 @@ class EvaluationRunner(Node):
         self.goal_event_baseline = None
         self._finished = False
         self.exit_code = 1
+        self.ordered_goal_client = self.create_client(
+            SetNavGoalLL, "/nav_command_server/set_goal_ll")
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.markers = self.create_publisher(MarkerArray, "/navigation_evaluation/markers", 10)
         self.create_subscription(Odometry, "/odometry/global", self._global, 50)
-        self.create_subscription(Odometry, "/odom_raw", self._raw, 50)
+        self.raw_subscription = self.create_subscription(
+            Odometry, "/odom_raw", self._raw, 50
+        )
         self.create_subscription(Odometry, "/odometry/local", self._local, 50)
+        self.create_subscription(Imu, "/imu/data", self._imu, qos_profile_sensor_data)
         self.create_subscription(Twist, "/cmd_vel", self._command, 50)
         self.create_subscription(Twist, "/cmd_vel_safe", self._safe_command, 50)
         self.create_subscription(CmdVelFinal, "/cmd_vel_final", self._final_command, 50)
@@ -410,6 +442,13 @@ class EvaluationRunner(Node):
         self.create_subscription(
             DriveTelemetry, "/controller/drive_telemetry", self._drive_telemetry, 50
         )
+        for topic, target in (("/gps/course_heading/debug", self.gnss_heading_debug),
+                              ("/gps/odometry_map/debug", self.gnss_map_debug)):
+            self.create_subscription(
+                String, topic,
+                lambda message, rows=target: rows.append({
+                    "stamp_s": _now_s(self), "data": message.data}), 20
+            )
         self.create_subscription(String, "/controller/status", self._controller_status, 20)
         self.create_subscription(
             String, "/controller/telemetry", self._controller_telemetry, 20
@@ -428,6 +467,11 @@ class EvaluationRunner(Node):
 
     def _raw(self, message):
         self.raw_poses.append(_timed_odometry(message))
+
+    def _imu(self, message):
+        self.imu_samples.append(dict(
+            stamp_s=_stamp(message), receive_sim_s=_now_s(self),
+            frame_id=message.header.frame_id, yaw_rate_rps=message.angular_velocity.z))
 
     def _local(self, message):
         self.local_poses.append(_timed_odometry(message))
@@ -503,8 +547,10 @@ class EvaluationRunner(Node):
                        for item in message.poses)
         if points:
             index = len(self.plans)
+            receive_stamp = _now_s(self)
             self.plan_samples.extend(dict(
                 plan_index=index, pose_index=i, stamp_s=_stamp(message),
+                receive_stamp_s=receive_stamp,
                 frame_id=message.header.frame_id, x_m=p.x_m, y_m=p.y_m, yaw_rad=p.yaw_rad)
                 for i, p in enumerate(points))
             self.plans.append(points)
@@ -538,9 +584,10 @@ class EvaluationRunner(Node):
         if is_new_result and terminal in (
                 GoalStatus.STATUS_SUCCEEDED, GoalStatus.STATUS_ABORTED,
                 GoalStatus.STATUS_CANCELED):
-            self.terminal_status = terminal
             now = self.get_clock().now().nanoseconds / 1e9
-            self.terminal_received_s = now
+            if self.terminal_received_s is None or self.terminal_status != terminal:
+                self.terminal_received_s = now
+            self.terminal_status = terminal
             if terminal == GoalStatus.STATUS_SUCCEEDED and self.success_s is None:
                 self.success_s = now
 
@@ -562,10 +609,29 @@ class EvaluationRunner(Node):
         self.get_logger().info("observing RViz goal")
 
     def _send_scenario_goal(self):
+        now = _now_s(self)
+        if self.trial_start_sim_s > 0:
+            if now < self.trial_start_sim_s:
+                return
+            if now > self.trial_start_sim_s + .25:
+                self._finished = True
+                write_artifacts(self.output_dir,
+                                {"schema_version": 2, "trial_start_sim_s": self.trial_start_sim_s,
+                                 "actual_ready_sim_s": now},
+                                {"schema_version": 2, "reason": "trial_start_epoch_missed",
+                                 "errors": ["graph was not ready within fixed start window"],
+                                 "terminal_status": None},
+                                {"odometry_raw": self.raw_poses,
+                                 "odometry_global": self.global_poses})
+                self.exit_code = 1
+                return
+        self.initial_state = {
+            "global": self.global_poses[-1] if self.global_poses else None,
+            "local": self.local_poses[-1] if self.local_poses else None,
+            "physical_reference": self.raw_poses[-1] if self.raw_poses else None,
+        }
         scenario = load_scenario(self.scenario_path)
-        if len(scenario.goals) != 1:
-            raise ValueError("v1 runner supports exactly one goal per trial")
-        goal_spec = scenario.goals[0]
+        goal_spec = scenario.goals[-1]
         self.goal = absolute_goal(scenario.spawn, goal_spec)
         self.expected_turn = goal_spec.expected_turn
         self.reverse_allowed = goal_spec.reverse_allowed
@@ -579,8 +645,36 @@ class EvaluationRunner(Node):
         message.pose.position.x, message.pose.position.y = self.goal.x_m, self.goal.y_m
         message.pose.orientation.z = math.sin(self.goal.yaw_rad / 2.0)
         message.pose.orientation.w = math.cos(self.goal.yaw_rad / 2.0)
-        self.goal_pub.publish(message)
+        if len(scenario.goals) > 1:
+            if not self.ordered_goal_client.service_is_ready():
+                self.goal = None
+                return
+            request = SetNavGoalLL.Request()
+            latitude = float(self.get_parameter("route_datum_lat").value)
+            longitude = float(self.get_parameter("route_datum_lon").value)
+            datum_yaw = float(self.get_parameter("route_datum_yaw_deg").value)
+            for item in scenario.goals:
+                point = absolute_goal(scenario.spawn, item)
+                lat, lon = map_point_to_ll(point, latitude, longitude, datum_yaw)
+                request.lats.append(lat)
+                request.lons.append(lon)
+                request.yaws_deg.append(math.degrees(point.yaw_rad))
+            future = self.ordered_goal_client.call_async(request)
+            future.add_done_callback(self._ordered_goal_response)
+        else:
+            self.goal_pub.publish(message)
         self.goal_sent_s = self.get_clock().now().nanoseconds / 1e9
+
+    def _ordered_goal_response(self, future):
+        """Retain rejected route submissions as failures instead of silent timeouts."""
+        try:
+            response = future.result()
+            if not response.ok:
+                self.get_logger().error("ordered goals rejected: " + response.error)
+                self.terminal_status = GoalStatus.STATUS_ABORTED
+        except Exception as exc:
+            self.get_logger().error("ordered goal service failed: " + str(exc))
+            self.terminal_status = GoalStatus.STATUS_ABORTED
 
     def _tick(self):
         if self._finished:
@@ -592,6 +686,11 @@ class EvaluationRunner(Node):
         if self.goal is None or self.goal_sent_s is None:
             return
         now = self.get_clock().now().nanoseconds / 1e9
+        if (self.path_health_samples and
+                self.path_health_samples[-1]["stamp_s"] >= self.goal_sent_s and
+                "maneuver:NEEDS_OPERATOR:" in self.path_health_samples[-1]["reason"]):
+            self._finish("maneuver_needs_operator")
+            return
         if self.last_marker_s is None or now - self.last_marker_s >= 0.5:
             self._publish_markers()
             self.last_marker_s = now
@@ -661,6 +760,31 @@ class EvaluationRunner(Node):
                 localization = localization_metrics(raw_poses, global_poses)
         except ValueError as exc:
             errors.append(str(exc))
+        try:
+            reference_observation = reference_tracking_observation(
+                self.raw_subscription.topic_name, raw_poses, plan, self.goal,
+                self.tolerance, self.success_s,
+            )
+        except ValueError as exc:
+            errors.append("reference tracking: " + str(exc))
+            reference_observation = {"topic": self.raw_subscription.topic_name,
+                                     "error": str(exc)}
+        plan_groups = {}
+        for row in self.plan_samples:
+            plan_groups.setdefault(row["plan_index"], []).append(row)
+        plan_observations = [
+            (rows[0]["receive_stamp_s"], tuple(
+                Pose2D(row["x_m"], row["y_m"], row["yaw_rad"])
+                for row in sorted(rows, key=lambda item: item["pose_index"])))
+            for rows in plan_groups.values()
+        ]
+        reference_observation["causal_published_plan_tracking"] = causal_tracking_metrics(
+            raw_poses, plan_observations
+        )
+        gnss_heading_debug = [r for r in self.gnss_heading_debug
+                              if r["stamp_s"] >= self.goal_sent_s]
+        gnss_map_debug = [r for r in self.gnss_map_debug
+                          if r["stamp_s"] >= self.goal_sent_s]
         gates = functional_gates(
             finite_data=finite and not errors, plan_present=bool(plan),
             terminal_success=self.terminal_status == GoalStatus.STATUS_SUCCEEDED,
@@ -696,25 +820,32 @@ class EvaluationRunner(Node):
                        metrics.cross_track_p95_m if metrics else float("inf"),
                    )],
                    "errors": errors, "replans": max(0, len(self.plans) - 1),
+                   "reference_observation": reference_observation,
                    "command_chain": command_chain["summary"],
                    "controller_json_errors": controller_json_errors}
         manifest = {
             "schema_version": 2, "goal_stamp_s": self.goal_sent_s,
+            "trial_start_sim_s": self.trial_start_sim_s, "initial_state": self.initial_state,
+            "ground_truth_topic": self.raw_subscription.topic_name,
             "mode": self.mode, "scenario": self.scenario_path,
             "streams": [
                 "odometry_global", "odometry_raw", "odometry_local", "commands",
                 "commands_safe", "commands_final", "vehicle_commands",
                 "drive_telemetry", "controller_status", "controller_telemetry",
                 "command_chain_alignment", "plans", "path_health",
+                "gnss_heading_debug", "gnss_map_debug", "imu_data",
             ],
             "topics": [
                 "/plan", "/cmd_vel", "/cmd_vel_safe", "/cmd_vel_final",
                 "/vehicle/command_shadow", "/controller/drive_telemetry",
-                "/controller/status", "/controller/telemetry", "/odom_raw",
+                "/controller/status", "/controller/telemetry", self.raw_subscription.topic_name,
                 "/odometry/local", "/odometry/global", "/path_health",
+                "/gps/course_heading/debug", "/gps/odometry_map/debug", "/imu/data",
             ],
         }
         streams = {"plans": self.plan_samples, "path_health": self.path_health_samples,
+                   "imu_data": [r for r in self.imu_samples if r["stamp_s"] >= self.goal_sent_s],
+                   "gnss_heading_debug": gnss_heading_debug, "gnss_map_debug": gnss_map_debug,
                    "odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands,
                    "commands_safe": safe_commands, "commands_final": final_commands,

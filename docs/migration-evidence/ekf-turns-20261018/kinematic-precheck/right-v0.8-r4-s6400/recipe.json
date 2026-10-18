@@ -1,0 +1,40 @@
+{
+  "id": "right-v0.8-r4-s6400",
+  "kind": "right",
+  "speed": 0.8,
+  "radius": 4,
+  "seed": 6400,
+  "profile": "clean",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      0.8,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      0.8,
+      -0.2
+    ],
+    [
+      "curve",
+      6.853981633974483,
+      0.8,
+      -0.2
+    ],
+    [
+      "straight_after",
+      8.0,
+      0.8,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

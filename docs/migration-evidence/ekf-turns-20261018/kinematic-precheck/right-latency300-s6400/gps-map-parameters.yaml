@@ -1,0 +1,20 @@
+map_gps_absolute_measurement:
+  ros__parameters:
+    base_frame: base_footprint
+    covariance_xy: 0.05
+    datum_lat: -31.4858037
+    datum_lon: -64.241057
+    datum_yaw_deg: 0.0
+    debug_topic: /gps/odometry_map/debug
+    future_tolerance_s: 0.05
+    gps_topic: /gps/fix
+    map_frame: map
+    map_odom_topic: /odometry/global
+    max_fix_age_s: 0.5
+    max_heading_gap_s: 0.2
+    max_odom_age_s: 0.5
+    mount_variance_m2: 0.0
+    orientation_topic: /localization/orientation
+    output_topic: /gps/odometry_map
+    use_sim_time: true
+  uninitialized_parameters: []

@@ -35,6 +35,9 @@ class Probe(Node):
         if scenario in ("left", "gentle", "oscillations"):
             rate = {"left": 0.35, "gentle": -0.10, "oscillations": 0.0}[scenario]
             self.sequence[1] = ("strong_turn", 4.5, 1.2, rate)
+        recipe_path = os.environ.get('HEADING_RECIPE', '')
+        if recipe_path:
+            self.sequence = json.loads(Path(recipe_path).read_text())['sequence']
         super().__init__('heading_baseline_probe', parameter_overrides=[Parameter('use_sim_time', value=True)])
         self.directory = directory
         self.stream = (directory / 'samples.jsonl').open('w')
@@ -43,7 +46,7 @@ class Probe(Node):
         self.counts = {}
         self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.subs = []
-        for topic in ['/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry', '/odometry/local_global', '/gps/odometry_map',
+        for topic in ['/simulation/ground_truth', '/odom_raw', '/odometry/local', '/odometry/global', '/wheel/odometry', '/odometry/local_global', '/gps/odometry_map',
                       '/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps',
                       '/diagnostic/gps_base_position', '/diagnostic/global_delayed_gps_reference',
                       '/diagnostic/gps_ant_position_delayed']:
@@ -103,13 +106,15 @@ class Probe(Node):
         if self.start is None:
             required = ['/odom_raw', '/odometry/local', '/odometry/global',
                         '/gps/fix', '/imu/data', '/controller/drive_telemetry']
+            if os.environ.get('HEADING_PHYSICAL_TRUTH') == 'true':
+                required += ['/simulation/ground_truth']
             if os.environ.get('HEADING_SHADOWS') == 'true':
                 required += ['/diagnostic/global_no_gps_position', '/diagnostic/global_compensated_gps', '/diagnostic/global_delayed_gps_reference']
             if self.pub.get_subscription_count() < 1 or not all(self.counts.get(t,0)>2 for t in required):
                 return
             self.start = self.now()
             self.directory.joinpath('sequence.json').write_text(json.dumps(
-                dict(start_sim_s=self.start, sequence=self.sequence, scenario=self.scenario), indent=2))
+                dict(start_sim_s=self.start, sequence=self.sequence, scenario=self.scenario, truth_topic='/simulation/ground_truth' if os.environ.get('HEADING_PHYSICAL_TRUTH')=='true' else '/odom_raw'), indent=2))
         elapsed = self.now()-self.start
         boundary = 0
         command = Twist()
@@ -139,10 +144,12 @@ def main():
     try:
         while not node.done and time.monotonic()<deadline:
             rclpy.spin_once(node, timeout_sec=0.05)
-        assert node.done, f'capture timeout; counts={node.counts}'
-        assert node.counts.get('/gps/course_heading',0)>0, 'no GPS heading measurements'
+        failures=[]
+        if not node.done: failures.append('capture timeout')
+        if node.counts.get('/gps/course_heading',0)==0: failures.append('no GPS heading measurements')
         args.output.joinpath('capture.json').write_text(json.dumps(
-            dict(success=True, counts=node.counts, scope='simulation, open-loop'), indent=2))
+            dict(success=not failures, failures=failures, counts=node.counts, scope='simulation, open-loop'), indent=2))
+        if failures: raise RuntimeError('; '.join(failures))
     finally:
         node.pub.publish(Twist())
         node.stream.close()

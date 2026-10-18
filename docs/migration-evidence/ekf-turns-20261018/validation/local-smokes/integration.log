@@ -1,0 +1,7 @@
+ Container salus_robot-issue-328-ros2-run-af6c528d1738 Creating 
+ Container salus_robot-issue-328-ros2-run-af6c528d1738 Created 
+[smoke:integration-structure] launch_started:integration
+Smoke assertion integration_probe passed; log: /ros2_ws/artifacts/smokes/integration-structure-20261018T155729-1/integration_probe.log
+[smoke:integration-structure] passed:integration_probe
+[smoke:integration-structure] structural_contracts_valid
+Integrated structural simulation smoke test passed

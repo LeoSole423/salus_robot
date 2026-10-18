@@ -1,0 +1,40 @@
+{
+  "id": "half-v1.2-r8-s6400",
+  "kind": "half",
+  "speed": 1.2,
+  "radius": 8,
+  "seed": 6400,
+  "profile": "clean",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.2,
+      -0.15
+    ],
+    [
+      "curve",
+      19.943951023931955,
+      1.2,
+      -0.15
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

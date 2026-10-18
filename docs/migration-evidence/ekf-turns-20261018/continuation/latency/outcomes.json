@@ -1,0 +1,18 @@
+[
+  {
+    "id": "verified300",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 3, \"completed_curves\": 3}\n",
+    "analysis_stderr": ""
+  },
+  {
+    "id": "verified300-lagged",
+    "outcome": "executed",
+    "returncode": 1,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 4, \"functional_pass\": 3, \"completed_curves\": 4}\n",
+    "analysis_stderr": ""
+  }
+]

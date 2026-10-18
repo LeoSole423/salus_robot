@@ -63,14 +63,14 @@ def test_translate_command_state_to_gazebo_twist_inverts_actuation_sign() -> Non
         max_reverse_mps=1.3,
     )
 
-    linear_x, steering_angle = translate_command_state_to_gazebo_twist(
+    linear_x, yaw_rate = translate_command_state_to_gazebo_twist(
         command_state=command_state,
         max_steering_angle_rad=0.5235987756,
         invert_actuation_steer_sign=True,
     )
 
     assert math.isclose(linear_x, 0.8, rel_tol=0.0, abs_tol=1.0e-9)
-    assert math.isclose(steering_angle, 0.2617993878, rel_tol=0.0, abs_tol=1.0e-9)
+    assert yaw_rate == pytest.approx(.8 * math.tan(math.radians(15)) / .94)
 
 
 def test_select_physical_steering_angle_prefers_joint_state_over_odom() -> None:
@@ -284,7 +284,7 @@ def test_sim_gazebo_backend_publishes_actuation_and_telemetry() -> None:
     assert len(fake_node.publishers) == 1
     published = fake_node.publishers[0].messages[-1]
     assert published.linear.x == pytest.approx(0.8)
-    assert published.angular.z == pytest.approx(0.2617993878)
+    assert published.angular.z == pytest.approx(.8 * math.tan(math.radians(15)) / .94)
 
     telemetry = backend.get_latest_telemetry()
     assert telemetry is not None
@@ -392,3 +392,16 @@ def test_sim_gazebo_backend_fresh_battery_refreshes_rx_timestamp() -> None:
     assert first.sample_age_s == pytest.approx(0.0)
     assert second.sample_age_s == pytest.approx(0.0)
     assert second.rx_monotonic_s >= first.rx_monotonic_s
+
+
+@pytest.mark.parametrize('speed', [1.2, 1.6, 1.8, -1.2])
+@pytest.mark.parametrize('steer_pct', [-100, -50, 50, 100])
+def test_fortress_command_uses_yaw_rate_and_preserves_ackermann_radius(speed, steer_pct):
+    command = CommandState(drive_enabled=True, estop=False, steer_pct=steer_pct,
+                           speed_mps=speed, brake_pct=0,
+                           max_speed_mps=4.0, max_reverse_mps=1.3)
+    v, rate = translate_command_state_to_gazebo_twist(
+        command_state=command, max_steering_angle_rad=math.radians(30),
+        invert_actuation_steer_sign=False)
+    expected_radius = .94 / math.tan(math.radians(30) * steer_pct / 100)
+    assert v / rate == pytest.approx(expected_radius)

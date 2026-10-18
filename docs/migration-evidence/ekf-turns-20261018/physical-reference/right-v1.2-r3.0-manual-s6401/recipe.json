@@ -1,0 +1,41 @@
+{
+  "id": "right-v1.2-r3.0-manual-s6401",
+  "kind": "right",
+  "speed": 1.2,
+  "radius": 3.0,
+  "profile": "clean",
+  "seed": 6401,
+  "manual_envelope": true,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.2,
+      -0.39999999999999997
+    ],
+    [
+      "curve",
+      2.9269908169872414,
+      1.2,
+      -0.39999999999999997
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

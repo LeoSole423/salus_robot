@@ -1,0 +1,31 @@
+{
+  "start_sim_s": 1.0410000000000001,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "cruise",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "scenario": "right",
+  "truth_topic": "/simulation/ground_truth"
+}

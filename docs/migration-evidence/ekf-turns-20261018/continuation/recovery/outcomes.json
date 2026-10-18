@@ -1,0 +1,10 @@
+[
+  {
+    "id": "coherent24-long-exit",
+    "outcome": "executed",
+    "returncode": 0,
+    "analysis_returncode": 0,
+    "analysis_stdout": "{\"attempts\": 2, \"functional_pass\": 2, \"completed_curves\": 2}\n",
+    "analysis_stderr": ""
+  }
+]

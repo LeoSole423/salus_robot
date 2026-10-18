@@ -1,0 +1,2 @@
+sim_imu_from_odom:
+  ros__parameters: {}

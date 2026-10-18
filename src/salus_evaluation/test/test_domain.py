@@ -265,7 +265,10 @@ def test_all_shipped_scenarios_are_strictly_valid():
     scenarios = [load_scenario(path) for path in root.glob("*.yaml")]
     assert {item.scenario_id for item in scenarios} == {
         "straight_5m", "right_quarter", "left_quarter", "arrival_short",
-        "left_gentle", "right_gentle", "left_tight_valid", "right_tight_valid"}
+        "left_gentle", "right_gentle", "left_tight_valid", "right_tight_valid",
+        "issue328_left_r3", "issue328_right_r3",
+        "issue328_route_left", "issue328_route_right",
+        "issue328_route_left_sparse", "issue328_route_right_sparse"}
 
 
 def test_schema_rejects_unknown_fields(tmp_path):
@@ -277,3 +280,27 @@ def test_schema_rejects_unknown_fields(tmp_path):
     )
     with pytest.raises(ValueError, match="unknown"):
         load_scenario(path)
+
+
+def test_tracking_never_compares_earlier_motion_with_a_future_replan():
+    from salus_evaluation.metrics import causal_tracking_metrics
+
+    old_path = (Pose2D(0, 0, 0), Pose2D(10, 0, 0))
+    new_path = (Pose2D(0, 10, 0), Pose2D(10, 10, 0))
+    poses = (TimedPose(.1, Pose2D(0, 0, 0)), TimedPose(1., Pose2D(1, 0, 0)),
+             TimedPose(2., Pose2D(2, 1, 0)), TimedPose(4., Pose2D(4, 10, 0)))
+    result = causal_tracking_metrics(poses, ((.5, old_path), (3., new_path)))
+    assert result["paired_samples"] == 3
+    assert result["unpaired_samples"] == 1
+    assert result["cross_track_rms_m"] == pytest.approx(math.sqrt(1/3))
+    assert result["cross_track_max_m"] == pytest.approx(1.)
+    assert causal_tracking_metrics(poses, ())["cross_track_rms_m"] is None
+
+
+def test_map_point_to_ll_rotated_datum_and_invalid_input():
+    from salus_evaluation.metrics import map_point_to_ll
+    lat, lon = map_point_to_ll(Pose2D(10., 0., 0.), -31., -64., 90.)
+    assert lat == pytest.approx(-31.+10./111320.)
+    assert lon == pytest.approx(-64.)
+    with pytest.raises(ValueError):
+        map_point_to_ll(Pose2D(0., 0., 0.), 90., 0., 0.)

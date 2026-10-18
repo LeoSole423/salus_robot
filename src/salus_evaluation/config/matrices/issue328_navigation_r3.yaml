@@ -1,0 +1,8 @@
+schema_version: 1
+id: issue328_navigation_r3_experiment
+repetitions: 1
+max_speed_mps: 1.8
+speeds_mps: [1.2, 1.6, 1.8]
+cases:
+  - {id: left_r3, scenario: scenarios/issue328_left_r3.yaml, direction: left, requested_radius_m: 3.0}
+  - {id: right_r3, scenario: scenarios/issue328_right_r3.yaml, direction: right, requested_radius_m: 3.0}

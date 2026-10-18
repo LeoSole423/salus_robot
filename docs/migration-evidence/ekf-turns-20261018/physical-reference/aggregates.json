@@ -1,0 +1,794 @@
+{
+  "half/v1.6/R8.0/clean/baseline/auto18": {
+    "attempts": 1,
+    "successful": 1,
+    "heading_rms_deg": {
+      "median": 1.1187138115150677,
+      "minimum": 1.1187138115150677,
+      "maximum": 1.1187138115150677,
+      "range": 0.0
+    },
+    "heading_max_deg": {
+      "median": 3.1369492937614045,
+      "minimum": 3.1369492937614045,
+      "maximum": 3.1369492937614045,
+      "range": 0.0
+    },
+    "position_rms_m": {
+      "median": 0.08371981859330381,
+      "minimum": 0.08371981859330381,
+      "maximum": 0.08371981859330381,
+      "range": 0.0
+    }
+  },
+  "left/v1.2/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.242285995292906,
+      "minimum": 2.204920667813314,
+      "maximum": 2.2796513227724984,
+      "range": 0.0747306549591844
+    },
+    "heading_max_deg": {
+      "median": 6.275581178714807,
+      "minimum": 6.265575496746996,
+      "maximum": 6.285586860682618,
+      "range": 0.020011363935622306
+    },
+    "position_rms_m": {
+      "median": 0.07214803015782598,
+      "minimum": 0.056767092917556376,
+      "maximum": 0.08752896739809558,
+      "range": 0.030761874480539207
+    }
+  },
+  "left/v1.2/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.6232226021280258,
+      "minimum": 1.5669315860536972,
+      "maximum": 1.6795136182023542,
+      "range": 0.11258203214865703
+    },
+    "heading_max_deg": {
+      "median": 4.283441007570731,
+      "minimum": 4.090463192601356,
+      "maximum": 4.476418822540107,
+      "range": 0.385955629938751
+    },
+    "position_rms_m": {
+      "median": 0.06686219914329428,
+      "minimum": 0.050338850191970694,
+      "maximum": 0.08338554809461785,
+      "range": 0.03304669790264715
+    }
+  },
+  "left/v1.2/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.2945556307718378,
+      "minimum": 1.2578225314077174,
+      "maximum": 1.331288730135958,
+      "range": 0.07346619872824056
+    },
+    "heading_max_deg": {
+      "median": 3.504591985263416,
+      "minimum": 3.347334680428455,
+      "maximum": 3.661849290098377,
+      "range": 0.31451460966992206
+    },
+    "position_rms_m": {
+      "median": 0.08730972410224011,
+      "minimum": 0.08417500289608112,
+      "maximum": 0.09044444530839908,
+      "range": 0.006269442412317958
+    }
+  },
+  "left/v1.2/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.0853673058559092,
+      "minimum": 1.0218837633202844,
+      "maximum": 1.1488508483915338,
+      "range": 0.12696708507124943
+    },
+    "heading_max_deg": {
+      "median": 3.1888314640869737,
+      "minimum": 2.7599588909779995,
+      "maximum": 3.6177040371959475,
+      "range": 0.857745146217948
+    },
+    "position_rms_m": {
+      "median": 0.08086637897513668,
+      "minimum": 0.07538492590554717,
+      "maximum": 0.08634783204472621,
+      "range": 0.010962906139179038
+    }
+  },
+  "left/v1.6/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.4752677896264013,
+      "minimum": 2.470966179272501,
+      "maximum": 2.4795693999803015,
+      "range": 0.008603220707800396
+    },
+    "heading_max_deg": {
+      "median": 7.977202020118877,
+      "minimum": 7.899387252467862,
+      "maximum": 8.055016787769892,
+      "range": 0.1556295353020305
+    },
+    "position_rms_m": {
+      "median": 0.08783428818968034,
+      "minimum": 0.0786612669903143,
+      "maximum": 0.09700730938904639,
+      "range": 0.018346042398732096
+    }
+  },
+  "left/v1.6/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.047300008259965,
+      "minimum": 2.010498874726588,
+      "maximum": 2.0841011417933415,
+      "range": 0.07360226706675332
+    },
+    "heading_max_deg": {
+      "median": 5.48006042607604,
+      "minimum": 5.453679148661285,
+      "maximum": 5.506441703490796,
+      "range": 0.052762554829510755
+    },
+    "position_rms_m": {
+      "median": 0.09077652663965408,
+      "minimum": 0.08928910436810956,
+      "maximum": 0.0922639489111986,
+      "range": 0.0029748445430890363
+    }
+  },
+  "left/v1.6/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.506754448391977,
+      "minimum": 1.485350373330852,
+      "maximum": 1.528158523453102,
+      "range": 0.042808150122250144
+    },
+    "heading_max_deg": {
+      "median": 4.402088808896298,
+      "minimum": 4.31919337774139,
+      "maximum": 4.484984240051208,
+      "range": 0.16579086230981854
+    },
+    "position_rms_m": {
+      "median": 0.07246036400605119,
+      "minimum": 0.06555986005349178,
+      "maximum": 0.07936086795861058,
+      "range": 0.013801007905118803
+    }
+  },
+  "left/v1.6/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.2155907553778031,
+      "minimum": 1.1671377964118803,
+      "maximum": 1.264043714343726,
+      "range": 0.09690591793184566
+    },
+    "heading_max_deg": {
+      "median": 3.163485847991769,
+      "minimum": 2.954710789823193,
+      "maximum": 3.3722609061603452,
+      "range": 0.4175501163371522
+    },
+    "position_rms_m": {
+      "median": 0.09649234417106081,
+      "minimum": 0.09295205557254056,
+      "maximum": 0.10003263276958105,
+      "range": 0.007080577197040486
+    }
+  },
+  "left/v1.8/R1.65/nominal/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.9216579070421567,
+      "minimum": 2.825831901111987,
+      "maximum": 3.0174839129723265,
+      "range": 0.19165201186033975
+    },
+    "heading_max_deg": {
+      "median": 8.100796056904604,
+      "minimum": 7.129222010922169,
+      "maximum": 9.07237010288704,
+      "range": 1.9431480919648711
+    },
+    "position_rms_m": {
+      "median": 0.06857385346126355,
+      "minimum": 0.0667610776187864,
+      "maximum": 0.07038662930374069,
+      "range": 0.0036255516849542924
+    }
+  },
+  "left/v1.8/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.954080362072162,
+      "minimum": 2.9397167089886738,
+      "maximum": 2.96844401515565,
+      "range": 0.028727306166976163
+    },
+    "heading_max_deg": {
+      "median": 8.374465341140333,
+      "minimum": 8.307711019379003,
+      "maximum": 8.441219662901661,
+      "range": 0.13350864352265823
+    },
+    "position_rms_m": {
+      "median": 0.07577993674733369,
+      "minimum": 0.06873006244834877,
+      "maximum": 0.08282981104631862,
+      "range": 0.01409974859796985
+    }
+  },
+  "left/v1.8/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.2711829903095015,
+      "minimum": 2.210291044066456,
+      "maximum": 2.3320749365525466,
+      "range": 0.12178389248609056
+    },
+    "heading_max_deg": {
+      "median": 5.8868525528093,
+      "minimum": 5.852855793069792,
+      "maximum": 5.920849312548809,
+      "range": 0.06799351947901666
+    },
+    "position_rms_m": {
+      "median": 0.07586117795116318,
+      "minimum": 0.06420707522785331,
+      "maximum": 0.08751528067447305,
+      "range": 0.02330820544661974
+    }
+  },
+  "left/v1.8/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.502443512376873,
+      "minimum": 1.3931104593738142,
+      "maximum": 1.6117765653799314,
+      "range": 0.21866610600611724
+    },
+    "heading_max_deg": {
+      "median": 4.2877097044703945,
+      "minimum": 4.268794105451714,
+      "maximum": 4.306625303489074,
+      "range": 0.03783119803736046
+    },
+    "position_rms_m": {
+      "median": 0.0834599681090745,
+      "minimum": 0.06374502461536923,
+      "maximum": 0.10317491160277978,
+      "range": 0.03942988698741055
+    }
+  },
+  "left/v1.8/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.2644407692194766,
+      "minimum": 1.2296301826372094,
+      "maximum": 1.2992513558017438,
+      "range": 0.06962117316453442
+    },
+    "heading_max_deg": {
+      "median": 3.662686020639973,
+      "minimum": 3.366771870969251,
+      "maximum": 3.958600170310695,
+      "range": 0.5918282993414441
+    },
+    "position_rms_m": {
+      "median": 0.09716858350266125,
+      "minimum": 0.0884992697637823,
+      "maximum": 0.1058378972415402,
+      "range": 0.017338627477757898
+    }
+  },
+  "oscillations/v1.6/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 0.37123465312233117,
+      "minimum": 0.3277399211479908,
+      "maximum": 0.41472938509667157,
+      "range": 0.08698946394868079
+    },
+    "heading_max_deg": {
+      "median": 1.2417732892068087,
+      "minimum": 0.957850025913531,
+      "maximum": 1.5256965525000865,
+      "range": 0.5678465265865555
+    },
+    "position_rms_m": {
+      "median": 0.0707801943607657,
+      "minimum": 0.0511923681443345,
+      "maximum": 0.09036802057719691,
+      "range": 0.03917565243286241
+    }
+  },
+  "right/v1.2/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.289214765904287,
+      "minimum": 2.274905107755945,
+      "maximum": 2.3035244240526294,
+      "range": 0.02861931629668435
+    },
+    "heading_max_deg": {
+      "median": 6.055999800250927,
+      "minimum": 5.977513761888183,
+      "maximum": 6.134485838613672,
+      "range": 0.15697207672548874
+    },
+    "position_rms_m": {
+      "median": 0.08055996652452398,
+      "minimum": 0.07559465651288794,
+      "maximum": 0.08552527653616002,
+      "range": 0.00993062002327208
+    }
+  },
+  "right/v1.2/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.6388605758756711,
+      "minimum": 1.5860571491040474,
+      "maximum": 1.6916640026472949,
+      "range": 0.1056068535432475
+    },
+    "heading_max_deg": {
+      "median": 4.839028132121457,
+      "minimum": 4.689701757779966,
+      "maximum": 4.988354506462947,
+      "range": 0.2986527486829811
+    },
+    "position_rms_m": {
+      "median": 0.08537228316078013,
+      "minimum": 0.08521138347411633,
+      "maximum": 0.08553318284744392,
+      "range": 0.0003217993733275887
+    }
+  },
+  "right/v1.2/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.2484756842636897,
+      "minimum": 1.194415290806879,
+      "maximum": 1.3025360777205006,
+      "range": 0.10812078691362159
+    },
+    "heading_max_deg": {
+      "median": 3.4021000745737604,
+      "minimum": 3.391611428995278,
+      "maximum": 3.4125887201522422,
+      "range": 0.020977291156964117
+    },
+    "position_rms_m": {
+      "median": 0.07379926654963628,
+      "minimum": 0.07374325411314965,
+      "maximum": 0.0738552789861229,
+      "range": 0.00011202487297325148
+    }
+  },
+  "right/v1.2/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.0839830070460637,
+      "minimum": 1.0776585160321828,
+      "maximum": 1.0903074980599445,
+      "range": 0.012648982027761768
+    },
+    "heading_max_deg": {
+      "median": 3.339589285342985,
+      "minimum": 3.121576760415913,
+      "maximum": 3.5576018102700573,
+      "range": 0.43602504985414425
+    },
+    "position_rms_m": {
+      "median": 0.07604852559981937,
+      "minimum": 0.06449096494573461,
+      "maximum": 0.08760608625390413,
+      "range": 0.02311512130816952
+    }
+  },
+  "right/v1.6/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.322507329421656,
+      "minimum": 2.2869562089595474,
+      "maximum": 2.358058449883765,
+      "range": 0.07110224092421769
+    },
+    "heading_max_deg": {
+      "median": 7.653361708249648,
+      "minimum": 7.337384219706498,
+      "maximum": 7.969339196792797,
+      "range": 0.6319549770862993
+    },
+    "position_rms_m": {
+      "median": 0.0692265015815867,
+      "minimum": 0.0617505342112237,
+      "maximum": 0.07670246895194971,
+      "range": 0.014951934740726008
+    }
+  },
+  "right/v1.6/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.9343083907890515,
+      "minimum": 1.809650391625812,
+      "maximum": 2.058966389952291,
+      "range": 0.24931599832647922
+    },
+    "heading_max_deg": {
+      "median": 5.59475386072817,
+      "minimum": 5.513611378818116,
+      "maximum": 5.675896342638226,
+      "range": 0.16228496382011048
+    },
+    "position_rms_m": {
+      "median": 0.07560524501218432,
+      "minimum": 0.063270973525014,
+      "maximum": 0.08793951649935464,
+      "range": 0.024668542974340638
+    }
+  },
+  "right/v1.6/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.4735988803172635,
+      "minimum": 1.465113715602067,
+      "maximum": 1.48208404503246,
+      "range": 0.016970329430392894
+    },
+    "heading_max_deg": {
+      "median": 4.237669670591022,
+      "minimum": 4.119298337391213,
+      "maximum": 4.356041003790831,
+      "range": 0.23674266639961772
+    },
+    "position_rms_m": {
+      "median": 0.07307823864491986,
+      "minimum": 0.06411210498934368,
+      "maximum": 0.08204437230049604,
+      "range": 0.017932267311152356
+    }
+  },
+  "right/v1.6/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.1285216745339608,
+      "minimum": 1.123640836816127,
+      "maximum": 1.1334025122517946,
+      "range": 0.009761675435667527
+    },
+    "heading_max_deg": {
+      "median": 3.334038405333352,
+      "minimum": 3.117499872500758,
+      "maximum": 3.5505769381659458,
+      "range": 0.4330770656651879
+    },
+    "position_rms_m": {
+      "median": 0.09995612975985717,
+      "minimum": 0.09928434485192836,
+      "maximum": 0.10062791466778598,
+      "range": 0.0013435698158576204
+    }
+  },
+  "right/v1.6/R4.0/gyro/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.0800266472467943,
+      "minimum": 1.0551924065754767,
+      "maximum": 1.1048608879181119,
+      "range": 0.04966848134263513
+    },
+    "heading_max_deg": {
+      "median": 3.04588342805548,
+      "minimum": 2.9428979542882403,
+      "maximum": 3.148868901822719,
+      "range": 0.20597094753447864
+    },
+    "position_rms_m": {
+      "median": 0.06319644230403389,
+      "minimum": 0.06248793245517783,
+      "maximum": 0.06390495215288995,
+      "range": 0.0014170196977121227
+    }
+  },
+  "right/v1.6/R4.0/latency100/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.1813260399432224,
+      "minimum": 1.1711884225649496,
+      "maximum": 1.1914636573214954,
+      "range": 0.0202752347565458
+    },
+    "heading_max_deg": {
+      "median": 3.524560086548336,
+      "minimum": 3.3142124224655753,
+      "maximum": 3.734907750631097,
+      "range": 0.4206953281655217
+    },
+    "position_rms_m": {
+      "median": 0.11379740600629015,
+      "minimum": 0.10133794021506305,
+      "maximum": 0.12625687179751724,
+      "range": 0.024918931582454187
+    }
+  },
+  "right/v1.6/R4.0/latency300/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.5887144511247593,
+      "minimum": 1.5756922745887005,
+      "maximum": 1.6017366276608183,
+      "range": 0.02604435307211772
+    },
+    "heading_max_deg": {
+      "median": 4.671979087337554,
+      "minimum": 4.639628347906172,
+      "maximum": 4.704329826768937,
+      "range": 0.0647014788627649
+    },
+    "position_rms_m": {
+      "median": 0.3620965960056473,
+      "minimum": 0.3592998689313721,
+      "maximum": 0.3648933230799225,
+      "range": 0.005593454148550392
+    }
+  },
+  "right/v1.6/R4.0/nominal/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.1784758904032482,
+      "minimum": 1.0950571190850031,
+      "maximum": 1.2618946617214934,
+      "range": 0.1668375426364903
+    },
+    "heading_max_deg": {
+      "median": 3.871866744844719,
+      "minimum": 3.5952346741915555,
+      "maximum": 4.148498815497883,
+      "range": 0.5532641413063271
+    },
+    "position_rms_m": {
+      "median": 0.07445724650803509,
+      "minimum": 0.07264246965177869,
+      "maximum": 0.07627202336429148,
+      "range": 0.0036295537125127925
+    }
+  },
+  "right/v1.6/R4.0/outage/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.6118555584074785,
+      "minimum": 1.606513846199428,
+      "maximum": 1.617197270615529,
+      "range": 0.01068342441610115
+    },
+    "heading_max_deg": {
+      "median": 4.161568312298611,
+      "minimum": 3.9075766808264722,
+      "maximum": 4.4155599437707505,
+      "range": 0.5079832629442782
+    },
+    "position_rms_m": {
+      "median": 0.1191685801286207,
+      "minimum": 0.11062428958778318,
+      "maximum": 0.12771287066945822,
+      "range": 0.017088581081675033
+    }
+  },
+  "right/v1.6/R4.0/wheel/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.1979577769295324,
+      "minimum": 1.1903439125371016,
+      "maximum": 1.2055716413219635,
+      "range": 0.015227728784861894
+    },
+    "heading_max_deg": {
+      "median": 3.5922920366019326,
+      "minimum": 3.150242597137875,
+      "maximum": 4.03434147606599,
+      "range": 0.8840988789281146
+    },
+    "position_rms_m": {
+      "median": 0.06927779633993228,
+      "minimum": 0.06368182770567805,
+      "maximum": 0.07487376497418649,
+      "range": 0.011191937268508437
+    }
+  },
+  "right/v1.8/R1.65/nominal/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.799177654380421,
+      "minimum": 2.722679669288185,
+      "maximum": 2.8756756394726573,
+      "range": 0.15299597018447209
+    },
+    "heading_max_deg": {
+      "median": 7.639823313927167,
+      "minimum": 7.404937577626607,
+      "maximum": 7.874709050227727,
+      "range": 0.46977147260111973
+    },
+    "position_rms_m": {
+      "median": 0.08851865444966411,
+      "minimum": 0.087885198693201,
+      "maximum": 0.08915211020612723,
+      "range": 0.0012669115129262387
+    }
+  },
+  "right/v1.8/R1.65/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.889024167310574,
+      "minimum": 2.7603471762252845,
+      "maximum": 3.0177011583958633,
+      "range": 0.2573539821705788
+    },
+    "heading_max_deg": {
+      "median": 7.963530420800604,
+      "minimum": 7.607612387209016,
+      "maximum": 8.319448454392193,
+      "range": 0.7118360671831772
+    },
+    "position_rms_m": {
+      "median": 0.06246205552276782,
+      "minimum": 0.04564630848654821,
+      "maximum": 0.07927780255898743,
+      "range": 0.033631494072439226
+    }
+  },
+  "right/v1.8/R2.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 1,
+    "heading_rms_deg": {
+      "median": 2.220990937936579,
+      "minimum": 2.220990937936579,
+      "maximum": 2.220990937936579,
+      "range": 0.0
+    },
+    "heading_max_deg": {
+      "median": 6.151208745676254,
+      "minimum": 6.151208745676254,
+      "maximum": 6.151208745676254,
+      "range": 0.0
+    },
+    "position_rms_m": {
+      "median": 0.0791106241866638,
+      "minimum": 0.0791106241866638,
+      "maximum": 0.0791106241866638,
+      "range": 0.0
+    }
+  },
+  "right/v1.8/R3.0/clean/baseline/manual30": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.5211536522523692,
+      "minimum": 1.3449437152736092,
+      "maximum": 1.6973635892311292,
+      "range": 0.35241987395751995
+    },
+    "heading_max_deg": {
+      "median": 4.245941165194184,
+      "minimum": 4.126828031384593,
+      "maximum": 4.3650542990037735,
+      "range": 0.2382262676191802
+    },
+    "position_rms_m": {
+      "median": 0.07027786579682216,
+      "minimum": 0.046665650422772376,
+      "maximum": 0.09389008117087196,
+      "range": 0.04722443074809958
+    }
+  },
+  "right/v1.8/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.2110534412311296,
+      "minimum": 1.1628650547934998,
+      "maximum": 1.2592418276687594,
+      "range": 0.09637677287525959
+    },
+    "heading_max_deg": {
+      "median": 3.445799405517013,
+      "minimum": 3.1803017864404257,
+      "maximum": 3.7112970245936006,
+      "range": 0.5309952381531748
+    },
+    "position_rms_m": {
+      "median": 0.10485102199719912,
+      "minimum": 0.10303070905839463,
+      "maximum": 0.10667133493600359,
+      "range": 0.0036406258776089523
+    }
+  },
+  "s/v1.6/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 2.018028521140598,
+      "minimum": 1.9900333495811393,
+      "maximum": 2.046023692700057,
+      "range": 0.055990343118917485
+    },
+    "heading_max_deg": {
+      "median": 7.1139371932729105,
+      "minimum": 6.890558048757888,
+      "maximum": 7.337316337787934,
+      "range": 0.4467582890300461
+    },
+    "position_rms_m": {
+      "median": 0.0956740470854611,
+      "minimum": 0.0933376202318861,
+      "maximum": 0.0980104739390361,
+      "range": 0.004672853707149996
+    }
+  },
+  "straight/v1.6/R4.0/clean/baseline/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 0.3673114317279515,
+      "minimum": 0.3311886101902816,
+      "maximum": 0.4034342532656214,
+      "range": 0.07224564307533976
+    },
+    "heading_max_deg": {
+      "median": 1.2487328532384971,
+      "minimum": 0.9990045727208713,
+      "maximum": 1.4984611337561229,
+      "range": 0.4994565610352516
+    },
+    "position_rms_m": {
+      "median": 0.062269454162710694,
+      "minimum": 0.052611878370800454,
+      "maximum": 0.07192702995462093,
+      "range": 0.019315151583820474
+    }
+  }
+}

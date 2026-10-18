@@ -1,0 +1,16 @@
+[smoke-runner] hard timeout: 240s; domain: 82; partition: salus-smoke-20261018T181803-470179-20632; fastdds: UDPv4; command: ./tools/smoke_safety_sim.sh
+ Container salus_robot-issue-328-ros2-run-3947897b986b Creating 
+ Container salus_robot-issue-328-ros2-run-3947897b986b Created 
+[smoke:safety-synthetic-scan] launch_started:motion
+[smoke:safety-synthetic-scan] launch_started:control
+[smoke:safety-synthetic-scan] launch_started:odom_tf
+[smoke:safety-synthetic-scan] launch_started:arbitration
+[smoke:safety-synthetic-scan] ready:node:/salus_controller
+[smoke:safety-synthetic-scan] ready:node:/nav_command_server
+[smoke:safety-synthetic-scan] ready:node:/collision_monitor
+Lifecycle readiness passed; report: /ros2_ws/artifacts/smokes/safety-synthetic-scan-20261018T181804-1/lifecycle_collision_monitor.json
+[smoke:safety-synthetic-scan] ready:lifecycle:/collision_monitor:active
+[smoke:safety-synthetic-scan] ready:topic:/clock
+Smoke assertion safety_probe passed; log: /ros2_ws/artifacts/smokes/safety-synthetic-scan-20261018T181804-1/safety_probe.log
+[smoke:safety-synthetic-scan] passed:safety_probe
+[smoke:safety-synthetic-scan] safety_arbitration_valid

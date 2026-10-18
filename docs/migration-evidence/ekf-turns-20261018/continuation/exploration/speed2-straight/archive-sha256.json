@@ -1,0 +1,5 @@
+{
+  "sha256": "288acbf2e557e897554fe9e5957d262615d858acdbcaada869a404ef03d7a7b1",
+  "files": 40,
+  "excluded": "runtime process/log cache; evaluation bundles and launch logs retained"
+}

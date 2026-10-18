@@ -1,0 +1,40 @@
+{
+  "id": "left-v1.2-r4-s6401",
+  "kind": "left",
+  "speed": 1.2,
+  "radius": 4,
+  "seed": 6401,
+  "profile": "clean",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.2,
+      0.3
+    ],
+    [
+      "curve",
+      4.235987755982989,
+      1.2,
+      0.3
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

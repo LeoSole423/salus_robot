@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "paused_ros_clock": true,
+  "route_mission": {
+    "ok": true,
+    "error": "",
+    "active": true,
+    "paused": false,
+    "loop": false,
+    "low_battery_active": false,
+    "return_home_requested": false,
+    "return_home_active": false,
+    "return_home_exit_waypoint_index": 0,
+    "return_home_phase": "",
+    "home_available": false,
+    "mission_id": "preserved-mission",
+    "chunk_id": 0,
+    "loop_iteration": 0,
+    "reached_checkpoint_count": 0,
+    "input_waypoint_count": 2,
+    "expanded_waypoint_count": 2,
+    "current_start_index": 1,
+    "current_target_index": 1,
+    "active_chunk_size": 0,
+    "leg_spacing_m": 35.0,
+    "chunk_span_m": 60.0,
+    "chunk_max_waypoints": 80,
+    "status": "ACTIVE",
+    "blocked_state": "NEEDS_OPERATOR",
+    "blocked_reason_code": "PLANNER_U_TURN",
+    "blocked_reason_text": "Navegaci\u00f3n bloqueada: el planner propuso un giro en U. Se agot\u00f3 la espera de un camino alternativo. La misi\u00f3n conserva sus puntos pendientes. Cancel\u00e1 y volv\u00e9 a iniciar expl\u00edcitamente despu\u00e9s de revisar el recorrido.",
+    "blocked_retry_attempt": 0,
+    "blocked_retry_max_attempts": 3,
+    "blocked_wait_remaining_s": 0.0,
+    "action_active": false,
+    "action_waypoint_index": 0,
+    "action_type": "",
+    "action_remaining_s": 0.0,
+    "current_checkpoint_index": -1,
+    "current_progress_expanded_index": -1,
+    "current_progress_ratio": 0.0,
+    "cross_track_error_m": 0.0,
+    "distance_to_target_m": Infinity,
+    "home_lat": 0.0,
+    "home_lon": 0.0,
+    "home_yaw_deg": 0.0,
+    "mission_lats": [
+      0.0,
+      0.0
+    ],
+    "mission_lons": [
+      0.0,
+      0.0
+    ],
+    "mission_yaws_deg": [
+      0.0,
+      0.0
+    ],
+    "mission_action_jsons": [
+      "",
+      ""
+    ],
+    "mission_waypoint_roles": [
+      "normal",
+      "normal"
+    ],
+    "mission_key_flags": [
+      true,
+      true
+    ],
+    "mission_input_indices": [
+      0,
+      1
+    ],
+    "active_lats": [],
+    "active_lons": [],
+    "active_yaws_deg": []
+  },
+  "output_samples": 78,
+  "manual_and_cancel_precedence": true
+}

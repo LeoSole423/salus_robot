@@ -1,0 +1,47 @@
+sim_gps_normalizer:
+  ros__parameters:
+    delivery_poll_period_s: 0.01
+    frame_id: gps_link
+    gnss.covariance_m2: 0.0004
+    gnss.degraded_covariance_m2: 1.0
+    gnss.degraded_navsat_status: 0
+    gnss.degraded_rtk_status: RTK_FLOAT
+    gnss.degraded_vertical_noise_m: 1.5
+    gnss.dropout_probability: 0.0
+    gnss.forced_dropout_end_s:
+    - 14.0
+    - 26.0
+    - 38.0
+    - 50.0
+    - 62.0
+    - 74.0
+    - 86.0
+    - 98.0
+    gnss.forced_dropout_start_s:
+    - 10.0
+    - 22.0
+    - 34.0
+    - 46.0
+    - 58.0
+    - 70.0
+    - 82.0
+    - 94.0
+    gnss.jitter_s: 0.0
+    gnss.latency_s: 0.0
+    gnss.navsat_status: 2
+    gnss.noise_stddev_m: 0.02
+    gnss.quality_degraded_duration_s: 0.0
+    gnss.quality_transition_period_s: 0.0
+    gnss.rate_hz: 10.0
+    gnss.rtk_status: RTK_FIXED
+    gnss.vertical_noise_stddev_m: 0.04
+    gps_profile: f9p_rtk
+    input_topic: /gps/fix_raw
+    max_pending: 256
+    output_topic: /gps/fix
+    random_seed: -1
+    rtk_status_topic: /gps/rtk_status
+    sim_sensor_profile: independent_nominal
+    sim_sensor_seed: 6400
+    use_sim_time: true
+  uninitialized_parameters: []

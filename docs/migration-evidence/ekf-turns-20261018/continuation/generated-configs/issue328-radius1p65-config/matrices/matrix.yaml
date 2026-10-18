@@ -1,0 +1,17 @@
+schema_version: 1
+id: issue328-radius1p65-config
+repetitions: 2
+max_speed_mps: 1.2
+speeds_mps:
+- 1.2
+cases:
+- id: quarter_left
+  scenario: scenarios/quarter_left.yaml
+  direction: left
+  requested_radius_m: 1.65
+- id: quarter_right
+  scenario: scenarios/quarter_right.yaml
+  direction: right
+  requested_radius_m: 1.65
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6500

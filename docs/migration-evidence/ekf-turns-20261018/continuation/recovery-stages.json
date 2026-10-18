@@ -1,0 +1,11 @@
+[
+  {
+    "id": "coherent24-long-exit",
+    "matrix": "artifacts/issue328-long-exit-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-coherent24-long-exit",
+    "planner_radius": 2.2,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_analytic20.yaml",
+    "launch_file": "tools/heading_auto24.launch.py",
+    "trial_start_sim_s": 60
+  }
+]

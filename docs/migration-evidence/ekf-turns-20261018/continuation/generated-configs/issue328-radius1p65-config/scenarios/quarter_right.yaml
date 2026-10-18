@@ -1,0 +1,32 @@
+goals:
+- expected_turn: any
+  forward_m: 20.0
+  id: acquire
+  lateral_m: 0.0
+  timeout_s: 120.0
+  yaw_offset_rad: 0.0
+- expected_turn: any
+  forward_m: 28.0
+  id: entry
+  lateral_m: 0.0
+  timeout_s: 120.0
+  yaw_offset_rad: 0.0
+- expected_turn: any
+  forward_m: 29.65
+  id: curve_end
+  lateral_m: -1.65
+  timeout_s: 120.0
+  yaw_offset_rad: -1.5707963267948966
+- expected_turn: any
+  forward_m: 29.65
+  id: exit
+  lateral_m: -17.65
+  timeout_s: 120.0
+  yaw_offset_rad: -1.5707963267948966
+id: quarter_right
+schema_version: 1
+spawn:
+  x_m: 0.0
+  y_m: 0.0
+  yaw_rad: 0.0
+world: free

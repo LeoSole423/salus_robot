@@ -46,6 +46,7 @@ class MapGpsAbsoluteMeasurement(Node):
             "base_frame": "base_footprint", "orientation_topic": "/localization/orientation",
             "max_fix_age_s": 0.5, "max_odom_age_s": 0.5,
             "max_heading_gap_s": 0.2, "future_tolerance_s": 0.05,
+            "compensate_antenna_position": True,
             "mount_variance_m2": 0.0, "debug_topic": "/gps/odometry_map/debug",
         }
         for name,value in defaults.items():
@@ -197,7 +198,8 @@ class MapGpsAbsoluteMeasurement(Node):
                     float(self.get_parameter("datum_lat").value),float(self.get_parameter("datum_lon").value),
                     float(self.get_parameter("datum_yaw_deg").value))
                 x,y,covariance = compensate_antenna(x,y,heading,lever.x,lever.y,covariance,
-                    float(self.get_parameter("mount_variance_m2").value))
+                    float(self.get_parameter("mount_variance_m2").value),
+                    compensate_position=bool(self.get_parameter("compensate_antenna_position").value))
             except ValueError:
                 self.pending.popleft()
                 self.report("invalid_position_covariance_or_geometry",fix)
@@ -215,7 +217,8 @@ class MapGpsAbsoluteMeasurement(Node):
             self.pending.popleft()
             self.publisher.publish(msg)
             self.report("ok",fix,yaw_map_rad=heading.yaw_rad,yaw_variance_rad2=heading.variance_rad2,
-                lever_x_m=lever.x,lever_y_m=lever.y,covariance_xy=list(covariance))
+                lever_x_m=lever.x,lever_y_m=lever.y,covariance_xy=list(covariance),
+                compensation_enabled=bool(self.get_parameter("compensate_antenna_position").value))
 
     def on_from_ll(self, request: FromLL.Request, response: FromLL.Response) -> FromLL.Response:
         response.map_point.x, response.map_point.y = project_fix(

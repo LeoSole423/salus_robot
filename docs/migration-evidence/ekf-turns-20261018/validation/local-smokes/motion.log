@@ -1,0 +1,11 @@
+ Container salus_robot-issue-328-ros2-run-13d13bf435d2 Creating 
+ Container salus_robot-issue-328-ros2-run-13d13bf435d2 Created 
+[smoke:motion-free-world] launch_started:motion_launch
+[smoke:motion-free-world] launch_started:control_launch
+[smoke:motion-free-world] ready:topic:/clock
+[smoke:motion-free-world] ready:topic:/odom_raw
+[smoke:motion-free-world] ready:topic:/joint_states
+[smoke:motion-free-world] ready:topic:/vehicle/command_shadow
+Smoke assertion motion_probe passed; log: /ros2_ws/artifacts/smokes/motion-free-world-20261018T155700-1/motion_probe.log
+[smoke:motion-free-world] passed:motion_probe
+[smoke:motion-free-world] motion_contracts_valid

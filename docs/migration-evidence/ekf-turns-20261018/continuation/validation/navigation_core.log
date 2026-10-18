@@ -1,0 +1,8 @@
+[smoke-runner] hard timeout: 240s; domain: 80; partition: salus-smoke-20261018T181747-468642-21517; fastdds: UDPv4; command: ./tools/smoke_navigation_core_sim.sh
+ Container salus_robot-issue-328-ros2-run-0a45179c3ee9 Creating 
+ Container salus_robot-issue-328-ros2-run-0a45179c3ee9 Created 
+[smoke:navigation-free-world] launch_started:navigation
+[smoke:navigation-free-world] launch_started:runtime_timing
+Smoke assertion navigation_core passed; log: /ros2_ws/artifacts/smokes/navigation-free-world-20261018T181747-1/navigation_core.log
+[smoke:navigation-free-world] passed:navigation_core
+[smoke:navigation-free-world] navigation_goal_cancel_manual_valid

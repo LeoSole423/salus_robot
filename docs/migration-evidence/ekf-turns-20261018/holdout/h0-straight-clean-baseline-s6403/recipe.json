@@ -1,0 +1,35 @@
+{
+  "kind": "straight",
+  "speed": 1.6,
+  "radius": 4.0,
+  "profile": "clean",
+  "id": "h0-straight-clean-baseline-s6403",
+  "seed": 6403,
+  "variant": "baseline",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "cruise",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

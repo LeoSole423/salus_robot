@@ -1,0 +1,626 @@
+[
+  {
+    "id": "straight-v1.6-r4-clean-s6400",
+    "kind": "straight",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "straight-v1.6-r4-clean-s6401",
+    "kind": "straight",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "oscillations-v1.6-r4-clean-s6400",
+    "kind": "oscillations",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "oscillations-v1.6-r4-clean-s6401",
+    "kind": "oscillations",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "s-v1.6-r4-clean-s6400",
+    "kind": "s",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "s-v1.6-r4-clean-s6401",
+    "kind": "s",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.2-r4-clean-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.2-r4-clean-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-clean-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-clean-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.8-r4-clean-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.8-r4-clean-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.2-r4-clean-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.2-r4-clean-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.6-r4-clean-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.6-r4-clean-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "left-v1.8-r4-clean-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "left-v1.8-r4-clean-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401
+  },
+  {
+    "id": "half-v1.6-r8-clean-s6400",
+    "kind": "half",
+    "speed": 1.6,
+    "radius": 8.0,
+    "profile": "clean",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-gyro-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "gyro",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-gyro-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "gyro",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-wheel-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "wheel",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-wheel-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "wheel",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-latency100-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency100",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-latency100-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency100",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-latency300-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-latency300-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-outage-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "outage",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-outage-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "outage",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.6-r4-nominal-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6400
+  },
+  {
+    "id": "right-v1.6-r4-nominal-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6401
+  },
+  {
+    "id": "right-v1.2-r3.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.2-r3.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.2-r3.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.2-r3.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.6-r3.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.6-r3.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.6-r3.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.6-r3.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.8-r3.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.8-r3.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.8-r3.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.8-r3.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 3.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.2-r2.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.2-r2.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.2-r2.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.2-r2.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.6-r2.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.6-r2.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.6-r2.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.6-r2.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.8-r2.0-manual-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.8-r2.0-manual-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.8-r2.0-manual-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true
+  },
+  {
+    "id": "left-v1.8-r2.0-manual-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 2.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true
+  },
+  {
+    "id": "right-v1.2-r1.65-manual-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.2-r1.65-manual-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.2-r1.65-manual-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.2-r1.65-manual-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.6-r1.65-manual-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.6-r1.65-manual-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.6-r1.65-manual-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.6-r1.65-manual-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.8-r1.65-manual-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.8-r1.65-manual-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.8-r1.65-manual-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.8-r1.65-manual-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.8-r1.65-manual-nominal-s6400",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "right-v1.8-r1.65-manual-nominal-s6401",
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.8-r1.65-manual-nominal-s6400",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6400,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  },
+  {
+    "id": "left-v1.8-r1.65-manual-nominal-s6401",
+    "kind": "left",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6401,
+    "manual_envelope": true,
+    "hold_s": 6.0
+  }
+]

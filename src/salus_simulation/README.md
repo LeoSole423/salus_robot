@@ -26,3 +26,13 @@ composiciones de simulación aceptan `sim_sensor_profile` (default `clean`) y
 La ausencia de mensajes y los timeouts existentes representan la falta de
 freshness; no hay un umbral `stale_after_s` adicional. `/odom_raw` sigue siendo
 sólo ground truth del evaluador.
+
+### Referencia física independiente (#328 / ADR0017)
+
+`/odom_raw` es odometría cinemática del plugin Ackermann, integrada a partir de
+articulaciones; no es pose física independiente. `/simulation/ground_truth`
+(`nav_msgs/Odometry`, map→base_footprint, 50 Hz, reliable/volatile/depth10)
+observa worldPose mediante OdometryPublisher y el bridge. Se usa sólo para
+evaluación; no alimenta sensores, EKF, compensación, control ni `/tf`.
+La pose es referencia primaria; su twist se deriva y filtra en el plugin.
+El modelo conserva L0.94/track0.75 y usa claves Fortress wheel_base/kingpin_width.

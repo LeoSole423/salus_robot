@@ -1,0 +1,283 @@
+<!doctype html><meta charset=utf-8><title>SALUS navigation evaluation</title><h1>SALUS navigation evaluation</h1><pre>{
+  &quot;arrival&quot;: {
+    &quot;exits_after_entry&quot;: 0,
+    &quot;final_distance_m&quot;: 2.3302228272675776,
+    &quot;first_entry_s&quot;: 12.6,
+    &quot;minimum_distance_m&quot;: 2.311755389900969,
+    &quot;overshoot_m&quot;: 0.0,
+    &quot;post_success_distance_m&quot;: 0.3602353219308356
+  },
+  &quot;command_chain&quot;: {
+    &quot;ackermann&quot;: {
+      &quot;requested_to_applied_steer_delta_rad&quot;: {
+        &quot;count&quot;: 450,
+        &quot;last&quot;: 0.0,
+        &quot;max&quot;: 0.0,
+        &quot;min&quot;: 0.0
+      },
+      &quot;status_applied_to_measured_steer_delta_rad&quot;: {
+        &quot;count&quot;: 450,
+        &quot;last&quot;: -9.400000015658782e-10,
+        &quot;max&quot;: 0.001952574118611541,
+        &quot;min&quot;: -0.05651338821428049
+      },
+      &quot;status_speed_to_measured_delta_mps&quot;: {
+        &quot;count&quot;: 450,
+        &quot;last&quot;: 0.0,
+        &quot;max&quot;: 8.294875897263409e-10,
+        &quot;min&quot;: -8.256317851618178e-10
+      },
+      &quot;telemetry_applied_to_measured_steer_delta_rad&quot;: {
+        &quot;count&quot;: 450,
+        &quot;last&quot;: -9.400000015658782e-10,
+        &quot;max&quot;: 0.003630709216351157,
+        &quot;min&quot;: -0.05659123531671784
+      },
+      &quot;telemetry_requested_to_measured_speed_delta_mps&quot;: {
+        &quot;count&quot;: 450,
+        &quot;last&quot;: 0.0,
+        &quot;max&quot;: 8.294875897263409e-10,
+        &quot;min&quot;: -8.256317851618178e-10
+      }
+    },
+    &quot;ackermann_limits&quot;: {
+      &quot;effective_steering_limit_deg&quot;: {
+        &quot;count&quot;: 451,
+        &quot;last&quot;: 18.000000002350312,
+        &quot;max&quot;: 18.000000002350312,
+        &quot;min&quot;: 18.000000002350312
+      },
+      &quot;operational_steering_limit_deg&quot;: {
+        &quot;count&quot;: 451,
+        &quot;last&quot;: 18.000000002350312,
+        &quot;max&quot;: 18.000000002350312,
+        &quot;min&quot;: 18.000000002350312
+      },
+      &quot;steering_limit_deg&quot;: {
+        &quot;count&quot;: 451,
+        &quot;last&quot;: 30.00000000009747,
+        &quot;max&quot;: 30.00000000009747,
+        &quot;min&quot;: 30.00000000009747
+      }
+    },
+    &quot;alignment&quot;: {
+      &quot;ackermann_to_measured&quot;: {
+        &quot;status_stale&quot;: 0,
+        &quot;status_unavailable&quot;: 1,
+        &quot;telemetry_stale&quot;: 0,
+        &quot;telemetry_unavailable&quot;: 1,
+        &quot;total&quot;: 451
+      },
+      &quot;cmd_vel_safe_to_cmd_vel_final&quot;: {
+        &quot;angular_delta_rps&quot;: {
+          &quot;count&quot;: 42,
+          &quot;last&quot;: 0.002193455424550696,
+          &quot;max&quot;: 0.002193455424550696,
+          &quot;min&quot;: 0.0
+        },
+        &quot;correlated&quot;: 42,
+        &quot;divergent&quot;: 3,
+        &quot;linear_delta_mps&quot;: {
+          &quot;count&quot;: 42,
+          &quot;last&quot;: -1.6,
+          &quot;max&quot;: 0.0,
+          &quot;min&quot;: -1.6
+        },
+        &quot;stale&quot;: 1,
+        &quot;total&quot;: 44,
+        &quot;unavailable&quot;: 2
+      },
+      &quot;cmd_vel_to_cmd_vel_safe&quot;: {
+        &quot;angular_delta_rps&quot;: {
+          &quot;count&quot;: 40,
+          &quot;last&quot;: 0.0,
+          &quot;max&quot;: 0.0,
+          &quot;min&quot;: -0.002193455424550696
+        },
+        &quot;correlated&quot;: 40,
+        &quot;divergent&quot;: 1,
+        &quot;linear_delta_mps&quot;: {
+          &quot;count&quot;: 40,
+          &quot;last&quot;: 0.0,
+          &quot;max&quot;: 1.6,
+          &quot;min&quot;: 0.0
+        },
+        &quot;stale&quot;: 0,
+        &quot;total&quot;: 40,
+        &quot;unavailable&quot;: 0
+      },
+      &quot;twist_to_ackermann&quot;: {
+        &quot;correlated&quot;: 44,
+        &quot;stale&quot;: 0,
+        &quot;total&quot;: 44,
+        &quot;unavailable&quot;: 0
+      }
+    },
+    &quot;cmd_vel_final&quot;: {
+      &quot;brake_pct_histogram&quot;: {
+        &quot;0&quot;: 41,
+        &quot;100&quot;: 3
+      },
+      &quot;brake_sample_count&quot;: 3,
+      &quot;source_counts&quot;: {
+        &quot;1&quot;: 40,
+        &quot;3&quot;: 4
+      }
+    },
+    &quot;first_divergent_stage&quot;: &quot;cmd_vel_safe&quot;,
+    &quot;sample_counts&quot;: {
+      &quot;cmd_vel&quot;: 40,
+      &quot;cmd_vel_final&quot;: 44,
+      &quot;cmd_vel_safe&quot;: 40,
+      &quot;controller_status&quot;: 1350,
+      &quot;controller_telemetry&quot;: 451,
+      &quot;drive_telemetry&quot;: 451,
+      &quot;vehicle_command&quot;: 44
+    },
+    &quot;steering_margin&quot;: {
+      &quot;above_90pct_limit_fraction&quot;: 0.0,
+      &quot;minimum_rad&quot;: 0.26972630585657775,
+      &quot;p05_rad&quot;: 0.269759903999249,
+      &quot;sample_count&quot;: 54
+    },
+    &quot;steering_saturation&quot;: {
+      &quot;interval_count&quot;: 0,
+      &quot;observed_duration_s&quot;: 0.0
+    },
+    &quot;vehicle_command&quot;: {
+      &quot;brake_ratio_histogram&quot;: {
+        &quot;0.0&quot;: 41,
+        &quot;1.0&quot;: 3
+      },
+      &quot;drive_enabled_count&quot;: 44,
+      &quot;emergency_stop_count&quot;: 3,
+      &quot;source_counts&quot;: {
+        &quot;1&quot;: 40,
+        &quot;3&quot;: 4
+      }
+    }
+  },
+  &quot;controller_json_errors&quot;: {
+    &quot;status&quot;: 0,
+    &quot;telemetry&quot;: 0
+  },
+  &quot;errors&quot;: [],
+  &quot;gates&quot;: [
+    {
+      &quot;name&quot;: &quot;finite_data&quot;,
+      &quot;reason&quot;: &quot;all required samples must be finite&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;name&quot;: &quot;plan_present&quot;,
+      &quot;reason&quot;: &quot;a non-empty plan must be observed&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;name&quot;: &quot;terminal_success&quot;,
+      &quot;reason&quot;: &quot;Nav2 must report success&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;name&quot;: &quot;arrival&quot;,
+      &quot;reason&quot;: &quot;final pose must be within tolerance&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;name&quot;: &quot;turn_sign&quot;,
+      &quot;reason&quot;: &quot;turn command must match the scenario and physical yaw-rate response&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    },
+    {
+      &quot;name&quot;: &quot;no_reverse&quot;,
+      &quot;reason&quot;: &quot;reverse motion is forbidden by the scenario&quot;,
+      &quot;state&quot;: &quot;pass&quot;
+    }
+  ],
+  &quot;goal&quot;: {
+    &quot;x_m&quot;: 5.0,
+    &quot;y_m&quot;: 0.0,
+    &quot;yaw_rad&quot;: 0.0
+  },
+  &quot;localization&quot;: {
+    &quot;final_position_error_m&quot;: 0.012405082580640003,
+    &quot;position_p95_m&quot;: 0.03413507891492369,
+    &quot;position_rmse_m&quot;: 0.025496147038899804,
+    &quot;sample_count&quot;: 1319,
+    &quot;yaw_p95_rad&quot;: 0.011828152122031227,
+    &quot;yaw_rmse_rad&quot;: 0.011462276311128282
+  },
+  &quot;localization_covariance&quot;: {
+    &quot;sample_count&quot;: 1346,
+    &quot;x_m2_median&quot;: 0.01664203441144841,
+    &quot;x_m2_p95&quot;: 0.01895101288763183,
+    &quot;y_m2_median&quot;: 0.016242474633691276,
+    &quot;y_m2_p95&quot;: 0.018411817170753995,
+    &quot;yaw_rad2_median&quot;: 0.024763191407770606,
+    &quot;yaw_rad2_p95&quot;: 0.027260273574793787
+  },
+  &quot;metrics&quot;: {
+    &quot;cross_track_max_m&quot;: 0.1767766952966369,
+    &quot;cross_track_p95_m&quot;: 0.08217026250296516,
+    &quot;cross_track_rms_m&quot;: 0.074272775125214,
+    &quot;heading_p95_rad&quot;: 0.038852764947884935,
+    &quot;path_efficiency&quot;: 0.5791905922758835,
+    &quot;sample_count&quot;: 1319,
+    &quot;traveled_m&quot;: 4.611751269412127
+  },
+  &quot;operational_tolerance_m&quot;: 2.5,
+  &quot;performance&quot;: [
+    {
+      &quot;name&quot;: &quot;cross_track_p95_m&quot;,
+      &quot;reason&quot;: &quot;no calibrated baseline; metric is report-only&quot;,
+      &quot;state&quot;: &quot;calibrating&quot;
+    }
+  ],
+  &quot;precision&quot;: {
+    &quot;final_error_m&quot;: 2.3302228272675776,
+    &quot;state&quot;: &quot;calibrating&quot;,
+    &quot;target_m&quot;: 0.25,
+    &quot;target_met&quot;: false
+  },
+  &quot;reason&quot;: &quot;terminal&quot;,
+  &quot;reference_observation&quot;: {
+    &quot;arrival&quot;: {
+      &quot;exits_after_entry&quot;: 0,
+      &quot;final_distance_m&quot;: 2.326045055750456,
+      &quot;first_entry_s&quot;: 12.621,
+      &quot;minimum_distance_m&quot;: 2.326045055750456,
+      &quot;overshoot_m&quot;: 0.0,
+      &quot;post_success_distance_m&quot;: 0.2990418630965058
+    },
+    &quot;causal_published_plan_tracking&quot;: {
+      &quot;cross_track_max_m&quot;: 0.1767766952959376,
+      &quot;cross_track_p95_m&quot;: 0.07976325100079892,
+      &quot;cross_track_rms_m&quot;: 0.0818333412058734,
+      &quot;paired_samples&quot;: 2140,
+      &quot;reference&quot;: &quot;latest_published_plan_by_receive_stamp&quot;,
+      &quot;unpaired_samples&quot;: 3
+    },
+    &quot;reference_kind&quot;: &quot;physical_world_pose&quot;,
+    &quot;topic&quot;: &quot;/simulation/ground_truth&quot;,
+    &quot;tracking&quot;: {
+      &quot;cross_track_max_m&quot;: 0.1767766952959376,
+      &quot;cross_track_p95_m&quot;: 0.07976325100079892,
+      &quot;cross_track_rms_m&quot;: 0.08204308665208487,
+      &quot;heading_p95_rad&quot;: 0.05045507680764345,
+      &quot;path_efficiency&quot;: 0.9999238717816257,
+      &quot;sample_count&quot;: 2143,
+      &quot;traveled_m&quot;: 2.674981064865572
+    },
+    &quot;tracking_reference&quot;: &quot;final_plan_snapshot_report_only&quot;
+  },
+  &quot;replans&quot;: 0,
+  &quot;schema_version&quot;: 2,
+  &quot;sign&quot;: {
+    &quot;eligible_count&quot;: 23,
+    &quot;first_command_sign&quot;: 1,
+    &quot;first_response_sign&quot;: 1,
+    &quot;mismatch_count&quot;: 1,
+    &quot;mismatch_fraction&quot;: 0.043478260869565216
+  },
+  &quot;terminal_status&quot;: 4
+}</pre>

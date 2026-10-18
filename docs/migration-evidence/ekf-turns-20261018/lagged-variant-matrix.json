@@ -1,0 +1,56 @@
+[
+  {
+    "id": "right-v1.6-r4-clean-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400,
+    "variant": "lagged"
+  },
+  {
+    "id": "right-v1.6-r4-clean-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401,
+    "variant": "lagged"
+  },
+  {
+    "id": "right-v1.6-r4-latency300-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6400,
+    "variant": "lagged"
+  },
+  {
+    "id": "right-v1.6-r4-latency300-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6401,
+    "variant": "lagged"
+  },
+  {
+    "id": "right-v1.6-r4-nominal-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6400,
+    "variant": "lagged"
+  },
+  {
+    "id": "right-v1.6-r4-nominal-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6401,
+    "variant": "lagged"
+  }
+]

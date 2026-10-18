@@ -516,3 +516,44 @@ def test_matrix_executor_rejects_more_workers_than_domain_pool(monkeypatch, tmp_
         matrix_executor.main([
             "matrix.yaml", str(tmp_path), "--jobs", str(pool_size + 1)
         ])
+
+
+def test_physical_reference_remap_is_scoped_to_evaluation_command():
+    from salus_evaluation.matrix_executor import evaluation_command
+
+    command = evaluation_command("case.yaml", "trial", "/simulation/ground_truth")
+    assert command[:4] == ["ros2", "run", "salus_evaluation", "navigation_evaluation"]
+    assert command[-2:] == ["-r", "/odom_raw:=/simulation/ground_truth"]
+    assert evaluation_command("case.yaml", "trial")[-1] == "/odom_raw:=/odom_raw"
+    with pytest.raises(ValueError):
+        evaluation_command("case.yaml", "trial", "/odometry/global")
+
+
+def test_experiment_launch_replaces_only_launch_entrypoint():
+    from salus_evaluation.matrix_executor import _build_trial_launch_args
+    args = _build_trial_launch_args(zones_runtime_dir='/tmp/test',
+                                    simulation_launch_file='/tmp/manual.launch.py')
+    assert args[:3] == ['ros2', 'launch', '/tmp/manual.launch.py']
+    assert 'capability_profile:=no_obstacle_detection' in args
+    assert 'integration_sim.launch.py' not in args
+
+
+def test_fixed_epoch_changes_observer_args_only():
+    from salus_evaluation.matrix_executor import evaluation_command
+    args = evaluation_command('scenario', 'output', '/simulation/ground_truth', 60.)
+    assert 'trial_start_sim_s:=60.0' in args
+    assert '/odom_raw:=/simulation/ground_truth' in args
+
+
+@pytest.mark.parametrize('requested,readback,code,expected', [
+    (.3, 'Double value is: 0.3', 0, True),
+    (.3, 'Double value is: 0.1', 0, False),
+    (0., 'Double value is: 0.0', 0, True),
+    (-.1, 'Double value is: -0.1', 0, False),
+    (.3, 'Double value is: 0.3', 1, False),
+    (.3, 'unavailable', 0, False),
+])
+def test_latency_override_rejects_unapplied_intervention(requested, readback, code, expected):
+    from salus_evaluation.matrix_executor import _latency_override_metadata
+    result = SimpleNamespace(stdout=readback, stderr='', returncode=code)
+    assert _latency_override_metadata(requested, result)['matches_requested'] is expected

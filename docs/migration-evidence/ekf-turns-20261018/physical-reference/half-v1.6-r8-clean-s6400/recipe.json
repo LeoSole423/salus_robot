@@ -1,0 +1,40 @@
+{
+  "id": "half-v1.6-r8-clean-s6400",
+  "kind": "half",
+  "speed": 1.6,
+  "radius": 8.0,
+  "profile": "clean",
+  "seed": 6400,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.6,
+      -0.2
+    ],
+    [
+      "curve",
+      14.707963267948966,
+      1.6,
+      -0.2
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

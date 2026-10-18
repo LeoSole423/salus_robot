@@ -1,0 +1,11 @@
+{
+  "entry_stamp_s": null,
+  "heading_acquired_before_curve": false,
+  "compensated_gnss_continuous_before_curve": false,
+  "completed_curve": false,
+  "turn_max_deg": null,
+  "curve_samples": 0,
+  "curve_speed_p05_mps": null,
+  "curve_speed_median_mps": null,
+  "curve_speed_below_1p2_fraction": null
+}
