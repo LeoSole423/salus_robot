@@ -36,3 +36,37 @@ no se reescribe como instrumento perfecto. Se añadió regresión del bug.
 Los pilotos no son todavía una campaña de confirmación ni un mapa completo de
 velocidad/radio. No se han validado2.0 m/s ni menor radio Nav2 en esta continuación.
 No hay cambios de defaults EKF/control/planner ni acceso a hardware.
+
+## Referencias nominales completadas
+
+- R4 sparse, tres velocidades y seeds6500–6502:18 intentos,0 curvas completadas.
+  Diecisiete terminan en guard NEEDS_OPERATOR:PLANNER_LOOP; uno timeout.
+- R3 planner sobre la misma geometría sparseR4:18 intentos,17 curvas físicas
+  completadas y16 gates funcionales pass. Nueve cumplen además adquisición,
+  mapper previo válido, mínimo nominal y captura efectiva; no confundirlos.
+- GeometríaR3 con plannerR3/auto18 a1.2:4 intentos,1 curva completada. Esto
+  motiva comparación con planner2.5 antes de culpar al EKF o aumentar dirección.
+
+`reference-r4/` y `reference-r3/` conservan summary y bundle.tar.gz con manifiesto
+SHA256 por archivo. Extraer con `mkdir -p artifacts/replay && tar -xzf
+<bundle.tar.gz> -C artifacts/replay`; ejecutar summarize_heading_routes.py sobre
+esa raíz reproduce métricas. Los caches runtime se excluyen; se conservan CSV,
+readbacks YAML, planes, debug GNSS, launch logs y resultados de setup fallidos.
+Generated-configs contiene las matrices/escenarios fuera del árbol instalado;
+pueden regenerarse con generate_heading_route_matrix.py y los argumentos
+registrados. Ningún archivo histórico se sobrescribe.
+
+## Cola de siguientes etapas
+
+`stages.json` define la cola secuencial ejecutada por
+`tools/run_heading_route_stages.py`, siempre nav_eval matrix --jobs2: candidatos
+analytic20, radios menores, comparación de techo18/30°, control causal sin
+compensación, lookahead, GNSS300 ms/EKF temporal, S y piloto2.0. La progresión
+hacia2/1.65 exige curvas previas completadas en ambos lados sin comandos
+nominales bajo1.2. El piloto2.0 exige el par prespecificado de1.8 de seed6501
+válido en ambos lados; se conserva el resto de fallos y no se declara robustez
+general por ese piloto.
+
+La nueva hipótesis analytic20 está documentada antes de ejecutarse: valor
+efectivo3 m no escala con Rmin3/4; la documentación upstream Humble recomienda
+4–5×Rmin. Se prueba como cambio aislado con guard intacto y no se atribuye al EKF.

@@ -1,0 +1,99 @@
+[
+  {
+    "id": "analytic20-r4",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_planner_pilot.yaml",
+    "output": "artifacts/issue328-analytic20-r4",
+    "planner_radius": 4,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_analytic20.yaml"
+  },
+  {
+    "id": "analytic20-r3",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_planner_pilot.yaml",
+    "output": "artifacts/issue328-analytic20-r3",
+    "planner_radius": 3,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_analytic20.yaml"
+  },
+  {
+    "id": "radius3-planner2p5",
+    "matrix": "artifacts/issue328-radius3-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-radius3-planner2p5",
+    "planner_radius": 2.5
+  },
+  {
+    "id": "radius2p5-auto18",
+    "matrix": "artifacts/issue328-radius2p5-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-radius2p5-auto18",
+    "planner_radius": 2
+  },
+  {
+    "id": "radius2p5-manual30",
+    "matrix": "artifacts/issue328-radius2p5-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-radius2p5-manual30",
+    "planner_radius": 2,
+    "launch_file": "tools/heading_manual_envelope.launch.py"
+  },
+  {
+    "id": "radius2-manual30",
+    "matrix": "artifacts/issue328-radius2-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-radius2-manual30",
+    "planner_radius": 1.65,
+    "launch_file": "tools/heading_manual_envelope.launch.py",
+    "requires_completed": "artifacts/issue328-radius2p5-manual30"
+  },
+  {
+    "id": "radius1p65-manual30",
+    "matrix": "artifacts/issue328-radius1p65-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-radius1p65-manual30",
+    "planner_radius": 1.65,
+    "launch_file": "tools/heading_manual_envelope.launch.py",
+    "requires_completed": "artifacts/issue328-radius2-manual30"
+  },
+  {
+    "id": "no-compensation",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_compensation_causal.yaml",
+    "output": "artifacts/issue328-no-compensation",
+    "planner_radius": 3,
+    "launch_file": "tools/heading_no_compensation.launch.py"
+  },
+  {
+    "id": "lookahead1p6",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_controller.yaml",
+    "output": "artifacts/issue328-lookahead1p6",
+    "planner_radius": 3,
+    "nav2_params": "src/salus_evaluation/config/experiments/issue328_lookahead1p6.yaml"
+  },
+  {
+    "id": "latency300-nav",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300.yaml",
+    "output": "artifacts/issue328-latency300-nav",
+    "planner_radius": 3,
+    "launch_file": "tools/heading_latency300.launch.py"
+  },
+  {
+    "id": "latency300-lagged-nav",
+    "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300_lagged.yaml",
+    "output": "artifacts/issue328-latency300-lagged-nav",
+    "planner_radius": 3,
+    "launch_file": "tools/heading_latency300.launch.py"
+  },
+  {
+    "id": "s-nav",
+    "matrix": "artifacts/issue328-s-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-s-nav",
+    "planner_radius": 3
+  },
+  {
+    "id": "speed2-straight",
+    "matrix": "artifacts/issue328-speed2-straight-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-speed2-straight",
+    "planner_radius": 3,
+    "requires_valid_pair": "artifacts/issue328-route-r3-analysis/summary.json"
+  },
+  {
+    "id": "speed2-nav",
+    "matrix": "artifacts/issue328-speed2-config/matrices/matrix.yaml",
+    "output": "artifacts/issue328-speed2-nav",
+    "planner_radius": 3,
+    "requires_valid_pair": "artifacts/issue328-route-r3-analysis/summary.json"
+  }
+]

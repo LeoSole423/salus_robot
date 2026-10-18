@@ -10,27 +10,48 @@ from pathlib import Path
 from heading_turn_metrics import Interpolator, angle, stats, circle_radius, distribution
 
 
-def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4., side=1):
+def route_window(poses, radius, side, kind):
+    moving = [r for r in poses if abs(r['speed']) > .1]
+    if kind == 'straight':
+        return [r for r in moving if 20 <= r['x_m'] <= 56]
+    if kind == 's':
+        return [r for r in moving if 27 <= r['x_m'] <= 29+2*radius]
+    return [r for r in moving if r['x_m'] >= 27 and side*r['y_m'] <= radius+1]
+
+
+def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4., side=1, kind="quarter"):
     """Score a fixed-datum quarter turn without using truth for runtime control."""
-    entered = next((r['stamp_s'] for r in poses if r['x_m'] >= entry_x-1), None)
-    curve = [r for r in poses if r['x_m'] >= entry_x-1 and
-             side*r['y_m'] <= radius+1 and abs(r['speed']) > .1]
+    entry_threshold = 20. if kind == 'straight' else entry_x-1
+    entered = next((r['stamp_s'] for r in poses if r['x_m'] >= entry_threshold), None)
+    curve = route_window(poses, radius, side, kind)
     exits = [r for r in poses if side*r['y_m'] >= radius+6]
+    if kind == 's':
+        exits = [r for r in poses if r['x_m'] >= 34+2*radius and
+                 side*r['y_m'] >= 1.75*radius and abs(r['yaw_rad']) <= math.radians(9)]
+    elif kind == 'straight':
+        exits = [r for r in poses if r['x_m'] >= 56]
     degrees = [side*math.degrees(r['yaw_rad']) for r in curve]
     speed = sorted(abs(r['speed']) for r in curve)
+    acquisition = next((r['stamp_s'] for r in poses if r['x_m'] >= 20.), None)
     heading = []
     fixes = []
-    for rows, target in [(course_debug, heading), (map_debug, fixes)]:
+    for rows, target, anchor in [(course_debug, heading, acquisition),
+                                 (map_debug, fixes, entered)]:
         for row in rows:
             stamp = float(row['stamp_s'])
-            if entered is not None and entered-2 <= stamp <= entered:
+            if anchor is not None and anchor-2 <= stamp <= anchor:
                 target.append((stamp, json.loads(row['data'])))
     map_valid = bool(fixes) and all(r.get('reason') == 'ok' for _, r in fixes)
-    coverage = bool(fixes) and fixes[-1][0]-fixes[0][0] >= 1.7
-    acquired = bool(heading) and any(r.get('valid', False) for _, r in heading)
-    return dict(entry_stamp_s=entered, heading_acquired_before_curve=acquired,
+    coverage = (bool(fixes) and fixes[-1][0]-fixes[0][0] >= 1.7 and
+                max((b[0]-a[0] for a, b in zip(fixes, fixes[1:])), default=0.) <= .3)
+    acquired = (bool(heading) and heading[-1][0]-heading[0][0] >= 1.7 and
+                all(r.get('valid', False) for _, r in heading) and
+                max((b[0]-a[0] for a, b in zip(heading, heading[1:])), default=0.) <= .3)
+    completed = bool(degrees and max(degrees) >= 81 and exits) if kind != 'straight' else bool(exits)
+    return dict(geometry_kind=kind, completed_route=completed, entry_stamp_s=entered, acquisition_checkpoint_stamp_s=acquisition,
+                heading_acquired_before_curve=acquired,
                 compensated_gnss_continuous_before_curve=bool(map_valid and coverage),
-                completed_curve=bool(degrees and max(degrees) >= 81 and exits),
+                completed_curve=completed if kind != 'straight' else None,
                 turn_max_deg=max(degrees) if degrees else None,
                 curve_samples=len(curve),
                 curve_speed_p05_mps=speed[int(.05*(len(speed)-1))] if speed else None,
@@ -47,7 +68,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('bundle', type=Path)
     parser.add_argument('--radius', type=float, default=4.)
-    parser.add_argument('--side', choices=['left', 'right'], required=True)
+    parser.add_argument('--side', choices=['left', 'right', 'straight'], required=True)
+    parser.add_argument('--kind', choices=['quarter', 's', 'straight'], default='quarter')
     args = parser.parse_args()
     rows = []
     for row in read(args.bundle/'odometry_raw.csv'):
@@ -56,11 +78,9 @@ def main():
                          speed=float(row['linear_x_mps'])))
     result = route_observation(rows, read(args.bundle/'gnss_heading_debug.csv'),
                                read(args.bundle/'gnss_map_debug.csv'),
-                               radius=args.radius, side=1 if args.side == 'left' else -1)
+                               radius=args.radius, side=1 if args.side != 'right' else -1, kind=args.kind)
     start = result['entry_stamp_s']
-    curve = [r for r in rows if r['x_m'] >= 27 and
-             (1 if args.side == 'left' else -1)*r['y_m'] <= args.radius+1 and
-             abs(r['speed']) > .1]
+    curve = route_window(rows, args.radius, 1 if args.side != 'right' else -1, args.kind)
     end = max((r['stamp_s'] for r in curve), default=None)
     result['curve_end_stamp_s'] = end
     for stream in ['commands', 'commands_safe', 'commands_final']:

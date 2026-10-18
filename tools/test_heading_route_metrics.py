@@ -5,6 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tools.heading_route_metrics import route_observation
 from tools.generate_heading_route_matrix import route_goals
+from tools.archive_route_campaign import archive
+import tempfile
+import tarfile
 
 
 class RouteMetricsTest(unittest.TestCase):
@@ -32,6 +35,32 @@ class RouteMetricsTest(unittest.TestCase):
             route_goals('quarter', 1., 1)
         s = route_goals('s', 3., 1)
         self.assertEqual(s[-1]['yaw_offset_rad'], 0.)
+
+    def test_archive_preserves_capture_bytes_and_excludes_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root/'capture'; source.mkdir()
+            raw = b'stamp,value\r\n1,2\r\n'
+            (source/'poses.csv').write_bytes(raw)
+            (source/'runtime').mkdir()
+            (source/'runtime'/'cache').write_text('not evidence')
+            hashes = archive(source, root/'evidence')
+            self.assertEqual(set(hashes), {'poses.csv'})
+            with tarfile.open(root/'evidence'/'bundle.tar.gz', 'r:gz') as tar:
+                self.assertEqual(tar.extractfile('poses.csv').read(), raw)
+            first = (root/'evidence'/'bundle.tar.gz').read_bytes()
+            archive(source, root/'evidence')
+            self.assertEqual((root/'evidence'/'bundle.tar.gz').read_bytes(), first)
+
+    def test_s_requires_second_turn_and_straight_has_separate_completion(self):
+        poses = [dict(x_m=31, y_m=3, yaw_rad=1.57079632679, speed=1.6, stamp_s=3)]
+        self.assertFalse(route_observation(poses, [], [], radius=3, kind='s')['completed_route'])
+        poses.append(dict(x_m=41, y_m=6, yaw_rad=0., speed=1.6, stamp_s=9))
+        self.assertTrue(route_observation(poses, [], [], radius=3, kind='s')['completed_route'])
+        straight = [dict(x_m=57, y_m=0, yaw_rad=0., speed=1.8, stamp_s=9)]
+        result = route_observation(straight, [], [], kind='straight')
+        self.assertTrue(result['completed_route'])
+        self.assertIsNone(result['completed_curve'])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,17 @@
+schema_version: 1
+id: issue328_planner_analytic_pilot
+repetitions: 2
+max_speed_mps: 1.8
+speeds_mps:
+- 1.6
+cases:
+- id: left
+  scenario: scenarios/issue328_route_left_sparse.yaml
+  direction: left
+  requested_radius_m: 4.0
+- id: right
+  scenario: scenarios/issue328_route_right_sparse.yaml
+  direction: right
+  requested_radius_m: 4.0
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6500

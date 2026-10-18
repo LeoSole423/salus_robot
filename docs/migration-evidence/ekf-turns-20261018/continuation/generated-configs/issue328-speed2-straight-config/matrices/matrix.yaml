@@ -1,0 +1,13 @@
+schema_version: 1
+id: issue328-speed2-straight-config
+repetitions: 1
+max_speed_mps: 2.0
+speeds_mps:
+- 2.0
+cases:
+- id: straight_straight
+  scenario: scenarios/straight_straight.yaml
+  direction: straight
+  requested_radius_m: null
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6501

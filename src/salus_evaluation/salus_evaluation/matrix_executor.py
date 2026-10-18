@@ -22,9 +22,10 @@ from .isolation import (EVALUATION_DOMAIN_MAX, EVALUATION_DOMAIN_MIN,
                         allocated_trial_isolation, build_trial_env)
 
 
-def _run(command, *, check=True, capture=False, env=None):
+def _run(command, *, check=True, capture=False, env=None, timeout_s=None):
+    options = {} if timeout_s is None else {"timeout": timeout_s}
     return subprocess.run(command, check=check, text=True, capture_output=capture,
-                          env=env)
+                          env=env, **options)
 
 
 class ReadinessError(RuntimeError):
@@ -450,7 +451,7 @@ def _run_trial_lifecycle(cell, *, matrix_path, trial_dir, startup_timeout_s,
                     )
                 evaluation = _run(
                     evaluation_command(scenario, trial_dir, evaluation_ground_truth_topic),
-                    check=False, env=environment,
+                    check=False, env=environment, timeout_s=240.,
                 )
                 if (trial_dir / "summary.json").exists():
                     parameter_env = dict(environment, HEADING_NAVIGATION_PARAMETERS="true")

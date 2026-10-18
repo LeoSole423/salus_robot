@@ -1,0 +1,17 @@
+schema_version: 1
+id: issue328-s-config
+repetitions: 2
+max_speed_mps: 1.6
+speeds_mps:
+- 1.6
+cases:
+- id: s_left
+  scenario: scenarios/s_left.yaml
+  direction: left
+  requested_radius_m: 4.0
+- id: s_right
+  scenario: scenarios/s_right.yaml
+  direction: right
+  requested_radius_m: 4.0
+sim_sensor_profile: independent_nominal
+sim_sensor_seed: 6500
