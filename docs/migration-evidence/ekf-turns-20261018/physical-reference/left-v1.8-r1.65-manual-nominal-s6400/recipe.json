@@ -1,0 +1,42 @@
+{
+  "id": "left-v1.8-r1.65-manual-nominal-s6400",
+  "kind": "left",
+  "speed": 1.8,
+  "radius": 1.65,
+  "profile": "nominal",
+  "seed": 6400,
+  "manual_envelope": true,
+  "hold_s": 6.0,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.8,
+      1.090909090909091
+    ],
+    [
+      "curve",
+      5.0,
+      1.8,
+      1.090909090909091
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

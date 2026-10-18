@@ -1,0 +1,1640 @@
+[
+  {
+    "case_id": "left_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.44132147507375596,
+      "median": 0.44132147507375596,
+      "min": 0.44132147507375596,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.4344799400105139,
+      "median": 0.4344799400105139,
+      "min": 0.4344799400105139,
+      "p95": null
+    },
+    "direction": "left",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.284610099220096,
+      "median": 2.284610099220096,
+      "min": 2.284610099220096,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.034367856564651786,
+      "median": 0.034367856564651786,
+      "min": 0.034367856564651786,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.016464899478490183,
+        "median": 0.016464899478490183,
+        "min": 0.016464899478490183,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.018652792589960984,
+        "median": 0.018652792589960984,
+        "min": 0.018652792589960984,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016693738873701833,
+        "median": 0.016693738873701833,
+        "min": 0.016693738873701833,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018965338685563403,
+        "median": 0.018965338685563403,
+        "min": 0.018965338685563403,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024903060170263253,
+        "median": 0.024903060170263253,
+        "min": 0.024903060170263253,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.02735347810473896,
+        "median": 0.02735347810473896,
+        "min": 0.02735347810473896,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.01722157995786958,
+      "median": 0.01722157995786958,
+      "min": 0.01722157995786958,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 0,
+      "passed": 1,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "passed"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.21555262396944447,
+      "median": 0.21555262396944447,
+      "min": 0.21555262396944447,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.2101388150015417,
+      "median": 0.2101388150015417,
+      "min": 0.2101388150015417,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.2,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.8070175438596491,
+      "median": 0.8070175438596491,
+      "min": 0.8070175438596491,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 1.0,
+      "median": 1.0,
+      "min": 1.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "left_r4-left-r4-v1p2-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.016737206341752624,
+      "median": 0.016737206341752624,
+      "min": 0.016737206341752624,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "left_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.5042858293758965,
+      "median": 0.5042858293758965,
+      "min": 0.5042858293758965,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.49556843103485576,
+      "median": 0.49556843103485576,
+      "min": 0.49556843103485576,
+      "p95": null
+    },
+    "direction": "left",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.2419798798044783,
+      "median": 2.2419798798044783,
+      "min": 2.2419798798044783,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.03069468333275931,
+      "median": 0.03069468333275931,
+      "min": 0.03069468333275931,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.016464657698588087,
+        "median": 0.016464657698588087,
+        "min": 0.016464657698588087,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.01865246105043306,
+        "median": 0.01865246105043306,
+        "min": 0.01865246105043306,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016693980739429806,
+        "median": 0.016693980739429806,
+        "min": 0.016693980739429806,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018965668131157895,
+        "median": 0.018965668131157895,
+        "min": 0.018965668131157895,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024915747934514988,
+        "median": 0.024915747934514988,
+        "min": 0.024915747934514988,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027300672410406485,
+        "median": 0.027300672410406485,
+        "min": 0.027300672410406485,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.018415919151128488,
+      "median": 0.018415919151128488,
+      "min": 0.018415919151128488,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 0,
+      "passed": 1,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "passed"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.1554279939552185,
+      "median": 0.1554279939552185,
+      "min": 0.1554279939552185,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.154550811486881,
+      "median": 0.154550811486881,
+      "min": 0.154550811486881,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.6,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.7232142857142857,
+      "median": 0.7232142857142857,
+      "min": 0.7232142857142857,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 1.0,
+      "median": 1.0,
+      "min": 1.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "left_r4-left-r4-v1p6-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.016308442698536613,
+      "median": 0.016308442698536613,
+      "min": 0.016308442698536613,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "left_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.6432336209148476,
+      "median": 0.6432336209148476,
+      "min": 0.6432336209148476,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.6319017648125123,
+      "median": 0.6319017648125123,
+      "min": 0.6319017648125123,
+      "p95": null
+    },
+    "direction": "left",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.255261478359246,
+      "median": 2.255261478359246,
+      "min": 2.255261478359246,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.03935924808137732,
+      "median": 0.03935924808137732,
+      "min": 0.03935924808137732,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.01647176034367,
+        "median": 0.01647176034367,
+        "min": 0.01647176034367,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.01866216304649629,
+        "median": 0.01866216304649629,
+        "min": 0.01866216304649629,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.01668687809382706,
+        "median": 0.01668687809382706,
+        "min": 0.01668687809382706,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018955968176248606,
+        "median": 0.018955968176248606,
+        "min": 0.018955968176248606,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024846164077397485,
+        "median": 0.024846164077397485,
+        "min": 0.024846164077397485,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027313191393534154,
+        "median": 0.027313191393534154,
+        "min": 0.027313191393534154,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.022394096137428352,
+      "median": 0.022394096137428352,
+      "min": 0.022394096137428352,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 0,
+      "passed": 1,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "passed"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.2540262392253466,
+      "median": 0.2540262392253466,
+      "min": 0.2540262392253466,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.24876659130548529,
+      "median": 0.24876659130548529,
+      "min": 0.24876659130548529,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.8,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.7155963302752294,
+      "median": 0.7155963302752294,
+      "min": 0.7155963302752294,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 1.0,
+      "median": 1.0,
+      "min": 1.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "left_r4-left-r4-v1p8-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.024147879830711545,
+      "median": 0.024147879830711545,
+      "min": 0.024147879830711545,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "right_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "direction": "right",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 5.656854249492381,
+      "median": 5.656854249492381,
+      "min": 5.656854249492381,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.04907517863355307,
+      "median": 0.04907517863355307,
+      "min": 0.04907517863355307,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.01678172755796817,
+        "median": 0.01678172755796817,
+        "min": 0.01678172755796817,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.018978762800948998,
+        "median": 0.018978762800948998,
+        "min": 0.018978762800948998,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016326552807672097,
+        "median": 0.016326552807672097,
+        "min": 0.016326552807672097,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018365407982811485,
+        "median": 0.018365407982811485,
+        "min": 0.018365407982811485,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024915873729616855,
+        "median": 0.024915873729616855,
+        "min": 0.024915873729616855,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027297814664861433,
+        "median": 0.027297814664861433,
+        "min": 0.027297814664861433,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 2.045550841493588e-12,
+      "median": 2.045550841493588e-12,
+      "min": 2.045550841493588e-12,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 1,
+    "nav2_terminal_success_count": 0,
+    "nav2_terminal_success_rate": 0.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 1,
+      "passed": 0,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "functional_failure"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 9.887564179042836e-13,
+      "median": 9.887564179042836e-13,
+      "min": 9.887564179042836e-13,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 9.887564179042802e-13,
+      "median": 9.887564179042802e-13,
+      "min": 9.887564179042802e-13,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 14.0,
+      "median": 14.0,
+      "min": 14.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.2,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "right_r4-right-r4-v1p2-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 2.0455508414935993e-12,
+      "median": 2.0455508414935993e-12,
+      "min": 2.0455508414935993e-12,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "right_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "direction": "right",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 5.656854249492381,
+      "median": 5.656854249492381,
+      "min": 5.656854249492381,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.04907517863355307,
+      "median": 0.04907517863355307,
+      "min": 0.04907517863355307,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.01678168660565819,
+        "median": 0.01678168660565819,
+        "min": 0.01678168660565819,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.018978641362652975,
+        "median": 0.018978641362652975,
+        "min": 0.018978641362652975,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016326519943714545,
+        "median": 0.016326519943714545,
+        "min": 0.016326519943714545,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018365316204821746,
+        "median": 0.018365316204821746,
+        "min": 0.018365316204821746,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024916045985583654,
+        "median": 0.024916045985583654,
+        "min": 0.024916045985583654,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.02729743645757696,
+        "median": 0.02729743645757696,
+        "min": 0.02729743645757696,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 2.045550841493588e-12,
+      "median": 2.045550841493588e-12,
+      "min": 2.045550841493588e-12,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 1,
+    "nav2_terminal_success_count": 0,
+    "nav2_terminal_success_rate": 0.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 1,
+      "passed": 0,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "functional_failure"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 9.887564179042836e-13,
+      "median": 9.887564179042836e-13,
+      "min": 9.887564179042836e-13,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 9.887564179042802e-13,
+      "median": 9.887564179042802e-13,
+      "min": 9.887564179042802e-13,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 14.0,
+      "median": 14.0,
+      "min": 14.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.6,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "right_r4-right-r4-v1p6-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 2.0455508414935997e-12,
+      "median": 2.0455508414935997e-12,
+      "min": 2.0455508414935997e-12,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "right_r4",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.1767766952966369,
+      "median": 0.1767766952966369,
+      "min": 0.1767766952966369,
+      "p95": null
+    },
+    "direction": "right",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 5.656854249492381,
+      "median": 5.656854249492381,
+      "min": 5.656854249492381,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.04907517863355307,
+      "median": 0.04907517863355307,
+      "min": 0.04907517863355307,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.016691162615806134,
+        "median": 0.016691162615806134,
+        "min": 0.016691162615806134,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.018978762834420102,
+        "median": 0.018978762834420102,
+        "min": 0.018978762834420102,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016241816685447847,
+        "median": 0.016241816685447847,
+        "min": 0.016241816685447847,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018365407986744808,
+        "median": 0.018365407986744808,
+        "min": 0.018365407986744808,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024825277747977773,
+        "median": 0.024825277747977773,
+        "min": 0.024825277747977773,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027297814664861596,
+        "median": 0.027297814664861596,
+        "min": 0.027297814664861596,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 2.045550841493588e-12,
+      "median": 2.045550841493588e-12,
+      "min": 2.045550841493588e-12,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 1,
+    "nav2_terminal_success_count": 0,
+    "nav2_terminal_success_rate": 0.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 1,
+      "passed": 0,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "functional_failure"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 9.887564179042836e-13,
+      "median": 9.887564179042836e-13,
+      "min": 9.887564179042836e-13,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 9.887564179042802e-13,
+      "median": 9.887564179042802e-13,
+      "min": 9.887564179042802e-13,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 14.0,
+      "median": 14.0,
+      "min": 14.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": 0.25,
+    "requested_radius_m": 4.0,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.8,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.3141592654,
+      "median": 0.3141592654,
+      "min": 0.3141592654,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "right_r4-right-r4-v1p8-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 2.0455508414935993e-12,
+      "median": 2.0455508414935993e-12,
+      "min": 2.0455508414935993e-12,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "straight",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.07843801137874393,
+      "median": 0.07843801137874393,
+      "min": 0.07843801137874393,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.06385559376977117,
+      "median": 0.06385559376977117,
+      "min": 0.06385559376977117,
+      "p95": null
+    },
+    "direction": "straight",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.318298541015046,
+      "median": 2.318298541015046,
+      "min": 2.318298541015046,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.04323641239819666,
+      "median": 0.04323641239819666,
+      "min": 0.04323641239819666,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.016616500841202204,
+        "median": 0.016616500841202204,
+        "min": 0.016616500841202204,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.01895094836930927,
+        "median": 0.01895094836930927,
+        "min": 0.01895094836930927,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.01619749481516247,
+        "median": 0.01619749481516247,
+        "min": 0.01619749481516247,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.01836668937656093,
+        "median": 0.01836668937656093,
+        "min": 0.01836668937656093,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.02473549693432029,
+        "median": 0.02473549693432029,
+        "min": 0.02473549693432029,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.0272631719429672,
+        "median": 0.0272631719429672,
+        "min": 0.0272631719429672,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.010406790473665195,
+      "median": 0.010406790473665195,
+      "min": 0.010406790473665195,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 0,
+      "passed": 1,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "passed"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.039006123766740446,
+      "median": 0.039006123766740446,
+      "min": 0.039006123766740446,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.03186762248641976,
+      "median": 0.03186762248641976,
+      "min": 0.03186762248641976,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": null,
+    "requested_radius_m": null,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.2,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.2695840885171783,
+      "median": 0.2695840885171783,
+      "min": 0.2695840885171783,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.26976501275580284,
+      "median": 0.26976501275580284,
+      "min": 0.26976501275580284,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "straight-straight-straight-v1p2-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.010070912836805385,
+      "median": 0.010070912836805385,
+      "min": 0.010070912836805385,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "straight",
+    "cross_track_p95_m": {
+      "count": 1,
+      "max": 0.08217026250296516,
+      "median": 0.08217026250296516,
+      "min": 0.08217026250296516,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 1,
+      "max": 0.074272775125214,
+      "median": 0.074272775125214,
+      "min": 0.074272775125214,
+      "p95": null
+    },
+    "direction": "straight",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.3302228272675776,
+      "median": 2.3302228272675776,
+      "min": 2.3302228272675776,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 1,
+      "max": 0.038852764947884935,
+      "median": 0.038852764947884935,
+      "min": 0.038852764947884935,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.01664203441144841,
+        "median": 0.01664203441144841,
+        "min": 0.01664203441144841,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.01895101288763183,
+        "median": 0.01895101288763183,
+        "min": 0.01895101288763183,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016242474633691276,
+        "median": 0.016242474633691276,
+        "min": 0.016242474633691276,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018411817170753995,
+        "median": 0.018411817170753995,
+        "min": 0.018411817170753995,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.024763191407770606,
+        "median": 0.024763191407770606,
+        "min": 0.024763191407770606,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027260273574793787,
+        "median": 0.027260273574793787,
+        "min": 0.027260273574793787,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.011828152122031227,
+      "median": 0.011828152122031227,
+      "min": 0.011828152122031227,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 0,
+      "passed": 1,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "passed"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.03413507891492369,
+      "median": 0.03413507891492369,
+      "min": 0.03413507891492369,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.025496147038899804,
+      "median": 0.025496147038899804,
+      "min": 0.025496147038899804,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": null,
+    "requested_radius_m": null,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.6,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.26972630585657775,
+      "median": 0.26972630585657775,
+      "min": 0.26972630585657775,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.269759903999249,
+      "median": 0.269759903999249,
+      "min": 0.269759903999249,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "straight-straight-straight-v1p6-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.011462276311128282,
+      "median": 0.011462276311128282,
+      "min": 0.011462276311128282,
+      "p95": null
+    }
+  },
+  {
+    "case_id": "straight",
+    "cross_track_p95_m": {
+      "count": 0,
+      "max": null,
+      "median": null,
+      "min": null,
+      "p95": null
+    },
+    "cross_track_rmse_m": {
+      "count": 0,
+      "max": null,
+      "median": null,
+      "min": null,
+      "p95": null
+    },
+    "direction": "straight",
+    "final_xy_error_m": {
+      "count": 1,
+      "max": 2.2699560787585744,
+      "median": 2.2699560787585744,
+      "min": 2.2699560787585744,
+      "p95": null
+    },
+    "global_ekf_params_file": null,
+    "heading_p95_rad": {
+      "count": 0,
+      "max": null,
+      "median": null,
+      "min": null,
+      "p95": null
+    },
+    "local_ekf_params_file": null,
+    "localization_covariance": {
+      "x_m2_median": {
+        "count": 1,
+        "max": 0.016807128050284018,
+        "median": 0.016807128050284018,
+        "min": 0.016807128050284018,
+        "p95": null
+      },
+      "x_m2_p95": {
+        "count": 1,
+        "max": 0.019043944406176003,
+        "median": 0.019043944406176003,
+        "min": 0.019043944406176003,
+        "p95": null
+      },
+      "y_m2_median": {
+        "count": 1,
+        "max": 0.016351421397756992,
+        "median": 0.016351421397756992,
+        "min": 0.016351421397756992,
+        "p95": null
+      },
+      "y_m2_p95": {
+        "count": 1,
+        "max": 0.018497805649130842,
+        "median": 0.018497805649130842,
+        "min": 0.018497805649130842,
+        "p95": null
+      },
+      "yaw_rad2_median": {
+        "count": 1,
+        "max": 0.02491607057896304,
+        "median": 0.02491607057896304,
+        "min": 0.02491607057896304,
+        "p95": null
+      },
+      "yaw_rad2_p95": {
+        "count": 1,
+        "max": 0.027353479557463724,
+        "median": 0.027353479557463724,
+        "min": 0.027353479557463724,
+        "p95": null
+      }
+    },
+    "localization_yaw_p95_rad": {
+      "count": 1,
+      "max": 0.020963359021692413,
+      "median": 0.020963359021692413,
+      "min": 0.020963359021692413,
+      "p95": null
+    },
+    "nav2_terminal_failure_count": 0,
+    "nav2_terminal_success_count": 1,
+    "nav2_terminal_success_rate": 1.0,
+    "nav2_terminal_trial_count": 1,
+    "outcome_counts": {
+      "functional_failure": 1,
+      "passed": 0,
+      "setup_failure": 0,
+      "unknown": 0
+    },
+    "outcomes": [
+      "functional_failure"
+    ],
+    "overshoot_m": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "performance_gate_state": "calibrating",
+    "position_p95_m": {
+      "count": 1,
+      "max": 0.03669179105921891,
+      "median": 0.03669179105921891,
+      "min": 0.03669179105921891,
+      "p95": null
+    },
+    "position_rmse_m": {
+      "count": 1,
+      "max": 0.035071234833805406,
+      "median": 0.035071234833805406,
+      "min": 0.035071234833805406,
+      "p95": null
+    },
+    "replans": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "requested_curvature_per_m": null,
+    "requested_radius_m": null,
+    "sim_sensor_profile": "clean",
+    "sim_sensor_seed_base": 6400,
+    "sim_sensor_seeds": [
+      6400
+    ],
+    "speed_mps": 1.8,
+    "steering_above_90pct_limit_fraction": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_margin_min_rad": {
+      "count": 1,
+      "max": 0.26955570722837596,
+      "median": 0.26955570722837596,
+      "min": 0.26955570722837596,
+      "p95": null
+    },
+    "steering_margin_p05_rad": {
+      "count": 1,
+      "max": 0.26976501275580284,
+      "median": 0.26976501275580284,
+      "min": 0.26976501275580284,
+      "p95": null
+    },
+    "steering_requested_to_applied_rad": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "steering_saturation_intervals": {
+      "count": 1,
+      "max": 0.0,
+      "median": 0.0,
+      "min": 0.0,
+      "p95": null
+    },
+    "trial_count": 1,
+    "trial_ids": [
+      "straight-straight-straight-v1p8-rep01"
+    ],
+    "variant": "default",
+    "yaw_rmse_rad": {
+      "count": 1,
+      "max": 0.020490922883314378,
+      "median": 0.020490922883314378,
+      "min": 0.020490922883314378,
+      "p95": null
+    }
+  }
+]

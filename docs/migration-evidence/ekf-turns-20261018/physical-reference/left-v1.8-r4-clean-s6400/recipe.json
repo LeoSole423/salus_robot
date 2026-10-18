@@ -1,0 +1,40 @@
+{
+  "id": "left-v1.8-r4-clean-s6400",
+  "kind": "left",
+  "speed": 1.8,
+  "radius": 4.0,
+  "profile": "clean",
+  "seed": 6400,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.8,
+      0.45
+    ],
+    [
+      "curve",
+      2.490658503988659,
+      1.8,
+      0.45
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

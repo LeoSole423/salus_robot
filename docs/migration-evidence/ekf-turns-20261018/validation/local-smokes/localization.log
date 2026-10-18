@@ -1,0 +1,14 @@
+ Container salus_robot-issue-328-ros2-run-01963faa7f18 Creating 
+ Container salus_robot-issue-328-ros2-run-01963faa7f18 Created 
+[smoke:localization-free-world] launch_started:motion_launch
+[smoke:localization-free-world] launch_started:control_launch
+[smoke:localization-free-world] launch_started:vehicle_io_launch
+[smoke:localization-free-world] launch_started:localization_launch
+[smoke:localization-free-world] ready:topic:/clock
+[smoke:localization-free-world] ready:node:/kinematic_ackermann_odometry
+[smoke:localization-free-world] ready:node:/ekf_filter_node_local
+[smoke:localization-free-world] ready:topic:/wheel/odometry
+[smoke:localization-free-world] ready:topic:/imu/data
+[smoke:localization-free-world] ready:topic:/odometry/local
+Smoke assertion localization_probe passed; log: /ros2_ws/artifacts/smokes/localization-free-world-20261018T155707-1/localization_probe.log
+[smoke:localization-free-world] passed:localization_probe

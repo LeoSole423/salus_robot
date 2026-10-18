@@ -1,0 +1,42 @@
+{
+  "id": "right-v1.6-r1.65-manual-s6400",
+  "kind": "right",
+  "speed": 1.6,
+  "radius": 1.65,
+  "profile": "clean",
+  "seed": 6400,
+  "manual_envelope": true,
+  "hold_s": 6.0,
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.6,
+      -0.9696969696969698
+    ],
+    [
+      "curve",
+      5.0,
+      1.6,
+      -0.9696969696969698
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.6,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "failures": [],
+  "counts": {
+    "/gps/fix": 153,
+    "/gps/odometry_map/debug": 152,
+    "/gps/course_heading/debug": 153,
+    "/imu/data": 1093,
+    "/odometry/local_global": 688,
+    "/simulation/ground_truth": 1090,
+    "/odom_raw": 1090,
+    "/tf/odom/base_footprint": 686,
+    "/odometry/local": 686,
+    "/odometry/global": 683,
+    "/tf/map/odom": 683,
+    "/wheel/odometry": 229,
+    "/controller/drive_telemetry": 229,
+    "/experiment/command": 564,
+    "/cmd_vel_final": 501,
+    "/gps/course_heading": 81,
+    "/localization/orientation": 81,
+    "/gps/odometry_map": 138
+  },
+  "scope": "simulation, open-loop"
+}

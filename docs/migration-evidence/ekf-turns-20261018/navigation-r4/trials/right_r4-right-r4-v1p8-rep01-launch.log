@@ -1,0 +1,384 @@
+[INFO] [launch]: All log files can be found below /evaluation-artifacts/trials/right_r4-right-r4-v1p8-rep01/runtime/right_r4-right-r4-v1p8-rep01/ros-log/2026-10-18-15-51-25-607500-leosole-Dell-G15-5530-4690
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [ign gazebo-1]: process started with pid [4712]
+[INFO] [robot_state_publisher-2]: process started with pid [4714]
+[INFO] [parameter_bridge-3]: process started with pid [4717]
+[INFO] [parameter_bridge-4]: process started with pid [4719]
+[INFO] [create-5]: process started with pid [4721]
+[INFO] [controller_server_node-6]: process started with pid [4723]
+[INFO] [legacy_vehicle_command_node-7]: process started with pid [4725]
+[INFO] [vehicle_command_comparison_node-8]: process started with pid [4727]
+[INFO] [canonical_command_dry_run_node-9]: process started with pid [4729]
+[INFO] [sim_imu_from_odom-10]: process started with pid [4731]
+[INFO] [imu_normalizer-11]: process started with pid [4733]
+[INFO] [imu_selector-12]: process started with pid [4735]
+[INFO] [ackermann_odometry-13]: process started with pid [4737]
+[INFO] [ekf_node-14]: process started with pid [4739]
+[INFO] [sim_gps_normalizer-15]: process started with pid [4741]
+[INFO] [global_stationary_gates-16]: process started with pid [4743]
+[INFO] [gps_course_heading-17]: process started with pid [4747]
+[INFO] [orientation_source_selector-18]: process started with pid [4769]
+[INFO] [map_gps_absolute_measurement-19]: process started with pid [4772]
+[INFO] [navsat_transform_node-20]: process started with pid [4781]
+[INFO] [ekf_node-21]: process started with pid [4783]
+[INFO] [capability_profile-22]: process started with pid [4785]
+[INFO] [safety_command_passthrough-23]: process started with pid [4788]
+[INFO] [nav_command_server-24]: process started with pid [4791]
+[INFO] [zones_manager-25]: process started with pid [4795]
+[INFO] [planner_server-26]: process started with pid [4800]
+[INFO] [controller_server-27]: process started with pid [4812]
+[INFO] [bt_navigator-28]: process started with pid [4815]
+[INFO] [behavior_server-29]: process started with pid [4826]
+[INFO] [nav_observer-30]: process started with pid [4828]
+[INFO] [path_health-31]: process started with pid [4830]
+[INFO] [navigation_profile_coordinator-32]: process started with pid [4833]
+[INFO] [lifecycle_manager-33]: process started with pid [4841]
+[INFO] [nav2_startup_coordinator-34]: process started with pid [4846]
+[create-5] [INFO] [1792338686.128790309] [spawn_salus_ackermann]: Requesting list of world names.
+[robot_state_publisher-2] [INFO] [1792338686.187861454] [robot_state_publisher]: got segment base_footprint
+[robot_state_publisher-2] [INFO] [1792338686.188104322] [robot_state_publisher]: got segment base_link
+[robot_state_publisher-2] [INFO] [1792338686.188119447] [robot_state_publisher]: got segment front_left_steer_link
+[robot_state_publisher-2] [INFO] [1792338686.188127838] [robot_state_publisher]: got segment front_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792338686.188135137] [robot_state_publisher]: got segment front_right_steer_link
+[robot_state_publisher-2] [INFO] [1792338686.188142063] [robot_state_publisher]: got segment front_right_wheel_link
+[robot_state_publisher-2] [INFO] [1792338686.188148760] [robot_state_publisher]: got segment gps_link
+[robot_state_publisher-2] [INFO] [1792338686.188155811] [robot_state_publisher]: got segment imu_link
+[robot_state_publisher-2] [INFO] [1792338686.188162988] [robot_state_publisher]: got segment imu_primary_link
+[robot_state_publisher-2] [INFO] [1792338686.188169839] [robot_state_publisher]: got segment lidar_link
+[robot_state_publisher-2] [INFO] [1792338686.188176600] [robot_state_publisher]: got segment rear_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792338686.188183651] [robot_state_publisher]: got segment rear_right_wheel_link
+[parameter_bridge-4] [INFO] [1792338686.190757237] [joint_state_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/model/salus_ackermann/joint_state (gz.msgs.Model) -> /world/salus_empty/model/salus_ackermann/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[planner_server-26] [INFO] [1792338686.262029301] [planner_server]: 
+[planner_server-26] 	planner_server lifecycle node launched. 
+[planner_server-26] 	Waiting on external lifecycle transitions to activate
+[planner_server-26] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[ekf_node-21] Warning: /imu/data_global is listed as an input topic, but all its update variables are false
+[planner_server-26] [INFO] [1792338686.266010200] [planner_server]: Creating
+[behavior_server-29] [INFO] [1792338686.267369883] [behavior_server]: 
+[behavior_server-29] 	behavior_server lifecycle node launched. 
+[behavior_server-29] 	Waiting on external lifecycle transitions to activate
+[behavior_server-29] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-27] [INFO] [1792338686.300898803] [controller_server]: 
+[controller_server-27] 	controller_server lifecycle node launched. 
+[controller_server-27] 	Waiting on external lifecycle transitions to activate
+[controller_server-27] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338686.304701190] [global_costmap.global_costmap]: 
+[planner_server-26] 	global_costmap lifecycle node launched. 
+[planner_server-26] 	Waiting on external lifecycle transitions to activate
+[planner_server-26] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[planner_server-26] [INFO] [1792338686.306331247] [global_costmap.global_costmap]: Creating Costmap
+[controller_server-27] [INFO] [1792338686.318896410] [controller_server]: Creating controller server
+[bt_navigator-28] [INFO] [1792338686.321204749] [bt_navigator]: 
+[bt_navigator-28] 	bt_navigator lifecycle node launched. 
+[bt_navigator-28] 	Waiting on external lifecycle transitions to activate
+[bt_navigator-28] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[bt_navigator-28] [INFO] [1792338686.321419307] [bt_navigator]: Creating
+[lifecycle_manager-33] [INFO] [1792338686.360465571] [lifecycle_manager_navigation]: Creating
+[controller_server-27] [INFO] [1792338686.368872977] [local_costmap.local_costmap]: 
+[controller_server-27] 	local_costmap lifecycle node launched. 
+[controller_server-27] 	Waiting on external lifecycle transitions to activate
+[controller_server-27] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[controller_server-27] [INFO] [1792338686.369600200] [local_costmap.local_costmap]: Creating Costmap
+[lifecycle_manager-33] [INFO] [1792338686.372261068] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[create-5] [INFO] [1792338686.762736805] [spawn_salus_ackermann]: Requested creation of entity.
+[create-5] [INFO] [1792338686.762784008] [spawn_salus_ackermann]: OK creation of entity.
+[INFO] [create-5]: process has finished cleanly [pid 4721]
+[controller_server_node-6] [INFO] [1792338687.016514927] [salus_controller]: controller serial port selected (reason=explicit, requested=/dev/null, resolved=/dev/null)
+[controller_server_node-6] [INFO] [1792338687.099288137] [salus_controller]: controller_server ready (backend=sim_gazebo, serial=/dev/null@115200, input=legacy_cmd_vel, source=/cmd_vel_final)
+[controller_server_node-6] [INFO] [1792338687.099711973] [salus_controller]: sim battery services ready (/sim_battery/set_preset, /sim_battery/set_state)
+[parameter_bridge-3] [INFO] [1792338687.174699966] [motion_bridge]: Creating ROS->GZ Bridge: [/cmd_vel_gazebo (geometry_msgs/msg/Twist) -> /cmd_vel_steer (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338687.190021800] [motion_bridge]: Creating GZ->ROS Bridge: [/odom (gz.msgs.Odometry) -> /odom_raw (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338687.197790860] [motion_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338687.203324001] [motion_bridge]: Creating GZ->ROS Bridge: [/gps/fix_raw (gz.msgs.NavSat) -> /gps/fix_raw (sensor_msgs/msg/NavSatFix)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338687.209791681] [motion_bridge]: Creating GZ->ROS Bridge: [/lidar/points (gz.msgs.PointCloudPacked) -> /scan_3d_raw (sensor_msgs/msg/PointCloud2)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792338687.239615766] [motion_bridge]: Creating GZ->ROS Bridge: [/simulation/ground_truth (gz.msgs.Odometry) -> /simulation/ground_truth (nav_msgs/msg/Odometry)] (Lazy 0)
+[safety_command_passthrough-23] [WARN] [1792338687.260907887] [safety_command_passthrough]: local obstacle detection is disabled by explicit profile; commands are relayed without collision monitoring
+[nav_command_server-24] [INFO] [1792338687.381128858] [nav_command_server]: nav command server ready: safe/manual commands and LL route chunks
+[ign gazebo-1] [1;33mWarning [Utils.cc:129][0m [/sdf/model[@name="salus_ackermann"]/link[@name="base_footprint"]/sensor[@name="lidar_3d_sensor"]/lidar/noise[@type="gaussian"]:/tmp/salus_ackermann_yp4jux6w.urdf:L0]: XML Attribute[type] in element[noise] not defined in SDF.
+[ign gazebo-1] MESA: error: Failed to query drm device.
+[ign gazebo-1] libGL error: glx: failed to create dri3 screen
+[ign gazebo-1] libGL error: failed to load driver: iris
+[ign gazebo-1] libGL error: failed to open /dev/dri/card1: No such file or directory
+[ign gazebo-1] libGL error: failed to load driver: iris
+[parameter_bridge-3] [INFO] [1792338688.948999123] [motion_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[navsat_transform_node-20] [INFO] [1792338688.976034583] [navsat_transform]: Datum (latitude, longitude, altitude) is (-31.49, -64.24, 0.00)
+[navsat_transform_node-20] [INFO] [1792338688.976263251] [navsat_transform]: Datum UTM coordinate is (20J, 382121.84, 6515889.94)
+[navsat_transform_node-20] [INFO] [1792338688.976377212] [navsat_transform]: Corrected for magnetic declination of 0, user-specified offset of 0 and meridian convergence of 0.0113143. Transform heading factor is now 0.0113143
+[lifecycle_manager-33] [INFO] [1792338690.539832965] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-33] [INFO] [1792338690.539927548] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[planner_server-26] [INFO] [1792338690.540374401] [planner_server]: Configuring
+[planner_server-26] [INFO] [1792338690.540429958] [global_costmap.global_costmap]: Configuring
+[planner_server-26] [INFO] [1792338690.563889803] [global_costmap.global_costmap]: Using plugin "obstacle_layer"
+[planner_server-26] [INFO] [1792338690.569415305] [global_costmap.global_costmap]: Subscribed to Topics: scan
+[planner_server-26] [INFO] [1792338690.581508694] [global_costmap.global_costmap]: Initialized plugin "obstacle_layer"
+[planner_server-26] [INFO] [1792338690.581586902] [global_costmap.global_costmap]: Using plugin "inflation_layer"
+[planner_server-26] [INFO] [1792338690.582753675] [global_costmap.global_costmap]: Initialized plugin "inflation_layer"
+[planner_server-26] [INFO] [1792338690.582815609] [global_costmap.global_costmap]: Using plugin "vector_keepout_layer"
+[planner_server-26] [INFO] [1792338690.591931091] [global_costmap.global_costmap]: Initialized plugin "vector_keepout_layer"
+[planner_server-26] [INFO] [1792338690.616817737] [planner_server]: Created global planner plugin GridBased of type nav2_smac_planner/SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338690.616898416] [planner_server]: Configuring GridBased of type SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338690.620653565] [planner_server]: Even sized heuristic lookup table size set 80.000000, increasing size by 1 to make odd
+[planner_server-26] [INFO] [1792338690.717283316] [planner_server]: Configured plugin GridBased of type SmacPlannerHybrid with maximum iterations 3000000, max on approach iterations 1000, and allowing unknown traversal. Tolerance 0.50.Using motion model: Dubin.
+[planner_server-26] [INFO] [1792338690.717323517] [planner_server]: Planner Server has GridBased  planners available.
+[lifecycle_manager-33] [INFO] [1792338690.749107204] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[controller_server-27] [INFO] [1792338690.749978731] [controller_server]: Configuring controller interface
+[controller_server-27] [INFO] [1792338690.750226065] [controller_server]: getting goal checker plugins..
+[controller_server-27] [INFO] [1792338690.750348238] [controller_server]: Controller frequency set to 20.0000Hz
+[controller_server-27] [INFO] [1792338690.750395924] [local_costmap.local_costmap]: Configuring
+[controller_server-27] [INFO] [1792338690.772331540] [local_costmap.local_costmap]: Using plugin "obstacle_layer"
+[controller_server-27] [INFO] [1792338690.777812284] [local_costmap.local_costmap]: Subscribed to Topics: scan
+[controller_server-27] [INFO] [1792338690.785210484] [local_costmap.local_costmap]: Initialized plugin "obstacle_layer"
+[controller_server-27] [INFO] [1792338690.785270948] [local_costmap.local_costmap]: Using plugin "inflation_layer"
+[controller_server-27] [INFO] [1792338690.786388102] [local_costmap.local_costmap]: Initialized plugin "inflation_layer"
+[controller_server-27] [INFO] [1792338690.786438836] [local_costmap.local_costmap]: Using plugin "vector_keepout_layer"
+[controller_server-27] [INFO] [1792338690.795697205] [local_costmap.local_costmap]: Initialized plugin "vector_keepout_layer"
+[controller_server-27] [INFO] [1792338690.819938362] [controller_server]: Created progress_checker : progress_checker of type nav2_controller::SimpleProgressChecker
+[controller_server-27] [INFO] [1792338690.821100852] [controller_server]: Created goal checker : general_goal_checker of type nav2_controller::PositionGoalChecker
+[controller_server-27] [INFO] [1792338690.821965876] [controller_server]: Controller Server has general_goal_checker  goal checkers available.
+[controller_server-27] [INFO] [1792338690.822851694] [controller_server]: Created controller : FollowPath of type nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-27] [INFO] [1792338690.834611213] [controller_server]: Controller Server has FollowPath  controllers available.
+[lifecycle_manager-33] [INFO] [1792338690.869574839] [lifecycle_manager_navigation]: [34m[1mConfiguring bt_navigator[0m[0m
+[bt_navigator-28] [INFO] [1792338690.869911603] [bt_navigator]: Configuring
+[lifecycle_manager-33] [INFO] [1792338691.044203658] [lifecycle_manager_navigation]: [34m[1mConfiguring behavior_server[0m[0m
+[behavior_server-29] [INFO] [1792338691.045297491] [behavior_server]: Configuring
+[behavior_server-29] [INFO] [1792338691.104107053] [behavior_server]: Creating behavior plugin wait of type nav2_behaviors/Wait
+[behavior_server-29] [INFO] [1792338691.105097134] [behavior_server]: Configuring wait
+[lifecycle_manager-33] [INFO] [1792338691.137272032] [lifecycle_manager_navigation]: [34m[1mActivating planner_server[0m[0m
+[planner_server-26] [INFO] [1792338691.139032639] [planner_server]: Activating
+[planner_server-26] [INFO] [1792338691.139118125] [global_costmap.global_costmap]: Activating
+[planner_server-26] [INFO] [1792338691.139155869] [global_costmap.global_costmap]: Checking transform
+[planner_server-26] [INFO] [1792338691.139300440] [global_costmap.global_costmap]: start
+[planner_server-26] [INFO] [1792338691.540798950] [planner_server]: Activating plugin GridBased of type SmacPlannerHybrid
+[planner_server-26] [INFO] [1792338691.542475050] [planner_server]: Creating bond (planner_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338692.253344429] [lifecycle_manager_navigation]: Server planner_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338692.266114454] [lifecycle_manager_navigation]: [34m[1mActivating controller_server[0m[0m
+[controller_server-27] [INFO] [1792338692.266495878] [controller_server]: Activating
+[controller_server-27] [INFO] [1792338692.266573343] [local_costmap.local_costmap]: Activating
+[controller_server-27] [INFO] [1792338692.266608182] [local_costmap.local_costmap]: Checking transform
+[controller_server-27] [INFO] [1792338692.266762027] [local_costmap.local_costmap]: start
+[controller_server-27] [INFO] [1792338692.472167358] [controller_server]: Activating controller: FollowPath of type regulated_pure_pursuit_controller::RegulatedPurePursuitController
+[controller_server-27] [INFO] [1792338692.472250388] [controller_server]: Creating bond (controller_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338692.582831955] [lifecycle_manager_navigation]: Server controller_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338692.583065428] [lifecycle_manager_navigation]: [34m[1mActivating bt_navigator[0m[0m
+[bt_navigator-28] [INFO] [1792338692.583710167] [bt_navigator]: Activating
+[bt_navigator-28] [INFO] [1792338692.772799210] [bt_navigator]: Creating bond (bt_navigator) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338692.886747399] [lifecycle_manager_navigation]: Server bt_navigator connected with bond.
+[lifecycle_manager-33] [INFO] [1792338692.886823021] [lifecycle_manager_navigation]: [34m[1mActivating behavior_server[0m[0m
+[behavior_server-29] [INFO] [1792338692.887297502] [behavior_server]: Activating
+[behavior_server-29] [INFO] [1792338692.887331382] [behavior_server]: Activating wait
+[behavior_server-29] [INFO] [1792338692.887352245] [behavior_server]: Creating bond (behavior_server) to lifecycle manager.
+[lifecycle_manager-33] [INFO] [1792338693.005556741] [lifecycle_manager_navigation]: Server behavior_server connected with bond.
+[lifecycle_manager-33] [INFO] [1792338693.005638514] [lifecycle_manager_navigation]: [34m[1mManaged nodes are active[0m[0m
+[lifecycle_manager-33] [INFO] [1792338693.005685136] [lifecycle_manager_navigation]: [34m[1mCreating bond timer...[0m[0m
+[bt_navigator-28] [INFO] [1792338698.900042909] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (4.00, -4.00)
+[controller_server_node-6] [INFO] [1792338698.904820265] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=0 source=3 -> drive=1 estop=0 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=0
+[behavior_server-29] [INFO] [1792338698.972640754] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338698.976667486] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.010672795] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.110421217] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.208604094] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.308012215] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.411021243] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.511412234] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.608336276] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.709791602] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.811727787] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338699.908682094] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338699.972822754] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338700.013046326] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.094428165] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338700.103412749] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338700.115776192] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.208401612] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.309155187] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.409112157] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.508555373] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.608153132] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.708829605] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.810897105] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338700.907766242] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.008987577] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.109100688] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.208073893] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.309485801] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.408641648] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.511177118] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.609082008] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.708798710] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.808277352] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338701.911401253] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.009897545] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338702.104149736] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338702.108994835] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.202633008] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.208871655] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.288822251] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338702.290589783] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338702.308257781] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.409056396] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.509737712] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.608332762] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.708460173] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.810810079] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338702.908492177] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.008389193] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.109790799] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.209213649] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.309372409] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338703.391899584] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338703.408175467] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.489415926] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338703.490609656] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338703.508670866] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.609275503] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.710148575] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.811714430] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338703.908335585] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.008559378] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.111820479] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.207426245] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.309563975] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.408450182] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.508960408] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.608546479] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.708277433] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.808703205] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338704.911937322] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.008619428] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.108336866] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.209411913] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.309811666] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.408064093] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338705.490854437] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338705.510057882] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.581019673] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.610405924] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.657071266] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338705.660826017] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338705.707715025] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.809774982] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338705.908036402] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.011643556] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.112887695] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.212977584] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.308621441] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.408071017] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.518963508] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.624032085] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.710116727] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338706.761025191] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338706.807593776] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338706.836457495] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338706.840596937] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338706.908983625] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.009648682] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.107903140] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.207700406] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.307614130] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.407755666] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.510996098] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.607166408] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.710497359] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.809387037] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338707.908483758] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.011682688] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.108036797] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.208308002] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.308537970] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.408200836] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.507973331] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.607826826] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.708142046] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.807488288] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338708.908912765] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338708.940897872] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338709.009551913] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.034404539] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338709.095545523] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338709.096000128] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.107096681] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.208088133] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.307642259] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.408943332] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.513859739] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.610439365] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.709880489] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.808057276] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338709.907948412] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.010624070] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338710.095741682] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338710.107774164] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.166492866] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338710.180394711] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338710.207821935] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.309286024] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.410439493] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.512588419] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.610638309] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.712187530] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.811668407] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338710.909519557] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.012036707] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.107998849] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.210101841] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.310288280] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.409769959] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.511395098] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.609625670] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.709618195] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.811312471] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338711.911624011] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.011598321] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.107926577] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.211294827] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338712.280575267] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338712.309388100] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.376011119] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.407209152] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338712.424789018] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338712.425210766] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.512590628] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.611995267] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.707049906] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.813885857] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338712.911449516] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.011751433] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.108113675] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.211234113] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.309404880] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.411679735] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.510674983] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338713.525306573] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338713.596245734] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338713.600702018] [behavior_server]: Running wait
+[controller_server_node-6] [INFO] [1792338713.608024111] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.709148700] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.810644486] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338713.912942253] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.017228599] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.108625437] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.208064142] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.308382595] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.411309379] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.512482848] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.609560351] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.709789606] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.810878605] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338714.908701801] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.011527712] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.107960293] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.210247850] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.308835781] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.410169837] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.513125896] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.608237379] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[behavior_server-29] [INFO] [1792338715.701050087] [behavior_server]: wait completed successfully
+[controller_server_node-6] [INFO] [1792338715.710023430] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.802285650] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338715.814939309] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[bt_navigator-28] [WARN] [1792338715.820422499] [bt_navigator]: [navigate_to_pose] [ActionServer] Aborting handle.
+[bt_navigator-28] [ERROR] [1792338715.820880769] [bt_navigator]: Goal failed
+[controller_server_node-6] [INFO] [1792338715.907449787] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338716.007553848] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338716.107162384] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100
+[controller_server_node-6] [INFO] [1792338716.207737478] [salus_controller]: cmd_vel_final rx linear_x=0.000 angular_z=0.000 brake_pct=100 source=3 -> drive=1 estop=1 speed_mps=0.000 steer_pct=0 steer_deg=0.00 curvature=0.000 brake_pct=100

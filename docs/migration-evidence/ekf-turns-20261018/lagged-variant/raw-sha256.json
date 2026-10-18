@@ -1,0 +1,32 @@
+{
+  "right-v1.6-r4-clean-lagged-s6400": {
+    "sha256": "7ecca40214d50bff6bfd82f8fb3cbc80386b920e36c4064eaaa5b48a7a15e280",
+    "bytes": 5832993,
+    "analysis_sha256": "a14dbe73225b9bd6a467fac684e361f82892eccf97e2fda67bbf783d3fcc8bc6"
+  },
+  "right-v1.6-r4-clean-lagged-s6401": {
+    "sha256": "fd33e1a16709ae159816d202c14d605b2e5c8b72898fe422764998a9ba783d7e",
+    "bytes": 5717761,
+    "analysis_sha256": "f240aa7f01d5ae097a71ccb8da9d2fe4cec09af62e2cebb4066b67c2d01b08c1"
+  },
+  "right-v1.6-r4-latency300-lagged-s6400": {
+    "sha256": "cea0e9b1e8731e4583369adf98dde793f90cbbf03976ab34d0bdfc42c57328aa",
+    "bytes": 5742236,
+    "analysis_sha256": "91fa68228da44326ac980b8637cfffd2b262209896c7b67e291dde9586c37d26"
+  },
+  "right-v1.6-r4-latency300-lagged-s6401": {
+    "sha256": "426095532d36999410eb3f49d1d553a94d2a987e1317684a00854065e45e1485",
+    "bytes": 5728209,
+    "analysis_sha256": "ec4395e05ef15f1ca5e735725f14453559fabe0ea9545f2669ec9b40ffa91447"
+  },
+  "right-v1.6-r4-nominal-lagged-s6400": {
+    "sha256": "0b03c91f812f86c44eaf352912b46bce375512dd077362c118a6270df22c424d",
+    "bytes": 5700564,
+    "analysis_sha256": "9ba08e5578f0c2d334f3c1a2825f671f38ac1301cbc6aa5df60c82437afd2e52"
+  },
+  "right-v1.6-r4-nominal-lagged-s6401": {
+    "sha256": "bc79c4a6257e26bb223ea0a6408947809f7ac1902d4ba7ced831e038f766030d",
+    "bytes": 6091196,
+    "analysis_sha256": "b56268d8efcc4c75c3c643f8d57e75a037932c124bfe0c006b6fa9558b4c945f"
+  }
+}

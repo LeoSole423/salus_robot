@@ -278,3 +278,18 @@ def test_schema_rejects_unknown_fields(tmp_path):
     )
     with pytest.raises(ValueError, match="unknown"):
         load_scenario(path)
+
+
+def test_tracking_never_compares_earlier_motion_with_a_future_replan():
+    from salus_evaluation.metrics import causal_tracking_metrics
+
+    old_path = (Pose2D(0, 0, 0), Pose2D(10, 0, 0))
+    new_path = (Pose2D(0, 10, 0), Pose2D(10, 10, 0))
+    poses = (TimedPose(.1, Pose2D(0, 0, 0)), TimedPose(1., Pose2D(1, 0, 0)),
+             TimedPose(2., Pose2D(2, 1, 0)), TimedPose(4., Pose2D(4, 10, 0)))
+    result = causal_tracking_metrics(poses, ((.5, old_path), (3., new_path)))
+    assert result["paired_samples"] == 3
+    assert result["unpaired_samples"] == 1
+    assert result["cross_track_rms_m"] == pytest.approx(math.sqrt(1/3))
+    assert result["cross_track_max_m"] == pytest.approx(1.)
+    assert causal_tracking_metrics(poses, ())["cross_track_rms_m"] is None

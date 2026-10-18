@@ -24,7 +24,7 @@ from .metrics import (absolute_goal, arrival_metrics, command_response_sign,
                       covariance_summary, localization_metrics,
                       saturation_intervals,
                       steering_margin_summary,
-                      tracking_metrics, trial_data_finite)
+                      tracking_metrics, trial_data_finite, causal_tracking_metrics)
 from .models import (ExpectedTurn, Pose2D, TimedCommand,
                      TimedControllerStatus, TimedControllerTelemetry,
                      TimedDriveTelemetry, TimedFinalCommand,
@@ -38,6 +38,7 @@ def reference_tracking_observation(topic, poses, path, goal, tolerance, success_
         "topic": topic,
         "reference_kind": ("physical_world_pose" if topic == "/simulation/ground_truth"
                            else "kinematic_odometry_not_independent_truth"),
+        "tracking_reference": "final_plan_snapshot_report_only",
         "tracking": tracking_metrics(poses, path) if poses and path else None,
         "arrival": arrival_metrics(poses, goal, tolerance, success_s)
         if poses and goal else None,
@@ -525,8 +526,10 @@ class EvaluationRunner(Node):
                        for item in message.poses)
         if points:
             index = len(self.plans)
+            receive_stamp = _now_s(self)
             self.plan_samples.extend(dict(
                 plan_index=index, pose_index=i, stamp_s=_stamp(message),
+                receive_stamp_s=receive_stamp,
                 frame_id=message.header.frame_id, x_m=p.x_m, y_m=p.y_m, yaw_rad=p.yaw_rad)
                 for i, p in enumerate(points))
             self.plans.append(points)
@@ -692,6 +695,18 @@ class EvaluationRunner(Node):
             errors.append("reference tracking: " + str(exc))
             reference_observation = {"topic": self.raw_subscription.topic_name,
                                      "error": str(exc)}
+        plan_groups = {}
+        for row in self.plan_samples:
+            plan_groups.setdefault(row["plan_index"], []).append(row)
+        plan_observations = [
+            (rows[0]["receive_stamp_s"], tuple(
+                Pose2D(row["x_m"], row["y_m"], row["yaw_rad"])
+                for row in sorted(rows, key=lambda item: item["pose_index"])))
+            for rows in plan_groups.values()
+        ]
+        reference_observation["causal_published_plan_tracking"] = causal_tracking_metrics(
+            raw_poses, plan_observations
+        )
         gnss_heading_debug = [r for r in self.gnss_heading_debug
                               if r["stamp_s"] >= self.goal_sent_s]
         gnss_map_debug = [r for r in self.gnss_map_debug

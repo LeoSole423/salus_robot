@@ -1,0 +1,43 @@
+{
+  "kind": "right",
+  "speed": 1.8,
+  "radius": 1.65,
+  "profile": "nominal",
+  "manual_envelope": true,
+  "hold_s": 6.0,
+  "id": "h3-right-nominal-lagged-s6403",
+  "seed": 6403,
+  "variant": "lagged",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "entry",
+      1.0,
+      1.8,
+      -1.090909090909091
+    ],
+    [
+      "curve",
+      5.0,
+      1.8,
+      -1.090909090909091
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.8,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

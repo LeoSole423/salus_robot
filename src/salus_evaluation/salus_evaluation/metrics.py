@@ -1,5 +1,6 @@
 """Pure geometry and navigation metric calculations."""
 
+import bisect
 import math
 
 from .models import (ArrivalMetrics, ExpectedTurn, LocalizationCovarianceSummary,
@@ -114,6 +115,33 @@ def tracking_metrics(poses, path):
                            _percentile(distances, .95), max(distances),
                            _percentile(heading_errors, .95), traveled,
                            direct / traveled if traveled else 1.0)
+
+
+def causal_tracking_metrics(poses, plan_observations):
+    """
+    Pair physical poses with the last plan received, never a future replan.
+
+    Observations are (receive timestamp, tuple of Pose2D). This measures the
+    published plan, without claiming knowledge of the controller's active path.
+    """
+    observations = sorted(plan_observations, key=lambda item: item[0])
+    stamps = [item[0] for item in observations]
+    distances = []
+    unpaired = 0
+    for pose in poses:
+        index = bisect.bisect_right(stamps, pose.stamp_s) - 1
+        if index < 0 or len(observations[index][1]) < 2:
+            unpaired += 1
+            continue
+        distances.append(_nearest(pose.pose, observations[index][1])[0])
+    return {
+        "reference": "latest_published_plan_by_receive_stamp",
+        "paired_samples": len(distances), "unpaired_samples": unpaired,
+        "cross_track_rms_m": math.sqrt(sum(x*x for x in distances) / len(distances))
+        if distances else None,
+        "cross_track_p95_m": _percentile(distances, .95) if distances else None,
+        "cross_track_max_m": max(distances) if distances else None,
+    }
 
 
 def command_response_sign(commands, poses, linear_min=0.1, angular_min=0.02,

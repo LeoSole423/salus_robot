@@ -1,0 +1,22 @@
+[
+  {
+    "smoke": "motion",
+    "returncode": 0
+  },
+  {
+    "smoke": "localization",
+    "returncode": 0
+  },
+  {
+    "smoke": "safety",
+    "returncode": 0
+  },
+  {
+    "smoke": "navigation_core",
+    "returncode": 0
+  },
+  {
+    "smoke": "integration",
+    "returncode": 0
+  }
+]

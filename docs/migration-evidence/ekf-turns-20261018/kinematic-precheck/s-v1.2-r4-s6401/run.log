@@ -1,0 +1,107 @@
+[smoke:heading-baseline] launch_started:integration
+[smoke:heading-baseline] ready:node:/gps_course_heading
+Smoke assertion heading_capture failed; output follows:
+Traceback (most recent call last):
+  File "/ros2_ws/tools/capture_heading_baseline.py", line 158, in <module>
+    main()
+  File "/ros2_ws/tools/capture_heading_baseline.py", line 150, in main
+    if failures: raise RuntimeError('; '.join(failures))
+RuntimeError: no GPS heading measurements
+[smoke:heading-baseline] heading_baseline_captured
+heading_capture_exit_status=1
+Smoke heading-baseline failed; diagnostics: /ros2_ws/artifacts/issue328-reference/s-v1.2-r4-s6401/smokes/heading-baseline-20261018T150216-1
+Traceback (most recent call last):
+  File "/ros2_ws/tools/capture_heading_baseline.py", line 158, in <module>
+    main()
+  File "/ros2_ws/tools/capture_heading_baseline.py", line 150, in main
+    if failures: raise RuntimeError('; '.join(failures))
+RuntimeError: no GPS heading measurements
+[INFO] [launch]: All log files can be found below /home/ros/.ros/log/2026-10-18-15-02-17-112673-6ef30c972d4e-42
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [ign gazebo-1]: process started with pid [55]
+[INFO] [robot_state_publisher-2]: process started with pid [57]
+[INFO] [parameter_bridge-3]: process started with pid [60]
+[INFO] [parameter_bridge-4]: process started with pid [62]
+[INFO] [create-5]: process started with pid [64]
+[INFO] [sim_drive_sensor_adapter-6]: process started with pid [66]
+[INFO] [controller_server_node-7]: process started with pid [68]
+[INFO] [legacy_vehicle_command_node-8]: process started with pid [70]
+[INFO] [vehicle_command_comparison_node-9]: process started with pid [72]
+[INFO] [canonical_command_dry_run_node-10]: process started with pid [74]
+[INFO] [sim_imu_from_odom-11]: process started with pid [76]
+[INFO] [imu_normalizer-12]: process started with pid [78]
+[INFO] [imu_selector-13]: process started with pid [80]
+[INFO] [ackermann_odometry-14]: process started with pid [82]
+[INFO] [ekf_node-15]: process started with pid [84]
+[INFO] [sim_gps_normalizer-16]: process started with pid [86]
+[INFO] [global_stationary_gates-17]: process started with pid [90]
+[INFO] [gps_course_heading-18]: process started with pid [107]
+[INFO] [orientation_source_selector-19]: process started with pid [109]
+[INFO] [map_gps_absolute_measurement-20]: process started with pid [117]
+[INFO] [navsat_transform_node-21]: process started with pid [126]
+[INFO] [ekf_node-22]: process started with pid [128]
+[INFO] [capability_profile-23]: process started with pid [134]
+[INFO] [cloud_normalizer-24]: process started with pid [138]
+[INFO] [scan_ground_filter-25]: process started with pid [145]
+[INFO] [pointcloud_to_laserscan_node-26]: process started with pid [152]
+[INFO] [scan_noise_filter-27]: process started with pid [155]
+[INFO] [scan_preview-28]: process started with pid [163]
+[INFO] [collision_monitor-29]: process started with pid [190]
+[INFO] [lifecycle_manager-30]: process started with pid [192]
+[INFO] [nav_command_server-31]: process started with pid [194]
+[robot_state_publisher-2] [INFO] [1792335737.580363100] [robot_state_publisher]: got segment base_footprint
+[robot_state_publisher-2] [INFO] [1792335737.580500268] [robot_state_publisher]: got segment base_link
+[robot_state_publisher-2] [INFO] [1792335737.580511808] [robot_state_publisher]: got segment front_left_steer_link
+[robot_state_publisher-2] [INFO] [1792335737.580519134] [robot_state_publisher]: got segment front_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792335737.580525857] [robot_state_publisher]: got segment front_right_steer_link
+[robot_state_publisher-2] [INFO] [1792335737.580532522] [robot_state_publisher]: got segment front_right_wheel_link
+[robot_state_publisher-2] [INFO] [1792335737.580547580] [robot_state_publisher]: got segment gps_link
+[robot_state_publisher-2] [INFO] [1792335737.580554207] [robot_state_publisher]: got segment imu_link
+[robot_state_publisher-2] [INFO] [1792335737.580560727] [robot_state_publisher]: got segment imu_primary_link
+[robot_state_publisher-2] [INFO] [1792335737.580567207] [robot_state_publisher]: got segment lidar_link
+[robot_state_publisher-2] [INFO] [1792335737.580573731] [robot_state_publisher]: got segment rear_left_wheel_link
+[robot_state_publisher-2] [INFO] [1792335737.580580374] [robot_state_publisher]: got segment rear_right_wheel_link
+[parameter_bridge-4] [INFO] [1792335737.697410198] [joint_state_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/model/salus_ackermann/joint_state (gz.msgs.Model) -> /world/salus_empty/model/salus_ackermann/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[create-5] [INFO] [1792335737.584065823] [spawn_salus_ackermann]: Requesting list of world names.
+[ekf_node-22] Warning: /imu/data_global is listed as an input topic, but all its update variables are false
+[collision_monitor-29] [INFO] [1792335738.089997298] [collision_monitor]: 
+[collision_monitor-29] 	collision_monitor lifecycle node launched. 
+[collision_monitor-29] 	Waiting on external lifecycle transitions to activate
+[collision_monitor-29] 	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[lifecycle_manager-30] [INFO] [1792335738.178201018] [lifecycle_manager_collision_monitor]: Creating
+[lifecycle_manager-30] [INFO] [1792335738.199452612] [lifecycle_manager_collision_monitor]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[lifecycle_manager-30] [INFO] [1792335738.256571871] [lifecycle_manager_collision_monitor]: [34m[1mStarting managed nodes bringup...[0m[0m
+[lifecycle_manager-30] [INFO] [1792335738.256676640] [lifecycle_manager_collision_monitor]: [34m[1mConfiguring collision_monitor[0m[0m
+[collision_monitor-29] [INFO] [1792335738.258027382] [collision_monitor]: Configuring
+[collision_monitor-29] [INFO] [1792335738.289244504] [collision_monitor]: [footprint]: Creating Polygon
+[collision_monitor-29] [INFO] [1792335738.293190332] [collision_monitor]: [stop_zone]: Creating Polygon
+[collision_monitor-29] [INFO] [1792335738.296187520] [collision_monitor]: [critical_slow_zone]: Creating Polygon
+[collision_monitor-29] [INFO] [1792335738.296919268] [collision_monitor]: [slow_zone]: Creating Polygon
+[collision_monitor-29] [INFO] [1792335738.356814032] [collision_monitor]: [scan]: Creating Scan
+[collision_monitor-29] [WARN] [1792335738.484278984] [collision_monitor.rclcpp]: failed to send response to /collision_monitor/change_state (timeout): client will not receive response, at ./src/rmw_response.cpp:154, at ./src/rcl/service.c:314
+[parameter_bridge-3] [INFO] [1792335738.685257881] [motion_bridge]: Creating ROS->GZ Bridge: [/cmd_vel_gazebo (geometry_msgs/msg/Twist) -> /cmd_vel_steer (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792335738.701474850] [motion_bridge]: Creating GZ->ROS Bridge: [/odom (gz.msgs.Odometry) -> /odom_raw (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792335738.775904335] [motion_bridge]: Creating GZ->ROS Bridge: [/world/salus_empty/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792335738.787952349] [motion_bridge]: Creating GZ->ROS Bridge: [/gps/fix_raw (gz.msgs.NavSat) -> /gps/fix_raw (sensor_msgs/msg/NavSatFix)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792335738.867922336] [motion_bridge]: Creating GZ->ROS Bridge: [/lidar/points (gz.msgs.PointCloudPacked) -> /scan_3d_raw (sensor_msgs/msg/PointCloud2)] (Lazy 0)
+[create-5] [INFO] [1792335739.698059942] [spawn_salus_ackermann]: Requested creation of entity.
+[create-5] [INFO] [1792335739.698107910] [spawn_salus_ackermann]: OK creation of entity.
+[INFO] [create-5]: process has finished cleanly [pid 64]
+[pointcloud_to_laserscan_node-26] [INFO] [1792335740.376743594] [pointcloud_to_laserscan]: Got a subscriber to laserscan, starting pointcloud subscriber
+[controller_server_node-7] [INFO] [1792335740.674054523] [salus_controller]: controller serial port selected (reason=explicit, requested=/dev/null, resolved=/dev/null)
+[ign gazebo-1] [1;33mWarning [Utils.cc:129][0m [/sdf/model[@name="salus_ackermann"]/link[@name="base_footprint"]/sensor[@name="lidar_3d_sensor"]/lidar/noise[@type="gaussian"]:/tmp/salus_ackermann_yhl8xspp.urdf:L0]: XML Attribute[type] in element[noise] not defined in SDF.
+[controller_server_node-7] [INFO] [1792335740.788673262] [salus_controller]: controller_server ready (backend=sim_gazebo, serial=/dev/null@115200, input=legacy_cmd_vel, source=/cmd_vel_final)
+[controller_server_node-7] [INFO] [1792335740.789078938] [salus_controller]: sim battery services ready (/sim_battery/set_preset, /sim_battery/set_state)
+[nav_command_server-31] [INFO] [1792335741.386671820] [nav_command_server]: nav command server ready: safe/manual commands and LL route chunks
+[parameter_bridge-3] [INFO] [1792335741.736249845] [motion_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[navsat_transform_node-21] [INFO] [1792335741.757576457] [navsat_transform]: Datum (latitude, longitude, altitude) is (-31.49, -64.24, 0.00)
+[navsat_transform_node-21] [INFO] [1792335741.757913394] [navsat_transform]: Datum UTM coordinate is (20J, 382121.84, 6515889.94)
+[navsat_transform_node-21] [INFO] [1792335741.758034930] [navsat_transform]: Corrected for magnetic declination of 0, user-specified offset of 0 and meridian convergence of 0.0113143. Transform heading factor is now 0.0113143
+[sim_imu_from_odom-11] [WARN] [1792335776.686641809] [sim_imu_from_odom]: Failed to get parameters: The parameter 'imu.forced_dropout_start_s' is not initialized
+[sim_imu_from_odom-11] [WARN] [1792335776.695214477] [sim_imu_from_odom]: Failed to get parameters: The parameter 'imu.forced_dropout_start_s' is not initialized
+[sim_imu_from_odom-11] [WARN] [1792335776.696144892] [sim_imu_from_odom]: Failed to get parameters: The parameter 'imu.forced_dropout_end_s' is not initialized
+[sim_gps_normalizer-16] [WARN] [1792335776.717450626] [sim_gps_normalizer]: Failed to get parameters: The parameter 'gnss.forced_dropout_start_s' is not initialized
+[sim_gps_normalizer-16] [WARN] [1792335776.734657500] [sim_gps_normalizer]: Failed to get parameters: The parameter 'gnss.forced_dropout_start_s' is not initialized
+[sim_gps_normalizer-16] [WARN] [1792335776.735465753] [sim_gps_normalizer]: Failed to get parameters: The parameter 'gnss.forced_dropout_end_s' is not initialized
+[legacy_vehicle_command_node-8] /opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py:76: RuntimeWarning: failed to send response (timeout): client will not receive response, at ./src/rmw_response.cpp:154, at ./src/rcl/service.c:314
+[legacy_vehicle_command_node-8]   self.__service.service_send_response(response, header.request_id)

@@ -81,7 +81,7 @@ def main():
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
-        fig,axes=plt.subplots(2,1,figsize=(max(12,len(aggregates)*.34),12),layout='constrained')
+        fig,axes=plt.subplots(2,1,figsize=(max(12,len(aggregates)*.7),12),layout='constrained')
         labels=list(aggregates)
         for ax,metric,label in [(axes[0],'heading_rms_deg','Global heading RMS [deg]'),(axes[1],'position_rms_m','Global position RMS [m]')]:
             for i,key in enumerate(labels):
@@ -89,7 +89,7 @@ def main():
                 if value:
                     ax.errorbar(i,value['median'],yerr=[[value['median']-value['minimum']],[value['maximum']-value['median']]],fmt='o',capsize=3)
                 else:ax.text(i,0,'FAIL',rotation=90)
-            ax.set_ylabel(label);ax.set_xticks(range(len(labels)),[s.replace('/','\n') for s in labels],rotation=0,ha='center',fontsize=6);ax.grid(alpha=.3)
+            ax.set_ylabel(label);ax.set_xticks(range(len(labels)),[s.replace('/','\n') for s in labels],rotation=0,ha='center',fontsize=7);ax.grid(alpha=.3)
         references=sorted(set(s.get('metrics',{}).get('reference_kind','unavailable') for s in summaries))
         fig.suptitle('SALUS #328 — '+', '.join(references)+'\nMedian and observed range; failed trials retained in summary',fontsize=11)
         fig.savefig(args.output/'comparison.png',dpi=150);fig.savefig(args.output/'comparison.svg')

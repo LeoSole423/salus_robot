@@ -1,0 +1,3 @@
+# Preserve raw evidence bytes while accepting standard CSV CRLF and log spacing.
+docs/migration-evidence/ekf-turns-20261018/**/*.csv whitespace=cr-at-eol
+docs/migration-evidence/ekf-turns-20261018/**/*.log -whitespace

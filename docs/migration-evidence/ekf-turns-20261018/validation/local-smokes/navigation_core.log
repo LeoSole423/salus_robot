@@ -1,0 +1,7 @@
+ Container salus_robot-issue-328-ros2-run-05050b289198 Creating 
+ Container salus_robot-issue-328-ros2-run-05050b289198 Created 
+[smoke:navigation-free-world] launch_started:navigation
+[smoke:navigation-free-world] launch_started:runtime_timing
+Smoke assertion navigation_core passed; log: /ros2_ws/artifacts/smokes/navigation-free-world-20261018T155717-1/navigation_core.log
+[smoke:navigation-free-world] passed:navigation_core
+[smoke:navigation-free-world] navigation_goal_cancel_manual_valid

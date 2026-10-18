@@ -8,7 +8,8 @@ from salus_evaluation.artifacts import write_artifacts
 from salus_evaluation.evaluation_runner import EvaluationRunner
 
 
-def test_collector_persists_complete_plan_and_health_with_source_stamps(tmp_path):
+def test_collector_persists_complete_plan_and_health_with_source_stamps(tmp_path, monkeypatch):
+    monkeypatch.setattr("salus_evaluation.evaluation_runner._now_s", lambda _: 11.0)
     collector = object.__new__(EvaluationRunner)
     collector.plans = []
     collector.plan_samples = []
@@ -38,6 +39,7 @@ def test_collector_persists_complete_plan_and_health_with_source_stamps(tmp_path
     assert [row['plan_index'] for row in rows] == ['0', '0', '1', '1']
     assert rows[-1]['x_m'] == '1.0' and rows[-1]['stamp_s'] == '10.5'
     assert rows[-1]['frame_id'] == 'map'
+    assert rows[-1]['receive_stamp_s'] == '11.0'
     states = list(csv.DictReader((tmp_path / 'path_health.csv').open()))
     assert states[0]['reason'] == health.reason
     assert states[0]['wait_remaining_s'] == '12.0'

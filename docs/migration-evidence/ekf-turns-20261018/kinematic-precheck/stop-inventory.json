@@ -1,0 +1,437 @@
+{
+  "reason": "Gazebo wire contract and independent ground truth defects found; preserve before correcting simulator",
+  "trials": [
+    {
+      "id": "straight-v1.2-r4-s6400",
+      "kind": "straight",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "straight-v1.2-r4-s6401",
+      "kind": "straight",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "straight-v1.2-r4-s6402",
+      "kind": "straight",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "oscillations-v1.2-r4-s6400",
+      "kind": "oscillations",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "oscillations-v1.2-r4-s6401",
+      "kind": "oscillations",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "oscillations-v1.2-r4-s6402",
+      "kind": "oscillations",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v0.8-r4-s6400",
+      "kind": "right",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v0.8-r4-s6401",
+      "kind": "right",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v0.8-r4-s6402",
+      "kind": "right",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v0.8-r4-s6400",
+      "kind": "left",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v0.8-r4-s6401",
+      "kind": "left",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v0.8-r4-s6402",
+      "kind": "left",
+      "speed": 0.8,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.2-r4-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.2-r4-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.2-r4-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.2-r4-s6400",
+      "kind": "left",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.2-r4-s6401",
+      "kind": "left",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.2-r4-s6402",
+      "kind": "left",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.6-r4-s6400",
+      "kind": "right",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.6-r4-s6401",
+      "kind": "right",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-v1.6-r4-s6402",
+      "kind": "right",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.6-r4-s6400",
+      "kind": "left",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.6-r4-s6401",
+      "kind": "left",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "left-v1.6-r4-s6402",
+      "kind": "left",
+      "speed": 1.6,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "s-v1.2-r4-s6400",
+      "kind": "s",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "s-v1.2-r4-s6401",
+      "kind": "s",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "s-v1.2-r4-s6402",
+      "kind": "s",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "half-v1.2-r8-s6400",
+      "kind": "half",
+      "speed": 1.2,
+      "radius": 8,
+      "seed": 6400,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "half-v1.2-r8-s6401",
+      "kind": "half",
+      "speed": 1.2,
+      "radius": 8,
+      "seed": 6401,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "half-v1.2-r8-s6402",
+      "kind": "half",
+      "speed": 1.2,
+      "radius": 8,
+      "seed": 6402,
+      "profile": "clean",
+      "status": "completed"
+    },
+    {
+      "id": "right-gyro-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "gyro",
+      "status": "completed"
+    },
+    {
+      "id": "right-gyro-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "gyro",
+      "status": "completed"
+    },
+    {
+      "id": "right-gyro-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "gyro",
+      "status": "completed"
+    },
+    {
+      "id": "right-wheel-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "wheel",
+      "status": "completed"
+    },
+    {
+      "id": "right-wheel-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "wheel",
+      "status": "completed"
+    },
+    {
+      "id": "right-wheel-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "wheel",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency100-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "latency100",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency100-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "latency100",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency100-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "latency100",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency300-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "latency300",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency300-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "latency300",
+      "status": "completed"
+    },
+    {
+      "id": "right-latency300-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "latency300",
+      "status": "completed"
+    },
+    {
+      "id": "right-outage-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "outage",
+      "status": "cancelled_partial"
+    },
+    {
+      "id": "right-outage-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "outage",
+      "status": "cancelled_partial"
+    },
+    {
+      "id": "right-outage-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "outage",
+      "status": "not_executed"
+    },
+    {
+      "id": "right-nominal-s6400",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6400,
+      "profile": "nominal",
+      "status": "not_executed"
+    },
+    {
+      "id": "right-nominal-s6401",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6401,
+      "profile": "nominal",
+      "status": "not_executed"
+    },
+    {
+      "id": "right-nominal-s6402",
+      "kind": "right",
+      "speed": 1.2,
+      "radius": 4,
+      "seed": 6402,
+      "profile": "nominal",
+      "status": "not_executed"
+    }
+  ]
+}

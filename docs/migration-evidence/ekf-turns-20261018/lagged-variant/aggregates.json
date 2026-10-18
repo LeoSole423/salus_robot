@@ -1,0 +1,68 @@
+{
+  "right/v1.6/R4.0/clean/lagged/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.1158902672807844,
+      "minimum": 1.0109638057872612,
+      "maximum": 1.2208167287743077,
+      "range": 0.2098529229870465
+    },
+    "heading_max_deg": {
+      "median": 3.7883406713526195,
+      "minimum": 3.1665354741282283,
+      "maximum": 4.41014586857701,
+      "range": 1.243610394448782
+    },
+    "position_rms_m": {
+      "median": 0.0695788425790545,
+      "minimum": 0.06741187450578887,
+      "maximum": 0.07174581065232012,
+      "range": 0.004333936146531256
+    }
+  },
+  "right/v1.6/R4.0/latency300/lagged/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.3881156175371805,
+      "minimum": 1.3467673686007589,
+      "maximum": 1.429463866473602,
+      "range": 0.08269649787284306
+    },
+    "heading_max_deg": {
+      "median": 4.260846326047956,
+      "minimum": 4.011997026657667,
+      "maximum": 4.509695625438243,
+      "range": 0.497698598780576
+    },
+    "position_rms_m": {
+      "median": 0.09244768536998882,
+      "minimum": 0.09184948804938477,
+      "maximum": 0.09304588269059288,
+      "range": 0.0011963946412081178
+    }
+  },
+  "right/v1.6/R4.0/nominal/lagged/auto18": {
+    "attempts": 2,
+    "successful": 2,
+    "heading_rms_deg": {
+      "median": 1.214339207938293,
+      "minimum": 1.204419134328109,
+      "maximum": 1.2242592815484772,
+      "range": 0.0198401472203682
+    },
+    "heading_max_deg": {
+      "median": 3.715190382440847,
+      "minimum": 3.696294562243191,
+      "maximum": 3.7340862026385033,
+      "range": 0.03779164039531224
+    },
+    "position_rms_m": {
+      "median": 0.07558274069687285,
+      "minimum": 0.050265596640788765,
+      "maximum": 0.10089988475295691,
+      "range": 0.05063428811216815
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "straight-v1.2-r4-s6402",
+  "kind": "straight",
+  "speed": 1.2,
+  "radius": 4,
+  "seed": 6402,
+  "profile": "clean",
+  "sequence": [
+    [
+      "straight_before",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "cruise",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "straight_after",
+      8.0,
+      1.2,
+      0.0
+    ],
+    [
+      "stop",
+      3.0,
+      0.0,
+      0.0
+    ]
+  ]
+}

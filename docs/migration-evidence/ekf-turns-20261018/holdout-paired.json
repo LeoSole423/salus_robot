@@ -1,0 +1,378 @@
+[
+  {
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6402,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h2-left-nominal-baseline-s6402",
+      "returncode": 0,
+      "heading_max_deg": 4.305333870763965,
+      "heading_rms_deg": 1.1724621704910687,
+      "position_rms_m": 0.0716159575413777,
+      "recovery": {
+        "seconds": 2.2330091830127596,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 682,
+        "unique_stamps": 682,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.0840000000000014,
+        "covered_fraction": 0.9965546801314757
+      }
+    },
+    "lagged": {
+      "id": "h2-left-nominal-lagged-s6402",
+      "returncode": 0,
+      "heading_max_deg": 4.013605511635385,
+      "heading_rms_deg": 1.3740533691779546,
+      "position_rms_m": 0.09061658320974585,
+      "recovery": {
+        "seconds": 2.8840091830127594,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 685,
+        "unique_stamps": 685,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.0840000000000014,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": -0.26531273644411035
+  },
+  {
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6403,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h2-left-nominal-baseline-s6403",
+      "returncode": 0,
+      "heading_max_deg": 3.419366196795348,
+      "heading_rms_deg": 1.1371341861267759,
+      "position_rms_m": 0.09731332773876226,
+      "recovery": {
+        "seconds": 2.9380091830127597,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 684,
+        "unique_stamps": 684,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07800000000000296,
+        "covered_fraction": 0.9965546801314757
+      }
+    },
+    "lagged": {
+      "id": "h2-left-nominal-lagged-s6403",
+      "returncode": 0,
+      "heading_max_deg": 3.789789721182414,
+      "heading_rms_deg": 1.2532832418833315,
+      "position_rms_m": 0.08762561898360635,
+      "recovery": {
+        "seconds": 2.8420091830127596,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 685,
+        "unique_stamps": 685,
+        "max_gap_s": 0.0840000000000014,
+        "max_receive_age_s": 0.0810000000000004,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.09955171588790568
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6402,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h1-right-latency300-baseline-s6402",
+      "returncode": 0,
+      "heading_max_deg": 4.801352765380538,
+      "heading_rms_deg": 1.5796589722691845,
+      "position_rms_m": 0.36560423076890286,
+      "recovery": {
+        "seconds": 8.617009183012758,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 680,
+        "unique_stamps": 680,
+        "max_gap_s": 0.0840000000000014,
+        "max_receive_age_s": 0.07200000000000273,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "h1-right-latency300-lagged-s6402",
+      "returncode": 0,
+      "heading_max_deg": 4.066870085631426,
+      "heading_rms_deg": 1.2299881459144293,
+      "position_rms_m": 0.07868138739853975,
+      "recovery": {
+        "seconds": 2.5840091830127605,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 681,
+        "unique_stamps": 681,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07500000000000284,
+        "covered_fraction": 0.9993025331097793
+      }
+    },
+    "position_rms_reduction_fraction": 0.784790818112075
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6403,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h1-right-latency300-baseline-s6403",
+      "returncode": 0,
+      "heading_max_deg": 4.94527369039572,
+      "heading_rms_deg": 1.699921094186794,
+      "position_rms_m": 0.3564047226938192,
+      "recovery": {
+        "seconds": 8.67400918301276,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 677,
+        "unique_stamps": 677,
+        "max_gap_s": 0.0840000000000014,
+        "max_receive_age_s": 0.0779999999999994,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "h1-right-latency300-lagged-s6403",
+      "returncode": 0,
+      "heading_max_deg": 4.144622850809118,
+      "heading_rms_deg": 1.3327750409215242,
+      "position_rms_m": 0.08980716046448468,
+      "recovery": {
+        "seconds": 3.2290091830127583,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 678,
+        "unique_stamps": 678,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07500000000000107,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.7480191626370889
+  },
+  {
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6402,
+    "manual_envelope": true,
+    "hold_s": 6.0,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h3-right-nominal-baseline-s6402",
+      "returncode": 0,
+      "heading_max_deg": 6.8656381348883775,
+      "heading_rms_deg": 2.914370793474692,
+      "position_rms_m": 0.08619888390575814,
+      "recovery": {
+        "seconds": 3.652000000000001,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 747,
+        "unique_stamps": 747,
+        "max_gap_s": 0.0660000000000025,
+        "max_receive_age_s": 0.0840000000000014,
+        "covered_fraction": 0.99708
+      }
+    },
+    "lagged": {
+      "id": "h3-right-nominal-lagged-s6402",
+      "returncode": 0,
+      "heading_max_deg": 8.329730926742265,
+      "heading_rms_deg": 3.2291277297614758,
+      "position_rms_m": 0.07497871493943355,
+      "recovery": {
+        "seconds": 3.949,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 746,
+        "unique_stamps": 746,
+        "max_gap_s": 0.07900000000000063,
+        "max_receive_age_s": 0.0840000000000014,
+        "covered_fraction": 0.9962399999999999
+      }
+    },
+    "position_rms_reduction_fraction": 0.13016605851407181
+  },
+  {
+    "kind": "right",
+    "speed": 1.8,
+    "radius": 1.65,
+    "profile": "nominal",
+    "seed": 6403,
+    "manual_envelope": true,
+    "hold_s": 6.0,
+    "comparison_eligible": false,
+    "baseline": {
+      "id": "h3-right-nominal-baseline-s6403",
+      "returncode": 1,
+      "heading_max_deg": 7.033456657205784,
+      "heading_rms_deg": 2.7491485345551747,
+      "position_rms_m": 0.09585752963131806,
+      "recovery": {
+        "seconds": 4.162000000000001,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 746,
+        "unique_stamps": 746,
+        "max_gap_s": 0.06300000000000239,
+        "max_receive_age_s": 0.07800000000000296,
+        "covered_fraction": 0.9979199999999999
+      }
+    },
+    "lagged": {
+      "id": "h3-right-nominal-lagged-s6403",
+      "returncode": 0,
+      "heading_max_deg": 8.183262386292663,
+      "heading_rms_deg": 3.1064574743874003,
+      "position_rms_m": 0.07604379527361431,
+      "recovery": {
+        "seconds": 4.243,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 745,
+        "unique_stamps": 745,
+        "max_gap_s": 0.08400000000000007,
+        "max_receive_age_s": 0.07800000000000296,
+        "covered_fraction": 0.9962399999999999
+      }
+    },
+    "position_rms_reduction_fraction": 0.20669982247519048
+  },
+  {
+    "kind": "straight",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6402,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h0-straight-clean-baseline-s6402",
+      "returncode": 0,
+      "heading_max_deg": 1.2138173905898175,
+      "heading_rms_deg": 0.3444934071841925,
+      "position_rms_m": 0.06957082955618081,
+      "recovery": {
+        "seconds": 0.010999999999999233,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 809,
+        "unique_stamps": 809,
+        "max_gap_s": 0.08400000000000052,
+        "max_receive_age_s": 0.05700000000000216,
+        "covered_fraction": 0.9978888888888888
+      }
+    },
+    "lagged": {
+      "id": "h0-straight-clean-lagged-s6402",
+      "returncode": 0,
+      "heading_max_deg": 1.2138145282471828,
+      "heading_rms_deg": 0.34180898222696116,
+      "position_rms_m": 0.07789003364024671,
+      "recovery": {
+        "seconds": 0.038000000000000256,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 807,
+        "unique_stamps": 807,
+        "max_gap_s": 0.06300000000000017,
+        "max_receive_age_s": 0.06300000000000017,
+        "covered_fraction": 0.9963333333333333
+      }
+    },
+    "position_rms_reduction_fraction": -0.11957891169527968
+  },
+  {
+    "kind": "straight",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6403,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "h0-straight-clean-baseline-s6403",
+      "returncode": 0,
+      "heading_max_deg": 1.2657812859892357,
+      "heading_rms_deg": 0.3846449721347844,
+      "position_rms_m": 0.0815601991808846,
+      "recovery": {
+        "seconds": 0.010999999999999233,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 806,
+        "unique_stamps": 806,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.06300000000000061,
+        "covered_fraction": 0.9978888888888889
+      }
+    },
+    "lagged": {
+      "id": "h0-straight-clean-lagged-s6403",
+      "returncode": 0,
+      "heading_max_deg": 1.0784511186800536,
+      "heading_rms_deg": 0.37230242232554256,
+      "position_rms_m": 0.056862890422695905,
+      "recovery": {
+        "seconds": 0.004999999999999005,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 807,
+        "unique_stamps": 807,
+        "max_gap_s": 0.07499999999999929,
+        "max_receive_age_s": 0.06300000000000061,
+        "covered_fraction": 0.9971111111111112
+      }
+    },
+    "position_rms_reduction_fraction": 0.30281079504740893
+  }
+]

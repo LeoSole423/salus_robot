@@ -1,0 +1,5 @@
+[smoke:heading-baseline] launch_started:integration
+[smoke:heading-baseline] ready:node:/gps_course_heading
+Smoke assertion heading_capture passed; log: /ros2_ws/artifacts/issue328-reference/straight-v1.2-r4-s6400/smokes/heading-baseline-20261018T145206-1/heading_capture.log
+[smoke:heading-baseline] passed:heading_capture
+[smoke:heading-baseline] heading_baseline_captured

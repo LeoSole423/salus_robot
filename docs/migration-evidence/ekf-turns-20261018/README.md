@@ -101,3 +101,35 @@ El observador físico usa map/base_footprint y worldPose. El spawn x/y/yaw=0 y
 el datum/yaw del world y mapper coinciden. La comparación fija map=odom del
 mundo, sin alinear al EKF ni restar sesgo inicial. Otros datums/spawns requieren
 transformación explícita; estas herramientas no analizan bags reales genéricos.
+
+## Variante y confirmación
+
+Ejecutar con carpetas nuevas, después de conservar la referencia:
+
+```bash
+/usr/bin/python3 tools/heading_turn_campaign.py \
+  docs/migration-evidence/ekf-turns-20261018/lagged-variant-matrix.json \
+  artifacts/issue328-variant-new --jobs 2
+/usr/bin/python3 tools/heading_turn_campaign.py \
+  docs/migration-evidence/ekf-turns-20261018/holdout-matrix.json \
+  artifacts/issue328-holdout-new --jobs 2
+python3 tools/summarize_turn_campaign.py artifacts/issue328-variant-new \
+  artifacts/issue328-variant-summary-new --plot
+python3 tools/summarize_turn_campaign.py artifacts/issue328-holdout-new \
+  artifacts/issue328-holdout-summary-new --plot
+python3 tools/compare_heading_variants.py \
+  artifacts/issue328-physical-summary-new/summary.json \
+  artifacts/issue328-variant-summary-new/summary.json \
+  --output artifacts/issue328-paired-new.json --plot
+python3 tools/compare_heading_variants.py \
+  artifacts/issue328-holdout-summary-new/summary.json \
+  --output artifacts/issue328-holdout-paired-new.json --plot
+python3 tools/summarize_heading_navigation.py artifacts/issue328-nav-r4-new \
+  artifacts/issue328-nav-r4-observations-new.json
+```
+
+La selección rechaza pares sin parámetros efectivos/captura válida. Los JSON
+paired conservan también esos fallos; las barras rayadas no son elegibles.
+`tools/plot_turn_series.py <trial> <output-prefix>` reproduce las series físicas.
+`tools/plot_navigation_reference.py <bundle>... --output <prefix>` grafica primer
+plan publicado, pose física y meta; no confunde ese plan con el activo interno.

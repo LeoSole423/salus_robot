@@ -27,6 +27,7 @@ components:
     evidence:
       - docs/migration-evidence/intent/ekf-turns-2026-10-18.md
       - docs/migration-evidence/ekf-turns-20261018/README.md
+      - docs/migration-evidence/ekf-turns-20261018/RESULTS.md
       - tools/heading_turn_campaign.py
       - tools/test_heading_turn_metrics.py
       - tools/test_heading_parameter_capture.py
@@ -34,7 +35,9 @@ components:
       PC-only compensated EKF characterization with reproducible sensor
       interventions and separate Nav2 guard evidence. Current filter masks and
       product defaults preserved. Historical references hashed read-only;
-      physical accuracy and turn validation remain pending.
+      Independent world-pose campaign completed; retain EKF defaults after
+      nominal recovery regressions of the lagged-data variant. Physical robot
+      accuracy and turn validation remain pending.
   planner_maneuver_admission:
     source: path-health and issue 244/282/315 characterization
     target: salus_navigation and salus_navigation_bt

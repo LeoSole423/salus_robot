@@ -1,0 +1,688 @@
+[
+  {
+    "trial": "left_r4-left-r4-v1p2-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": true,
+    "failed_gates": [],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "path_healthy": 8
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 396
+    },
+    "physical_speed_max_mps": 1.239004493412072,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1800,
+          "maximum": 1.5957680827894678,
+          "rms": 0.6945951002453281
+        },
+        "position_m": {
+          "n": 1800,
+          "maximum": 0.28235654125666004,
+          "rms": 0.2634067779996918
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1785,
+          "maximum": 2.903403511608332,
+          "rms": 0.9590348637821825
+        },
+        "position_m": {
+          "n": 1785,
+          "maximum": 0.21555274262457425,
+          "rms": 0.2101381657764273
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.1641251888682604,
+        "first_entry_s": 13.104,
+        "minimum_distance_m": 2.1641244787288625,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.14660974023235823
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.32676674566653163,
+        "cross_track_p95_m": 0.22838477619412564,
+        "cross_track_rms_m": 0.23027910643426533,
+        "paired_samples": 2857,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 1
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.32676674566653163,
+        "cross_track_p95_m": 0.22838477619412564,
+        "cross_track_rms_m": 0.23026256031499295,
+        "heading_p95_rad": 0.031124952625530156,
+        "path_efficiency": 0.9361923207522869,
+        "sample_count": 2858,
+        "traveled_m": 4.413433692207935
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "left_r4-left-r4-v1p6-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": true,
+    "failed_gates": [],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "path_healthy": 8
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 397
+    },
+    "physical_speed_max_mps": 1.4558354726384395,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1799,
+          "maximum": 0.9072921025524937,
+          "rms": 0.13714473867534946
+        },
+        "position_m": {
+          "n": 1799,
+          "maximum": 0.20603786855499862,
+          "rms": 0.19609355718230337
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1782,
+          "maximum": 3.3679571231033507,
+          "rms": 0.9344049370570825
+        },
+        "position_m": {
+          "n": 1782,
+          "maximum": 0.2568721625961737,
+          "rms": 0.15455081148688096
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.159594481286018,
+        "first_entry_s": 16.548000000000002,
+        "minimum_distance_m": 2.1595936798608233,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.1414099920083534
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.41386872966813804,
+        "cross_track_p95_m": 0.34923419510135567,
+        "cross_track_rms_m": 0.34713301809124963,
+        "paired_samples": 2858,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 1
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.41386872966813804,
+        "cross_track_p95_m": 0.34923419510135567,
+        "cross_track_rms_m": 0.34708805017508343,
+        "heading_p95_rad": 0.029700561018277775,
+        "path_efficiency": 0.938074705626847,
+        "sample_count": 2859,
+        "traveled_m": 4.528191879965111
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "left_r4-left-r4-v1p8-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": true,
+    "failed_gates": [],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "path_healthy": 8
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 398
+    },
+    "physical_speed_max_mps": 1.5888088851404791,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1803,
+          "maximum": 0.7567159184287802,
+          "rms": 0.6163811110018741
+        },
+        "position_m": {
+          "n": 1803,
+          "maximum": 0.330344650241495,
+          "rms": 0.2837879564908242
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1785,
+          "maximum": 3.3899151252506794,
+          "rms": 1.383571598488875
+        },
+        "position_m": {
+          "n": 1785,
+          "maximum": 0.2540536895432505,
+          "rms": 0.24876659130548412
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.1653956627298934,
+        "first_entry_s": 13.461,
+        "minimum_distance_m": 2.1653948134357375,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.12249675068241968
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.4462401650469413,
+        "cross_track_p95_m": 0.39299938245393135,
+        "cross_track_rms_m": 0.38975938841719976,
+        "paired_samples": 2861,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 1
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.4462401650469413,
+        "cross_track_p95_m": 0.39299938245393135,
+        "cross_track_rms_m": 0.38970529980784513,
+        "heading_p95_rad": 0.029113394422755085,
+        "path_efficiency": 0.9394317698939898,
+        "sample_count": 2862,
+        "traveled_m": 4.5612822817800724
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "right_r4-right-r4-v1p2-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": false,
+    "failed_gates": [
+      "terminal_success",
+      "arrival",
+      "turn_sign"
+    ],
+    "terminal_status": 6,
+    "replans": 14,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "maneuver:WAITING_REPLAN:PLANNER_LOOP": 163,
+      "maneuver:NEEDS_OPERATOR:PLANNER_LOOP": 23
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 112
+    },
+    "physical_speed_max_mps": 0.0,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 511,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 511,
+          "maximum": 9.887564099501143e-13,
+          "rms": 9.887564033123859e-13
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 506,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 506,
+          "maximum": 9.887564179042836e-13,
+          "rms": 9.887564179042836e-13
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 5.65685424949308,
+        "first_entry_s": null,
+        "minimum_distance_m": 5.65685424949308,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593648,
+        "paired_samples": 811,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 3
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593648,
+        "heading_p95_rad": 0.04907517863150751,
+        "path_efficiency": 1.0,
+        "sample_count": 814,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "right_r4-right-r4-v1p6-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": false,
+    "failed_gates": [
+      "terminal_success",
+      "arrival",
+      "turn_sign"
+    ],
+    "terminal_status": 6,
+    "replans": 14,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "maneuver:WAITING_REPLAN:PLANNER_LOOP": 164,
+      "maneuver:NEEDS_OPERATOR:PLANNER_LOOP": 24
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 115
+    },
+    "physical_speed_max_mps": 0.0,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 515,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 515,
+          "maximum": 9.887564097031027e-13,
+          "rms": 9.887564031560497e-13
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 513,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 513,
+          "maximum": 9.887564179042836e-13,
+          "rms": 9.887564179042836e-13
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 5.65685424949308,
+        "first_entry_s": null,
+        "minimum_distance_m": 5.65685424949308,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593648,
+        "paired_samples": 817,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 2
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.17677669529593645,
+        "heading_p95_rad": 0.04907517863150751,
+        "path_efficiency": 1.0,
+        "sample_count": 819,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "right_r4-right-r4-v1p8-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": false,
+    "failed_gates": [
+      "terminal_success",
+      "arrival",
+      "turn_sign"
+    ],
+    "terminal_status": 6,
+    "replans": 14,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "maneuver:WAITING_REPLAN:PLANNER_LOOP": 164,
+      "maneuver:NEEDS_OPERATOR:PLANNER_LOOP": 20
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 113
+    },
+    "physical_speed_max_mps": 0.0,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 507,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 507,
+          "maximum": 9.887564079081591e-13,
+          "rms": 9.887564019350932e-13
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 499,
+          "maximum": 1.1720142999701662e-10,
+          "rms": 1.1720142999701662e-10
+        },
+        "position_m": {
+          "n": 499,
+          "maximum": 9.887564179042836e-13,
+          "rms": 9.887564179042836e-13
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 5.65685424949308,
+        "first_entry_s": null,
+        "minimum_distance_m": 5.65685424949308,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": null
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.1767766952959365,
+        "paired_samples": 803,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 2
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.1767766952959376,
+        "cross_track_rms_m": 0.1767766952959365,
+        "heading_p95_rad": 0.04907517863150751,
+        "path_efficiency": 1.0,
+        "sample_count": 805,
+        "traveled_m": 0.0
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "straight-straight-straight-v1p2-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": true,
+    "failed_gates": [],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "path_healthy": 6
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 15,
+      "ok": 286
+    },
+    "physical_speed_max_mps": 1.2019797865243282,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1345,
+          "maximum": 0.44200525881894276,
+          "rms": 0.4294480150324509
+        },
+        "position_m": {
+          "n": 1345,
+          "maximum": 0.2209490145090821,
+          "rms": 0.06480706126758347
+        },
+        "unpaired": 1
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1319,
+          "maximum": 0.6104450747821806,
+          "rms": 0.5772535745602464
+        },
+        "position_m": {
+          "n": 1319,
+          "maximum": 0.18572145778984622,
+          "rms": 0.03188010937470561
+        },
+        "unpaired": 1
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.318023950417896,
+        "first_entry_s": 8.673,
+        "minimum_distance_m": 2.318023950417896,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.16392299126542254
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.0688477185362105,
+        "cross_track_rms_m": 0.0692745417520339,
+        "paired_samples": 2144,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 3
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.07203188911470253,
+        "cross_track_rms_m": 0.06954079473209074,
+        "heading_p95_rad": 0.053437558363441356,
+        "path_efficiency": 0.9998824443325258,
+        "sample_count": 2147,
+        "traveled_m": 2.6836965171441207
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "straight-straight-straight-v1p6-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": true,
+    "failed_gates": [],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "new_goal_pending_path": 1,
+      "path_healthy": 4
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 11,
+      "ok": 289
+    },
+    "physical_speed_max_mps": 1.6001537071871632,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1346,
+          "maximum": 0.6978704682943292,
+          "rms": 0.6819862709755747
+        },
+        "position_m": {
+          "n": 1346,
+          "maximum": 0.3827108505989633,
+          "rms": 0.06876942823897485
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1319,
+          "maximum": 0.7335087636323181,
+          "rms": 0.6567450192513128
+        },
+        "position_m": {
+          "n": 1319,
+          "maximum": 0.14733598604249354,
+          "rms": 0.025470613084244014
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.326045055750456,
+        "first_entry_s": 12.621,
+        "minimum_distance_m": 2.326045055750456,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.2990418630965058
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.07976325100079892,
+        "cross_track_rms_m": 0.0818333412058734,
+        "paired_samples": 2140,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 3
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": {
+        "cross_track_max_m": 0.1767766952959376,
+        "cross_track_p95_m": 0.07976325100079892,
+        "cross_track_rms_m": 0.08204308665208487,
+        "heading_p95_rad": 0.05045507680764345,
+        "path_efficiency": 0.9999238717816257,
+        "sample_count": 2143,
+        "traveled_m": 2.674981064865572
+      },
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  },
+  {
+    "trial": "straight-straight-straight-v1p8-rep01",
+    "ground_truth_topic": "/simulation/ground_truth",
+    "functional_pass": false,
+    "failed_gates": [
+      "plan_present"
+    ],
+    "terminal_status": 4,
+    "replans": 0,
+    "path_health_counts": {
+      "path_healthy": 3
+    },
+    "gps_map_reason_counts": {
+      "absolute_heading_uninitialized": 10,
+      "ok": 290
+    },
+    "physical_speed_max_mps": 1.7999743459223307,
+    "localization": {
+      "local": {
+        "heading_deg": {
+          "n": 1293,
+          "maximum": 0.9206480984130949,
+          "rms": 0.9201884714569137
+        },
+        "position_m": {
+          "n": 1293,
+          "maximum": 0.17271042617645477,
+          "rms": 0.037745830311026365
+        },
+        "unpaired": 0
+      },
+      "global": {
+        "heading_deg": {
+          "n": 1346,
+          "maximum": 1.2301857606818365,
+          "rms": 1.174031020845822
+        },
+        "position_m": {
+          "n": 1346,
+          "maximum": 0.20911835811656226,
+          "rms": 0.03504761473925108
+        },
+        "unpaired": 0
+      }
+    },
+    "reference_observation": {
+      "arrival": {
+        "exits_after_entry": 0,
+        "final_distance_m": 2.265737675096818,
+        "first_entry_s": 9.219,
+        "minimum_distance_m": 2.265737675096818,
+        "overshoot_m": 0.0,
+        "post_success_distance_m": 0.3193762985755961
+      },
+      "causal_published_plan_tracking": {
+        "cross_track_max_m": null,
+        "cross_track_p95_m": null,
+        "cross_track_rms_m": null,
+        "paired_samples": 0,
+        "reference": "latest_published_plan_by_receive_stamp",
+        "unpaired_samples": 2147
+      },
+      "reference_kind": "physical_world_pose",
+      "topic": "/simulation/ground_truth",
+      "tracking": null,
+      "tracking_reference": "final_plan_snapshot_report_only"
+    },
+    "operational_tolerance_m": 2.5
+  }
+]

@@ -1,0 +1,284 @@
+[
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-clean-s6400",
+      "returncode": 0,
+      "heading_max_deg": 3.5505769381659458,
+      "heading_rms_deg": 1.1334025122517946,
+      "position_rms_m": 0.09928434485192836,
+      "recovery": {
+        "seconds": 3.298009183012759,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 679,
+        "unique_stamps": 679,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.06600000000000028,
+        "covered_fraction": 0.9983865821170115
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-clean-lagged-s6400",
+      "returncode": 0,
+      "heading_max_deg": 4.41014586857701,
+      "heading_rms_deg": 1.2208167287743077,
+      "position_rms_m": 0.07174581065232012,
+      "recovery": {
+        "seconds": 2.221009183012761,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 675,
+        "unique_stamps": 675,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07800000000000296,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.27737035723687276
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-clean-s6401",
+      "returncode": 0,
+      "heading_max_deg": 3.117499872500758,
+      "heading_rms_deg": 1.123640836816127,
+      "position_rms_m": 0.10062791466778598,
+      "recovery": {
+        "seconds": 2.080009183012759,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 686,
+        "unique_stamps": 686,
+        "max_gap_s": 0.06299999999999883,
+        "max_receive_age_s": 0.0600000000000005,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-clean-lagged-s6401",
+      "returncode": 0,
+      "heading_max_deg": 3.1665354741282283,
+      "heading_rms_deg": 1.0109638057872612,
+      "position_rms_m": 0.06741187450578887,
+      "recovery": {
+        "seconds": 2.782009183012759,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 675,
+        "unique_stamps": 675,
+        "max_gap_s": 0.0990000000000002,
+        "max_receive_age_s": 0.08099999999999952,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.33008773233209576
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6400,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-latency300-s6400",
+      "returncode": 0,
+      "heading_max_deg": 4.704329826768937,
+      "heading_rms_deg": 1.6017366276608183,
+      "position_rms_m": 0.3648933230799225,
+      "recovery": {
+        "seconds": 8.626009183012759,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 676,
+        "unique_stamps": 676,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07199999999999918,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-latency300-lagged-s6400",
+      "returncode": 0,
+      "heading_max_deg": 4.509695625438243,
+      "heading_rms_deg": 1.429463866473602,
+      "position_rms_m": 0.09184948804938477,
+      "recovery": {
+        "seconds": 3.247009183012759,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 667,
+        "unique_stamps": 667,
+        "max_gap_s": 0.08699999999999974,
+        "max_receive_age_s": 0.10500000000000398,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.7482839990764452
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6401,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-latency300-s6401",
+      "returncode": 0,
+      "heading_max_deg": 4.639628347906172,
+      "heading_rms_deg": 1.5756922745887005,
+      "position_rms_m": 0.3592998689313721,
+      "recovery": {
+        "seconds": 8.620009183012758,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 676,
+        "unique_stamps": 676,
+        "max_gap_s": 0.06300000000000239,
+        "max_receive_age_s": 0.07499999999999929,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-latency300-lagged-s6401",
+      "returncode": 0,
+      "heading_max_deg": 4.011997026657667,
+      "heading_rms_deg": 1.3467673686007589,
+      "position_rms_m": 0.09304588269059288,
+      "recovery": {
+        "seconds": 2.5990091830127593,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 679,
+        "unique_stamps": 679,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.09600000000000009,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": 0.7410355785340821
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6400,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-nominal-s6400",
+      "returncode": 0,
+      "heading_max_deg": 4.148498815497883,
+      "heading_rms_deg": 1.2618946617214934,
+      "position_rms_m": 0.07264246965177869,
+      "recovery": {
+        "seconds": 1.9600091830127582,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 679,
+        "unique_stamps": 679,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.08399999999999963,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-nominal-lagged-s6400",
+      "returncode": 0,
+      "heading_max_deg": 3.7340862026385033,
+      "heading_rms_deg": 1.204419134328109,
+      "position_rms_m": 0.10089988475295691,
+      "recovery": {
+        "seconds": 3.1570091830127573,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 682,
+        "unique_stamps": 682,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.07800000000000296,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "position_rms_reduction_fraction": -0.38899303997556656
+  },
+  {
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6401,
+    "manual_envelope": null,
+    "hold_s": null,
+    "comparison_eligible": true,
+    "baseline": {
+      "id": "right-v1.6-r4-nominal-s6401",
+      "returncode": 0,
+      "heading_max_deg": 3.5952346741915555,
+      "heading_rms_deg": 1.0950571190850031,
+      "position_rms_m": 0.07627202336429148,
+      "recovery": {
+        "seconds": 1.9150091830127582,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 680,
+        "unique_stamps": 680,
+        "max_gap_s": 0.08399999999999963,
+        "max_receive_age_s": 0.10200000000000031,
+        "covered_fraction": 0.9974706311242435
+      }
+    },
+    "lagged": {
+      "id": "right-v1.6-r4-nominal-lagged-s6401",
+      "returncode": 0,
+      "heading_max_deg": 3.696294562243191,
+      "heading_rms_deg": 1.2242592815484772,
+      "position_rms_m": 0.050265596640788765,
+      "recovery": {
+        "seconds": 2.494009183012757,
+        "censored": false
+      },
+      "continuity": {
+        "samples": 680,
+        "unique_stamps": 680,
+        "max_gap_s": 0.08400000000000318,
+        "max_receive_age_s": 0.08099999999999952,
+        "covered_fraction": 0.9956387291387077
+      }
+    },
+    "position_rms_reduction_fraction": 0.34096940891800476
+  }
+]

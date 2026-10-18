@@ -1,0 +1,3983 @@
+[
+  {
+    "id": "right-v1.6-r4-clean-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6400,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 70,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 2.4000000000000004,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 685,
+              "maximum": 4.448420728901382,
+              "rms": 2.5277068058720995
+            },
+            "position_m": {
+              "n": 685,
+              "maximum": 0.6323970669702701,
+              "rms": 0.3080101792337007
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.2773389709434718e-06,
+                "rms": 1.0051677251182478e-06
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.26891280289569874,
+                "rms": 0.233706349451942
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 0.4728191997161386,
+                "rms": 0.22167876879545653
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.23845498859950554,
+                "rms": 0.23064336856869316
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 87,
+                "maximum": 1.3827291427932848,
+                "rms": 0.6753928640304245
+              },
+              "position_m": {
+                "n": 87,
+                "maximum": 0.2158651496325807,
+                "rms": 0.21035882762827635
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 238,
+                "maximum": 3.446895957625272,
+                "rms": 3.308355985178564
+              },
+              "position_m": {
+                "n": 238,
+                "maximum": 0.4851146409772885,
+                "rms": 0.24456740398089696
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 90,
+                "maximum": 4.448420728901382,
+                "rms": 4.385011957660855
+              },
+              "position_m": {
+                "n": 90,
+                "maximum": 0.6323970669702701,
+                "rms": 0.59811183064209
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 667,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 3.714697691982561
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 3.5949573090012445
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 3.478750605792498
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 3.3664589855695963
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 3.2585447053420213
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 3.155431598065334
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 3.0575910854483213
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 2.965610616077118
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 2.880013963562225
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 2.801325997427076
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 2.730284802842793
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 2.6674856965194014
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 2.6133768469521432
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 2.568646613159474
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 2.533638472551095
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 2.5089358408061915
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 2.4948989600707634
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 2.4914778753275795
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 2.498856324619052
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 2.516948407598859
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 2.5453711490178352
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 2.5838795999881725
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 2.63192252426986
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 2.689049377592723
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.7547465425319637
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.8282940917448847
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.909094747212811
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.996634913344511
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 3.0902482635358117
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 3.1893401871039586
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 3.293463809182089
+              }
+            ],
+            "best": {
+              "offset_s": 0.04,
+              "heading_deg": 2.4914778753275795
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 685,
+              "maximum": 0.0275380770527836,
+              "rms": 0.02361192710783336
+            },
+            "x_variance_m2": {
+              "n": 685,
+              "maximum": 0.022096616881235646,
+              "rms": 0.017590634333492724
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 675,
+              "maximum": 4.41014586857701,
+              "rms": 1.2208167287743077
+            },
+            "position_m": {
+              "n": 675,
+              "maximum": 0.30767333144667885,
+              "rms": 0.07174581065232012
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 236,
+                "maximum": 1.5971022902075573,
+                "rms": 0.37559333385244464
+              },
+              "position_m": {
+                "n": 236,
+                "maximum": 0.30767333144667885,
+                "rms": 0.1088005031917473
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 2.0815210574191245,
+                "rms": 1.1127873469965708
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.028612502765580364,
+                "rms": 0.01656914472311981
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 86,
+                "maximum": 2.5686371221302013,
+                "rms": 1.4203148261408807
+              },
+              "position_m": {
+                "n": 86,
+                "maximum": 0.030996456759307716,
+                "rms": 0.01861903696365011
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 235,
+                "maximum": 4.41014586857701,
+                "rms": 1.6027895726625252
+              },
+              "position_m": {
+                "n": 235,
+                "maximum": 0.073057178026075,
+                "rms": 0.04165721177956509
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 1.4951518409082214,
+                "rms": 1.3415867470076512
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.08302459573204213,
+                "rms": 0.05167909756917951
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 2.221009183012761,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 658,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.805765340798329
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.6585766479833444
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.5135686399445136
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.3711111106277682
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.2317019429687512
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.0959975358270553
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.964747108370212
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.8389040501063427
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.7196372925321122
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.6083940067363236
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.5070258816782038
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.4176627498030177
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.3426303592617854
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.2844557297895736
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.2454504499511543
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.2274985688104088
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.2315826803680554
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.2573655540994457
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.30355631756717
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.3680794042460838
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.448443867217331
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.5421771766747259
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.6469535416450254
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.760778258387954
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 1.8819932929366094
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.009205113970185
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.141328287941282
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.2775104206666335
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.4170116421082737
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.5592621749925417
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.7038400177798962
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.2274985688104088
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 675,
+              "maximum": 0.23082438853537213,
+              "rms": 0.06925970820895354
+            },
+            "x_variance_m2": {
+              "n": 675,
+              "maximum": 0.20064354574956847,
+              "rms": 0.05110409528224912
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 153,
+          "unique_stamps": 153,
+          "max_gap_s": 0.1980000000000004,
+          "max_receive_age_s": 0.012000000000000455,
+          "covered_fraction": 0.9944610778622919
+        },
+        "/gps/odometry_map": {
+          "samples": 142,
+          "unique_stamps": 142,
+          "max_gap_s": 1.6019999999999994,
+          "max_receive_age_s": 0.09000000000000341,
+          "covered_fraction": 0.9245871021282834
+        },
+        "/imu/data": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.05100000000000193,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.018000000000000682,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odometry/global": {
+          "samples": 675,
+          "unique_stamps": 675,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.07800000000000296,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/odometry/local": {
+          "samples": 685,
+          "unique_stamps": 685,
+          "max_gap_s": 0.0779999999999994,
+          "max_receive_age_s": 0.04800000000000182,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.018000000000000682,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/map/odom": {
+          "samples": 675,
+          "unique_stamps": 675,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.08999999999999986,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 685,
+          "unique_stamps": 685,
+          "max_gap_s": 0.0779999999999994,
+          "max_receive_age_s": 0.04800000000000182,
+          "covered_fraction": 0.9993025331097793
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 34,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.0029999999999996696,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.105,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.208,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 15.612,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.208,
+            "collection_s": 1.404,
+            "baseline_m": 2.2354301999900574
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 11,
+          "ok": 142
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.7176930506547534,
+        "rms": 1.7069266679007773
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 8.625,
+        "last_elapsed_s": 12.677999999999999,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 122,
+              "maximum": 2.9187280781488414,
+              "rms": 1.133856484616553
+            },
+            "position_m": {
+              "n": 122,
+              "maximum": 0.22992875100838914,
+              "rms": 0.20914455435414048
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 121,
+              "maximum": 3.058332762999771,
+              "rms": 1.6019481966149398
+            },
+            "position_m": {
+              "n": 121,
+              "maximum": 0.03180002647968476,
+              "rms": 0.02031202392342151
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 32.0270348418707,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.6618871219175269,
+          "rms": 1.4934513067490212
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.931080363521636,
+          "rms": 4.773283400460041
+        },
+        "observed_radius_m": {
+          "minimum": 4.254997829246172,
+          "median": 4.986545667239446
+        },
+        "geometric_radius_m": {
+          "n": 234,
+          "minimum": 3.8497491373070067,
+          "p05": 4.1970393221517845,
+          "median": 4.82857514298104,
+          "p95": 14.748799610731544
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.356371645129184,
+          "p05": 4.356407988113588,
+          "median": 4.367843751686889,
+          "p95": 4.388627160369431
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 5.1311123572945885,
+          "rms": 2.909850080604382
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.6728381339650052,
+          "rms": 0.34935611720580056
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  },
+  {
+    "id": "right-v1.6-r4-clean-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "clean",
+    "seed": 6401,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 71,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 0.642,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 685,
+              "maximum": 2.8279231398204487,
+              "rms": 1.7845702866700959
+            },
+            "position_m": {
+              "n": 685,
+              "maximum": 0.49056829567783106,
+              "rms": 0.29429805016993915
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.6025162721696253e-08,
+                "rms": 1.4359284418410773e-08
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.3570031216634719,
+                "rms": 0.3109193252847849
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 0.14638869254860473,
+                "rms": 0.0541206413339584
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.3341898376777781,
+                "rms": 0.3330145736908355
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 0.994109375950745,
+                "rms": 0.5167816625109201
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.32568410842115125,
+                "rms": 0.30709013506961164
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 237,
+                "maximum": 2.8279231398204487,
+                "rms": 2.614810377065514
+              },
+              "position_m": {
+                "n": 237,
+                "maximum": 0.30776080161021846,
+                "rms": 0.1910114389104662
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 90,
+                "maximum": 2.733032927798486,
+                "rms": 2.4438123097643025
+              },
+              "position_m": {
+                "n": 90,
+                "maximum": 0.49056829567783106,
+                "rms": 0.4197220553211756
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 667,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 3.3696683835908465
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 3.2265669517604145
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 3.0859951453546115
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.9483832049210994
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.8142221785319577
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.6839910628598016
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 2.558298723922354
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 2.4378913103838515
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 2.323575268779576
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 2.216289309583601
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 2.1171450661768794
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 2.0273253267266
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.9481069957274275
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.8808593644072467
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.826888260304261
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.787399513502212
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.7633926066374268
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.755503241199488
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.7638709613951855
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.7882515849006868
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.8280451399900777
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.8822373363852678
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.9495786183698935
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 2.0287994543280217
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.1185374521344933
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.217479521200399
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.324451559777039
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.4383638945012915
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.558280901472613
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.683412341159456
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.8129869757354116
+              }
+            ],
+            "best": {
+              "offset_s": 0.04,
+              "heading_deg": 1.755503241199488
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 685,
+              "maximum": 0.027425679988978678,
+              "rms": 0.023560507574672238
+            },
+            "x_variance_m2": {
+              "n": 685,
+              "maximum": 0.022683264378334327,
+              "rms": 0.017523217549944004
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 675,
+              "maximum": 3.1665354741282283,
+              "rms": 1.0109638057872612
+            },
+            "position_m": {
+              "n": 675,
+              "maximum": 0.27051894095831,
+              "rms": 0.06741187450578887
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.0687686065588577,
+                "rms": 0.3395797445012083
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.27051894095831,
+                "rms": 0.09939299989930322
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 1.0462058411089286,
+                "rms": 0.5595609217849469
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.021672357412812916,
+                "rms": 0.012419597107559643
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 86,
+                "maximum": 3.1665354741282283,
+                "rms": 1.701543330804289
+              },
+              "position_m": {
+                "n": 86,
+                "maximum": 0.030940802321380204,
+                "rms": 0.019879752448242433
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 230,
+                "maximum": 2.8739805255188764,
+                "rms": 1.3172065939677244
+              },
+              "position_m": {
+                "n": 230,
+                "maximum": 0.07096231188306222,
+                "rms": 0.040696814072182355
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 0.41543219453403735,
+                "rms": 0.23137239366702148
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 0.08032949855335893,
+                "rms": 0.055782794496476405
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 2.782009183012759,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 658,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.726413272571062
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.5707395694347555
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.416752125639876
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.264853207916163
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.1155611899587696
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 1.9694130929229745
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.827169268026026
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.689892696721948
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.558854976332383
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.435725224916353
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.3227956273468822
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.2228648066625474
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.13928303314041
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.0759384869633695
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.0365156782983707
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.0237040929990375
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.0385653337492518
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.079891648786477
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.1447673801212452
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.2294533135462613
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.3301585877610764
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.4435029443973189
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.5666938853743366
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.6975969700549154
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 1.8345313789104796
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 1.9761891194707843
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.1216243627578217
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.270084681817682
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.420993675496218
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.5739193592936505
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.7284424698279004
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.0237040929990375
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 675,
+              "maximum": 0.1639751783284308,
+              "rms": 0.05632018957553792
+            },
+            "x_variance_m2": {
+              "n": 675,
+              "maximum": 0.1500699694837861,
+              "rms": 0.042074467865503215
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 153,
+          "unique_stamps": 153,
+          "max_gap_s": 0.1980000000000004,
+          "max_receive_age_s": 0.02400000000000091,
+          "covered_fraction": 0.9944610778622918
+        },
+        "/gps/odometry_map": {
+          "samples": 138,
+          "unique_stamps": 138,
+          "max_gap_s": 2.358,
+          "max_receive_age_s": 0.07800000000000118,
+          "covered_fraction": 0.8942298692251187
+        },
+        "/imu/data": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.07499999999999929,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.02400000000000091,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odometry/global": {
+          "samples": 675,
+          "unique_stamps": 675,
+          "max_gap_s": 0.0990000000000002,
+          "max_receive_age_s": 0.08099999999999952,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/odometry/local": {
+          "samples": 685,
+          "unique_stamps": 685,
+          "max_gap_s": 0.06899999999999906,
+          "max_receive_age_s": 0.05999999999999872,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.02400000000000091,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/map/odom": {
+          "samples": 676,
+          "unique_stamps": 676,
+          "max_gap_s": 0.0990000000000002,
+          "max_receive_age_s": 0.08399999999999963,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 685,
+          "unique_stamps": 685,
+          "max_gap_s": 0.06899999999999906,
+          "max_receive_age_s": 0.060000000000002274,
+          "covered_fraction": 0.9993025331097793
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 35,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.06300000000000006,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.558000000000002,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.763000000000002,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 16.161,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.763000000000002,
+            "collection_s": 1.3979999999999997,
+            "baseline_m": 2.263823098614953
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 18,
+          "ok": 138
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.171796023455359,
+        "rms": 1.6867381320763513
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 9.039000000000001,
+        "last_elapsed_s": 13.26,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 127,
+              "maximum": 2.653773614065388,
+              "rms": 1.124513255098487
+            },
+            "position_m": {
+              "n": 127,
+              "maximum": 0.3246907594440352,
+              "rms": 0.30240815177793046
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 124,
+              "maximum": 3.1665354741282283,
+              "rms": 1.6325000349659013
+            },
+            "position_m": {
+              "n": 124,
+              "maximum": 0.036706501874298296,
+              "rms": 0.019619614103534067
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 31.594948535153353,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.6582695714978304,
+          "rms": 1.482938522525146
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.976113535218202,
+          "rms": 4.89250587804196
+        },
+        "observed_radius_m": {
+          "minimum": 4.19711429642889,
+          "median": 4.925426101347476
+        },
+        "geometric_radius_m": {
+          "n": 244,
+          "minimum": 3.983819956751912,
+          "p05": 4.2684855016998675,
+          "median": 4.816035589983748,
+          "p95": 14.421952081220539
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.37227463979615,
+          "p05": 4.373749134238915,
+          "median": 4.401553667734867,
+          "p95": 4.440116801941649
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 3.4857300274710465,
+          "rms": 2.1862835964298966
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.5907533210878121,
+          "rms": 0.3055047566585861
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  },
+  {
+    "id": "right-v1.6-r4-latency300-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6400,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 72,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 0.7230000000000001,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 683,
+              "maximum": 5.157098401313584,
+              "rms": 2.7580086100174803
+            },
+            "position_m": {
+              "n": 683,
+              "maximum": 0.6165102574315028,
+              "rms": 0.3272898074302258
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.2491218663619132e-08,
+                "rms": 1.1464811939881959e-08
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.32252113688544126,
+                "rms": 0.29310662009942695
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 29,
+                "maximum": 0.4096982612165826,
+                "rms": 0.184132441971125
+              },
+              "position_m": {
+                "n": 29,
+                "maximum": 0.30503240544619636,
+                "rms": 0.29834354092279697
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 1.360618161082505,
+                "rms": 0.6545926966957051
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.28156823657621155,
+                "rms": 0.2765926810566132
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 236,
+                "maximum": 3.641434729875379,
+                "rms": 3.4727879605621315
+              },
+              "position_m": {
+                "n": 236,
+                "maximum": 0.4489211129643614,
+                "rms": 0.23427014543285396
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 90,
+                "maximum": 5.157098401313584,
+                "rms": 5.066671801947257
+              },
+              "position_m": {
+                "n": 90,
+                "maximum": 0.6165102574315028,
+                "rms": 0.5800136198695485
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 665,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 3.8456828000189582
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 3.7319999798381276
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 3.622010144159948
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 3.51600343175439
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 3.414403014796013
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 3.3177509883242546
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 3.226409425692607
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 3.140781817125355
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 3.0614922603235453
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 2.989010976945547
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 2.9237125216996263
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 2.866210052793354
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 2.816887841661925
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 2.7762441941248657
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 2.744798071473309
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 2.7226180155401747
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 2.710100758961984
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 2.7074583442883235
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 2.714490061943729
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 2.7312111043753378
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 2.7573350904743172
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 2.7926666379084812
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 2.8369475278292415
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 2.8896561766267457
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.950321711645776
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 3.018525925579518
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 3.0937206050083015
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 3.175351873361845
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 3.2629648701037026
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 3.3560777233923926
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 3.4541813049422596
+              }
+            ],
+            "best": {
+              "offset_s": 0.04,
+              "heading_deg": 2.7074583442883235
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 683,
+              "maximum": 0.027611015118898394,
+              "rms": 0.023659293606591983
+            },
+            "x_variance_m2": {
+              "n": 683,
+              "maximum": 0.022104310211697863,
+              "rms": 0.017616726539774797
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 667,
+              "maximum": 4.509695625438243,
+              "rms": 1.429463866473602
+            },
+            "position_m": {
+              "n": 667,
+              "maximum": 0.3567179725256042,
+              "rms": 0.09184948804938477
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 232,
+                "maximum": 0.859743038511518,
+                "rms": 0.29513422214468926
+              },
+              "position_m": {
+                "n": 232,
+                "maximum": 0.3567179725256042,
+                "rms": 0.1458665999342677
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 29,
+                "maximum": 2.2877714080163924,
+                "rms": 1.167695642937973
+              },
+              "position_m": {
+                "n": 29,
+                "maximum": 0.03491282080381654,
+                "rms": 0.017534530834385262
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 87,
+                "maximum": 2.79973214340123,
+                "rms": 1.5389822686904293
+              },
+              "position_m": {
+                "n": 87,
+                "maximum": 0.04221270746356466,
+                "rms": 0.019676942489643284
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 230,
+                "maximum": 4.509695625438243,
+                "rms": 2.0165724649826107
+              },
+              "position_m": {
+                "n": 230,
+                "maximum": 0.0800508532920283,
+                "rms": 0.043521205316950744
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 1.5780381739334353,
+                "rms": 1.3483626380322673
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 0.09862649732321432,
+                "rms": 0.048864512295774265
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 3.247009183012759,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 650,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.8819376988405083
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.740766956279313
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.60226775047095
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.466854064859391
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.3351140682845175
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.207801298502852
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 2.0856800073106525
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.969715414948129
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.8611652249391761
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.7613489596772998
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.6717532072588486
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.5942022251076071
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.5304739375067014
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.4822736768368805
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.4512399629485182
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.438368720182758
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.444226321532472
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.4685102236441407
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.5102901592117002
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.5681500602301468
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.6403756895246808
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.7251843202426893
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.8208010425506262
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.9256224538407762
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.0381951258691173
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.1572656156673524
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.2818356817869554
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.4110295243438937
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.544072668385738
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.6804034491825024
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.8195561949353545
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.438368720182758
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 667,
+              "maximum": 0.19010040084349086,
+              "rms": 0.0707481994260742
+            },
+            "x_variance_m2": {
+              "n": 667,
+              "maximum": 0.1374971668107929,
+              "rms": 0.058719058232902785
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 150,
+          "unique_stamps": 150,
+          "max_gap_s": 0.4479908169872395,
+          "max_receive_age_s": 0.3119999999999976,
+          "covered_fraction": 0.9727399543195103
+        },
+        "/gps/odometry_map": {
+          "samples": 139,
+          "unique_stamps": 139,
+          "max_gap_s": 1.7789999999999997,
+          "max_receive_age_s": 0.33000000000000185,
+          "covered_fraction": 0.9028659785855019
+        },
+        "/imu/data": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.04200000000000159,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.036000000000001364,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odometry/global": {
+          "samples": 667,
+          "unique_stamps": 667,
+          "max_gap_s": 0.08699999999999974,
+          "max_receive_age_s": 0.10500000000000398,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/odometry/local": {
+          "samples": 683,
+          "unique_stamps": 683,
+          "max_gap_s": 0.08699999999999974,
+          "max_receive_age_s": 0.060000000000002274,
+          "covered_fraction": 0.9983865821170115
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.036000000000001364,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/map/odom": {
+          "samples": 667,
+          "unique_stamps": 667,
+          "max_gap_s": 0.08699999999999974,
+          "max_receive_age_s": 0.10500000000000398,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 683,
+          "unique_stamps": 683,
+          "max_gap_s": 0.08699999999999974,
+          "max_receive_age_s": 0.060000000000002274,
+          "covered_fraction": 0.9983865821170115
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 33,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.18899999999999995,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.177,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.079,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 15.78,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.079,
+            "collection_s": 1.7009999999999987,
+            "baseline_m": 2.2776662659498106
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 16,
+          "ok": 139
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.8421783403300624,
+        "rms": 1.7514874007224563
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 8.664,
+        "last_elapsed_s": 12.612,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 119,
+              "maximum": 2.8810692227115497,
+              "rms": 1.091856168393281
+            },
+            "position_m": {
+              "n": 119,
+              "maximum": 0.29653243106372007,
+              "rms": 0.275739050791239
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 116,
+              "maximum": 4.013806911076495,
+              "rms": 1.8245752636297587
+            },
+            "position_m": {
+              "n": 116,
+              "maximum": 0.0423126344826611,
+              "rms": 0.02175793684978163
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 31.994367224527505,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.660067627603969,
+          "rms": 1.492620826217262
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.921207895192474,
+          "rms": 4.714378677913761
+        },
+        "observed_radius_m": {
+          "minimum": 4.281348231683644,
+          "median": 5.101794092191942
+        },
+        "geometric_radius_m": {
+          "n": 236,
+          "minimum": 3.805412366481863,
+          "p05": 4.104946176498288,
+          "median": 4.827441705769918,
+          "p95": 14.980644695161624
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.356355992219078,
+          "p05": 4.356438209068504,
+          "median": 4.370426719209489,
+          "p95": 4.392266185781334
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 5.886562390111897,
+          "rms": 3.174731859427085
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.6953001990698656,
+          "rms": 0.35910477856806444
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  },
+  {
+    "id": "right-v1.6-r4-latency300-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "latency300",
+    "seed": 6401,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 73,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 0.7200000000000001,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 687,
+              "maximum": 4.933580930609379,
+              "rms": 2.683675098496218
+            },
+            "position_m": {
+              "n": 687,
+              "maximum": 0.604796405064623,
+              "rms": 0.3226675529705797
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.2539130539340698e-08,
+                "rms": 1.1510973934542056e-08
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.3228261551720544,
+                "rms": 0.29311379513906266
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 29,
+                "maximum": 0.4297095712050073,
+                "rms": 0.19757990725244262
+              },
+              "position_m": {
+                "n": 29,
+                "maximum": 0.30503187350135264,
+                "rms": 0.2978353777495112
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 1.3697357058424344,
+                "rms": 0.6630770619822671
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.28189998090098967,
+                "rms": 0.27673902689164404
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 3.568771575692758,
+                "rms": 3.4074405374429997
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.43631305541084014,
+                "rms": 0.22884946411561777
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 90,
+                "maximum": 4.933580930609379,
+                "rms": 4.85509075571661
+              },
+              "position_m": {
+                "n": 90,
+                "maximum": 0.604796405064623,
+                "rms": 0.567896567202016
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 669,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 3.7967877697146983
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 3.681412602818393
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 3.5697066375117767
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 3.4620113141240174
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 3.358700181581603
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 3.2602926885934482
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 3.167162551217352
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 3.079765820365537
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 2.998785032655813
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 2.9246643807873194
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 2.857814624993069
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 2.7989559503369352
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 2.7485227516524584
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 2.7068826373022863
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 2.6746150401113478
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 2.6518152787857416
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 2.639020552055744
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 2.636345449203999
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 2.643577146027585
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 2.6608084735890616
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 2.6876723141773295
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 2.7240239805735054
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 2.769525999561852
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 2.823593326824555
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.885786169576722
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.955639171271174
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 3.032530221029857
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 3.115920928894354
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 3.205357298267661
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 3.300290676545533
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 3.4002064128782523
+              }
+            ],
+            "best": {
+              "offset_s": 0.04,
+              "heading_deg": 2.636345449203999
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 687,
+              "maximum": 0.027610927397427713,
+              "rms": 0.023649563142312015
+            },
+            "x_variance_m2": {
+              "n": 687,
+              "maximum": 0.02209590553368586,
+              "rms": 0.017618461451482062
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 679,
+              "maximum": 4.011997026657667,
+              "rms": 1.3467673686007589
+            },
+            "position_m": {
+              "n": 679,
+              "maximum": 0.35745106281677286,
+              "rms": 0.09304588269059288
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 237,
+                "maximum": 1.1210694983181408,
+                "rms": 0.3549672370922109
+              },
+              "position_m": {
+                "n": 237,
+                "maximum": 0.35745106281677286,
+                "rms": 0.14672541496054434
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 29,
+                "maximum": 2.4148900916337777,
+                "rms": 1.0311640790131746
+              },
+              "position_m": {
+                "n": 29,
+                "maximum": 0.03935100566897802,
+                "rms": 0.01995474504763218
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 2.996899856153227,
+                "rms": 1.736617205133238
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.04837963659141463,
+                "rms": 0.02495563161881294
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 237,
+                "maximum": 4.011997026657667,
+                "rms": 1.7405988985933394
+              },
+              "position_m": {
+                "n": 237,
+                "maximum": 0.07500254961026029,
+                "rms": 0.044136295113795576
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 1.716444392635473,
+                "rms": 1.459417015466529
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.09468196030876828,
+                "rms": 0.0531098043274159
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 2.5990091830127593,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 662,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.8381083393519115
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.6950606947729585
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.5545086002343242
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.4169307407397347
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.2827883272178218
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.1527700364115923
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 2.027667708449349
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.9084415916172328
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.79638175478136
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.6928617646119348
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.5994715631182514
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.5181886010848276
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.4509733523472605
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.3999340234141664
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.3668928611260658
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.3530405510276096
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.3590271544283217
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.384543077718141
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.428532836176284
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.4893288976890688
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.5649657726194925
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.6533994956920093
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.7526722150546206
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.8610651357416323
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 1.977038153571796
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.099295673683617
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.22682624397484
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.3587535756620674
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.494320302237078
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.632979434995272
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.77426128292608
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.3530405510276096
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 679,
+              "maximum": 0.19003622711122373,
+              "rms": 0.07004333757931039
+            },
+            "x_variance_m2": {
+              "n": 679,
+              "maximum": 0.1375009016651683,
+              "rms": 0.058566359971066774
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 150,
+          "unique_stamps": 150,
+          "max_gap_s": 0.4449908169872394,
+          "max_receive_age_s": 0.32700000000000173,
+          "covered_fraction": 0.9727399543195103
+        },
+        "/gps/odometry_map": {
+          "samples": 139,
+          "unique_stamps": 139,
+          "max_gap_s": 1.7819999999999996,
+          "max_receive_age_s": 0.32700000000000173,
+          "covered_fraction": 0.9028659785855019
+        },
+        "/imu/data": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.05699999999999861,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.03900000000000148,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odometry/global": {
+          "samples": 679,
+          "unique_stamps": 679,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.09600000000000009,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/odometry/local": {
+          "samples": 687,
+          "unique_stamps": 687,
+          "max_gap_s": 0.06300000000000061,
+          "max_receive_age_s": 0.060000000000002274,
+          "covered_fraction": 0.9983865821170115
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.03900000000000148,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/map/odom": {
+          "samples": 679,
+          "unique_stamps": 679,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.0990000000000002,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 687,
+          "unique_stamps": 687,
+          "max_gap_s": 0.06300000000000061,
+          "max_receive_age_s": 0.060000000000002274,
+          "covered_fraction": 0.9983865821170115
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 33,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.19199999999999995,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.18,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.088000000000001,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 15.786,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.088000000000001,
+            "collection_s": 1.6979999999999986,
+            "baseline_m": 2.259663255986704
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 16,
+          "ok": 139
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.9537276869642795,
+        "rms": 1.8152991988711475
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 8.645999999999999,
+        "last_elapsed_s": 12.636,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 121,
+              "maximum": 2.890961005996192,
+              "rms": 1.1128898264931815
+            },
+            "position_m": {
+              "n": 121,
+              "maximum": 0.2964888640610908,
+              "rms": 0.2757508929495763
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 120,
+              "maximum": 3.671775627475396,
+              "rms": 1.8480186581078764
+            },
+            "position_m": {
+              "n": 120,
+              "maximum": 0.04837963659141463,
+              "rms": 0.026199753891216666
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 31.986235838810835,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.6605350517968382,
+          "rms": 1.4924542962482739
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.927829009098788,
+          "rms": 4.730382343850637
+        },
+        "observed_radius_m": {
+          "minimum": 4.274715246783288,
+          "median": 5.051765190286094
+        },
+        "geometric_radius_m": {
+          "n": 235,
+          "minimum": 3.818662488202451,
+          "p05": 4.153741803046245,
+          "median": 4.835983569335456,
+          "p95": 14.863259008496959
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.356357437951826,
+          "p05": 4.356440224086147,
+          "median": 4.369023935225381,
+          "p95": 4.390280254362792
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 5.665179906986806,
+          "rms": 3.0983027794647784
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.6892856981139823,
+          "rms": 0.3564992687565855
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  },
+  {
+    "id": "right-v1.6-r4-nominal-lagged-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6400,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 74,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 0.561,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 688,
+              "maximum": 4.125260684027463,
+              "rms": 2.0519463372383573
+            },
+            "position_m": {
+              "n": 688,
+              "maximum": 1.4233886446395863,
+              "rms": 0.8766231668494194
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 2.5852208815416287,
+                "rms": 1.4773263449931633
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.5085102004154016,
+                "rms": 0.3867480642301191
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 3.4957345674920255,
+                "rms": 2.9925058538355347
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.5499002697030083,
+                "rms": 0.5325730780763928
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 4.125260684027463,
+                "rms": 3.7062562319593324
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.8532727913795841,
+                "rms": 0.7005868887516885
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 2.894954650835283,
+                "rms": 1.683488168086621
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 1.2143576351066032,
+                "rms": 1.058180451745244
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 90,
+                "maximum": 2.4271358424615035,
+                "rms": 1.546941294612393
+              },
+              "position_m": {
+                "n": 90,
+                "maximum": 1.4233886446395863,
+                "rms": 1.383907366667872
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 670,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 1.717956165520803
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 1.6347601981158693
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 1.5639941146336584
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 1.5073909747212706
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 1.4666281040668379
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 1.4430544804389813
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.4374507708871895
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.4500780672283602
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.4805460574006502
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.527724857327925
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.5901197217762102
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.6661128333166886
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.7539139965298014
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.8518657324856405
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.9584196636423206
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 2.0721698876835264
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 2.1920810156219788
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 2.3171933599001466
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 2.4467097116549823
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 2.5798799461869333
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 2.716175423116266
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 2.855107034415464
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 2.9963206845454624
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 3.1395422905954455
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 3.2844974352904686
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 3.4309654848088824
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 3.578713950431268
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 3.727543823171231
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 3.877358534566106
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 4.028064723344879
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 4.179506769458157
+              }
+            ],
+            "best": {
+              "offset_s": -0.18,
+              "heading_deg": 1.4374507708871895
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 688,
+              "maximum": 0.02635054166096041,
+              "rms": 0.02276489684485334
+            },
+            "x_variance_m2": {
+              "n": 688,
+              "maximum": 0.020743823161743696,
+              "rms": 0.016740419554287934
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 682,
+              "maximum": 3.7340862026385033,
+              "rms": 1.204419134328109
+            },
+            "position_m": {
+              "n": 682,
+              "maximum": 0.34062950544111925,
+              "rms": 0.10089988475295691
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 236,
+                "maximum": 0.818198059528165,
+                "rms": 0.3225931409528169
+              },
+              "position_m": {
+                "n": 236,
+                "maximum": 0.34062950544111925,
+                "rms": 0.1633587508254625
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 30,
+                "maximum": 2.428043602227794,
+                "rms": 1.3739207350987142
+              },
+              "position_m": {
+                "n": 30,
+                "maximum": 0.020633463031130717,
+                "rms": 0.010910511056056962
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 88,
+                "maximum": 2.9731170743825444,
+                "rms": 1.605021698956902
+              },
+              "position_m": {
+                "n": 88,
+                "maximum": 0.026507453311301568,
+                "rms": 0.014894391253635975
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 239,
+                "maximum": 3.7340862026385033,
+                "rms": 1.6212672119340972
+              },
+              "position_m": {
+                "n": 239,
+                "maximum": 0.07755776128039274,
+                "rms": 0.04173425630879043
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 0.8874359169857261,
+                "rms": 0.7733450291276706
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 0.08195931251053995,
+                "rms": 0.04811154781093704
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 3.1570091830127573,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 665,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.7299940515886196
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.582775049346261
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.4379280441647144
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.2958335344019725
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.1570547421491004
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.022272400035337
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.8923420547337415
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.7684279404470191
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.6518901190918334
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.5443699624064637
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.44797082580944
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.3650349442036664
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.2980531040724772
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.2496438662443998
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.2219541191610095
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.2164623155610303
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.2334799363442461
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.2719895033461257
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.3301150277086198
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.4053871223038081
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.4952125052542564
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.5970977624438691
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.7088262113712223
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.8285875828361138
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 1.9548762176223295
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.0864957773024133
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.2224814867073426
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.362022027380787
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.504511023337916
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.649480038260265
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.7964757571662124
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.2164623155610303
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 682,
+              "maximum": 0.20433817406163576,
+              "rms": 0.06951218561919155
+            },
+            "x_variance_m2": {
+              "n": 682,
+              "maximum": 0.17987038786468434,
+              "rms": 0.05073246444142417
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 153,
+          "unique_stamps": 153,
+          "max_gap_s": 0.1980000000000004,
+          "max_receive_age_s": 0.17999999999999972,
+          "covered_fraction": 0.9944610778622918
+        },
+        "/gps/odometry_map": {
+          "samples": 132,
+          "unique_stamps": 132,
+          "max_gap_s": 3.039,
+          "max_receive_age_s": 0.17999999999999972,
+          "covered_fraction": 0.863610936038306
+        },
+        "/imu/data": {
+          "samples": 1091,
+          "unique_stamps": 1091,
+          "max_gap_s": 0.041999999999999815,
+          "max_receive_age_s": 0.03600000000000003,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.014999999999999902,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/odometry/global": {
+          "samples": 682,
+          "unique_stamps": 682,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.07800000000000296,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/odometry/local": {
+          "samples": 688,
+          "unique_stamps": 688,
+          "max_gap_s": 0.06300000000000239,
+          "max_receive_age_s": 0.05400000000000027,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.01200000000000001,
+          "covered_fraction": 0.9993025331097793
+        },
+        "/tf/map/odom": {
+          "samples": 682,
+          "unique_stamps": 682,
+          "max_gap_s": 0.08399999999999963,
+          "max_receive_age_s": 0.07800000000000296,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 688,
+          "unique_stamps": 688,
+          "max_gap_s": 0.06300000000000239,
+          "max_receive_age_s": 0.05400000000000027,
+          "covered_fraction": 0.9993025331097793
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 33,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.129,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.279,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.190000000000001,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 15.519000000000002,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.190000000000001,
+            "collection_s": 1.3290000000000006,
+            "baseline_m": 2.1073065953766075
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 23,
+          "non_monotonic_fix": 1,
+          "ok": 132
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.8420023469466833,
+        "rms": 1.7781026843317318
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 8.679,
+        "last_elapsed_s": 12.69,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 121,
+              "maximum": 4.125260684027463,
+              "rms": 3.4527602651818206
+            },
+            "position_m": {
+              "n": 121,
+              "maximum": 0.9349597174655462,
+              "rms": 0.7309877750932638
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 121,
+              "maximum": 3.7340862026385033,
+              "rms": 1.8603941284648615
+            },
+            "position_m": {
+              "n": 121,
+              "maximum": 0.034708295448152994,
+              "rms": 0.01629702784862252
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 32.08938941095804,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.6620476617863456,
+          "rms": 1.4948999259282834
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.896601394653446,
+          "rms": 4.675889416079476
+        },
+        "observed_radius_m": {
+          "minimum": 4.257034359351667,
+          "median": 4.992759128294859
+        },
+        "geometric_radius_m": {
+          "n": 234,
+          "minimum": 3.8428079298015425,
+          "p05": 4.185121696354091,
+          "median": 4.840084570918909,
+          "p95": 14.839588591931824
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.356361195072963,
+          "p05": 4.356416850933161,
+          "median": 4.371036951764492,
+          "p95": 4.393136947647858
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 5.233964737960737,
+          "rms": 2.936617987338634
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.6767078278238695,
+          "rms": 0.3496710461925999
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  },
+  {
+    "id": "right-v1.6-r4-nominal-lagged-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4.0,
+    "profile": "nominal",
+    "seed": 6401,
+    "variant": "lagged",
+    "returncode": 0,
+    "domain": 75,
+    "metrics": {
+      "schema_version": 2,
+      "truth_topic": "/simulation/ground_truth",
+      "reference_kind": "physical_world_pose",
+      "start_sim_s": 2.442,
+      "duration_s": 22.926990816987242,
+      "alignment": "header interpolation <=0.2 s, no fitting; fixed sim map=odom datum/spawn",
+      "localization": {
+        "/odometry/local": {
+          "all": {
+            "heading_deg": {
+              "n": 687,
+              "maximum": 3.4374305788352713,
+              "rms": 1.4058167112049755
+            },
+            "position_m": {
+              "n": 687,
+              "maximum": 1.1065157423530778,
+              "rms": 0.7028685475958263
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.9232099142268986,
+                "rms": 1.223179138164563
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.4871708363575256,
+                "rms": 0.4009841440706887
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 29,
+                "maximum": 2.823641809833171,
+                "rms": 2.347916818493415
+              },
+              "position_m": {
+                "n": 29,
+                "maximum": 0.5055962465550002,
+                "rms": 0.4995465668612696
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 3.4374305788352713,
+                "rms": 2.8839106419736944
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 0.7322339295705916,
+                "rms": 0.6210127992743254
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 240,
+                "maximum": 1.4741026197143334,
+                "rms": 0.6085602890883359
+              },
+              "position_m": {
+                "n": 240,
+                "maximum": 0.8598222448427791,
+                "rms": 0.8144633305735767
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 1.1964906043192471,
+                "rms": 0.33001174378282006
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 1.1065157423530778,
+                "rms": 1.0602151028569886
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": null,
+            "censored": true,
+            "observed_until_s": 11.0
+          },
+          "lag_diagnostic": {
+            "common_samples": 669,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 1.7451140668838077
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 1.614672984581325
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 1.490489496255121
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 1.3742554441153398
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 1.2683135848921987
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 1.1754744485631898
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.0989907975974724
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.0425209331716914
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.0094473203772494
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.0020178502252226
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.0208713513207446
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.0646818877262216
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.1304181537440143
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.2145832019642024
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.3137006196077603
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.424550058938154
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.5447304545550375
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.6720723136471343
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.8051103366155408
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.9426770536208644
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 2.0838196367980553
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 2.227918925670735
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 2.374367545303316
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 2.522755951886063
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 2.6727830147145584
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.824170618317965
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.9766525415655933
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 3.130016519903339
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 3.2841495166265418
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 3.438969449230371
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 3.594381943868196
+              }
+            ],
+            "best": {
+              "offset_s": -0.12,
+              "heading_deg": 1.0020178502252226
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 687,
+              "maximum": 0.026633676170226404,
+              "rms": 0.022825217740765402
+            },
+            "x_variance_m2": {
+              "n": 687,
+              "maximum": 0.02086423771333859,
+              "rms": 0.016812926747637895
+            }
+          }
+        },
+        "/odometry/global": {
+          "all": {
+            "heading_deg": {
+              "n": 680,
+              "maximum": 3.696294562243191,
+              "rms": 1.2242592815484772
+            },
+            "position_m": {
+              "n": 680,
+              "maximum": 0.18795721289452375,
+              "rms": 0.050265596640788765
+            }
+          },
+          "phases": {
+            "straight_before": {
+              "heading_deg": {
+                "n": 237,
+                "maximum": 1.0804049195723964,
+                "rms": 0.3199928191159994
+              },
+              "position_m": {
+                "n": 237,
+                "maximum": 0.18795721289452375,
+                "rms": 0.06810076967788907
+              }
+            },
+            "entry": {
+              "heading_deg": {
+                "n": 28,
+                "maximum": 1.9427269574006194,
+                "rms": 1.02099742433699
+              },
+              "position_m": {
+                "n": 28,
+                "maximum": 0.028093802361911273,
+                "rms": 0.015876498186819268
+              }
+            },
+            "curve": {
+              "heading_deg": {
+                "n": 89,
+                "maximum": 2.6326120473910692,
+                "rms": 1.5268140943321977
+              },
+              "position_m": {
+                "n": 89,
+                "maximum": 0.0276233377032448,
+                "rms": 0.018569499210329018
+              }
+            },
+            "straight_after": {
+              "heading_deg": {
+                "n": 239,
+                "maximum": 3.696294562243191,
+                "rms": 1.6471274397579623
+              },
+              "position_m": {
+                "n": 239,
+                "maximum": 0.06893797431675436,
+                "rms": 0.04016497621759939
+              }
+            },
+            "stop": {
+              "heading_deg": {
+                "n": 87,
+                "maximum": 1.2104020708743486,
+                "rms": 1.1236649137046488
+              },
+              "position_m": {
+                "n": 87,
+                "maximum": 0.07726389539806944,
+                "rms": 0.04742349732242674
+              }
+            }
+          },
+          "unpaired": 0,
+          "recovery": {
+            "seconds": 2.494009183012757,
+            "censored": false
+          },
+          "lag_diagnostic": {
+            "common_samples": 664,
+            "sweep": [
+              {
+                "offset_s": -0.3,
+                "heading_deg": 2.7090642416309914
+              },
+              {
+                "offset_s": -0.28,
+                "heading_deg": 2.563373906813983
+              },
+              {
+                "offset_s": -0.26,
+                "heading_deg": 2.420081890729952
+              },
+              {
+                "offset_s": -0.24,
+                "heading_deg": 2.27963882707185
+              },
+              {
+                "offset_s": -0.22,
+                "heading_deg": 2.1426674690839413
+              },
+              {
+                "offset_s": -0.2,
+                "heading_deg": 2.0099385644325354
+              },
+              {
+                "offset_s": -0.18,
+                "heading_deg": 1.8823356652028578
+              },
+              {
+                "offset_s": -0.16,
+                "heading_deg": 1.7609215324261749
+              },
+              {
+                "offset_s": -0.14,
+                "heading_deg": 1.6470486079749942
+              },
+              {
+                "offset_s": -0.12,
+                "heading_deg": 1.542412060087818
+              },
+              {
+                "offset_s": -0.1,
+                "heading_deg": 1.449012436906975
+              },
+              {
+                "offset_s": -0.08,
+                "heading_deg": 1.3692067753998338
+              },
+              {
+                "offset_s": -0.06,
+                "heading_deg": 1.3054250845659645
+              },
+              {
+                "offset_s": -0.04,
+                "heading_deg": 1.2600746209668054
+              },
+              {
+                "offset_s": -0.02,
+                "heading_deg": 1.2352467246180305
+              },
+              {
+                "offset_s": 0.0,
+                "heading_deg": 1.2321187494805546
+              },
+              {
+                "offset_s": 0.02,
+                "heading_deg": 1.2508643343095966
+              },
+              {
+                "offset_s": 0.04,
+                "heading_deg": 1.2904699279574101
+              },
+              {
+                "offset_s": 0.06,
+                "heading_deg": 1.3490612061969758
+              },
+              {
+                "offset_s": 0.08,
+                "heading_deg": 1.4242889927789464
+              },
+              {
+                "offset_s": 0.1,
+                "heading_deg": 1.5136191209693035
+              },
+              {
+                "offset_s": 0.12,
+                "heading_deg": 1.6147190766787458
+              },
+              {
+                "offset_s": 0.14,
+                "heading_deg": 1.7254802440649104
+              },
+              {
+                "offset_s": 0.16,
+                "heading_deg": 1.8441570683849025
+              },
+              {
+                "offset_s": 0.18,
+                "heading_deg": 1.9693185738368302
+              },
+              {
+                "offset_s": 0.2,
+                "heading_deg": 2.0997909324314166
+              },
+              {
+                "offset_s": 0.22,
+                "heading_deg": 2.2346081468479833
+              },
+              {
+                "offset_s": 0.24,
+                "heading_deg": 2.3729828993382274
+              },
+              {
+                "offset_s": 0.26,
+                "heading_deg": 2.5143170087946785
+              },
+              {
+                "offset_s": 0.28,
+                "heading_deg": 2.658150147114742
+              },
+              {
+                "offset_s": 0.3,
+                "heading_deg": 2.8040996108818823
+              }
+            ],
+            "best": {
+              "offset_s": 0.0,
+              "heading_deg": 1.2321187494805546
+            }
+          },
+          "observed_covariance": {
+            "yaw_variance_rad2": {
+              "n": 680,
+              "maximum": 0.24344102294692882,
+              "rms": 0.07410014146084169
+            },
+            "x_variance_m2": {
+              "n": 680,
+              "maximum": 0.21376083655368422,
+              "rms": 0.057430087996293615
+            }
+          }
+        }
+      },
+      "continuity": {
+        "/gps/fix": {
+          "samples": 152,
+          "unique_stamps": 152,
+          "max_gap_s": 0.3000000000000007,
+          "max_receive_age_s": 0.17999999999999972,
+          "covered_fraction": 0.9944610778622919
+        },
+        "/gps/odometry_map": {
+          "samples": 139,
+          "unique_stamps": 139,
+          "max_gap_s": 1.758,
+          "max_receive_age_s": 0.17999999999999972,
+          "covered_fraction": 0.9203998975899159
+        },
+        "/imu/data": {
+          "samples": 1090,
+          "unique_stamps": 1090,
+          "max_gap_s": 0.04200000000000159,
+          "max_receive_age_s": 0.036000000000001364,
+          "covered_fraction": 0.9993025331097792
+        },
+        "/odom_raw": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.015000000000000568,
+          "covered_fraction": 0.9993025331097792
+        },
+        "/odometry/global": {
+          "samples": 680,
+          "unique_stamps": 680,
+          "max_gap_s": 0.08400000000000318,
+          "max_receive_age_s": 0.08099999999999952,
+          "covered_fraction": 0.9956387291387077
+        },
+        "/odometry/local": {
+          "samples": 687,
+          "unique_stamps": 687,
+          "max_gap_s": 0.06299999999999972,
+          "max_receive_age_s": 0.04800000000000182,
+          "covered_fraction": 0.9974706311242435
+        },
+        "/simulation/ground_truth": {
+          "samples": 1092,
+          "unique_stamps": 1092,
+          "max_gap_s": 0.021000000000000796,
+          "max_receive_age_s": 0.015000000000000568,
+          "covered_fraction": 0.9993025331097792
+        },
+        "/tf/map/odom": {
+          "samples": 680,
+          "unique_stamps": 680,
+          "max_gap_s": 0.08400000000000318,
+          "max_receive_age_s": 0.08399999999999963,
+          "covered_fraction": 0.9956387291387077
+        },
+        "/tf/odom/base_footprint": {
+          "samples": 687,
+          "unique_stamps": 687,
+          "max_gap_s": 0.06299999999999972,
+          "max_receive_age_s": 0.04800000000000182,
+          "covered_fraction": 0.9974706311242435
+        }
+      },
+      "instrumentation_valid": true,
+      "heading_gate": {
+        "strong_samples": 33,
+        "valid_in_strong": 0,
+        "held_samples": 0,
+        "window_generations": [
+          0,
+          1,
+          2
+        ],
+        "transitions": [
+          {
+            "elapsed_s": 0.10199999999999987,
+            "state": "NORMAL"
+          },
+          {
+            "elapsed_s": 9.159,
+            "state": "STRONG_TURN"
+          },
+          {
+            "elapsed_s": 14.178,
+            "state": "REACQUIRE"
+          },
+          {
+            "elapsed_s": 15.645,
+            "state": "NORMAL"
+          }
+        ],
+        "reacquisitions": [
+          {
+            "elapsed_s": 14.178,
+            "collection_s": 1.4669999999999987,
+            "baseline_m": 2.2368341692139966
+          }
+        ]
+      },
+      "gps_compensation": {
+        "reasons": {
+          "absolute_heading_uninitialized": 14,
+          "non_monotonic_fix": 2,
+          "ok": 139
+        }
+      },
+      "tracking_command_model_m": {
+        "n": 574,
+        "maximum": 2.6621599029454814,
+        "rms": 1.674827000112573
+      },
+      "actual_strong_turn": {
+        "first_elapsed_s": 8.688,
+        "last_elapsed_s": 12.699,
+        "errors": {
+          "/odometry/local": {
+            "heading_deg": {
+              "n": 121,
+              "maximum": 3.4374305788352713,
+              "rms": 2.606435469903814
+            },
+            "position_m": {
+              "n": 121,
+              "maximum": 0.7865179164157338,
+              "rms": 0.6424535285435227
+            }
+          },
+          "/odometry/global": {
+            "heading_deg": {
+              "n": 120,
+              "maximum": 3.467437752523913,
+              "rms": 1.7472968268671032
+            },
+            "position_m": {
+              "n": 120,
+              "maximum": 0.028093802361911273,
+              "rms": 0.01764300463475585
+            }
+          }
+        }
+      },
+      "gnss_outages": [],
+      "motion": {
+        "truth_distance_m": 32.121514688910516,
+        "measured_speed_mps": {
+          "n": 1092,
+          "maximum": 1.6614460102424768,
+          "rms": 1.495633832750299
+        },
+        "steering_deg": {
+          "n": 229,
+          "maximum": 12.940804254711356,
+          "rms": 4.699735884383587
+        },
+        "observed_radius_m": {
+          "minimum": 4.265992860251009,
+          "median": 5.021551524529307
+        },
+        "geometric_radius_m": {
+          "n": 234,
+          "minimum": 3.8311352193889108,
+          "p05": 4.166204061357258,
+          "median": 4.842970030126785,
+          "p95": 14.823971994259084
+        },
+        "steady_geometric_radius_m": {
+          "n": 32,
+          "minimum": 4.35634505049481,
+          "p05": 4.356489134775347,
+          "median": 4.371446913264187,
+          "p95": 4.393724196061131
+        }
+      },
+      "kinematic_vs_physical": {
+        "heading_deg": {
+          "n": 1092,
+          "maximum": 5.436248669751705,
+          "rms": 3.004782450892636
+        },
+        "position_m": {
+          "n": 1092,
+          "maximum": 0.6855674023518092,
+          "rms": 0.3529249391888356
+        }
+      },
+      "navigation": "not running: estimator-only, no planner decision inferred"
+    },
+    "capture_success": true,
+    "outcome": "passed"
+  }
+]
