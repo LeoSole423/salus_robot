@@ -263,3 +263,13 @@ La investigación previa con `--shadows` se reproduce sobre el snapshot
 `f062c15`, anterior a esta compensación. El harness/helper rechazan compensar
 una medición cuyo child frame ya declara la base para impedir aplicar dos veces
 el montaje. Para validar producto se usa la cola normal sin shadows.
+
+### Alcance de la referencia de giros (#328)
+
+Las comparaciones del14/10 contra `/odom_raw` miden acuerdo con la odometría
+cinemática del plugin, no error frente a pose física independiente. La campaña
+posterior incorpora `/simulation/ground_truth` sólo como observador y conserva
+las dos referencias separadas. Véase ADR0017 y `docs/migration-evidence/ekf-turns-20261018/`.
+IMU simulada sigue derivando de odometría cinemática; sus errores comunes con
+rueda no prueban deriva de una IMU real ni justifican reabrir máscaras #60/#266
+o duplicar yaw-rate global #61/#268. No se cambian defaults EKF en esta campaña.

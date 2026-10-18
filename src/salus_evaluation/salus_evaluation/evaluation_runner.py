@@ -32,6 +32,18 @@ from .models import (ExpectedTurn, Pose2D, TimedCommand,
 from .schema import load_scenario
 
 
+def reference_tracking_observation(topic, poses, path, goal, tolerance, success_s):
+    """Measure actual reference motion separately from estimator-based gates."""
+    return {
+        "topic": topic,
+        "reference_kind": ("physical_world_pose" if topic == "/simulation/ground_truth"
+                           else "kinematic_odometry_not_independent_truth"),
+        "tracking": tracking_metrics(poses, path) if poses and path else None,
+        "arrival": arrival_metrics(poses, goal, tolerance, success_s)
+        if poses and goal else None,
+    }
+
+
 def _stamp(message):
     stamp = message.header.stamp if hasattr(message, "header") else message.stamp
     return float(stamp.sec) + float(stamp.nanosec) / 1e9
@@ -381,6 +393,7 @@ class EvaluationRunner(Node):
         self.vehicle_commands, self.drive_telemetry = [], []
         self.controller_status, self.controller_telemetry = [], []
         self.controller_json_errors = []
+        self.gnss_heading_debug, self.gnss_map_debug = [], []
         self.plans, self.events = [], []
         self.plan_samples, self.path_health_samples = [], []
         self.goal = None
@@ -412,6 +425,13 @@ class EvaluationRunner(Node):
         self.create_subscription(
             DriveTelemetry, "/controller/drive_telemetry", self._drive_telemetry, 50
         )
+        for topic, target in (("/gps/course_heading/debug", self.gnss_heading_debug),
+                              ("/gps/odometry_map/debug", self.gnss_map_debug)):
+            self.create_subscription(
+                String, topic,
+                lambda message, rows=target: rows.append({
+                    "stamp_s": _now_s(self), "data": message.data}), 20
+            )
         self.create_subscription(String, "/controller/status", self._controller_status, 20)
         self.create_subscription(
             String, "/controller/telemetry", self._controller_telemetry, 20
@@ -663,6 +683,19 @@ class EvaluationRunner(Node):
                 localization = localization_metrics(raw_poses, global_poses)
         except ValueError as exc:
             errors.append(str(exc))
+        try:
+            reference_observation = reference_tracking_observation(
+                self.raw_subscription.topic_name, raw_poses, plan, self.goal,
+                self.tolerance, self.success_s,
+            )
+        except ValueError as exc:
+            errors.append("reference tracking: " + str(exc))
+            reference_observation = {"topic": self.raw_subscription.topic_name,
+                                     "error": str(exc)}
+        gnss_heading_debug = [r for r in self.gnss_heading_debug
+                              if r["stamp_s"] >= self.goal_sent_s]
+        gnss_map_debug = [r for r in self.gnss_map_debug
+                          if r["stamp_s"] >= self.goal_sent_s]
         gates = functional_gates(
             finite_data=finite and not errors, plan_present=bool(plan),
             terminal_success=self.terminal_status == GoalStatus.STATUS_SUCCEEDED,
@@ -698,6 +731,7 @@ class EvaluationRunner(Node):
                        metrics.cross_track_p95_m if metrics else float("inf"),
                    )],
                    "errors": errors, "replans": max(0, len(self.plans) - 1),
+                   "reference_observation": reference_observation,
                    "command_chain": command_chain["summary"],
                    "controller_json_errors": controller_json_errors}
         manifest = {
@@ -709,15 +743,18 @@ class EvaluationRunner(Node):
                 "commands_safe", "commands_final", "vehicle_commands",
                 "drive_telemetry", "controller_status", "controller_telemetry",
                 "command_chain_alignment", "plans", "path_health",
+                "gnss_heading_debug", "gnss_map_debug",
             ],
             "topics": [
                 "/plan", "/cmd_vel", "/cmd_vel_safe", "/cmd_vel_final",
                 "/vehicle/command_shadow", "/controller/drive_telemetry",
                 "/controller/status", "/controller/telemetry", self.raw_subscription.topic_name,
                 "/odometry/local", "/odometry/global", "/path_health",
+                "/gps/course_heading/debug", "/gps/odometry_map/debug",
             ],
         }
         streams = {"plans": self.plan_samples, "path_health": self.path_health_samples,
+                   "gnss_heading_debug": gnss_heading_debug, "gnss_map_debug": gnss_map_debug,
                    "odometry_global": global_poses, "odometry_raw": raw_poses,
                    "odometry_local": local_poses, "commands": commands,
                    "commands_safe": safe_commands, "commands_final": final_commands,

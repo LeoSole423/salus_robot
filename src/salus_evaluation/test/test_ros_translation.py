@@ -118,3 +118,21 @@ def test_command_chain_summary_preserves_translation_and_observed_aggregates():
                                      ("telemetry", 1.1)), 1.0) == {
         "status": 1, "telemetry": 1,
     }
+
+
+def test_reference_tracking_reports_physical_error_without_changing_estimator_gates():
+    from salus_evaluation.evaluation_runner import reference_tracking_observation
+    from salus_evaluation.models import Pose2D, TimedPose
+
+    poses = [TimedPose(1.0, Pose2D(0.0, 1.0, 0.0), 1.0, 0.0),
+             TimedPose(2.0, Pose2D(2.0, 1.0, 0.0), 1.0, 0.0)]
+    path = [Pose2D(0.0, 0.0, 0.0), Pose2D(2.0, 0.0, 0.0)]
+    result = reference_tracking_observation(
+        "/simulation/ground_truth", poses, path, path[-1], 0.25, None
+    )
+    assert result["reference_kind"] == "physical_world_pose"
+    assert result["tracking"].cross_track_p95_m == pytest.approx(1.0)
+    assert result["arrival"].final_distance_m == pytest.approx(1.0)
+    legacy = reference_tracking_observation("/odom_raw", (), (), None, .25, None)
+    assert legacy["reference_kind"] == "kinematic_odometry_not_independent_truth"
+    assert legacy["tracking"] is None

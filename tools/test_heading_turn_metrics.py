@@ -6,7 +6,7 @@ import tempfile
 import json
 import gzip
 from pathlib import Path
-from tools.heading_turn_metrics import analyze
+from tools.heading_turn_metrics import analyze, circle_radius
 
 class MetricsTest(unittest.TestCase):
     def test_wrapped_interpolation_and_no_extrapolation(self):
@@ -48,6 +48,11 @@ class MetricsTest(unittest.TestCase):
             self.assertAlmostEqual(m['heading_deg']['rms'],1.)
             self.assertAlmostEqual(m['position_m']['rms'],.1)
             self.assertFalse(second['instrumentation_valid'])  # missing IMU/TF
+
+    def test_physical_circle_radius_is_independent_of_velocity_filter(self):
+        points=[dict(x=2*math.sin(t),y=2*(1-math.cos(t))) for t in [0.,.2,.4]]
+        self.assertAlmostEqual(circle_radius(*points),2.)
+        self.assertIsNone(circle_radius(dict(x=0,y=0),dict(x=1,y=0),dict(x=2,y=0)))
 
     def test_geometry_respects_product_radius(self):
         for speed in [.8,1.2,1.6,1.8]:

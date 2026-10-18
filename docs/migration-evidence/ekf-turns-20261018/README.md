@@ -1,78 +1,103 @@
-# #328 — campaña PC del 18/10/2026
+# #328 — navegación y EKF compensado, PC 18/10/2026
 
-Fuente de captura inicial: `7fd0014`, base `d6bf67d`. Sólo simulación. Ver
-[ficha de intención](../intent/ekf-turns-2026-10-18.md) y reporte de resultados
-cuando finalice la campaña. No se modifican defaults ni hardware.
+Leer [resultados](RESULTS.md), [intención](../intent/ekf-turns-2026-10-18.md) y
+[ADR0017](../../decisions/0017-simulation-motion-reference.md). Hardware no validado.
+
+## Dos referencias que no deben mezclarse
+
+`kinematic-precheck/` conserva la exploración inicial previa a corregir el
+simulador. Comparaba contra `/odom_raw`: odometría integrada de articulaciones,
+correlacionada con rueda/IMU, **no pose física independiente**. Sus errores y
+fallos quedan conservados, pero no sirven para seleccionar tuning de precisión
+física. El inventario de detención distingue completados, parciales y no ejecutados.
+Los históricos del worktree heading-strong-turns permanecen intactos, identificados
+en preserved-history-sha256.json; tampoco se reinterpretan como truth físico.
+
+La referencia física parte de `0de5f53`, base main `d6bf67d`: contrato Twist
+correcto, claves Fortress wheel_base/kingpin_width y observador worldPose. El
+EKF/compensación de producto se conserva. El nuevo observador nunca alimenta
+sensores, control, compensación, EKF ni `/tf`. El tracking cambia por corregir
+el simulador; no es una mejora del filtro. IMU sigue derivando de odometría
+cinemática: los errores comunes siguen siendo una limitación del sensor simulado.
 
 ## Reproducción
 
-Desde un worktree propio, con Docker Humble construido:
+Desde un worktree propio, con imagen Docker Humble disponible:
 
 ```bash
 ./tools/build.sh
 ./tools/test.sh
 ./tools/nav_eval.sh isolation artifacts/issue328-isolation-new
 /usr/bin/python3 tools/heading_turn_campaign.py \
-  docs/migration-evidence/ekf-turns-20261018/pilot.json artifacts/issue328-pilot-new
+  docs/migration-evidence/ekf-turns-20261018/physical-pilot.json \
+  artifacts/issue328-physical-pilot-new --jobs 2
 /usr/bin/python3 tools/heading_turn_campaign.py \
-  docs/migration-evidence/ekf-turns-20261018/baseline-matrix.json \
-  artifacts/issue328-reference-new --jobs 2
-python3 tools/summarize_turn_campaign.py artifacts/issue328-reference-new \
-  artifacts/issue328-summary-new --plot
+  docs/migration-evidence/ekf-turns-20261018/physical-reference-matrix.json \
+  artifacts/issue328-physical-reference-new --jobs 2
+python3 tools/summarize_turn_campaign.py artifacts/issue328-physical-reference-new \
+  artifacts/issue328-physical-summary-new --plot
 ./tools/nav_eval.sh matrix \
   src/salus_evaluation/config/matrices/issue328_navigation_reference.yaml \
-  artifacts/issue328-nav-new --jobs 2
+  artifacts/issue328-nav-r4-new --jobs 2 \
+  --evaluation-ground-truth-topic /simulation/ground_truth
+./tools/nav_eval.sh matrix \
+  src/salus_evaluation/config/matrices/issue328_navigation_r3.yaml \
+  artifacts/issue328-nav-r3-new --jobs 2 --planner-minimum-turning-radius 3 \
+  --evaluation-ground-truth-topic /simulation/ground_truth
 ```
 
-El intérprete host necesita PyYAML (en esta PC `/usr/bin/python3`; el `python3`
-del PATH pertenece a PlatformIO y no lo incluye). El resumen con `--plot`
-necesita matplotlib, instalado en un venv temporal para esta campaña. El build
-usa sus propios build/install. No reutilizar symlinks de otros worktrees.
+El intérprete host de la cola necesita PyYAML (en esta PC `/usr/bin/python3`;
+`python3` del PATH pertenece a PlatformIO). `--plot` requiere matplotlib;
+se instaló en un venv temporal, sin modificar el entorno del proyecto.
+Build/install propios; no reutilizar symlinks de otros worktrees. Las carpetas
+nuevas son obligatorias: no se sobrescribe ninguna captura.
 
-La cola asigna dominios con locks existentes y limita concurrencia a 1/2.
-Cada captura vive en un Docker propio, sin puertos publicados, particiones
-Gazebo, runtime y logs independientes. Esta cola usa bridge/UDPv4 para evitar
-el discovery intermitente observado con procesos CLI en network=none. No usa
-red ni nodos externos; no cambia el harness de matrices Nav2.
-Cada artefacto conserva receta, seed, perfil YAML montado sólo dentro del
-contenedor, parámetros leídos y provenance de fuentes/imagen. No se sobrescribe
-ninguna carpeta existente. Los fallos permanecen en outcomes.json.
+La cola usa asignador/locks existentes, 1/2 workers, seis CPU cada uno. Docker
+bridge sin puertos publicados, dominios/particiones/runtime/logs independientes,
+UDPv4. El runner histórico conserva network=none por defecto. La captura lee
+parámetros efectivos mediante servicios Humble, incluyendo arrays tipados no
+inicializados; un fallo conserva status, datos y provenance.
 
-`clean` en esta campaña significa perturbaciones cero, salvo GNSS 2 cm del
-perfil clean existente, sobre el **transporte independiente** de sensores.
-Esto mantiene el mismo camino de rueda/steering al introducir perturbaciones;
-no es el bypass de sensores que usa el launch de producto `clean`. Las máscaras,
-covarianzas y compensación del EKF sí son las vigentes. La velocidad mínima de
-heading GPS sigue siendo 0.8 m/s: su disponibilidad a la frontera debe medirse.
+`clean` significa perturbaciones cero salvo GNSS2 cm existente, sobre el mismo
+transporte independiente de sensores utilizado por las intervenciones. No es el
+bypass que el launch de producto llama clean. Perfil YAML, seed, receta y
+parámetros efectivos están junto a cada trial. `recipe.json` identifica escenario,
+velocidad, radio y override manual; el campo scenario legado del probe no debe
+reemplazar esa receta. Las máscaras, covarianzas y compensación son las vigentes.
 
-## Artefactos y semántica
+## Velocidad, radio y seguridad geométrica
 
-`summary.csv/json`, `aggregates.json`, comparación PNG/SVG y carpetas de trial.
-Los errores primarios usan header stamp, yaw envuelto, interpolación truth con
-gap máximo 0.2 s, sin extrapolación ni fit de offset. Las fases son ventanas de
-comando; `actual_strong_turn` informa por separado el giro físico >=0.18 rad/s.
-El lag es diagnóstico con soporte común; nunca corrige las métricas primarias.
-La recuperación <=2° y <=0.25 m durante 1 s es una referencia descriptiva,
-no un criterio de seguridad. Si no ocurre se conserva como censurada.
-Las continuidades incluyen bordes de ventana y timestamps únicos: un stream
-congelado no mejora artificialmente la precisión.
+Por pedido del operador se evalúan1.2/1.6 y1.8 m/s. Producto conserva Nav2 R4,
+steering automático18° y manual30°. El wrapper tools/heading_manual_envelope.launch.py
+aplica30° sólo en simulación, con readback registrado. R3/R2/R1.65 son solicitudes;
+los límites de juntas internas/clamp/dinámica pueden impedir alcanzarlas.
+R1.65 sostiene6 s y puede describir una vuelta: es **estimador-only**, sin Nav2,
+no evidencia de navegación integral. Las matrices Nav2 mantienen guard de U/rulos;
+el override R3 es experimental, sin promoción a defaults. No hay hardware ni deploy.
 
-El modelo cinemático solicitado sirve para separar tracking de localización;
-no representa un path aceptado por Nav2. Los bundles Nav2 tienen sus propias
-metas, errores de seguimiento, replans y gates funcionales. Un rechazo del guard
-no se convierte en una mejora del EKF.
+## Datos y métricas
 
-Los datos compactos `analysis-samples.jsonl.gz` conservan todas las muestras,
-header/receive stamps, poses, rates, comandos, GPS y debug; sólo sustituyen
-matrices completas de covarianza por sus seis diagonales. Son entrada directa
-de `heading_turn_metrics.py` para reproducir los números. `raw-sha256.json`
-identifica crudos completos locales, que conservan también covarianzas cruzadas.
-No se calcula innovación interna a partir de un error externo: habilitar debug
-EKF sólo si hace falta atribuir un fallo no explicado por datos observables.
+`summary.csv/json`, `aggregates.json`, comparación PNG/SVG y carpetas por trial.
+Errores primarios: header stamp, yaw envuelto, interpolación del referente con
+gap<=0.2 s, sin extrapolación ni fit espacial/temporal. Fases son ventanas de
+comando; el giro físico>=0.18 rad/s se informa aparte. Lag usa soporte común y
+es report-only. Recuperación<=2°/0.25 m durante1 s es descriptiva y se censura
+si no ocurre; no es umbral de seguridad. Continuidad incluye bordes y stamps
+únicos. Los fallos no se eliminan de tasas ni se convierten en baja precisión.
 
-Ground truth `/odom_raw` lleva nombres internos `salus_ackermann/odom` y
-`salus_ackermann/base_footprint`. Son coordenadas de origen del modelo, no TF
-públicos. `motion_sim.launch.py` fija spawn x/y/yaw=0; `free.world` y mapper
-comparten datum/yaw=0. La comparación fija map=odom del mundo, sin alinear al
-EKF ni restar un error inicial. Otros spawns/datums requieren otra transformación
-explícita; esta campaña no es un analizador genérico de bags reales.
+La referencia cinemática de comandos mide tracking separado del error EKF.
+Los bundles Nav2 conservan metas, replans, bloqueos y tracking con pose física;
+el remap se aplica **sólo al proceso evaluator** y se registra en metadata/manifest.
+Un rechazo del guard no cuenta como llegada ni como mejora de localización.
+
+`analysis-samples.jsonl.gz` conserva todas las muestras, stamps, poses, rates,
+comandos, GPS/debug y seis diagonales de covarianza; sólo omite off-diagonales.
+Es entrada directa de heading_turn_metrics.py para reproducir los números.
+raw-sha256.json identifica crudos completos locales, también con covarianzas
+cruzadas. analysis-provenance.json fija código del análisis. No se llama
+innovación interna al error externo; debug EKF sólo si lo exige una atribución.
+
+El observador físico usa map/base_footprint y worldPose. El spawn x/y/yaw=0 y
+el datum/yaw del world y mapper coinciden. La comparación fija map=odom del
+mundo, sin alinear al EKF ni restar sesgo inicial. Otros datums/spawns requieren
+transformación explícita; estas herramientas no analizan bags reales genéricos.
