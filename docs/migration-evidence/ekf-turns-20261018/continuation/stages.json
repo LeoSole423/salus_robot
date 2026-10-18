@@ -67,14 +67,16 @@
     "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300.yaml",
     "output": "artifacts/issue328-latency300-nav",
     "planner_radius": 3,
-    "launch_file": "tools/heading_latency300.launch.py"
+    "launch_file": "tools/heading_latency300.launch.py",
+    "invalid_intervention": "Historical wrapper left effective GNSS latency at 100 ms; use latency-stages.json for verified 300 ms."
   },
   {
     "id": "latency300-lagged-nav",
     "matrix": "src/salus_evaluation/config/matrices/issue328_route_latency300_lagged.yaml",
     "output": "artifacts/issue328-latency300-lagged-nav",
     "planner_radius": 3,
-    "launch_file": "tools/heading_latency300.launch.py"
+    "launch_file": "tools/heading_latency300.launch.py",
+    "invalid_intervention": "Historical wrapper left effective GNSS latency at 100 ms; use latency-stages.json for verified 300 ms."
   },
   {
     "id": "s-nav",

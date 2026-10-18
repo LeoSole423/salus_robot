@@ -18,6 +18,11 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     results = []
     for stage in json.loads(args.manifest.read_text()):
+        if stage.get('invalid_intervention'):
+            results.append(dict(id=stage['id'], outcome='skipped',
+                                reason=stage['invalid_intervention']))
+            (args.output/'outcomes.json').write_text(json.dumps(results, indent=2))
+            continue
         output = REPO/stage['output']
         if output.exists():
             raise ValueError('refusing to overwrite stage: '+str(output))

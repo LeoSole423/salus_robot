@@ -1,5 +1,6 @@
 """Positive controls for route completion and explicit missing-heading failure."""
 import unittest
+import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,6 +37,17 @@ class RouteMetricsTest(unittest.TestCase):
             route_goals('quarter', 1., 1)
         s = route_goals('s', 3., 1)
         self.assertEqual(s[-1]['yaw_offset_rad'], 0.)
+
+    def test_rejected_fix_remains_visible_without_hiding_successes(self):
+        poses = [dict(x_m=28., y_m=0., yaw_rad=0., speed=1.2, stamp_s=3.)]
+        fixes = [dict(stamp_s=str(t), data=json.dumps(dict(reason='ok', valid=True)))
+                 for t in [1., 1.2, 1.4, 1.6, 1.8, 2., 2.2, 2.4, 2.6, 2.8, 3.]]
+        fixes.insert(3, dict(stamp_s='1.5', data=json.dumps(
+            dict(reason='non_monotonic_fix', valid=False))))
+        result = route_observation(poses, [], fixes)
+        self.assertFalse(result['map_output_continuous_before_curve'])
+        self.assertEqual(result['map_rejections_before_curve'], {'non_monotonic_fix': 1})
+        self.assertEqual(result['map_successes_before_curve'], 11)
 
     def test_archive_preserves_capture_bytes_and_excludes_runtime(self):
         with tempfile.TemporaryDirectory() as directory:

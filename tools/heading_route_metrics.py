@@ -3,6 +3,7 @@
 import argparse
 import ast
 import csv
+from collections import Counter
 import json
 import math
 import yaml
@@ -87,6 +88,9 @@ def route_observation(poses, course_debug, map_debug, *, entry_x=28., radius=4.,
                 entry_stamp_s=entered, acquisition_checkpoint_stamp_s=acquisition,
                 heading_acquired_before_curve=acquired,
                 map_output_continuous_before_curve=bool(map_valid and coverage),
+                map_rejections_before_curve=dict(Counter(
+                    r.get('reason', 'unknown') for _, r in fixes if r.get('reason') != 'ok')),
+                map_successes_before_curve=sum(r.get('reason') == 'ok' for _, r in fixes),
                 compensation_enabled=compensation_enabled,
                 compensated_gnss_continuous_before_curve=bool(
                     map_valid and coverage and compensation_enabled is not False),
@@ -123,6 +127,14 @@ def main():
     curve = route_window(rows, args.radius, 1 if args.side != 'right' else -1, args.kind)
     end = max((r['stamp_s'] for r in curve), default=None)
     result['curve_end_stamp_s'] = end
+    delivery_ages = []
+    for row in read(args.bundle/'gnss_map_debug.csv'):
+        received = float(row['stamp_s'])
+        fix = json.loads(row['data'])
+        if start is not None and end is not None and start <= received <= end:
+            if 'stamp_s' in fix:
+                delivery_ages.append(received-float(fix['stamp_s']))
+    result['gnss_observed_delivery_age_s'] = distribution(delivery_ages)
     for stream in ['commands', 'commands_safe', 'commands_final']:
         commanded = [float(r['linear_x_mps']) for r in read(args.bundle/f'{stream}.csv')
                      if start is not None and end is not None and
