@@ -1,0 +1,10 @@
+[
+  {
+    "id": "pilot-right",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4.0,
+    "seed": 6400,
+    "profile": "clean"
+  }
+]

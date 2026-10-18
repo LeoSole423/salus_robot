@@ -1,0 +1,18 @@
+[
+  {
+    "id": "straight-v1.2-r4-s6400",
+    "kind": "straight",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "straight-v1.2-r4-s6401",
+    "kind": "straight",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  }
+]

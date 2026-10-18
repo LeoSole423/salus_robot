@@ -1,0 +1,386 @@
+[
+  {
+    "id": "straight-v1.2-r4-s6400",
+    "kind": "straight",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "straight-v1.2-r4-s6401",
+    "kind": "straight",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "straight-v1.2-r4-s6402",
+    "kind": "straight",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "oscillations-v1.2-r4-s6400",
+    "kind": "oscillations",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "oscillations-v1.2-r4-s6401",
+    "kind": "oscillations",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "oscillations-v1.2-r4-s6402",
+    "kind": "oscillations",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v0.8-r4-s6400",
+    "kind": "right",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v0.8-r4-s6401",
+    "kind": "right",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v0.8-r4-s6402",
+    "kind": "right",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v0.8-r4-s6400",
+    "kind": "left",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v0.8-r4-s6401",
+    "kind": "left",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v0.8-r4-s6402",
+    "kind": "left",
+    "speed": 0.8,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.2-r4-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.2-r4-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.2-r4-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.2-r4-s6400",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.2-r4-s6401",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.2-r4-s6402",
+    "kind": "left",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.6-r4-s6400",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.6-r4-s6401",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "right-v1.6-r4-s6402",
+    "kind": "right",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.6-r4-s6400",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.6-r4-s6401",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "left-v1.6-r4-s6402",
+    "kind": "left",
+    "speed": 1.6,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "s-v1.2-r4-s6400",
+    "kind": "s",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "s-v1.2-r4-s6401",
+    "kind": "s",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "s-v1.2-r4-s6402",
+    "kind": "s",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "half-v1.2-r8-s6400",
+    "kind": "half",
+    "speed": 1.2,
+    "radius": 8,
+    "seed": 6400,
+    "profile": "clean"
+  },
+  {
+    "id": "half-v1.2-r8-s6401",
+    "kind": "half",
+    "speed": 1.2,
+    "radius": 8,
+    "seed": 6401,
+    "profile": "clean"
+  },
+  {
+    "id": "half-v1.2-r8-s6402",
+    "kind": "half",
+    "speed": 1.2,
+    "radius": 8,
+    "seed": 6402,
+    "profile": "clean"
+  },
+  {
+    "id": "right-gyro-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "gyro"
+  },
+  {
+    "id": "right-gyro-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "gyro"
+  },
+  {
+    "id": "right-gyro-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "gyro"
+  },
+  {
+    "id": "right-wheel-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "wheel"
+  },
+  {
+    "id": "right-wheel-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "wheel"
+  },
+  {
+    "id": "right-wheel-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "wheel"
+  },
+  {
+    "id": "right-latency100-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "latency100"
+  },
+  {
+    "id": "right-latency100-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "latency100"
+  },
+  {
+    "id": "right-latency100-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "latency100"
+  },
+  {
+    "id": "right-latency300-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "latency300"
+  },
+  {
+    "id": "right-latency300-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "latency300"
+  },
+  {
+    "id": "right-latency300-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "latency300"
+  },
+  {
+    "id": "right-outage-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "outage"
+  },
+  {
+    "id": "right-outage-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "outage"
+  },
+  {
+    "id": "right-outage-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "outage"
+  },
+  {
+    "id": "right-nominal-s6400",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6400,
+    "profile": "nominal"
+  },
+  {
+    "id": "right-nominal-s6401",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6401,
+    "profile": "nominal"
+  },
+  {
+    "id": "right-nominal-s6402",
+    "kind": "right",
+    "speed": 1.2,
+    "radius": 4,
+    "seed": 6402,
+    "profile": "nominal"
+  }
+]

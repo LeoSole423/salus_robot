@@ -35,6 +35,9 @@ class Probe(Node):
         if scenario in ("left", "gentle", "oscillations"):
             rate = {"left": 0.35, "gentle": -0.10, "oscillations": 0.0}[scenario]
             self.sequence[1] = ("strong_turn", 4.5, 1.2, rate)
+        recipe_path = os.environ.get('HEADING_RECIPE', '')
+        if recipe_path:
+            self.sequence = json.loads(Path(recipe_path).read_text())['sequence']
         super().__init__('heading_baseline_probe', parameter_overrides=[Parameter('use_sim_time', value=True)])
         self.directory = directory
         self.stream = (directory / 'samples.jsonl').open('w')
