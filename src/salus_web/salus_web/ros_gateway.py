@@ -73,6 +73,7 @@ from .compact_telemetry import (
     positive_rate,
 )
 from .protocol import OperatorRequest, ack
+from .route_repository import RouteRepository, RouteError
 from .waypoint_repository import AtomicWaypointRepository, normalize_document
 
 
@@ -271,6 +272,7 @@ class CockpitRosGateway(Node):
     def __init__(self) -> None:
         super().__init__("salus_web_gateway")
         self.declare_parameter("waypoints_file", "runtime/web/waypoints.yaml")
+        self.declare_parameter("routes_file", "")
         self.declare_parameter("service_timeout_s", 5.0)
         self.declare_parameter("service_discovery_timeout_s", 5.0)
         self.declare_parameter("long_service_timeout_s", 20.0)
@@ -307,6 +309,9 @@ class CockpitRosGateway(Node):
         self._waypoints = AtomicWaypointRepository(
             Path(str(self.get_parameter("waypoints_file").value))
         )
+        routes_file = str(self.get_parameter("routes_file").value).strip()
+        self._routes = RouteRepository(Path(routes_file) if routes_file else
+                                       Path(str(self.get_parameter("waypoints_file").value)).with_name("routes.json"))
         self._telemetry_profile = normalize_telemetry_profile(
             self.get_parameter("telemetry_profile").value
         )
@@ -526,6 +531,8 @@ class CockpitRosGateway(Node):
 
     async def dispatch(self, request: OperatorRequest) -> Iterable[dict[str, Any]]:
         try:
+            if request.op in {"list_routes", "get_route", "save_route", "delete_route"}:
+                return [ack(request, ok=True, **self._routes.dispatch(request.op, request.fields))]
             if request.op == "get_state":
                 state = await self.initial_state()
                 if request.request_id is not None:
@@ -578,7 +585,11 @@ class CockpitRosGateway(Node):
                 error=str(error),
                 error_code=error.code,
             )]
-        except (OSError, ValueError) as error:
+        except RouteError as error:
+            return [ack(request, ok=False, error=str(error), error_code=error.code)]
+        except OSError as error:
+            return [ack(request, ok=False, error=str(error), error_code="STORAGE_FAILURE")]
+        except ValueError as error:
             return [ack(
                 request,
                 ok=False,

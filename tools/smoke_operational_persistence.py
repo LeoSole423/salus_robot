@@ -16,6 +16,14 @@ WAYPOINTS = [
 ]
 
 
+ROUTE_DOCUMENT = {
+    "waypoints": [{"x": point["lat"], "y": point["lon"], **({"role": "home"} if point.get("role") == "home" else {})} for point in WAYPOINTS],
+    "loopRoute": False,
+    "patrolMissionProfileRefs": {"homeWaypointIndex": 0, "loopWaypointIndices": [1],
+        "returnWaypointIndices": [], "departWaypointIndices": [], "departEntryWaypointIndex": 1},
+}
+
+
 async def seed() -> dict:
     port = int(os.environ["SALUS_WEB_SMOKE_PORT"])
     client = CockpitProbe(f"ws://127.0.0.1:{port}")
@@ -23,14 +31,26 @@ async def seed() -> dict:
         initial = await client.connect()
         if initial.get("op") != "state":
             raise RuntimeError(f"invalid initial state: {initial}")
-        unlocked = await client.request("set_control_lock", {"locked": False})
-        require_ok(unlocked, "unlock persistence seed")
-
         saved = await client.request("save_waypoints_file", {"waypoints": WAYPOINTS})
         require_ok(saved, "save_waypoints_file")
         if saved.get("waypoint_count") != len(WAYPOINTS):
             raise RuntimeError(f"waypoint seed count mismatch: {saved}")
 
+        route = await client.request("save_route", {"name": "Smoke shared patrol", "document": ROUTE_DOCUMENT})
+        require_ok(route, "save_route")
+        # A different operator can read the route without acquiring the driving lease.
+        other = CockpitProbe(f"ws://127.0.0.1:{port}")
+        try:
+            await other.connect()
+            shared = await other.request("get_route", {"id": route["route"]["id"]})
+            require_ok(shared, "second operator get_route")
+            if shared.get("route", {}).get("document") != ROUTE_DOCUMENT:
+                raise RuntimeError("second operator did not receive the complete route")
+        finally:
+            await other.close()
+
+        unlocked = await client.request("set_control_lock", {"locked": False})
+        require_ok(unlocked, "unlock persistence seed")
         moved = await client.request(
             "camera_ptz_move",
             {
@@ -49,6 +69,7 @@ async def seed() -> dict:
         return {
             "waypoint_count": saved["waypoint_count"],
             "seeded_camera": moved.get("payload", {}),
+            "shared_route_id": route["route"]["id"],
         }
     finally:
         await client.close()
@@ -66,6 +87,15 @@ async def verify() -> dict:
         if waypoints.get("waypoint_count") != len(WAYPOINTS):
             raise RuntimeError(f"waypoints did not survive restart: {waypoints}")
 
+        catalog = await client.request("list_routes")
+        require_ok(catalog, "list_routes after restart")
+        summary = next((route for route in catalog.get("routes", []) if route["name"] == "Smoke shared patrol"), None)
+        if summary is None:
+            raise RuntimeError("shared route did not survive restart")
+        route = await client.request("get_route", {"id": summary["id"]})
+        require_ok(route, "get_route after restart")
+        if route.get("route", {}).get("document") != ROUTE_DOCUMENT:
+            raise RuntimeError("restored route changed its definition")
         unlocked = await client.request("set_control_lock", {"locked": False})
         require_ok(unlocked, "unlock restored control lease")
         restored = await client.request("camera_ptz_preset", {"preset": "home"})
@@ -76,6 +106,7 @@ async def verify() -> dict:
         return {
             "waypoint_count": waypoints["waypoint_count"],
             "restored_camera": state,
+            "restored_route_id": summary["id"],
         }
     finally:
         await client.close()

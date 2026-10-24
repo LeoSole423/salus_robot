@@ -33,6 +33,8 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("rtk_rtcm_stale_timeout_s", default_value="10.0"),
         DeclareLaunchArgument("waypoints_file", default_value="runtime/web/waypoints.yaml"),
+        DeclareLaunchArgument("routes_file", default_value="",
+                              description="Shared route library; empty uses routes.json beside waypoints_file"),
         Node(
             package="salus_web",
             executable="web_bridge",
@@ -72,6 +74,7 @@ def generate_launch_description() -> LaunchDescription:
                     "rtk_rtcm_stale_timeout_s"
                 ),
                 "waypoints_file": LaunchConfiguration("waypoints_file"),
+                "routes_file": LaunchConfiguration("routes_file"),
             }],
         ),
     ])

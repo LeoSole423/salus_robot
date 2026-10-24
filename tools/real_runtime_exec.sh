@@ -124,7 +124,12 @@ if [[ -n "${container_name}" ]]; then
   fi
   docker_args+=(--name "${container_name}")
 fi
+# User data is independent of source checkout, dependency hashes and image cache.
+runtime_state_dir="${SALUS_ROBOT_STATE_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/salus_robot}"
+[[ "${runtime_state_dir}" = /* ]] || { echo "SALUS_ROBOT_STATE_DIR must be absolute" >&2; exit 2; }
+mkdir -p -- "${runtime_state_dir}"
 docker_args+=(
+  -v "${runtime_state_dir}:/ros2_ws/state"
   -v "${SALUS_REPO_DIR}/src:/ros2_ws/src:ro"
   -v "${DEPS_CACHE_DIR:-${SALUS_REAL_CACHE_DIR}/dependencies/${DEPS_HASH}/src}:/ros2_external/src:ro"
   -v "${WORKSPACE_DIR}/build:/ros2_ws/build"

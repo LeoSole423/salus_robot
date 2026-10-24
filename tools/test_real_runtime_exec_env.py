@@ -59,6 +59,15 @@ class RealRuntimeExecEnvironmentTest(unittest.TestCase):
         self.assertIn("readonly", self.source)
         self.assertNotIn('CAMERA_PASS=${', self.source)
 
+    def test_state_mount_is_independent_of_workspace_cache(self) -> None:
+        env = os.environ.copy()
+        env.pop("SALUS_ROBOT_STATE_DIR", None)
+        env["XDG_DATA_HOME"] = "/tmp/test-salus-data"
+        self.assertEqual(self._evaluate_assignment("runtime_state_dir", env), "/tmp/test-salus-data/salus_robot")
+        env["SALUS_ROBOT_STATE_DIR"] = "/srv/robot-state"
+        self.assertEqual(self._evaluate_assignment("runtime_state_dir", env), "/srv/robot-state")
+        self.assertIn('-v "${runtime_state_dir}:/ros2_ws/state"', self.source)
+
     def test_operator_ros_domain_id_is_preserved(self) -> None:
         env = os.environ.copy()
         env["ROS_DOMAIN_ID"] = "42"

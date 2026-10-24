@@ -36,3 +36,14 @@ fix GPS o el cuaternión es inválido, no se fabrica una pose u orientación.
   Los módulos puros no abren sockets ni acceden a ROS. El transporte y el
   adaptador ROS permanecen separados y la política multi-cliente está fijada
   por el ADR 0005.
+
+## Biblioteca de rutas compartida
+
+`list_routes`, `get_route`, `save_route` y `delete_route` administran definiciones
+compartidas sin adquirir el lease de conducción. `routes_changed` notifica las
+actualizaciones a todos los operadores. ID y revisión evitan sobrescrituras
+simultáneas. `routes_file` (string, default vacío) selecciona el JSON escribible;
+vacío usa `routes.json` junto al archivo de waypoints. En real se monta un
+directorio estable en `/ros2_ws/state`, independiente de la caché de imagen.
+Contrato, datos, errores y validación en
+[shared-robot-route-library.md](../../docs/migration-evidence/intent/shared-robot-route-library.md).

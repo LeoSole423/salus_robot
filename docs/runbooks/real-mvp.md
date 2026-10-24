@@ -113,3 +113,23 @@ the container. Verify the host has `ch341` for CH340 adapters. Device enumeratio
 can change; confirm the mapping before starting the physical profile. A stable
 host symlink must be mapped to a device path that also exists inside the container.
 No fallback to ESP32 ADC is performed when BMS measurements expire.
+
+## Biblioteca compartida de rutas
+
+`real_runtime_exec.sh` monta `SALUS_ROBOT_STATE_DIR` en `/ros2_ws/state`.
+Default del host: `${XDG_DATA_HOME:-$HOME/.local/share}/salus_robot`.
+`start_real_runtime.sh` pasa `SALUS_WEB_ROUTES_FILE`, default
+`/ros2_ws/state/web/routes.json`, mediante `web_routes_file` al bridge.
+No guardar la biblioteca en build/install/log de la caché de imagen.
+
+Antes de actualizar: inspeccionar el servicio y los mounts actuales, elegir un
+`SALUS_ROBOT_STATE_DIR` absoluto y escribible por el usuario del runtime,
+respaldarlo junto con mapas/datums/configuración y preparar rollback de fuente
+y wrapper. Una instalación con wrapper privado debe incorporar el montaje y
+el argumento nuevos. Actualizar con la operación detenida; comprobar dos
+clientes y reinicio del backend sin ejecutar rutas. Cada PC importa las rutas
+seleccionadas desde «Importar rutas de esta PC»; las copias locales se conservan.
+Para respaldo consistente usar exportación de ruta o copiar la biblioteca con
+el backend detenido. Al hacer rollback conservar el directorio de estado: el
+backend anterior no consume este archivo. No migrar ni borrar el archivo único
+de waypoints o el estado de patrulla.
