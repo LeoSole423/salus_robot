@@ -54,6 +54,7 @@ estructura monolítica.
 | Manual | `set_manual_mode`, `set_manual_cmd` | `ack` | `SetManualMode` y `/cmd_vel_teleop` |
 | Snapshot | `get_nav_snapshot` | `nav_snapshot` | `GetNavSnapshot`; PNG convertido a base64 sólo en el gateway |
 | Waypoints | `save_waypoints_file`, `load_waypoints_file` | `ack` | repositorio atómico independiente de ROS |
+| Biblioteca de rutas | `list_routes`, `get_route`, `save_route`, `delete_route` | `ack`, `routes_changed` | definiciones compartidas con revisiones; ver [contrato](shared-robot-route-library.md) |
 | Sensor info | `set_sensor_info_view` | `ack`, `sensor_info` | vista `general`; otras vistas degradadas explícitamente |
 
 `set_manual_cmd` conserva campos top-level `linear_x`, `angular_z` y

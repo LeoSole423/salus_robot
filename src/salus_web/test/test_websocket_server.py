@@ -225,3 +225,47 @@ async def _nav_live_scenario() -> None:
 
 def test_nav_live_is_read_only_and_does_not_receive_unsolicited_broadcasts() -> None:
     asyncio.run(asyncio.wait_for(_nav_live_scenario(), 8.0))
+
+
+def test_shared_routes_are_available_to_two_locked_operators_and_emit_changes(tmp_path):
+    from salus_web.route_repository import RouteError, RouteRepository
+
+    class RouteGateway(FakeGateway):
+        async def dispatch(self, request):
+            try:
+                return [ack(request, ok=True, **RouteRepository(tmp_path / "routes.json").dispatch(
+                    request.op, request.fields))]
+            except RouteError as exc:
+                return [ack(request, ok=False, error=str(exc), error_code=exc.code)]
+
+    async def scenario():
+        guard = OperatorControlGuard(enabled=True, heartbeat_timeout_s=2.5,
+                                     initially_locked=True, clock=asyncio.get_running_loop().time)
+        server = CockpitWebSocketServer(RouteGateway(), OperatorLease(guard), host="127.0.0.1", port=0)
+        await server.start()
+        port = server._server.sockets[0].getsockname()[1]
+        try:
+            async with websockets.connect(f"ws://127.0.0.1:{port}") as first, \
+                    websockets.connect(f"ws://127.0.0.1:{port}") as second:
+                await first.recv(); await second.recv()
+                await first.send(json.dumps({"op": "save_route", "client_req_id": "create",
+                    "name": "Compartida", "document": {"waypoints": [{"x": -31., "y": -64.}], "loopRoute": False}}))
+                created = await _receive_until(first, lambda m: m.get("client_req_id") == "create")
+                assert created["ok"] is True
+                await _receive_until(second, lambda m: m.get("op") == "routes_changed")
+                route = created["route"]
+                await second.send(json.dumps({"op": "get_route", "id": route["id"], "client_req_id": "read"}))
+                loaded = await _receive_until(second, lambda m: m.get("client_req_id") == "read")
+                assert loaded["route"] == route
+                await second.send(json.dumps({"op": "save_route", "id": route["id"], "expected_revision": 1,
+                    "name": route["name"], "document": route["document"], "client_req_id": "update"}))
+                updated = await _receive_until(second, lambda m: m.get("client_req_id") == "update")
+                assert updated["route"]["revision"] == 2
+                await _receive_until(first, lambda m: m.get("op") == "routes_changed")
+                await first.send(json.dumps({"op": "delete_route", "id": route["id"],
+                                             "expected_revision": 1, "client_req_id": "stale"}))
+                stale = await _receive_until(first, lambda m: m.get("client_req_id") == "stale")
+                assert stale["error_code"] == "ROUTE_CONFLICT"
+        finally:
+            await server.stop()
+    asyncio.run(scenario())

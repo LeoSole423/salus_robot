@@ -249,6 +249,8 @@ class CockpitWebSocketServer:
                 # nav-command lock, so project every state response just like
                 # unsolicited broadcasts before exposing it to Cockpit.
                 await outbox.put(self._decorate(response, client_id))
+                if request.op in {"save_route", "delete_route"} and response.get("ok") is True:
+                    await self.broadcast({"op": "routes_changed"})
         except Exception as exc:
             self._logger.exception("Cockpit operation %s failed", request.op)
             await outbox.put(ack(

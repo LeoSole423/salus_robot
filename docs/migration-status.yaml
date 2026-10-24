@@ -6,6 +6,19 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  shared_robot_route_library:
+    source: Cockpit local named routes and salus_web single-waypoint-file persistence
+    target: salus_web shared route repository and Cockpit navigation module
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/shared-robot-route-library.md
+      - src/salus_web/test/test_route_repository.py
+      - src/salus_web/test/test_websocket_server.py
+      - tools/smoke_operational_persistence.py
+    note: >-
+      Shared definitions, atomic disk storage, optimistic revisions and selected
+      local imports. Stable real-runtime state mount added. Jetson deployment
+      and physical multi-operator acceptance remain pending; no motion parity claimed.
   planner_maneuver_admission:
     source: path-health and issue 244/282/315 characterization
     target: salus_navigation and salus_navigation_bt

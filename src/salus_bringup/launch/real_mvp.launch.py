@@ -61,6 +61,7 @@ def generate_launch_description() -> LaunchDescription:
             default_value="/odometry/global",
             description="Map-aligned odometry heading used for the GPS-backed Cockpit pose",
         ),
+        DeclareLaunchArgument("web_routes_file", default_value="/ros2_ws/state/web/routes.json"),
         DeclareLaunchArgument("camera_backend", default_value="isapi"),
         DeclareLaunchArgument("camera_host", default_value=""),
         DeclareLaunchArgument("camera_port", default_value="0"),
@@ -126,6 +127,7 @@ def generate_launch_description() -> LaunchDescription:
             "salus_web",
             "web_bridge.launch.py",
             {
+                "routes_file": LaunchConfiguration("web_routes_file"),
                 "gps_fix_topic": web_gps_fix_topic,
                 "heading_odometry_topic": web_heading_odometry_topic,
                 "rtk_sources_config": ntrip_config_path,

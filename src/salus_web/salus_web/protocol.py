@@ -17,6 +17,7 @@ REQUEST_ID_ALIASES = ("client_req_id", "requestId", "clientReqId", "request_id")
 
 KNOWN_OPERATIONS = frozenset(
     {
+        "list_routes", "get_route", "save_route", "delete_route",
         "get_state", "set_control_lock", "control_heartbeat", "set_zones_geojson",
         "load_zones_file", "save_waypoints_file", "load_waypoints_file", "set_goal_ll",
         "cancel_goal", "brake", "set_route_ll", "cancel_route", "set_patrol_ll",

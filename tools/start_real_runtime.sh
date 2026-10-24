@@ -11,6 +11,7 @@ SALUS_BATTERY_SERIAL_PORT="${SALUS_BATTERY_SERIAL_PORT:?Set an explicit battery 
 SALUS_USE_KEEPOUT="${SALUS_USE_KEEPOUT:-true}"
 SALUS_ZONES_RUNTIME_DIR="${SALUS_ZONES_RUNTIME_DIR:-runtime/zones}"
 SALUS_PATROL_RUNTIME_DIR="${SALUS_PATROL_RUNTIME_DIR:-/ros2_ws/log/runtime/patrol}"
+SALUS_WEB_ROUTES_FILE="${SALUS_WEB_ROUTES_FILE:-/ros2_ws/state/web/routes.json}"
 SALUS_CAMERA_HOST="${SALUS_CAMERA_HOST:-${CAMERA_HOST:-}}"
 SALUS_CAMERA_PORT="${SALUS_CAMERA_PORT:-${CAMERA_PORT:-0}}"
 SALUS_CAMERA_CHANNEL="${SALUS_CAMERA_CHANNEL:-${CAMERA_CHANNEL:-0}}"
@@ -51,6 +52,7 @@ exec "${runtime_exec}" "${runtime_args[@]}" -- \
     use_keepout:=${SALUS_USE_KEEPOUT} \
     zones_runtime_dir:=${SALUS_ZONES_RUNTIME_DIR} \
     patrol_runtime_dir:=${SALUS_PATROL_RUNTIME_DIR} \
+    web_routes_file:=${SALUS_WEB_ROUTES_FILE} \
     camera_host:=${SALUS_CAMERA_HOST} \
     camera_port:=${SALUS_CAMERA_PORT} \
     camera_channel:=${SALUS_CAMERA_CHANNEL} \
