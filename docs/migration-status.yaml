@@ -651,3 +651,6 @@ components:
       - tools/smoke_sim_operational.sh
       - tools/smoke_operational_persistence.sh
     note: El checkpoint integrado se conserva, propaga selectores independientes para medición/odometría y entrada de comandos, y sim_operational pasó una sesión end-to-end y una restauración de runtime en simulación. El movimiento canónico está validado sin navegación; falta una meta Nav2 operacional canónica, paridad legacy A/B y bringups reales. No declarar paridad de hardware.
+
+# Camera video recording coordinator: optional; manual physical bench passed.
+# Evidence: docs/migration-evidence/intent/camera-recordings.md; automatic physical mission validation pending.

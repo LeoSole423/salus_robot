@@ -6,6 +6,9 @@ socket and delegates transport correlation and operator ownership elsewhere.
 
 from __future__ import annotations
 
+from .recordings import Recordings
+from .recording_policy import mission_signal
+
 import asyncio
 import base64
 from copy import deepcopy
@@ -290,6 +293,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("gps_fix_topic", "/gps/fix")
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
+        self.declare_parameter("recordings_config", "")
         self.declare_parameter("rtk_sources_config", "")
         self.declare_parameter("rtk_rtcm_stale_timeout_s", 10.0)
         self._service_timeout_s = max(
@@ -494,6 +498,52 @@ class CockpitRosGateway(Node):
             ),
         }
 
+        self._recordings = None
+        self._recording_futures = None
+        self._recording_last_poll = 0.0
+        config_path = str(self.get_parameter("recordings_config").value).strip()
+        if config_path:
+            import json
+            self._recordings = Recordings(json.loads(Path(config_path).read_text()))
+            self._recordings.start()
+            self.create_timer(1.0, self._poll_recording_mission)
+
+    def _poll_recording_mission(self):
+        now = time.monotonic()
+        if self._recording_futures is not None:
+            if not all(f is None or f.done() for f in self._recording_futures):
+                if now - self._recording_last_poll <= 4:
+                    return
+            values = []
+            for future in self._recording_futures:
+                try:
+                    if future is None:
+                        values.append(None)
+                    elif not future.done():
+                        future.cancel()
+                        values.append(None)
+                    else:
+                        result = future.result()
+                        values.append(_message_dict(result) if result is not None else None)
+                except Exception:
+                    values.append(None)
+            self._recordings.observe(mission_signal(values))
+            self._recording_futures = None
+        pairs = [("get_route_state", GetRouteMissionState.Request()),
+                 ("get_patrol_state", GetPatrolMissionState.Request())]
+        if any(self._service_clients[name].service_is_ready() for name, _ in pairs):
+            self._recording_last_poll = now
+            self._recording_futures = [self._service_clients[name].call_async(req)
+                                       if self._service_clients[name].service_is_ready() else None
+                                       for name, req in pairs]
+        else:
+            self._recordings.observe(None)
+
+    def destroy_node(self):
+        if getattr(self, "_recordings", None):
+            self._recordings.close()
+        return super().destroy_node()
+
     def set_broadcast_callback(
         self, callback: Callable[[dict[str, Any]], None]
     ) -> None:
@@ -531,6 +581,17 @@ class CockpitRosGateway(Node):
 
     async def dispatch(self, request: OperatorRequest) -> Iterable[dict[str, Any]]:
         try:
+            if request.op.startswith("recordings_"):
+                if not self._recordings:
+                    return [ack(request, ok=False, error="recordings_not_configured")]
+                import asyncio
+                if request.op == "recordings_status":
+                    result = await asyncio.to_thread(self._recordings.status)
+                elif request.op == "recordings_list":
+                    result = await asyncio.to_thread(self._recordings.catalog, request.fields)
+                else:
+                    result = await asyncio.to_thread(self._recordings.manual, request.op == "recordings_start")
+                return [ack(request, ok=True, **result)]
             if request.op in {"list_routes", "get_route", "save_route", "delete_route"}:
                 return [ack(request, ok=True, **self._routes.dispatch(request.op, request.fields))]
             if request.op == "get_state":

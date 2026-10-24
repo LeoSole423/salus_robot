@@ -6,6 +6,8 @@ ENV GZ_VERSION=fortress
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    ffmpeg \
+    util-linux \
     git \
     python3-colcon-common-extensions \
     python3-pip \
