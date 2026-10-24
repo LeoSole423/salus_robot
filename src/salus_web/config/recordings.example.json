@@ -1,0 +1,9 @@
+{
+  "state_file": "/var/lib/salus/recordings/state.json",
+  "root": "/var/lib/salus/recordings/videos",
+  "api": "http://127.0.0.1:9997",
+  "playback": "http://127.0.0.1:9996",
+  "bind": "127.0.0.1",
+  "port": 8790,
+  "public_url": "http://127.0.0.1:8790"
+}

@@ -18,6 +18,7 @@ REQUEST_ID_ALIASES = ("client_req_id", "requestId", "clientReqId", "request_id")
 KNOWN_OPERATIONS = frozenset(
     {
         "list_routes", "get_route", "save_route", "delete_route",
+        "recordings_status", "recordings_list", "recordings_start", "recordings_stop",
         "get_state", "set_control_lock", "control_heartbeat", "set_zones_geojson",
         "load_zones_file", "save_waypoints_file", "load_waypoints_file", "set_goal_ll",
         "cancel_goal", "brake", "set_route_ll", "cancel_route", "set_patrol_ll",
@@ -187,6 +188,7 @@ def is_controlled_operation(request: OperatorRequest) -> bool:
     """Return whether the web lock must authorize this particular request."""
 
     if request.op in {
+        "recordings_start", "recordings_stop",
         "set_goal_ll", "set_route_ll", "set_patrol_ll", "set_navigation_profile",
         "request_return_home", "set_manual_cmd", "camera_pan", "camera_zoom_toggle",
         "camera_ptz_move", "camera_ptz_preset", "camera_ptz_set_preset",

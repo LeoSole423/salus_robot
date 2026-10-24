@@ -8,6 +8,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
+        DeclareLaunchArgument("recordings_config", default_value=""),
         DeclareLaunchArgument("ws_host", default_value="0.0.0.0"),
         DeclareLaunchArgument("ws_port", default_value="8766"),
         DeclareLaunchArgument("enable_control_lock", default_value="true"),
@@ -69,6 +70,7 @@ def generate_launch_description() -> LaunchDescription:
                 "gps_fix_topic": LaunchConfiguration("gps_fix_topic"),
                 "scan_preview_topic": LaunchConfiguration("scan_preview_topic"),
                 "scan_preview_enabled": LaunchConfiguration("scan_preview_enabled"),
+                "recordings_config": LaunchConfiguration("recordings_config"),
                 "rtk_sources_config": LaunchConfiguration("rtk_sources_config"),
                 "rtk_rtcm_stale_timeout_s": LaunchConfiguration(
                     "rtk_rtcm_stale_timeout_s"

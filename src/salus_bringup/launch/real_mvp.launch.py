@@ -36,6 +36,7 @@ def generate_launch_description() -> LaunchDescription:
     camera_presets_file = LaunchConfiguration("camera_presets_file")
 
     return LaunchDescription([
+        DeclareLaunchArgument("recordings_config", default_value=""),
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
         DeclareLaunchArgument(
             "ntrip_config_path",
@@ -131,6 +132,7 @@ def generate_launch_description() -> LaunchDescription:
                 "gps_fix_topic": web_gps_fix_topic,
                 "heading_odometry_topic": web_heading_odometry_topic,
                 "rtk_sources_config": ntrip_config_path,
+                "recordings_config": LaunchConfiguration("recordings_config"),
             },
         ),
     ])

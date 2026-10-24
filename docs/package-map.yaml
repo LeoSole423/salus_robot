@@ -65,6 +65,7 @@ packages:
     status: bounded_vector_keepout_layer_active_in_nav2_runtime
   salus_web:
     owner: operator_bridge
+    camera_recordings: optional_mission_and_manual_mediamtx_coordinator
     route_library: shared_definitions_atomic_persistence_and_optimistic_revisions
     build_type: ament_python
     language: python

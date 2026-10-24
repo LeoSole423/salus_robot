@@ -1,0 +1,23 @@
+# Merge into the existing MediaMTX config; never replace camera URLs or secrets.
+# The recording root must refer to the same filesystem visible to salus_web.
+api: true
+apiAddress: 127.0.0.1:9997
+playback: true
+playbackAddress: 127.0.0.1:9996
+pathDefaults:
+  record: false
+  recordPath: /var/lib/salus/recordings/videos/%path/%Y-%m-%d_%H-%M-%S-%f_%z
+  recordFormat: fmp4
+  recordPartDuration: 1s
+  recordSegmentDuration: 10m
+  recordDeleteAfter: 168h
+paths:
+  rec_cam3:
+    source: publisher
+    record: false
+  rec_cam4:
+    source: publisher
+    record: false
+  rec_cam5:
+    source: publisher
+    record: false

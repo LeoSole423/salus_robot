@@ -47,3 +47,15 @@ vacío usa `routes.json` junto al archivo de waypoints. En real se monta un
 directorio estable en `/ros2_ws/state`, independiente de la caché de imagen.
 Contrato, datos, errores y validación en
 [shared-robot-route-library.md](../../docs/migration-evidence/intent/shared-robot-route-library.md).
+
+## Camera video recordings (optional)
+
+Set `recordings_config` to a JSON file following `config/recordings.example.json`.
+This enables `recordings_status/list/start/stop`; manual changes require the
+operator lease. A gateway-owned coordinator polls canonical route/patrol state
+independently of Cockpit, adds 30 s of post-mission capture and preserves manual
+intent atomically. Video uses MediaMTX and signed HTTP downloads, never ROS or
+WebSocket. Audio absence and actual media playback must be validated before
+production activation. See the camera-recordings intent sheet for deployment,
+parameters, retention and current evidence. Legacy rosbag/session commands remain
+unsupported; these operations are a separate video capability.
