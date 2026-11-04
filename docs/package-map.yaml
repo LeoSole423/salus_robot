@@ -66,6 +66,7 @@ packages:
   salus_web:
     owner: operator_bridge
     camera_recordings: optional_mission_and_manual_mediamtx_coordinator
+    camera_live_quality: cockpit_local_selection_host_mediamtx_templates_in_deploy
     route_library: shared_definitions_atomic_persistence_and_optimistic_revisions
     build_type: ament_python
     language: python
