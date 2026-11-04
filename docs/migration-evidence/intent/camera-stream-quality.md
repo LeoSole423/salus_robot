@@ -57,3 +57,14 @@ paused=false. El mapa frontal también cambia entre 360p y 720p. La preferencia
 Normal sobrevivió una recarga. El frontend de producción no fue publicado.
 Se verificó reconexión y cierre del reader con dos pruebas adicionales. Las 37
 pruebas de herramientas de runtime/despliegue también pasaron.
+
+## Ajuste posterior de los perfiles normales
+
+El operador solicitó mejorar bitrate/FPS y luego bajar la trasera a 720p.
+Se configuraron frontal/móvil 720p, 15 FPS, límite 2048 kbit/s; trasera 720p,
+25 FPS, límite 4096 kbit/s. Los FPS ya estaban en el máximo anunciado por cada
+hardware, por lo que no se aumentaron. La comparación completa de perfiles
+ONVIF confirmó conservación de los secundarios y de todos los campos ajenos al
+ajuste solicitado. Respaldos privados y procedimiento en el README de despliegue.
+Evidencia posterior: [tuning Normal](../camera-normal-tuning-20261104.json).
+No se ejecutó movimiento ni se reiniciaron servicios para ajustar encoders.

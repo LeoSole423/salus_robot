@@ -77,3 +77,35 @@ La recarga de archivo está documentada por el proveedor en
 [Configuration](https://mediamtx.org/docs/features/configuration). Esta versión
 no expone `--validate-conf`; por eso se usó el proceso aislado con listeners
 deshabilitados, sin modificar fuentes ni parámetros globales del servicio real.
+
+## Ajuste de Normal — 2026-11-04, posterior a la integración
+
+A pedido del operador se aumentaron los límites de bitrate de los principales y
+se consultaron las capacidades ONVIF de FPS. Frontal y móvil admiten como máximo
+15 FPS; la trasera, 25 FPS. Se conservaron esos máximos. El operador pidió además
+bajar únicamente el principal trasero a 720p, resolución anunciada como soportada.
+
+| Principal | Resolución | FPS | Límite de bitrate |
+| --- | --- | --- | --- |
+| Frontal | 1280×720 | 15 | 2048 kbit/s (antes 512) |
+| Móvil | 1280×720 | 15 | 2048 kbit/s (antes 512) |
+| Trasera | 1280×720 (antes 1920×1080) | 25 | 4096 kbit/s (antes 2048) |
+
+H.264, GOP y los demás campos se conservaron. La comparación completa de las
+configuraciones ONVIF posteriores confirmó que todos los encoders secundarios
+permanecieron idénticos, incluido su límite de 256 kbit/s. No se modificaron
+MediaMTX, las rutas de grabación, el frontend ni el runtime ROS.
+
+Respaldos privados previos al tuning: `camera-diagnostics/normal-tuning-20261104T165909Z`
+en la Jetson; respaldo adicional de resolución trasera en
+`camera-diagnostics/rear-720p-20261104T165945Z`. Para rollback, reaplicar únicamente
+las configuraciones de encoder principal respaldadas con ONVIF
+SetVideoEncoderConfiguration y ForcePersistence; verificar RTSP después. No
+reaplicar snapshots completos del dispositivo ni tocar encoders secundarios.
+
+La medición posterior de los seis feeds está en
+`docs/migration-evidence/camera-normal-tuning-20261104.json`. Los límites
+configurados no equivalen a consumo constante: la muestra mide payload de video
+RTSP, excluye audio y overhead, y depende de la escena. La mejora visual durante
+transiciones de iluminación requiere aceptación del operador, no se deduce sólo
+de bitrate o de una escena estática.

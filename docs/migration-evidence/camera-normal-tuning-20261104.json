@@ -1,0 +1,104 @@
+{
+  "date": "2026-11-04",
+  "measurement": "RTSP/TCP relay video payload, approximately 5 seconds; excludes audio and transport overhead",
+  "paths": {
+    "cam3": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 143.7
+    },
+    "cam4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 146.0
+    },
+    "cam5": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 237.8
+    },
+    "cam3_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 1475.6
+    },
+    "cam4_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 978.7
+    },
+    "cam5_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "25/1"
+        }
+      ],
+      "approx_video_kbps": 3775.9
+    }
+  },
+  "configured_normal_profiles": {
+    "cam3_normal": {
+      "width": 1280,
+      "height": 720,
+      "fps": 15,
+      "bitrate_limit_kbps": 2048,
+      "reported_max_fps": 15
+    },
+    "cam4_normal": {
+      "width": 1280,
+      "height": 720,
+      "fps": 15,
+      "bitrate_limit_kbps": 2048,
+      "reported_max_fps": 15
+    },
+    "cam5_normal": {
+      "width": 1280,
+      "height": 720,
+      "fps": 25,
+      "bitrate_limit_kbps": 4096,
+      "reported_max_fps": 25
+    }
+  },
+  "secondary_encoder_configurations_unchanged": true,
+  "readback_verification": "Complete ONVIF encoder comparisons after each write; RTSP/TCP probes of all six routes after final rear 720p change.",
+  "limitations": "No lighting-transition quality assessment or camera reboot persistence test performed."
+}
