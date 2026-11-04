@@ -4,14 +4,17 @@
 paths:
   cam3_normal:
     source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video1
+    record: false
     sourceOnDemand: true
     sourceOnDemandCloseAfter: 10s
   cam4_normal:
     source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media2/video1
+    record: false
     sourceOnDemand: true
     sourceOnDemandCloseAfter: 10s
   cam5_normal:
     source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.251:554/media/video1
+    record: false
     sourceOnDemand: true
     sourceOnDemandCloseAfter: 10s
     rtspTransport: tcp

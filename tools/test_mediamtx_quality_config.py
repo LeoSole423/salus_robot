@@ -27,8 +27,16 @@ class QualityConfigTests(unittest.TestCase):
             route = result["paths"][name + "_normal"]
             self.assertTrue(route["source"].endswith("video1"))
             self.assertTrue(route["sourceOnDemand"])
-            self.assertNotIn("record", route)
+            self.assertFalse(route["record"])
         self.assertEqual(result["paths"]["cam5_normal"]["rtspTransport"], "tcp")
+
+    def test_normal_routes_never_inherit_global_recording(self):
+        self.config["pathDefaults"] = {"record": True}
+        result = module.add_quality_paths(self.config)
+        self.assertTrue(result["pathDefaults"]["record"])
+        self.assertTrue(result["paths"]["rec_cam3"]["record"])
+        for name in ("cam3_normal", "cam4_normal", "cam5_normal"):
+            self.assertFalse(result["paths"][name]["record"])
 
     def test_rejects_unknown_source_instead_of_guessing(self):
         self.config["paths"]["cam3"]["source"] = "publisher"

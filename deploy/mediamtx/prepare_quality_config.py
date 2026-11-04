@@ -25,7 +25,7 @@ def add_quality_paths(config):
         # Copy source transport/auth only, never recording or publisher hooks.
         route = {key: original[key] for key in ("rtspTransport", "rtspAnyPort", "sourceFingerprint") if key in original}
         route.update(source=urlunsplit(parsed._replace(path=parsed.path[:-1] + "1")),
-                     sourceOnDemand=True, sourceOnDemandCloseAfter="10s")
+                     sourceOnDemand=True, sourceOnDemandCloseAfter="10s", record=False)
         paths[alias] = route
     return result
 

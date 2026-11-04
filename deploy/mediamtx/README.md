@@ -12,7 +12,8 @@ rutas WHEP por navegador, sin servicios ROS nuevos ni cambios de lease.
 | Trasera | cam5 | cam5_normal | /media/video1 |
 
 Cada ruta termina en `/whep` en el servidor WebRTC ya configurado. Las nuevas
-fuentes son bajo demanda, con cierre tras 10 s sin lectores. Ahorro conserva
+fuentes son bajo demanda, con cierre tras 10 s sin lectores y `record: false`
+explícito para no heredar grabación de los defaults globales. Ahorro conserva
 las fuentes `/video2`. No modificar `rec_cam3/4/5`, hooks de grabación, parámetros
 WebRTC globales ni encoders como efecto del botón.
 
