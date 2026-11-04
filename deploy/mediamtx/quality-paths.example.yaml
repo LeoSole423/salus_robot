@@ -1,0 +1,20 @@
+# Merge into the PRIVATE host-owned config after validating H.264 on each source.
+# Keep cam3/cam4/cam5 and rec_cam3/rec_cam4/rec_cam5 unchanged.
+# Replace CAMERA_USER / CAMERA_PASSWORD privately; never commit real credentials.
+paths:
+  cam3_normal:
+    source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video1
+    record: false
+    sourceOnDemand: true
+    sourceOnDemandCloseAfter: 10s
+  cam4_normal:
+    source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media2/video1
+    record: false
+    sourceOnDemand: true
+    sourceOnDemandCloseAfter: 10s
+  cam5_normal:
+    source: rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.251:554/media/video1
+    record: false
+    sourceOnDemand: true
+    sourceOnDemandCloseAfter: 10s
+    rtspTransport: tcp

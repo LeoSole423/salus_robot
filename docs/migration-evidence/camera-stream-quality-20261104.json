@@ -1,0 +1,125 @@
+{
+  "date": "2026-11-04",
+  "measurement": "RTSP/TCP relay video payload, approximately 5 seconds; excludes audio and transport overhead",
+  "paths": {
+    "cam3": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 107.6
+    },
+    "cam4": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 107.8
+    },
+    "cam5": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 640,
+          "height": 360,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 249.1
+    },
+    "cam3_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 337.3
+    },
+    "cam4_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "15/1"
+        }
+      ],
+      "approx_video_kbps": 345.5
+    },
+    "cam5_normal": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1920,
+          "height": 1080,
+          "r_frame_rate": "25/1"
+        }
+      ],
+      "approx_video_kbps": 1936.4
+    }
+  },
+  "cockpit_webrtc": {
+    "origin": "local development frontend",
+    "saving": {
+      "front": [
+        640,
+        360
+      ],
+      "mobile": [
+        640,
+        360
+      ],
+      "rear": [
+        640,
+        360
+      ]
+    },
+    "normal": {
+      "front": [
+        1280,
+        720
+      ],
+      "mobile": [
+        1280,
+        720
+      ],
+      "rear": [
+        1920,
+        1080
+      ]
+    },
+    "all_videos": {
+      "readyState": 4,
+      "paused": false
+    },
+    "map_front": {
+      "saving": [
+        640,
+        360
+      ],
+      "normal": [
+        1280,
+        720
+      ]
+    },
+    "preference_survives_reload": true,
+    "production_frontend_published": false
+  }
+}
