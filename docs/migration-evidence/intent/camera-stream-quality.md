@@ -68,3 +68,8 @@ ONVIF confirmó conservación de los secundarios y de todos los campos ajenos al
 ajuste solicitado. Respaldos privados y procedimiento en el README de despliegue.
 Evidencia posterior: [tuning Normal](../camera-normal-tuning-20261104.json).
 No se ejecutó movimiento ni se reiniciaron servicios para ajustar encoders.
+
+Ajuste final solicitado: principal trasero 720p/15 FPS y límite 2048 kbit/s,
+igualando frontal y móvil. Sólo cambiaron FrameRateLimit y BitrateLimit del
+encoder principal trasero; el secundario se verificó idéntico. Evidencia:
+[trasera 15 FPS](../camera-rear-15fps-20261104.json).

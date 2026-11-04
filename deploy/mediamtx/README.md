@@ -109,3 +109,13 @@ configurados no equivalen a consumo constante: la muestra mide payload de video
 RTSP, excluye audio y overhead, y depende de la escena. La mejora visual durante
 transiciones de iluminación requiere aceptación del operador, no se deduce sólo
 de bitrate o de una escena estática.
+
+### Ajuste final: trasera a 15 FPS
+
+Por pedido posterior del operador, el principal trasero conserva 1280×720 y pasa
+de 25 a 15 FPS y de 4096 a 2048 kbit/s. Los tres principales de Normal quedan
+así en 720p/15 FPS, con límite 2048 kbit/s por cámara. No se modificaron GOP,
+codec, otros campos ni el secundario de Ahorro: comparación completa ONVIF
+posterior correcta. Respaldo privado en
+`camera-diagnostics/rear-15fps-20261104T170334Z` de la Jetson. Verificación RTSP
+posterior en `docs/migration-evidence/camera-rear-15fps-20261104.json`.
