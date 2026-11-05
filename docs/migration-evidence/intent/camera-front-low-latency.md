@@ -73,3 +73,7 @@ Validación final local: build de 16 paquetes, 1375 pruebas ROS sin fallos (3
 omitidas), 16 pruebas de herramientas sin fallos (5 nuevas del relay), selftest
 del harness y smoke web-cockpit correctos. La validación del árbol versionado se
 realiza por separado para conservar intacta la carpeta .agents/ no versionada.
+
+
+Inventario de archivos efectivos, operación y reversión selectiva documentados
+en el [registro de despliegue](../camera-front-deployment-20261105.md).

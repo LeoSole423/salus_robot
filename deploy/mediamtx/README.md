@@ -159,3 +159,8 @@ Campos privados del launcher: `ffmpeg` es la ruta string a un ejecutable probado
 `publish_port` es un entero entre 1 y 65535, default 8554, para publicar sólo en
 127.0.0.1. Los timeouts 15 s de arranque y 10 s sin demanda pertenecen a los hooks
 MediaMTX del ejemplo. El relay no expone puertos nuevos ni API ROS.
+
+
+El [registro de despliegue y operación](../../docs/migration-evidence/camera-front-deployment-20261105.md)
+identifica los archivos efectivos del host, comandos de inspección, demanda por
+grabación, estado de integración, validaciones y rollback selectivo.
