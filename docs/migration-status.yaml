@@ -646,6 +646,9 @@ components:
       - docs/migration-evidence/intent/uniarch-mobile-ptz.md
       - docs/migration-evidence/uniarch-camera-validation-20261010.md
       - docs/migration-evidence/intent/camera-stream-quality.md
+      - docs/migration-evidence/intent/camera-front-low-latency.md
+      - docs/migration-evidence/camera-front-deployment-20261105.md
+      - docs/migration-evidence/camera-front-low-latency-20261105.json
       - docs/migration-evidence/camera-stream-quality-20261104.json
       - docs/migration-evidence/camera-normal-tuning-20261104.json
       - docs/migration-evidence/camera-rear-15fps-20261104.json

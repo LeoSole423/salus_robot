@@ -1,0 +1,9 @@
+{
+  "ffmpeg": "/opt/salus-media/bin/ffmpeg",
+  "ffmpeg_library_path": "/opt/salus-media/lib",
+  "publish_port": 8554,
+  "sources": {
+    "cam3": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video2",
+    "cam3_normal": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video1"
+  }
+}

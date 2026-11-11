@@ -1,0 +1,18 @@
+# Merge only these front routes after backing up the private source URLs.
+# Keep all other paths, recording routes and global settings unchanged.
+# Install the launcher and a tested FFmpeg binary/dependencies separately.
+paths:
+  cam3:
+    source: publisher
+    record: false
+    runOnDemand: python3 /opt/salus-media/front_video_relay.py --config /etc/salus-media/front-video.private.json --path cam3
+    runOnDemandRestart: true
+    runOnDemandStartTimeout: 15s
+    runOnDemandCloseAfter: 10s
+  cam3_normal:
+    source: publisher
+    record: false
+    runOnDemand: python3 /opt/salus-media/front_video_relay.py --config /etc/salus-media/front-video.private.json --path cam3_normal
+    runOnDemandRestart: true
+    runOnDemandStartTimeout: 15s
+    runOnDemandCloseAfter: 10s

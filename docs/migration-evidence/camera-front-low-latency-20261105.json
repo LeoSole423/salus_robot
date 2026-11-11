@@ -1,0 +1,296 @@
+{
+  "date": "2026-11-05",
+  "method": "Incremental WebRTC jitter-buffer delay per emitted video frame over 1-second windows; not capture-to-screen latency. Short stationary trials on a changing network.",
+  "trials": {
+    "normal-automatic-noaudio.json": {
+      "samples": 26,
+      "streams": {
+        "frontal": {
+          "connected_samples": 26,
+          "audio_received": false,
+          "buffer_median_ms": 132.09,
+          "buffer_max_ms": 482.94,
+          "freezes_observed": 3,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 14
+        },
+        "trasera": {
+          "connected_samples": 25,
+          "audio_received": false,
+          "buffer_median_ms": 171.84,
+          "buffer_max_ms": 366.24,
+          "freezes_observed": 5,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        }
+      }
+    },
+    "normal-automatic-audio.json": {
+      "samples": 26,
+      "streams": {
+        "frontal": {
+          "connected_samples": 26,
+          "audio_received": true,
+          "buffer_median_ms": 130.33,
+          "buffer_max_ms": 496.05,
+          "freezes_observed": 3,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 13
+        },
+        "trasera": {
+          "connected_samples": 26,
+          "audio_received": false,
+          "buffer_median_ms": 145.86,
+          "buffer_max_ms": 265.1,
+          "freezes_observed": 2,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        }
+      }
+    },
+    "normal-tcp-noaudio-initial.json": {
+      "samples": 39,
+      "streams": {
+        "frontal": {
+          "connected_samples": 0,
+          "audio_received": false,
+          "buffer_median_ms": null,
+          "buffer_max_ms": null,
+          "freezes_observed": 0,
+          "last_dimensions": null,
+          "last_fps": null
+        },
+        "trasera": {
+          "connected_samples": 38,
+          "audio_received": false,
+          "buffer_median_ms": 125.7,
+          "buffer_max_ms": 261.01,
+          "freezes_observed": 1,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 14
+        }
+      }
+    },
+    "normal-relay-noaudio.json": {
+      "samples": 39,
+      "streams": {
+        "frontal": {
+          "connected_samples": 37,
+          "audio_received": false,
+          "buffer_median_ms": 56.97,
+          "buffer_max_ms": 262.21,
+          "freezes_observed": 4,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        },
+        "trasera": {
+          "connected_samples": 38,
+          "audio_received": false,
+          "buffer_median_ms": 84.96,
+          "buffer_max_ms": 498.83,
+          "freezes_observed": 4,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        }
+      }
+    },
+    "saving-relay-noaudio.json": {
+      "samples": 39,
+      "streams": {
+        "frontal": {
+          "connected_samples": 39,
+          "audio_received": false,
+          "buffer_median_ms": 52.89,
+          "buffer_max_ms": 101.59,
+          "freezes_observed": 2,
+          "last_dimensions": [
+            640,
+            360
+          ],
+          "last_fps": 15
+        },
+        "trasera": {
+          "connected_samples": 39,
+          "audio_received": false,
+          "buffer_median_ms": 94.14,
+          "buffer_max_ms": 154.57,
+          "freezes_observed": 2,
+          "last_dimensions": [
+            640,
+            360
+          ],
+          "last_fps": 15
+        }
+      }
+    },
+    "normal-relay-audio-request.json": {
+      "samples": 39,
+      "streams": {
+        "frontal": {
+          "connected_samples": 38,
+          "audio_received": false,
+          "buffer_median_ms": 65.99,
+          "buffer_max_ms": 369.15,
+          "freezes_observed": 6,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        },
+        "trasera": {
+          "connected_samples": 38,
+          "audio_received": false,
+          "buffer_median_ms": 112.14,
+          "buffer_max_ms": 218.4,
+          "freezes_observed": 3,
+          "last_dimensions": [
+            1280,
+            720
+          ],
+          "last_fps": 15
+        }
+      }
+    }
+  },
+  "normal_apply": {
+    "path": "cam3_normal",
+    "source": "publisher",
+    "input": "camera RTSP/TCP video-only",
+    "processing": "H264 stream copy",
+    "backup": "/home/admin/camera-diagnostics/front-relay-20261105T224533Z",
+    "applied_at": "2026-11-05T22:45:36.462878+00:00",
+    "unchanged_service_pids": {
+      "mediamtx": "1559",
+      "salus-robot-real": "3028"
+    },
+    "ffmpeg_version": "ffmpeg version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2000-2021 the FFmpeg developers"
+  },
+  "saving_apply": {
+    "changed_path": "cam3",
+    "input": "camera RTSP/TCP video-only",
+    "backup": "/home/admin/camera-diagnostics/front-saving-relay-20261105T224715Z",
+    "applied_at": "2026-11-05T22:47:15.383894+00:00",
+    "unchanged_service_pids": {
+      "mediamtx": "1559",
+      "salus-robot-real": "3028"
+    },
+    "ready_paths": {
+      "cam3": true,
+      "cam3_normal": false,
+      "cam4": true,
+      "cam4_normal": false,
+      "cam5": true,
+      "cam5_normal": false,
+      "rec_cam3": true,
+      "rec_cam4": true,
+      "rec_cam5": true
+    }
+  },
+  "final_services": {
+    "mediamtx": "MainPID=1559\nNRestarts=0\nActiveState=active",
+    "salus-robot-real": "MainPID=3028\nNRestarts=0\nActiveState=active"
+  },
+  "final_paths": [
+    {
+      "name": "cam3",
+      "ready": true,
+      "tracks": [
+        "H264"
+      ],
+      "reader_count": 3
+    },
+    {
+      "name": "cam3_normal",
+      "ready": false,
+      "tracks": [],
+      "reader_count": 0
+    },
+    {
+      "name": "cam4",
+      "ready": true,
+      "tracks": [
+        "H264",
+        "G711",
+        "Generic"
+      ],
+      "reader_count": 1
+    },
+    {
+      "name": "cam4_normal",
+      "ready": false,
+      "tracks": [],
+      "reader_count": 0
+    },
+    {
+      "name": "cam5",
+      "ready": true,
+      "tracks": [
+        "H264",
+        "G711",
+        "Generic"
+      ],
+      "reader_count": 2
+    },
+    {
+      "name": "cam5_normal",
+      "ready": false,
+      "tracks": [],
+      "reader_count": 0
+    },
+    {
+      "name": "rec_cam3",
+      "ready": true,
+      "tracks": [
+        "H264"
+      ],
+      "reader_count": 0
+    },
+    {
+      "name": "rec_cam4",
+      "ready": true,
+      "tracks": [
+        "H264"
+      ],
+      "reader_count": 0
+    },
+    {
+      "name": "rec_cam5",
+      "ready": true,
+      "tracks": [
+        "H264"
+      ],
+      "reader_count": 0
+    }
+  ],
+  "ffmpeg_processes": "    PID %CPU %MEM ELAPSED\n 116858  0.5  0.5    3255\n 150083  0.5  0.5     673\n 156880  0.4  0.6      64\n 156933  0.6  0.5      59\n",
+  "recording_filesystem_free_gib": 180.63,
+  "front_warnings_after_both_fixes": [],
+  "limits": [
+    "No capture-to-screen latency measurement.",
+    "Network conditions differ between trials; medians do not establish a controlled latency reduction.",
+    "Startup/network freezes still observed; no claim of zero interruptions.",
+    "Moving-robot test and camera/host reboot persistence remain pending."
+  ]
+}
