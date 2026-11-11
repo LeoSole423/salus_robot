@@ -1,0 +1,34 @@
+{
+  "backend": "ncnn_vulkan",
+  "capture": "gstreamer",
+  "model": "/opt/salus-person-watch/yolox_nano.onnx",
+  "ffmpeg": "/opt/salus-person-watch/ffmpeg",
+  "ffmpeg_library_path": "/opt/salus-person-watch/ffmpeg-libs",
+  "fps_per_camera": 0.5,
+  "confidence": 0.55,
+  "bind": "127.0.0.1",
+  "port": 8791,
+  "allowed_origins": [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173"
+  ],
+  "cameras": [
+    {
+      "id": "cam3",
+      "label": "Frontal panorámica",
+      "url": "rtsp://127.0.0.1:8554/cam3"
+    },
+    {
+      "id": "cam4",
+      "label": "Móvil PTZ",
+      "url": "rtsp://127.0.0.1:8554/cam4"
+    },
+    {
+      "id": "cam5",
+      "label": "Trasera",
+      "url": "rtsp://127.0.0.1:8554/cam5"
+    }
+  ],
+  "param": "/opt/salus-person-watch/salus_folded.ncnn.param",
+  "weights": "/opt/salus-person-watch/salus_folded.ncnn.bin"
+}

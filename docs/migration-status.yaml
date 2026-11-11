@@ -6,6 +6,21 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  advisory_person_watch:
+    source: new operator request 2026-11-11
+    target: deploy/person_watch and Cockpit person-watch module
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/person-watch.md
+      - docs/decisions/0017-advisory-person-watch.md
+      - docs/migration-evidence/person-watch-deployment-20261111.md
+      - docs/migration-evidence/person-watch-20261111.json
+      - deploy/person_watch/README.md
+      - tools/test_person_watch.py
+    note: >-
+      Independent advisory detector with bounded resources, NCNN Vulkan hardware
+      inference, hardware decode, confirmation and camera-labelled metadata.
+      Field person recall and moving-navigation coexistence require acceptance.
   shared_robot_route_library:
     source: Cockpit local named routes and salus_web single-waypoint-file persistence
     target: salus_web shared route repository and Cockpit navigation module
