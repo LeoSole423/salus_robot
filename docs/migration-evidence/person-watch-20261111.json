@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-11",
+  "branch": "agent/person-watch",
+  "backend": "ncnn_vulkan_fp32",
+  "capture": "gstreamer_nvidia_h264",
+  "fps_per_camera": 0.5,
+  "samples": 20,
+  "errors": 0,
+  "duration_s": 38.07,
+  "cpu_percent_one_core": 11.61,
+  "memory_max_mib": 162.25,
+  "inference_median_ms": 31.1,
+  "inference_max_ms": 38.0,
+  "camera_statuses": {
+    "cam3": "watching",
+    "cam4": "watching",
+    "cam5": "watching"
+  },
+  "actual_live_alerts_observed": 0,
+  "public_fixture_positive_people": 3,
+  "uniform_fixture_people": 0,
+  "navigation_service_pid_after_authorized_reboot": 3712,
+  "mediamtx_pid_after_authorized_reboot": 1952,
+  "scope": "stationary sampling only; no moving-navigation or physical-person acceptance",
+  "frontend": "local branch only; not published",
+  "gpu_repair": "base FDT replaced with installed NVIDIA FDT; reboot explicitly authorized"
+}
