@@ -6,6 +6,9 @@ Implementación nueva en ramas `agent/person-watch` de salus_robot y Cockpit,
 creadas desde main (`e48e0af` y `aa7daeb`). No se fusionaron ni publicaron a main.
 El detector sí está instalado en Jetson como servicio independiente habilitado.
 La interfaz se comprobó en Cockpit local; el sitio público no se desplegó.
+Código instalado de salus_robot: `1969716`; Cockpit: `1004cbc`. El manifest
+`deployment.json` del detector guarda el SHA de fuente y los hashes de los tres
+archivos ejecutables, comparados con el checkout local después del despliegue.
 
 El operador pidió alertas exclusivamente en Cockpit y después confirmó que el
 robot estaba detenido y disponible para mantenimiento, incluyendo posibles
