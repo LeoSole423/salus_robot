@@ -120,3 +120,47 @@ codec, otros campos ni el secundario de Ahorro: comparación completa ONVIF
 posterior correcta. Respaldo privado en
 `camera-diagnostics/rear-15fps-20261104T170334Z` de la Jetson. Verificación RTSP
 posterior en `docs/migration-evidence/camera-rear-15fps-20261104.json`.
+
+## Frontal TCP de sólo video — 2026-11-05
+
+La cámara frontal rechaza TCP al abrir todas sus pistas (RTSP 500); la misma
+fuente acepta TCP seleccionando sólo video antes de SETUP. La solución evita
+recodificación: `front_video_relay.py` copia H.264 por TCP y publica a loopback.
+MediaMTX sirve cam3/cam3_normal como publishers con hooks bajo demanda. Se
+conservan URLs WHEP y encoders. Los detalles y límites están en
+[la ficha de intención](../../docs/migration-evidence/intent/camera-front-low-latency.md).
+
+1. Respaldar el YAML efectivo y guardar las dos URLs RTSP originales en un JSON
+   privado 0600 usando `front-video.private.example.json` como estructura.
+2. Preparar un FFmpeg compatible con el host y verificar `ffmpeg -version` con
+   el mismo `LD_LIBRARY_PATH` del launcher. El ejemplo no instala dependencias.
+   En Jetson se copió el binario de grabaciones a un directorio independiente y
+   las bibliotecas no-glibc resueltas con ldd desde la imagen existente. No
+   reemplazar libc/loader del host ni asumir que el paquete binario aislado
+   contiene todas sus dependencias. Documentar versión y procedencia privadas.
+3. Instalar el launcher y ajustar rutas en `front-relay.example.yaml`. Esa
+   plantilla sustituye únicamente las dos rutas frontales, manteniendo todas
+   las demás rutas/globales. No reemplazar todo el YAML con el ejemplo.
+4. Validar el candidato en la versión instalada con listeners deshabilitados.
+   Aplicar primero cam3_normal y verificar video/estado; luego cam3 con una
+   ventana para reconexión de la grabación frontal. No reiniciar navegación.
+5. Confirmar una sola pista H264, ambos perfiles de calidad, métricas WebRTC,
+   recuperación de rec_cam3/4/5 y que el helper de Normal termine sin lectores.
+
+La fuente publisher usa `runOnDemand*`, no `sourceOnDemand*`. Un lector de
+**grabación** también mantiene demanda de cam3 aunque el usuario pause el video.
+El launcher no permite otras rutas y no imprime fuentes privadas al fallar;
+MediaMTX registra los fallos/reintentos del hook. No se implementa fallback
+silencioso a UDP: el error queda visible y el hook reintenta.
+
+Campos privados del launcher: `ffmpeg` es la ruta string a un ejecutable probado;
+`ffmpeg_library_path` es un string opcional con directorios separados por `:`;
+`sources` mapea exactamente los nombres frontales a URLs RTSP autenticadas;
+`publish_port` es un entero entre 1 y 65535, default 8554, para publicar sólo en
+127.0.0.1. Los timeouts 15 s de arranque y 10 s sin demanda pertenecen a los hooks
+MediaMTX del ejemplo. El relay no expone puertos nuevos ni API ROS.
+
+
+El [registro de despliegue y operación](../../docs/migration-evidence/camera-front-deployment-20261105.md)
+identifica los archivos efectivos del host, comandos de inspección, demanda por
+grabación, estado de integración, validaciones y rollback selectivo.
