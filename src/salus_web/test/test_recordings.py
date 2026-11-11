@@ -105,3 +105,52 @@ def test_space_cleanup_does_not_follow_camera_directory_symlinks(tmp_path, monke
     monkeypatch.setattr(recordings.shutil, 'disk_usage', lambda _: type('Usage', (), {'free': 0})())
     m.maintain_disk()
     assert (outside / 'a.mp4').exists()
+
+
+def test_missing_interface_does_not_block_start_and_proxy_recovers(tmp_path, monkeypatch):
+    import errno
+    import threading
+    m = manager(tmp_path)
+    m.config.update(bind="100.64.0.1", port=8790)
+    attempts = []
+    recovered = threading.Event()
+    stopped = threading.Event()
+    class Server:
+        def serve_forever(self):
+            recovered.set()
+            stopped.wait(3)
+        def shutdown(self):
+            stopped.set()
+        def server_close(self):
+            pass
+    def bind(address, handler):
+        attempts.append(address)
+        if len(attempts) <= 2:
+            raise OSError(errno.EADDRNOTAVAIL, "interface not ready")
+        return Server()
+    monkeypatch.setattr(recordings, "ThreadingHTTPServer", bind)
+    monkeypatch.setattr(m, "tick", lambda: None)
+    m.start()
+    try:
+        assert recovered.wait(4), "download proxy did not retry"
+        assert m.worker.is_alive()
+        assert attempts == [("100.64.0.1", 8790)] * 3
+        assert m.server is not None
+    finally:
+        m.close()
+    count = len(attempts)
+    assert not m.worker.is_alive()
+    assert len(attempts) == count
+
+
+def test_proxy_bind_conflict_is_not_silently_hidden(tmp_path, monkeypatch):
+    import errno
+    m = manager(tmp_path)
+    m.config.update(bind="127.0.0.1", port=8790)
+    def conflict(*args):
+        raise OSError(errno.EADDRINUSE, "already owned")
+    monkeypatch.setattr(recordings, "ThreadingHTTPServer", conflict)
+    with pytest.raises(OSError) as error:
+        m.start()
+    assert error.value.errno == errno.EADDRINUSE
+    m.close()

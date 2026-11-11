@@ -3,6 +3,7 @@
 Media servers listen on loopback; signed, short-lived downloads are served by
 this read-only proxy on the configured operator-network address.
 """
+import errno
 import hashlib
 import hmac
 import json
@@ -245,12 +246,27 @@ class Recordings:
                         # A midstream interruption must remain a failed download.
                         self.close_connection = True
 
-        self.server = ThreadingHTTPServer((self.config["bind"], int(self.config["port"])), Handler)
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        def start_proxy():
+            if self.server is not None or self.stop_event.is_set():
+                return
+            try:
+                server = ThreadingHTTPServer(
+                    (self.config["bind"], int(self.config["port"])), Handler)
+            except OSError as error:
+                if error.errno != errno.EADDRNOTAVAIL:
+                    raise
+                # A private interface may appear after ROS starts. Never widen
+                # the bind address or block the operator gateway waiting for it.
+                return
+            self.server = server
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+
+        start_proxy()
 
         def loop():
             while not self.stop_event.is_set():
                 try:
+                    start_proxy()
                     self.tick()
                 except Exception:
                     with self.lock:
