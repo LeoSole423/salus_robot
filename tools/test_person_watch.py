@@ -55,4 +55,38 @@ class ConversionTests(unittest.TestCase):
                 np.testing.assert_allclose(actual,expected,atol=1e-5,rtol=1e-5)
         with self.assertRaises(ValueError):module.fold_focus_weights(np.zeros((2,2,2,2)))
 
+class SnapshotTests(unittest.TestCase):
+    def test_evidence_eviction_and_encoding_failure_preserve_alert(self):
+        state=pw.State({'cameras':[]})
+        for i in range(51):
+            state.append_alert({'id':str(i)},b'jpeg')
+        self.assertEqual(len(state.images),50)
+        self.assertNotIn('0',state.images)
+        state.append_alert({'id':'failed'},None)
+        self.assertFalse(state.alerts[-1]['image_available'])
+        state.append_alert({'id':'oversized'},b'x'*(pw.MAX_SNAPSHOT_BYTES+1))
+        self.assertFalse(state.alerts[-1]['image_available'])
+        self.assertNotIn('oversized',state.images)
+
+    def test_image_http_is_bounded_to_known_ids_and_same_origin_policy(self):
+        import json,uuid
+        from urllib.request import Request,urlopen
+        from urllib.error import HTTPError
+        state=pw.State({'cameras':[]});identifier=str(uuid.uuid4())
+        state.append_alert({'id':identifier},b'jpeg-bytes')
+        server=pw.start_http({'bind':'127.0.0.1','port':0,'allowed_origins':['https://cockpit.test']},state)
+        base='http://127.0.0.1:%d'%server.server_port
+        try:
+            with urlopen(base+'/v1/alerts/'+identifier+'.jpg',timeout=2) as response:
+                self.assertEqual(response.read(),b'jpeg-bytes')
+                self.assertEqual(response.headers['Content-Type'],'image/jpeg')
+                self.assertEqual(response.headers['Cache-Control'],'no-store')
+            for path in ['/v1/alerts/../../secret.jpg','/v1/alerts/'+str(uuid.uuid4())+'.jpg']:
+                with self.assertRaises(HTTPError) as error:urlopen(base+path,timeout=2)
+                self.assertEqual(error.exception.code,404)
+            with self.assertRaises(HTTPError) as error:
+                urlopen(Request(base+'/v1/alerts/'+identifier+'.jpg',headers={'Origin':'https://untrusted.test'}),timeout=2)
+            self.assertEqual(error.exception.code,403)
+        finally:server.shutdown();server.server_close()
+
 if __name__=='__main__':unittest.main()

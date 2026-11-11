@@ -2,7 +2,7 @@
 
 Independent host service for person alerts in Cockpit. Owns no ROS topic, TF,
 actuator, navigation parameter or operator lease. Runs even with Cockpit closed;
-only metadata is polled by clients. This is an advisory detector, not a certified
+only metadata is polled; alert snapshots load on demand. This is an advisory detector, not a certified
 safety sensor or an automatic stop mechanism.
 
 ## Architecture
@@ -10,7 +10,8 @@ safety sensor or an automatic stop mechanism.
 Local MediaMTX saving paths cam3/cam4/cam5 → GStreamer RTSP/TCP H264 hardware
 decoder → one latest 640×360 BGR slot per camera → sequential YOLOX Nano
 416×416 NCNN Vulkan inference → confirmation/cooldown → read-only HTTP state.
-No video is encoded, saved or uploaded by this service. Existing recording and
+No video stream is re-encoded or uploaded by this service. Confirmed alert frames
+are annotated and JPEG-encoded once; no extra camera reader is opened. Existing recording and
 live quality selection are independent. Monitoring holds all three saving paths
 open, including the mobile camera; this adds local camera LAN traffic.
 
@@ -105,7 +106,14 @@ one in-flight request. Service input URLs never appear in output.
 - `alerts`: bounded 50-entry process-memory history; unique id, camera_id,
   label, timestamp_ms, count, confidence. Restart clears history/cooldowns.
 
-HTTP is intentionally read-only and carries no images, secrets or commands.
+HTTP is intentionally read-only and carries no secrets or commands.
+`GET /v1/alerts/<uuid>.jpg` returns the exact triggering frame with person boxes
+and confidence, or 404 if evicted/unavailable. Same origin restrictions and
+private bind apply; image requests use no-store and nosniff. `image_available`
+on each alert reports whether encoding succeeded. At most 50 JPEGs of 256 KiB
+each are retained in memory (12.5 MiB maximum); restart clears them together
+with alerts. A failed image encode does not suppress the alert. Existing alerts
+cannot acquire a snapshot retroactively. Cockpit fetches images only when opened.
 Network access is restricted by binding to Tailscale; CORS is an additional
 browser-origin restriction, not authentication. Tailnet members with reachability
 can read this metadata. For HTTPS Cockpit deployment configure a same-origin
