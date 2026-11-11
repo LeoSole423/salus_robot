@@ -59,3 +59,12 @@ WebSocket. Audio absence and actual media playback must be validated before
 production activation. See the camera-recordings intent sheet for deployment,
 parameters, retention and current evidence. Legacy rosbag/session commands remain
 unsupported; these operations are a separate video capability.
+
+## Private download interface during startup
+
+The optional recording download proxy retries an unavailable private bind address
+at the existing two-second worker cadence. Gateway/WebSocket startup continues
+while that interface is absent; no wildcard bind or navigation wait is introduced.
+Other initial bind failures still raise. Closing stops retries and any recovered
+proxy. See `docs/migration-evidence/web-recording-bind-recovery-20261111.md` for
+stationary deployment evidence and rollback.
