@@ -682,3 +682,6 @@ components:
 
 # Person alert snapshot evidence (2026-11-11):
 # docs/migration-evidence/intent/person-alert-snapshots.md
+# Mobile video-only TCP relay (2026-11-11):
+# docs/migration-evidence/intent/mobile-video-low-latency.md
+# docs/migration-evidence/mobile-video-relay-20261111.md

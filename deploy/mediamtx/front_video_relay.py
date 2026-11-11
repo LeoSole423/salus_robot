@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""On-demand video-only RTSP/TCP copy for the frontal camera; no ROS or encoding."""
+"""On-demand video-only RTSP/TCP copy for front/mobile cameras; no ROS or encoding."""
 import argparse
 import json
 import os
@@ -7,13 +7,13 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-PATHS = ("cam3", "cam3_normal")
+PATHS = ("cam3", "cam3_normal", "cam4", "cam4_normal")
 
 
 def build_command(config, path):
     """Build argv without a shell; credentials stay in private configuration."""
     if path not in PATHS:
-        raise ValueError("Unsupported frontal path")
+        raise ValueError("Unsupported camera path")
     source = config["sources"][path]
     if not isinstance(source, str) or urlsplit(source).scheme != "rtsp" or not urlsplit(source).hostname:
         raise ValueError("Expected an RTSP source")
@@ -46,7 +46,7 @@ def main():
         # Quiet stderr avoids disclosing authenticated input URLs in the journal.
         os.execvpe(argv[0], argv, env)
     except (OSError, ValueError, KeyError, TypeError):
-        parser.exit(1, "Frontal relay failed; check the private configuration and FFmpeg installation.\n")
+        parser.exit(1, "Camera relay failed; check the private configuration and FFmpeg installation.\n")
 
 
 if __name__ == "__main__":
