@@ -679,3 +679,6 @@ components:
 # Recording proxy late-interface recovery (2026-11-11):
 # docs/migration-evidence/intent/web-recording-bind-recovery.md
 # docs/migration-evidence/web-recording-bind-recovery-20261111.md
+
+# Person alert snapshot evidence (2026-11-11):
+# docs/migration-evidence/intent/person-alert-snapshots.md

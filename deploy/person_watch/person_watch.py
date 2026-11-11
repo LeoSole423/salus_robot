@@ -193,15 +193,47 @@ def under_pressure():
     return False
 
 
+MAX_SNAPSHOT_BYTES = 256 * 1024
+
+
+def annotate_snapshot(data, detections):
+    """Encode only the triggering frame, never take another camera sample."""
+    import cv2
+    import numpy as np
+    image = np.frombuffer(data, dtype=np.uint8).reshape(HEIGHT, WIDTH, 3).copy()
+    for detection in detections:
+        x, y, w, h = detection['bbox']
+        left, top = max(0, min(WIDTH-1, round(x*WIDTH))), max(0, min(HEIGHT-1, round(y*HEIGHT)))
+        right, bottom = max(left, min(WIDTH-1, round((x+w)*WIDTH))), max(top, min(HEIGHT-1, round((y+h)*HEIGHT)))
+        cv2.rectangle(image, (left, top), (right, bottom), (0, 220, 255), 2)
+        caption = 'Person %.0f%%' % (detection['confidence']*100)
+        cv2.rectangle(image, (left, max(0, top-22)), (min(WIDTH-1,left+130), max(22,top)), (0,0,0), -1)
+        cv2.putText(image, caption, (left+3, max(16, top-6)), cv2.FONT_HERSHEY_SIMPLEX, .45, (0,220,255), 1, cv2.LINE_AA)
+    ok, jpeg = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 75])
+    if not ok or jpeg.nbytes > MAX_SNAPSHOT_BYTES:
+        return None
+    return jpeg.tobytes()
+
+
 class State:
     def __init__(self, config):
         self.lock = threading.Lock()
         self.boot_id = str(uuid.uuid4())
         self.started = time.time()
         self.alerts = deque(maxlen=50)
+        self.images = {}
         self.cameras = {c['id']: {'id': c['id'], 'label': c['label'], 'status': 'starting',
                                 'sample_ms': 0, 'detections': [], 'inference_ms': 0}
                         for c in config['cameras']}
+
+    def append_alert(self, alert, jpeg):
+        """Caller owns lock. Image lifetime is exactly the bounded alert lifetime."""
+        if len(self.alerts) == self.alerts.maxlen:
+            self.images.pop(self.alerts[0]['id'], None)
+        available = bool(jpeg) and len(jpeg) <= MAX_SNAPSHOT_BYTES
+        self.alerts.append(dict(alert, image_available=available))
+        if available:
+            self.images[alert['id']] = jpeg
 
     def snapshot(self):
         with self.lock:
@@ -220,16 +252,33 @@ def start_http(config, state):
             if origin and origin not in config.get('allowed_origins', []):
                 self.send_error(403)
                 return
-            if self.path != '/v1/state':
+            if self.path == '/v1/state':
+                body = json.dumps(state.snapshot(), allow_nan=False).encode()
+                content_type = 'application/json'
+            elif self.path.startswith('/v1/alerts/') and self.path.endswith('.jpg'):
+                identifier = self.path[len('/v1/alerts/'):-4]
+                try:
+                    if str(uuid.UUID(identifier)) != identifier:
+                        raise ValueError('Invalid alert ID')
+                except ValueError:
+                    self.send_error(404)
+                    return
+                with state.lock:
+                    body = state.images.get(identifier)
+                if body is None:
+                    self.send_error(404)
+                    return
+                content_type = 'image/jpeg'
+            else:
                 self.send_error(404)
                 return
-            body = json.dumps(state.snapshot(), allow_nan=False).encode()
             self.send_response(200)
             if origin:
                 self.send_header('Access-Control-Allow-Origin', origin)
                 self.send_header('Vary', 'Origin')
             self.send_header('Cache-Control', 'no-store')
-            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Type', content_type)
+            self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -282,14 +331,20 @@ def run(config):
                 duration = time.monotonic() - now
                 fresh = time.monotonic() - value[0] <= 2
                 alert = policies[camera_id].update(time.monotonic(), bool(detections), fresh=fresh)
+                jpeg = None
+                if alert:
+                    try:
+                        jpeg = annotate_snapshot(value[1], detections)
+                    except Exception:
+                        pass  # Preserve the detection even if evidence encoding fails.
                 with state.lock:
                     state.cameras[camera_id].update(status='watching' if fresh else 'unavailable',
                         sample_ms=round((time.time() - (time.monotonic()-value[0]))*1000),
                         detections=detections if fresh else [], inference_ms=round(duration*1000, 1))
                     if alert:
-                        state.alerts.append({'id': str(uuid.uuid4()), 'camera_id': camera_id,
+                        state.append_alert({'id': str(uuid.uuid4()), 'camera_id': camera_id,
                             'label': reader.camera['label'], 'timestamp_ms': round(time.time()*1000),
-                            'count': len(detections), 'confidence': max(d['confidence'] for d in detections)})
+                            'count': len(detections), 'confidence': max(d['confidence'] for d in detections)}, jpeg)
     finally:
         stop.set()
         for reader in readers:
