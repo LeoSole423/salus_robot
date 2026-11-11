@@ -28,12 +28,28 @@ class FrontRelayTests(unittest.TestCase):
         self.assertEqual(args[args.index("-i") + 1], self.config["sources"]["cam3"])
         self.assertTrue(args[-1].endswith("/cam3"))
 
+    def test_mobile_modes_keep_their_original_sources_and_copy_video(self):
+        for path, video in (("cam4", "video2"), ("cam4_normal", "video1")):
+            with self.subTest(path=path):
+                source = "rtsp://user:password@camera/media2/" + video
+                self.config["sources"][path] = source
+                args = module.build_command(self.config, path)
+                self.assertEqual(args[args.index("-i") + 1], source)
+                self.assertLess(args.index("-allowed_media_types"), args.index("-i"))
+                self.assertEqual(args[args.index("-c:v") + 1], "copy")
+                self.assertEqual(args.count("tcp"), 2)
+                self.assertEqual(args[-1], "rtsp://127.0.0.1:8554/" + path)
+
+    def test_missing_mobile_source_does_not_fall_back_to_front(self):
+        with self.assertRaises(KeyError):
+            module.build_command(self.config, "cam4")
+
     def test_source_is_one_argument_even_with_shell_metacharacters(self):
         self.config["sources"]["cam3"] += "?literal=$(echo test); value"
         args = module.build_command(self.config, "cam3")
         self.assertEqual(args[args.index("-i") + 1], self.config["sources"]["cam3"])
 
-    def test_rejects_non_frontal_paths_and_invalid_sources(self):
+    def test_rejects_unsupported_paths_and_invalid_sources(self):
         with self.assertRaises(ValueError):
             module.build_command(self.config, "cam5")
         self.config["sources"]["cam3"] = "file:///private/file"

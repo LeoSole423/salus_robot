@@ -4,6 +4,8 @@
   "publish_port": 8554,
   "sources": {
     "cam3": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video2",
-    "cam3_normal": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video1"
+    "cam3_normal": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media1/video1",
+    "cam4": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media2/video2",
+    "cam4_normal": "rtsp://CAMERA_USER:CAMERA_PASSWORD@192.168.1.250:554/media2/video1"
   }
 }

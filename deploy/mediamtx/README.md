@@ -164,3 +164,20 @@ MediaMTX del ejemplo. El relay no expone puertos nuevos ni API ROS.
 El [registro de despliegue y operación](../../docs/migration-evidence/camera-front-deployment-20261105.md)
 identifica los archivos efectivos del host, comandos de inspección, demanda por
 grabación, estado de integración, validaciones y rollback selectivo.
+
+## Mobile/PTZ video-only TCP — 2026-11-11
+
+The same `front_video_relay.py` launcher also accepts `cam4` and `cam4_normal`.
+Use `mobile-relay.example.yaml` to replace only those two routes after backing
+up the private YAML, helper and source JSON. Preserve original mobile secondary
+and main URLs under the corresponding private `sources` keys. Do not derive
+credentials or substitute a frontal URL if a mobile entry is missing.
+
+Input selects video before RTSP SETUP, uses TCP and copies H264 without encoding,
+audio or metadata. Ahorro remains 360p/15 FPS; Normal 720p/15 FPS; camera encoder
+settings and ONVIF/PTZ controls are independent and unchanged. The AI detector
+holds saving open; normal closes ten seconds after its last reader leaves.
+Hot reload interrupts only mobile video briefly and does not restart MediaMTX,
+ROS, the detector or PTZ. Existing recording readers may reconnect during the
+transition. Restore only mobile entries from the private snapshot for rollback;
+never overwrite concurrent front, rear, recording or global changes.
