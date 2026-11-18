@@ -133,6 +133,7 @@ class RouteExecutorNode(Node):
         self._mission = RouteMission()
         self._preparation = None
         self._preparation_epoch = 0
+        self._preparation_rejection = ""
         self._pose = None
         self._pose_heading_deg = None
         self._pose_sample = None
@@ -350,6 +351,8 @@ class RouteExecutorNode(Node):
         )
         with self._lock:
             self._preparation_epoch += 1
+            self._preparation_rejection = ""
+            response.preparation_id = self._preparation_epoch
             self._preparation = {
                 "epoch": self._preparation_epoch, "raw": raw, "converted": [],
                 "next": 0, "future": None, "request": request,
@@ -382,11 +385,11 @@ class RouteExecutorNode(Node):
                     job["deadline"] = self._steady_now() + float(self.get_parameter("fromll_timeout_s").value)
                 except Exception as exc:
                     self.get_logger().warning(f"route preparation rejected: fromLL failed: {exc}")
-                    self._preparation = None
+                    self._reject_preparation(job, "coordinate_conversion_failed")
                     return
             elif future is not None and self._steady_now() > job["deadline"]:
                 self.get_logger().warning("route preparation rejected: fromLL timed out")
-                self._preparation = None
+                self._reject_preparation(job, "coordinate_conversion_timeout")
                 return
             if job["future"] is not None:
                 return
@@ -397,13 +400,22 @@ class RouteExecutorNode(Node):
             if client is None:
                 if self._steady_now() > job["deadline"]:
                     self.get_logger().warning("route preparation rejected: fromLL unavailable")
-                    self._preparation = None
+                    self._reject_preparation(job, "coordinate_conversion_unavailable")
                 return
             point = job["raw"][job["next"]]
             request = FromLL.Request()
             request.ll_point.latitude, request.ll_point.longitude = point.lat, point.lon
             request.ll_point.altitude = 0.0
             job["future"] = client.call_async(request)
+
+    def _reject_preparation(self, job, reason: str) -> None:
+        self._preparation = None
+        self._preparation_rejection = reason
+        self._event(
+            DiagnosticStatus.WARN, "ROUTE_PREPARATION_REJECTED",
+            "route coordinate conversion failed",
+            preparation_id=job["epoch"], reason=reason,
+        )
 
     def _activate_prepared(self, job) -> None:
         request = job["request"]
@@ -432,6 +444,7 @@ class RouteExecutorNode(Node):
                     )
             if not selection.accepted:
                 self._preparation = None
+                self._preparation_rejection = selection.reason
                 candidate_details = [
                     {
                         "segment_start_index": item.segment_start_index,
@@ -460,6 +473,7 @@ class RouteExecutorNode(Node):
                     DiagnosticStatus.WARN, "ROUTE_ANCHOR_REJECTED",
                     "loop route not activated; no navigation goal was dispatched",
                     reason=selection.reason,
+                    preparation_id=job["epoch"],
                     heading_deg=self._pose_heading_deg,
                     candidates=json.dumps(candidate_details, separators=(",", ":")),
                 )
@@ -532,6 +546,10 @@ class RouteExecutorNode(Node):
         self._checkpoint_tracker_key = None
         self._reached_occurrences = set()
         self._mission, self._preparation = mission, None
+        self._event(
+            DiagnosticStatus.OK, "ROUTE_PREPARATION_COMPLETED",
+            "route prepared and activated", preparation_id=job["epoch"],
+        )
         self._dispatch()
 
     def _on_path_health(self, message: PathHealth) -> None:
@@ -1097,6 +1115,7 @@ class RouteExecutorNode(Node):
     def _cancel(self, _request, response):
         with self._lock:
             self._preparation_epoch += 1
+            self._preparation_rejection = ""
             self._preparation = None
             self._goal_request_pending = False
             self._recovery.reset()
@@ -1251,6 +1270,8 @@ class RouteExecutorNode(Node):
             response.paused = mission.phase == RoutePhase.PAUSED
             response.loop = bool(prepared and prepared.loop)
             response.status, response.mission_id = mission.phase.value, mission.mission_id
+            response.preparation_id = self._preparation_epoch
+            response.preparation_rejection = self._preparation_rejection
             response.chunk_id, response.loop_iteration = mission.chunk_id, mission.loop_iteration
             response.reached_checkpoint_count = mission.reached
             response.input_waypoint_count = 0 if prepared is None else prepared.input_count

@@ -594,6 +594,7 @@ def test_rejected_loop_anchor_emits_event_without_dispatching_a_goal():
         chunk_max_waypoints=5, auto_yaw_policy="",
     )
     job = {
+        "epoch": 7,
         "request": request,
         "raw": route.waypoints,
         "converted": list(route.waypoints),
@@ -617,9 +618,11 @@ def test_rejected_loop_anchor_emits_event_without_dispatching_a_goal():
     RouteExecutorNode._activate_prepared(fake, job)
 
     assert fake._preparation is None
+    assert fake._preparation_rejection == "orientation_unavailable"
     assert warnings and "orientation_unavailable" in warnings[0]
     assert events[0][0][1] == "ROUTE_ANCHOR_REJECTED"
     assert events[0][1]["reason"] == "orientation_unavailable"
+    assert events[0][1]["preparation_id"] == 7
     assert events[0][1]["candidates"]
     assert dispatches == []
 
@@ -631,6 +634,7 @@ def test_selected_loop_anchor_emits_segment_reason_before_dispatch():
         chunk_max_waypoints=5, auto_yaw_policy="",
     )
     job = {
+        "epoch": 7,
         "request": request,
         "raw": route.waypoints,
         "converted": list(route.waypoints),
@@ -667,6 +671,8 @@ def test_selected_loop_anchor_emits_segment_reason_before_dispatch():
     assert events[0][1]["segment_end_input_index"] == 11
     assert events[0][1]["heading_deg"] == 1.6
     assert events[0][1]["reason"] == "best_forward_segment"
+    assert events[1][0][1] == "ROUTE_PREPARATION_COMPLETED"
+    assert events[1][1]["preparation_id"] == 7
 
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():

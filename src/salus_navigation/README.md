@@ -27,6 +27,11 @@ autoridad de velocidad.
   `route_segment_start_tolerance_m` (5 m por defecto), o una elección única,
   publica `ROUTE_ANCHOR_REJECTED` y no activa ni despacha la misión loop. Las
   rutas abiertas mantienen su selección existente.
+- La aceptación de una solicitud de ruta incluye un `preparation_id`.
+  El estado de rutas expone ese identificador y `preparation_rejection` para
+  correlacionar los rechazos asíncronos con el envío del operador. El canal
+  `NavEvent` comunica el resultado al completarse la preparación, con el mismo
+  identificador.
 - Los checkpoints sin yaw manual siguen por defecto la tangente de la curva,
   también en Patrol/HOME. El gateway de Cockpit puede enviar
   `auto_yaw_policy=route_tangent` explícitamente; `legacy` solicita el cálculo

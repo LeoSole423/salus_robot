@@ -13,3 +13,4 @@ bool ok
 string error
 uint32 input_waypoint_count
 uint32 expanded_waypoint_count
+uint64 preparation_id  # correlates the accepted submission with route state
