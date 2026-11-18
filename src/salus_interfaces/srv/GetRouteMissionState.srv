@@ -51,3 +51,5 @@ int32[] mission_input_indices
 float64[] active_lats
 float64[] active_lons
 float64[] active_yaws_deg
+uint64 preparation_id
+string preparation_rejection  # empty unless the latest preparation was rejected
