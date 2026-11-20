@@ -37,6 +37,7 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription([
         DeclareLaunchArgument("recordings_config", default_value=""),
+        DeclareLaunchArgument("detection_fixes_path", default_value=""),
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
         DeclareLaunchArgument(
             "ntrip_config_path",
@@ -133,6 +134,7 @@ def generate_launch_description() -> LaunchDescription:
                 "heading_odometry_topic": web_heading_odometry_topic,
                 "rtk_sources_config": ntrip_config_path,
                 "recordings_config": LaunchConfiguration("recordings_config"),
+                "detection_fixes_path": LaunchConfiguration("detection_fixes_path"),
             },
         ),
     ])

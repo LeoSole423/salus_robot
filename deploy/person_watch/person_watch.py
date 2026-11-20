@@ -245,6 +245,29 @@ class State:
                     'alerts': list(self.alerts)}
 
 
+def fix_at(path, frame_ms):
+    if not path:
+        return None
+    try:
+        with Path(path).open() as stream:
+            fixes = json.loads(stream.read(65536))
+        if not isinstance(fixes, list):
+            return None
+        best = None
+        for fix in fixes:
+            if not isinstance(fix, dict):
+                continue
+            stamp, lat, lon = (fix.get(key) for key in ('timestamp_ms', 'lat', 'lon'))
+            if not all(type(value) in (int, float) and math.isfinite(value) for value in (stamp, lat, lon)):
+                continue
+            if 0 <= frame_ms - stamp <= 5000 and abs(lat) <= 90 and abs(lon) <= 180:
+                if best is None or stamp > best['timestamp_ms']:
+                    best = {'lat': lat, 'lon': lon, 'timestamp_ms': stamp}
+        return best
+    except (OSError, ValueError):
+        return None
+
+
 def start_http(config, state):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -331,19 +354,23 @@ def run(config):
                 duration = time.monotonic() - now
                 fresh = time.monotonic() - value[0] <= 2
                 alert = policies[camera_id].update(time.monotonic(), bool(detections), fresh=fresh)
+                frame_ms = round((time.time() - (time.monotonic() - value[0])) * 1000)
                 jpeg = None
+                position = None
                 if alert:
+                    position = fix_at(config.get('detection_fixes_path'), frame_ms)
                     try:
                         jpeg = annotate_snapshot(value[1], detections)
                     except Exception:
                         pass  # Preserve the detection even if evidence encoding fails.
                 with state.lock:
                     state.cameras[camera_id].update(status='watching' if fresh else 'unavailable',
-                        sample_ms=round((time.time() - (time.monotonic()-value[0]))*1000),
+                        sample_ms=frame_ms,
                         detections=detections if fresh else [], inference_ms=round(duration*1000, 1))
                     if alert:
                         state.append_alert({'id': str(uuid.uuid4()), 'camera_id': camera_id,
                             'label': reader.camera['label'], 'timestamp_ms': round(time.time()*1000),
+                            'frame_ms': frame_ms, **({'position': position} if position else {}),
                             'count': len(detections), 'confidence': max(d['confidence'] for d in detections)}, jpeg)
     finally:
         stop.set()
