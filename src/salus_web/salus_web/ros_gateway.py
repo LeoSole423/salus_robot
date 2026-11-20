@@ -7,6 +7,7 @@ socket and delegates transport correlation and operator ownership elsewhere.
 from __future__ import annotations
 
 from .recordings import Recordings
+from .detection_fixes import DetectionFixHistory
 from .recording_policy import mission_signal
 
 import asyncio
@@ -291,6 +292,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("compact_telemetry_hz", 2.0)
         self.declare_parameter("heading_odometry_topic", "/odometry/local")
         self.declare_parameter("gps_fix_topic", "/gps/fix")
+        self.declare_parameter("detection_fixes_path", "")
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
         self.declare_parameter("recordings_config", "")
@@ -388,6 +390,10 @@ class CockpitRosGateway(Node):
         self.create_subscription(
             BatteryState, "/battery_state", self._on_battery_state, 10
         )
+        detection_path = str(self.get_parameter("detection_fixes_path").value)
+        self._detection_fixes = DetectionFixHistory(detection_path) if detection_path else None
+        if self._detection_fixes is not None:
+            self.create_timer(0.25, self._flush_detection_fixes)
         self.create_subscription(
             NavSatFix,
             str(self.get_parameter("gps_fix_topic").value),
@@ -898,7 +904,17 @@ class CockpitRosGateway(Node):
         if self._telemetry_profile == "compact":
             self._on_cached_telemetry_change()
 
+    def _flush_detection_fixes(self) -> None:
+        try:
+            self._detection_fixes.flush()
+        except OSError as error:
+            self.get_logger().warning(f"Detection GPS handoff unavailable: {error}", throttle_duration_sec=30.0)
+
     def _on_gps(self, message: NavSatFix) -> None:
+        if self._detection_fixes is not None:
+            self._detection_fixes.observe(
+                time.time_ns() // 1_000_000, message.status.status, message.latitude, message.longitude
+            )
         lat = _finite_or_none(message.latitude)
         lon = _finite_or_none(message.longitude)
         if lat is None or lon is None:

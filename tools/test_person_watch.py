@@ -1,9 +1,33 @@
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 spec=importlib.util.spec_from_file_location('person_watch',Path(__file__).resolve().parents[1]/'deploy/person_watch/person_watch.py')
 pw=importlib.util.module_from_spec(spec);sys.modules[spec.name]=pw;spec.loader.exec_module(pw)
+class FixEvidenceTests(unittest.TestCase):
+    def test_atomic_gps_history_uses_only_valid_fixes_at_or_before_frame(self):
+        path = Path(__file__).resolve().parents[1] / "src/salus_web/salus_web/detection_fixes.py"
+        spec = importlib.util.spec_from_file_location("detection_fixes", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "fixes.json"
+            history = module.DetectionFixHistory(target)
+            self.assertIsNone(pw.fix_at(target, 10000))
+            history.observe(7000, 0, -31.4, -64.1)
+            history.observe(9500, 0, -31.5, -64.2)
+            history.observe(9750, -1, 0, 0)
+            history.observe(10001, 0, -31.6, -64.3)
+            history.flush()
+            self.assertEqual(pw.fix_at(target, 10000),
+                             {"timestamp_ms": 9500, "lat": -31.5, "lon": -64.2})
+            self.assertIsNone(pw.fix_at(target, 16000))
+            self.assertIsNone(pw.fix_at(target, 6999))
+            target.write_text("{")
+            self.assertIsNone(pw.fix_at(target, 10000))
+
+
 class PolicyTests(unittest.TestCase):
     def test_confirm_and_cooldown(self):
         p=pw.Confirmation()

@@ -135,3 +135,25 @@ Rollback: stop/disable only this service and remove its Cockpit URL/module if
 needed. Keep model and isolated Python environment for
 review; package removal must be reviewed separately. GPU boot repair and its
 backup are a separate maintenance action, documented in deployment evidence.
+
+### Detection location (optional)
+
+The detector publishes optional `frame_ms` (UTC epoch milliseconds at receipt
+of the sampled frame) and `position` with latitude and longitude in degrees and
+the fix receive time `timestamp_ms`. It associates the most recent valid fix
+at or before the frame, within five seconds. Old detector responses and missing
+or stale fixes remain usable without a map.
+
+Set `detection_fixes_path` in the web bridge launch and in the detector config
+to point to the same local file, visible to both processes. Both defaults are
+empty (disabled). Provision the parent directory before starting, keep it
+private, and ensure the detector can read the bridge's owner-only file. For
+separate mount namespaces, share the directory, since the bridge replaces the
+file atomically. The bridge observes up to eight seconds of GPS history, with a
+cap of 256 samples and a maximum flush rate of four per second. Both timestamps
+use the host wall clock at receipt, which avoids mixing simulated ROS clocks
+with UTC recording times.
+
+Clips use existing MediaMTX recordings only. Verify camera mapping, timing,
+directory permissions and Jetson resource use before enabling this handoff in
+the live deployment.

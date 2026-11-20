@@ -5,6 +5,7 @@
   "ffmpeg": "/opt/salus-person-watch/ffmpeg",
   "ffmpeg_library_path": "/opt/salus-person-watch/ffmpeg-libs",
   "fps_per_camera": 0.5,
+  "detection_fixes_path": "",
   "confidence": 0.55,
   "bind": "127.0.0.1",
   "port": 8791,

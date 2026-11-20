@@ -20,7 +20,10 @@ components:
     note: >-
       Independent advisory detector with bounded resources, NCNN Vulkan hardware
       inference, hardware decode, confirmation and camera-labelled metadata.
-      Field person recall and moving-navigation coexistence require acceptance.
+      Detection evidence can include a recent GPS fix and a clip from existing
+      recordings. GPS handoff and playback were checked locally with simulated
+      inputs. Camera mapping, timing and device resource use require Jetson
+      validation, as do field person recall and moving-navigation coexistence.
   shared_robot_route_library:
     source: Cockpit local named routes and salus_web single-waypoint-file persistence
     target: salus_web shared route repository and Cockpit navigation module
