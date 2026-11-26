@@ -55,8 +55,8 @@ class CameraFeaturesController:
 
     def sweep_bounds(self, center):
         return (
-            max(-90.0, self.limits.pan_min_deg - center.pan_deg),
-            min(90.0, min(self.limits.pan_max_deg, 349.99999524) - center.pan_deg),
+            self.limits.pan_min_deg - center.pan_deg,
+            min(self.limits.pan_max_deg, 349.99999524) - center.pan_deg,
         )
 
     def start(self, now, center=None, sweep_range=None):

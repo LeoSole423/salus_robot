@@ -161,8 +161,8 @@ ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
 
 
 Paneo sectorial: Start usa el tilt y el zoom del preset Frente guardado.
-Por defecto alterna entre los extremos disponibles de Frente ±90° dentro
-de los límites físicos. Con `use_sweep_range`, `sweep_min_deg` y
+Por defecto alterna entre los extremos del rango físico de la cámara,
+expresados como desplazamientos desde Frente. Con `use_sweep_range`, `sweep_min_deg` y
 `sweep_max_deg` definen un intervalo de al menos 2° dentro del sector disponible.
 Los ángulos positivos apuntan a la izquierda. Si Frente queda fuera del intervalo
 elegido, el primer destino es el extremo más cercano a Frente.

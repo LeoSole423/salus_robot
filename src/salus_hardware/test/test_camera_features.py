@@ -13,9 +13,9 @@ def controller():
     return CameraFeaturesController(backend, CameraLimits()), backend
 
 
-def test_sweep_centers_then_alternates_90_degrees_each_side():
+def test_sweep_centers_then_alternates_between_selected_limits():
     feature, backend = controller()
-    feature.start(10, PtzPose(223.95, 5, 1))
+    feature.start(10, PtzPose(223.95, 5, 1), (-90, 90))
     assert feature.target == PtzPose(223.95, 5, 1)
     assert feature.phase == "centering"
     backend.read_state.return_value = feature.target
@@ -38,7 +38,8 @@ def test_sweep_centers_then_alternates_90_degrees_each_side():
 def test_default_sweep_uses_available_angles_when_front_is_near_limit():
     feature, _ = controller()
     feature.start(0, PtzPose(40, 0, 1))
-    assert (feature.right, feature.left) == (0, 130)
+    assert feature.sweep_bounds(PtzPose(40, 0, 1)) == pytest.approx((-40, 310))
+    assert (feature.right, feature.left) == pytest.approx((0, 350))
 
 
 def test_invalid_explicit_range_rejects_without_movement():
