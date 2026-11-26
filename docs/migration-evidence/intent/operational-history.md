@@ -22,7 +22,8 @@ con entradas controladas y en simulación antes de cualquier despliegue real.
 | --- | --- |
 | `NavEvent` en `/nav_command_server/events` | Inicio, fases y cierre de patrulla. Cambios manuales confirmados, órdenes de freno, watchdog, fallas de navegación y decisiones de retorno. Se conservan código y detalles aprobados. |
 | `NavTelemetry` en `/nav_command_server/telemetry` | Entrada y salida de bloqueo por monitor de colisión y LiDAR vencido cuando el árbitro lo reporta. |
-| `DriveTelemetry` en `/controller/drive_telemetry` | Cambios de frescura. Con datos frescos, autoridad RC, E-stop y freno aplicado. Con velocidad válida, detención medida al pasar del estado en movimiento (≥0,10 m/s) a ≤0,05 m/s. El motivo requiere una señal distinta. |
+| `PathHealth` en `/path_health` | Entrada a espera, cambios de motivo y recuperación con camino válido. Suscripción del gateway con QoS confiable y profundidad 10. La espera inicial de un objetivo es informativa. |
+| `DriveTelemetry` en `/controller/drive_telemetry` | Cambios de frescura. Con datos frescos, autoridad RC, freno aplicado y señal de parada reportada. Con velocidad válida, detención medida al pasar del estado en movimiento (≥0,10 m/s) a ≤0,05 m/s. El motivo requiere una señal distinta. |
 | `BatteryMissionGuard` en `/battery_mission_guard` | Recomendación y recuperación de batería cuando el guard está listo y fresco. |
 | `SystemCapabilities` en `/system/capabilities` | Cambios explícitos de disponibilidad, validez y recuperación para capacidades habilitadas. QoS existente confiable y transient local. |
 | Lease del gateway | Adquisición y liberación del permiso de operación, sin identidad del usuario. Independiente de la confirmación del modo manual. |
@@ -93,3 +94,9 @@ historial. El cliente ROS y el servidor deben usar la misma versión del servici
 
 Se verificó en una simulación aislada: la ruta de 51 puntos de
 Patrulla Sencilla Polo apareció al activarse y quedó cancelada al cerrar.
+
+El backend simulado levanta la señal de parada cuando aplica freno. El
+historial adjunta la señal a la misma fila de freno cuando ambos aparecen
+juntos. Si la señal aparece sin freno aplicado se registra por separado.
+La señal por sí sola no identifica el accionamiento de un pulsador físico.
+Las órdenes de freno manual y la detención medida se registran por separado.

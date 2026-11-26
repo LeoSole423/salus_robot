@@ -7,6 +7,7 @@ from threading import BoundedSemaphore, Lock
 from time import monotonic
 
 import json
+import re
 import sqlite3
 import uuid
 
@@ -18,8 +19,9 @@ FINISH = {"PATROL_AT_HOME": "home", "PATROL_MISSION_CANCELLED": "cancelled",
 STOP_CODES = {"BRAKE_REQUESTED", "SAFETY_SCAN_STALE", "PATH_HEALTH_STOP",
               "MANUAL_WATCHDOG_STOP", "COLLISION_STOP", "ESTOP_ACTIVE"}
 PUBLIC_DETAILS = {"enabled", "phase", "route_status", "loop_index", "exit_index",
-                  "brake_pct", "duration_s", "reason_code", "failure_code", "ros_stamp_ns"}
-STATE_EVENTS = {"SAFETY_SCAN_STALE"}
+                  "brake_pct", "duration_s", "reason_code", "failure_code", "ros_stamp_ns",
+                  "stop_signal"}
+STATE_EVENTS = {"SAFETY_SCAN_STALE", "PATH_STOP_AND_WAIT", "PATH_HEALTH_STOP"}
 ROUTE_BLOCK_REASONS = {"PLANNER_U_TURN", "PLANNER_LOOP", "MANEUVER_GEOMETRY_INVALID",
                        "NO_VALID_PATH", "NAV_ABORTED"}
 
@@ -34,6 +36,8 @@ class OperationalHistory:
         self._fault = None
         self._observations = {}
         self._sampled_stop = set()
+        self._path_block = None
+        self._drive_stop = None
         self._last_events = {}
         self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="operational-history")
         self._worker.submit(self._initialize)
@@ -107,6 +111,41 @@ class OperationalHistory:
             return
         code, category, severity = changes[value]
         self.record(component, code, category, severity, details)
+
+    def observe_path_health(self, *, blocked, healthy, reason, ros_stamp_ns):
+        if not blocked:
+            if healthy and self._path_block is not None:
+                self.record("path_health", "PATH_HEALTH_RECOVERED", "stop", details={
+                    "reason_code": self._path_block, "ros_stamp_ns": ros_stamp_ns,
+                })
+                self._path_block = None
+            return
+        safe_reason = reason if re.fullmatch(r"[a-zA-Z0-9_:]{1,100}", reason) else ""
+        if safe_reason == self._path_block:
+            return
+        self._path_block = safe_reason
+        pending = safe_reason == "new_goal_pending_path"
+        self.record("path_health", "PATH_STOP_AND_WAIT", "stop", 0 if pending else 1, {
+            "reason_code": safe_reason, "ros_stamp_ns": ros_stamp_ns,
+        })
+
+    def observe_drive_stop(self, *, brake_pct, stop_signal):
+        previous = self._drive_stop
+        braking = brake_pct > 0
+        standalone_stop = stop_signal and not braking
+        self._drive_stop = (braking, stop_signal, standalone_stop)
+        details = {"brake_pct": brake_pct, "stop_signal": stop_signal}
+        if braking and (previous is None or not previous[0]):
+            self.record("controller", "BRAKE_APPLIED", "stop", details=details)
+        elif not braking and previous and previous[0]:
+            self.record("controller", "BRAKE_RELEASED", "stop", details=details)
+        if standalone_stop and (previous is None or not previous[2]):
+            self.record("controller", "SAFETY_STOP_SIGNAL_ACTIVE", "stop", 2, details)
+        elif previous and previous[1] != stop_signal:
+            brake_just_applied = braking and not previous[0]
+            brake_just_released = not braking and previous[0] and not previous[2]
+            if not brake_just_applied and not brake_just_released:
+                self.record("controller", "SAFETY_STOP_SIGNAL_CHANGED", "stop", details=details)
 
     def checkpoint(self):
         if self._slots.acquire(blocking=False):

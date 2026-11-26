@@ -131,3 +131,38 @@ def test_standalone_loop_route_has_a_patrol_record(tmp_path, monkeypatch):
     assert [event["code"] for event in detail["items"]] == [
         "ROUTE_LOOP_STARTED", "ROUTE_LOOP_PAUSED", "ROUTE_LOOP_CANCELLED",
     ]
+
+
+def test_path_wait_records_reason_once_and_requires_healthy_path_to_recover(tmp_path):
+    history = OperationalHistory(tmp_path / "history.sqlite", "rover", Mock())
+    try:
+        history.nav_event("nav_observer", "PATH_STOP_AND_WAIT", 2, {"reason": "tf_unavailable"})
+        for stamp in (1, 2, 3):
+            history.observe_path_health(blocked=True, healthy=False, reason="tf_unavailable:LookupException",
+                                        ros_stamp_ns=stamp)
+        history.observe_path_health(blocked=False, healthy=False, reason="progress_stalled", ros_stamp_ns=4)
+        history.observe_path_health(blocked=True, healthy=False, reason="costmap_stale", ros_stamp_ns=5)
+        history.observe_path_health(blocked=False, healthy=True, reason="path_healthy", ros_stamp_ns=6)
+        history.observe_path_health(blocked=False, healthy=True, reason="path_healthy", ros_stamp_ns=7)
+    finally:
+        history.close()
+    items = list(reversed(history.query("history_list", {"category": "stop"})["items"]))
+    assert [e["code"] for e in items] == ["PATH_STOP_AND_WAIT", "PATH_STOP_AND_WAIT", "PATH_HEALTH_RECOVERED"]
+    assert [e["details"]["reason_code"] for e in items] == [
+        "tf_unavailable:LookupException", "costmap_stale", "costmap_stale",
+    ]
+
+
+def test_controller_flag_with_brake_is_reported_together_without_estop_claim(tmp_path):
+    history = OperationalHistory(tmp_path / "history.sqlite", "rover", Mock())
+    try:
+        for brake, stop in [(0, False), (100, True), (100, True), (0, False), (0, True), (0, False)]:
+            history.observe_drive_stop(brake_pct=brake, stop_signal=stop)
+    finally:
+        history.close()
+    items = list(reversed(history.query("history_list", {})["items"]))
+    assert [e["code"] for e in items] == [
+        "BRAKE_APPLIED", "BRAKE_RELEASED", "SAFETY_STOP_SIGNAL_ACTIVE", "SAFETY_STOP_SIGNAL_CHANGED",
+    ]
+    assert items[0]["details"] == {"brake_pct": "100", "stop_signal": "True"}
+    assert items[2]["severity"] == 2

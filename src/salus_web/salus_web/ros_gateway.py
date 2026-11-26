@@ -44,6 +44,7 @@ from salus_interfaces.msg import (
     GnssRtkStatus,
     NavEvent,
     NavTelemetry,
+    PathHealth,
     SystemCapabilities,
 )
 from salus_interfaces.srv import (
@@ -375,6 +376,7 @@ class CockpitRosGateway(Node):
         ) if history_path else None
         if self._history:
             self.create_timer(5.0, self._history.checkpoint)
+            self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
 
         self._teleop = self.create_publisher(CmdVelFinal, "/cmd_vel_teleop", 10)
         self.create_subscription(
@@ -871,6 +873,20 @@ class CockpitRosGateway(Node):
         message.brake_pct = int(fields["brake_pct"])
         message.source = CmdVelFinal.SOURCE_MANUAL
         self._teleop.publish(message)
+        if self._history:
+            self._history.observe("manual_brake", message.brake_pct > 0, "cockpit_manual", {
+                True: ("MANUAL_BRAKE_REQUESTED", "stop", 0),
+                False: ("MANUAL_BRAKE_RELEASE_REQUESTED", "stop", 0),
+            }, initial=message.brake_pct > 0, details={"brake_pct": message.brake_pct})
+
+    def _on_path_health(self, message: PathHealth) -> None:
+        if self._history:
+            self._history.observe_path_health(
+                blocked=message.state == PathHealth.STOP_AND_WAIT,
+                healthy=message.state == PathHealth.KEEP_PATH,
+                reason=message.reason,
+                ros_stamp_ns=message.stamp.sec * 10**9 + message.stamp.nanosec,
+            )
 
     def _on_nav_telemetry(self, message: NavTelemetry) -> None:
         if self._history:
@@ -880,6 +896,8 @@ class CockpitRosGateway(Node):
             if message.failure_code == "SAFETY_SCAN_STALE":
                 causes.add("SAFETY_SCAN_STALE")
             self._history.observe_navigation_stop(causes)
+            if not message.manual_enabled:
+                self._history.observe("manual_brake", None, "cockpit_manual", {})
         values = _message_dict(message)
         with self._lock:
             self._cache.update(values)
@@ -940,14 +958,9 @@ class CockpitRosGateway(Node):
                     True: ("RC_CONTROL_ACTIVE", "mode", 0),
                     False: ("RC_CONTROL_RELEASED", "mode", 0),
                 }, initial=message.control_source == "RC")
-                self._history.observe("estop", message.estop, "controller", {
-                    True: ("ESTOP_ACTIVE", "stop", 2),
-                    False: ("ESTOP_CLEARED", "stop", 0),
-                }, initial=message.estop)
-                self._history.observe("brake", message.brake_applied_pct > 0, "controller", {
-                    True: ("BRAKE_APPLIED", "stop", 0),
-                    False: ("BRAKE_RELEASED", "stop", 0),
-                }, initial=message.brake_applied_pct > 0)
+                self._history.observe_drive_stop(
+                    stop_signal=message.estop, brake_pct=message.brake_applied_pct,
+                )
             if message.fresh and message.speed_valid and math.isfinite(message.speed_mps_measured):
                 speed = abs(message.speed_mps_measured)
                 if speed >= 0.10 or speed <= 0.05:
