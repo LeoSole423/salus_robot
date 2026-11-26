@@ -509,6 +509,7 @@ class PatrolMissionCoordinator(Node):
         request.waypoint_roles = list(route_roles_for_phase(
             machine.state.phase, route))
         request.loop = loop
+        request.parent_patrol_id = machine.state.mission_id
         request.leg_spacing_m = machine.spec.leg_spacing_m
         request.chunk_span_m = machine.spec.chunk_span_m
         request.chunk_max_waypoints = machine.spec.chunk_max_waypoints

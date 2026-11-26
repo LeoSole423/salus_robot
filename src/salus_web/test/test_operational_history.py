@@ -105,3 +105,29 @@ def test_database_failure_leaves_robot_callbacks_usable(tmp_path):
     logger.assert_called_once()
     with pytest.raises(OSError, match="Historial no disponible"):
         history.query("history_list", {})
+
+
+def test_standalone_loop_route_has_a_patrol_record(tmp_path, monkeypatch):
+    tick = 0.0
+    monkeypatch.setattr(module, "monotonic", lambda: tick)
+    history = OperationalHistory(tmp_path / "history.sqlite", "rover", Mock())
+    try:
+        history.nav_event("route_executor", "ROUTE_PREPARATION_COMPLETED", 0, {})
+        history.nav_event("route_executor", "ROUTE_LOOP_STARTED", 0,
+                          {"mission_id": "loop", "phase": "PATROL"})
+        tick = 18.0
+        history.nav_event("route_executor", "ROUTE_LOOP_PAUSED", 1,
+                          {"mission_id": "loop", "reason_code": "MANUAL_TAKEOVER"})
+        tick = 20.0
+        history.nav_event("route_executor", "ROUTE_LOOP_CANCELLED", 1,
+                          {"mission_id": "loop"})
+    finally:
+        history.close()
+    patrol, = history.query("history_list", {"view": "patrols"})["items"]
+    detail = history.query("history_patrol", {"patrol_id": patrol["id"]})
+    assert patrol["status"] == "cancelled"
+    assert patrol["duration_s"] == 20
+    assert patrol["circuit_s"] == 18
+    assert [event["code"] for event in detail["items"]] == [
+        "ROUTE_LOOP_STARTED", "ROUTE_LOOP_PAUSED", "ROUTE_LOOP_CANCELLED",
+    ]

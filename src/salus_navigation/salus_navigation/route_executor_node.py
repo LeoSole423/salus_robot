@@ -538,6 +538,7 @@ class RouteExecutorNode(Node):
         mission = RouteMission(
             prepared=prepared, phase=RoutePhase.PREPARING,
             mission_id=str(uuid.uuid4()), target_index=anchor,
+            parent_patrol_id=request.parent_patrol_id,
         )
         transition(mission, RoutePhase.ACTIVE)
         self._recovery.reset()
@@ -545,11 +546,18 @@ class RouteExecutorNode(Node):
         self._checkpoint_tracker = None
         self._checkpoint_tracker_key = None
         self._reached_occurrences = set()
+        previous = self._mission
+        if previous.standalone_loop and previous.phase in (RoutePhase.ACTIVE, RoutePhase.PAUSED):
+            self._event(DiagnosticStatus.OK, "ROUTE_LOOP_REPLACED", "loop route replaced",
+                        mission_id=previous.mission_id)
         self._mission, self._preparation = mission, None
         self._event(
             DiagnosticStatus.OK, "ROUTE_PREPARATION_COMPLETED",
             "route prepared and activated", preparation_id=job["epoch"],
         )
+        if mission.standalone_loop:
+            self._event(DiagnosticStatus.OK, "ROUTE_LOOP_STARTED", "standalone loop route activated",
+                        mission_id=mission.mission_id, phase="PATROL")
         self._dispatch()
 
     def _on_path_health(self, message: PathHealth) -> None:
@@ -778,7 +786,7 @@ class RouteExecutorNode(Node):
             ),
         )
         if start.index is None:
-            transition(self._mission, RoutePhase.COMPLETED)
+            self._complete()
             self._chunk = None
             return
         self._mission.target_index = start.index
@@ -792,7 +800,7 @@ class RouteExecutorNode(Node):
             adaptive_dense_horizon_m=self._adaptive_dense_horizon_m,
         )
         if self._chunk is None:
-            transition(self._mission, RoutePhase.COMPLETED)
+            self._complete()
             return
         if self._pose is None:
             self._pause("ROUTE_POSE_UNAVAILABLE")
@@ -1100,11 +1108,23 @@ class RouteExecutorNode(Node):
             self._mission.loop_iteration += 1
         self._dispatch()
 
+    def _complete(self) -> None:
+        transition(self._mission, RoutePhase.COMPLETED)
+        if self._mission.standalone_loop:
+            self._event(DiagnosticStatus.OK, "ROUTE_LOOP_COMPLETED", "loop route completed",
+                        mission_id=self._mission.mission_id)
+
     def _pause(self, reason: str) -> None:
         self._goal_request_pending = False
         self._recovery_checkpoint_reached = False
         if self._mission.phase == RoutePhase.ACTIVE:
             transition(self._mission, RoutePhase.PAUSED, reason)
+            if self._mission.standalone_loop:
+                reason_code = {"manual takeover": "MANUAL_TAKEOVER",
+                               "collision stop during waypoint action": "COLLISION_STOP"}.get(
+                                   reason, reason.split(":", 1)[0] if reason.startswith("ROUTE_") else "")
+                self._event(DiagnosticStatus.WARN, "ROUTE_LOOP_PAUSED", "loop route paused",
+                            mission_id=self._mission.mission_id, reason_code=reason_code)
         self._goal_epoch += 1
         if self._action is not None:
             self._action.cancel(reason)
@@ -1129,6 +1149,9 @@ class RouteExecutorNode(Node):
             self._action = self._action_future = None
             if self._mission.phase in (RoutePhase.ACTIVE, RoutePhase.PAUSED):
                 transition(self._mission, RoutePhase.CANCELLED, "cancelled")
+                if self._mission.standalone_loop:
+                    self._event(DiagnosticStatus.WARN, "ROUTE_LOOP_CANCELLED", "loop route cancelled",
+                                mission_id=self._mission.mission_id)
             self._goal_epoch += 1
             cancel_future = self._cancel_goal.call_async(CancelNavGoal.Request())
             self._brake.call_async(

@@ -11,8 +11,10 @@ import sqlite3
 import uuid
 
 
-START = "PATROL_MISSION_STARTED"
-FINISH = {"PATROL_AT_HOME": "home", "PATROL_MISSION_CANCELLED": "cancelled"}
+START = {"PATROL_MISSION_STARTED", "ROUTE_LOOP_STARTED"}
+FINISH = {"PATROL_AT_HOME": "home", "PATROL_MISSION_CANCELLED": "cancelled",
+          "ROUTE_LOOP_CANCELLED": "cancelled", "ROUTE_LOOP_REPLACED": "replaced",
+          "ROUTE_LOOP_COMPLETED": "completed"}
 STOP_CODES = {"BRAKE_REQUESTED", "SAFETY_SCAN_STALE", "PATH_HEALTH_STOP",
               "MANUAL_WATCHDOG_STOP", "COLLISION_STOP", "ESTOP_ACTIVE"}
 PUBLIC_DETAILS = {"enabled", "phase", "route_status", "loop_index", "exit_index",
@@ -83,18 +85,18 @@ class OperationalHistory:
     def nav_event(self, component, code, severity, details):
         if code in STATE_EVENTS:
             return  # Captured as a transition from authoritative navigation telemetry.
-        if not (severity >= 1 or code.startswith("PATROL_") or code in
+        if not (severity >= 1 or code.startswith(("PATROL_", "ROUTE_LOOP_")) or code in
                 {"MANUAL_MODE_CHANGED", "RETURN_HOME_REQUESTED", "GOAL_RESULT_SUCCEEDED",
                  "ROUTE_BLOCKED_CLEARED"}):
             return
         category = ("mode" if code == "MANUAL_MODE_CHANGED" else
                     "stop" if code in STOP_CODES else
                     "fault" if severity >= 2 else
-                    "patrol" if code.startswith(("PATROL_", "BATTERY_")) or code == "RETURN_HOME_REQUESTED"
+                    "patrol" if code.startswith(("PATROL_", "BATTERY_", "ROUTE_LOOP_")) or code == "RETURN_HOME_REQUESTED"
                     else "navigation")
         if code.startswith("ROUTE_BLOCKED_") and details.get("reason") in ROUTE_BLOCK_REASONS:
             details = {**details, "reason_code": details["reason"]}
-        mission_id = details.get("mission_id") if component == "patrol_mission_coordinator" else None
+        mission_id = details.get("mission_id") if component == "patrol_mission_coordinator" or code.startswith("ROUTE_LOOP_") else None
         self.record(component, code, category, severity, details, mission_id=mission_id)
 
     def observe(self, key, value, component, changes, *, initial=False, details=None):
@@ -148,7 +150,7 @@ class OperationalHistory:
             with closing(self._connect()) as db, db:
                 recent = self._last_events.get(component)
                 fingerprint = (code, severity, {k: v for k, v in details.items() if k != "ros_stamp_ns"})
-                if ((category in {"fault", "navigation"} or code == "PATH_HEALTH_STOP") and not code.startswith("PATROL_")
+                if ((category in {"fault", "navigation"} or code == "PATH_HEALTH_STOP") and not code.startswith(("PATROL_", "ROUTE_LOOP_"))
                         and recent and recent[0] == fingerprint and tick - recent[1] < 2):
                     return
                 active = db.execute(
@@ -161,12 +163,12 @@ class OperationalHistory:
                     phase = active["phase"]
                     circuit = elapsed if phase == "PATROL" else 0
                     status, ended_at = active["status"], None
-                    if code == START:
+                    if code in START:
                         status, ended_at = "replaced", timestamp
                     elif mission_id is None or mission_id == active["mission_id"]:
                         if code in FINISH:
                             status, ended_at = FINISH[code], timestamp
-                        elif code in {"PATROL_PHASE_FAILED", "PATROL_ROUTE_PAUSED"}:
+                        elif code in {"PATROL_PHASE_FAILED", "PATROL_ROUTE_PAUSED", "ROUTE_LOOP_PAUSED"}:
                             status, phase = "paused", "PAUSED"
                         elif code == "BATTERY_RETURN_LATCHED":
                             phase = details.get("phase", phase)
@@ -186,7 +188,7 @@ class OperationalHistory:
                         "last_tick=?, phase=?, status=?, ended_at=? WHERE id=?",
                         (elapsed, circuit, tick, phase, status, ended_at, active["id"]),
                     )
-                if code == START:
+                if code in START:
                     patrol_id = uuid.uuid4().hex
                     phase = details.get("phase")
                     held = phase == "AT_HOME"

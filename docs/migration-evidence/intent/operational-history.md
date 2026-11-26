@@ -84,3 +84,12 @@ pero no completó la patrulla. El ejecutor rechazó el anclaje con
 `no_near_segment` y el escenario agotó la espera en `JOIN_LOOP`. El mismo
 síntoma se registró anteriormente en
 [maneuver-guard-2026-10-17.md](../maneuver-guard-2026-10-17.md).
+
+Las rutas en bucle lanzadas directamente también aparecen en Patrullas. El
+ejecutor emite inicio tras activar la ruta y registra pausa, cancelación,
+reemplazo o finalización. Para los tramos internos, el coordinador pasa
+`parent_patrol_id` en `SetRouteMissionLL` y conserva la única ejecución del
+historial. El cliente ROS y el servidor deben usar la misma versión del servicio.
+
+Se verificó en una simulación aislada: la ruta de 51 puntos de
+Patrulla Sencilla Polo apareció al activarse y quedó cancelada al cerrar.
