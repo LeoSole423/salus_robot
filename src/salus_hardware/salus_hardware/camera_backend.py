@@ -58,6 +58,12 @@ class SimCameraBackend:
         if self.delay_s > 0.0:
             time.sleep(self.delay_s)
 
+    def stop(self) -> None:
+        self._wait()
+
+    def set_light(self, lens: str, enabled: bool, duration_s: int) -> None:
+        self._wait()
+
 
 @dataclass(frozen=True)
 class IsapiCameraConfig:

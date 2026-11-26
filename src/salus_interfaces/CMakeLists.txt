@@ -35,6 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/CameraPreset.srv"
   "srv/CameraSavePreset.srv"
   "srv/CameraPtzState.srv"
+  "srv/CameraFeatures.srv"
   "srv/CancelNavGoal.srv"
   "srv/EvaluatePathHealth.srv"
   "srv/GetNavState.srv"
