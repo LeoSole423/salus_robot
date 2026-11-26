@@ -35,11 +35,29 @@ def test_sweep_centers_then_alternates_90_degrees_each_side():
     assert backend.write_absolute.call_count == calls
 
 
-def test_invalid_center_rejects_without_movement():
+def test_default_sweep_uses_available_angles_when_front_is_near_limit():
+    feature, _ = controller()
+    feature.start(0, PtzPose(40, 0, 1))
+    assert (feature.right, feature.left) == (0, 130)
+
+
+def test_invalid_explicit_range_rejects_without_movement():
     feature, backend = controller()
-    with pytest.raises(CameraBackendError, match="cannot fit"):
-        feature.start(0, PtzPose(0, 0, 1))
+    with pytest.raises(CameraBackendError, match="sweep range"):
+        feature.start(0, PtzPose(40, 0, 1), (-45, 60))
     backend.write_absolute.assert_not_called()
+
+
+def test_asymmetric_sweep_never_targets_front_when_it_is_outside_the_selection():
+    feature, backend = controller()
+    feature.start(0, PtzPose(220, 5, 1), (15, 45))
+    assert feature.target == PtzPose(235, 5, 1)
+    backend.read_state.return_value = feature.target
+    feature.tick(1)
+    assert feature.target == PtzPose(265, 5, 1)
+    backend.read_state.return_value = feature.target
+    feature.tick(2)
+    assert feature.target == PtzPose(235, 5, 1)
 
 
 def test_stop_cancels_future_motion_even_if_network_stop_fails():

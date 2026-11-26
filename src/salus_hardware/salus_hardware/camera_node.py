@@ -387,9 +387,12 @@ class CameraNode(Node):
     def _on_features(self, request, response):
         with self._operation_lock:
             response.ok = True
+            front = self._presets["front"].pose
             try:
                 if request.command == CameraFeatures.Request.SWEEP_START:
-                    self._features.start(time.monotonic(), self._presets["front"].pose)
+                    sweep_range = ((request.sweep_min_deg, request.sweep_max_deg)
+                                   if request.use_sweep_range else None)
+                    self._features.start(time.monotonic(), front, sweep_range)
                 elif request.command == CameraFeatures.Request.SWEEP_STOP:
                     self._features.stop()
                 elif request.command == CameraFeatures.Request.LIGHT:
@@ -401,6 +404,8 @@ class CameraNode(Node):
             response.supported = self._features.supported
             response.sweep_running = self._features.running
             response.sweep_phase = self._features.phase
+            (response.sweep_allowed_min_deg,
+             response.sweep_allowed_max_deg) = self._features.sweep_bounds(front)
             response.fixed_light = self._features.lights["fixed"]
             response.mobile_light = self._features.lights["mobile"]
             if not response.error:

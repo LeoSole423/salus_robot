@@ -1140,6 +1140,10 @@ def build_ros_request(request: OperatorRequest) -> Any:
         if request.op == "camera_sweep":
             result.command = (CameraFeatures.Request.SWEEP_START if fields["enabled"]
                               else CameraFeatures.Request.SWEEP_STOP)
+            if fields["enabled"] and "sweep_min_deg" in fields:
+                result.use_sweep_range = True
+                result.sweep_min_deg = fields["sweep_min_deg"]
+                result.sweep_max_deg = fields["sweep_max_deg"]
         elif request.op == "camera_light":
             result.command = CameraFeatures.Request.LIGHT
             result.lens, result.enabled = fields["lens"], fields["enabled"]

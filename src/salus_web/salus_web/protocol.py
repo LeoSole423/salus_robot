@@ -133,6 +133,13 @@ def validate_request(request: OperatorRequest) -> OperatorRequest:
             )
     elif request.op == "camera_sweep":
         _require_bool(fields, "enabled", request)
+        if "sweep_min_deg" in fields or "sweep_max_deg" in fields:
+            minimum = _finite_number(fields, "sweep_min_deg", request)
+            maximum = _finite_number(fields, "sweep_max_deg", request)
+            if not (-90 <= minimum and maximum <= 90 and maximum - minimum >= 2):
+                raise ProtocolError("invalid_request", "invalid sweep range",
+                                    request.op, request.request_id)
+            fields["sweep_min_deg"], fields["sweep_max_deg"] = minimum, maximum
     elif request.op == "camera_light":
         _require_bool(fields, "enabled", request)
         if fields.get("lens") not in {"fixed", "mobile"}:

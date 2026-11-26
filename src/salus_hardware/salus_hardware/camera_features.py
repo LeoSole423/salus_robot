@@ -9,6 +9,7 @@ class CameraFeaturesController:
     LIGHT_DURATION_S = 60
     LIGHT_RENEW_S = 40.0
     PAN_TOLERANCE_DEG = 0.8
+    MIN_SWEEP_SPAN_DEG = 2.0
     MAX_STATUS_FAILURES = 3
     MAX_RECOVERY_ATTEMPTS = 3
     RECOVERY_DELAY_S = 5.0
@@ -52,18 +53,30 @@ class CameraFeaturesController:
             writer = self.backend.write_absolute
         writer(self.target)
 
-    def start(self, now, center=None):
+    def sweep_bounds(self, center):
+        return (
+            max(-90.0, self.limits.pan_min_deg - center.pan_deg),
+            min(90.0, min(self.limits.pan_max_deg, 349.99999524) - center.pan_deg),
+        )
+
+    def start(self, now, center=None, sweep_range=None):
         self._require_supported()
         if self.running:
             raise CameraBackendError("camera sweep already running")
         pose = self.backend.read_state()
         center = pose if center is None else center
-        self.left = center.pan_deg + 90.0
-        self.right = center.pan_deg - 90.0
-        if self.right < self.limits.pan_min_deg or self.left > min(
-                self.limits.pan_max_deg, 349.99999524):
-            raise CameraBackendError("front preset cannot fit a 90-degree sweep on each side")
-        self.target = center
+        allowed_min, allowed_max = self.sweep_bounds(center)
+        minimum, maximum = (allowed_min, allowed_max) if sweep_range is None else sweep_range
+        if not (allowed_min <= minimum <= maximum <= allowed_max
+                and maximum - minimum >= self.MIN_SWEEP_SPAN_DEG):
+            raise CameraBackendError(
+                f"sweep range must span at least 2 degrees within "
+                f"{allowed_min:.2f} to {allowed_max:.2f} degrees from front"
+            )
+        self.left = center.pan_deg + maximum
+        self.right = center.pan_deg + minimum
+        entry_pan = min(self.left, max(self.right, center.pan_deg))
+        self.target = PtzPose(entry_pan, center.tilt_deg, center.zoom_level)
         self._write_target()
         self.phase, self.deadline = "centering", now + self.LEG_TIMEOUT_S
         self.sweep_error = ""

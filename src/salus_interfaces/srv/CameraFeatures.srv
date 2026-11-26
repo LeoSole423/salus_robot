@@ -6,11 +6,17 @@ uint8 LIGHT=3
 uint8 command
 string lens
 bool enabled
+bool use_sweep_range
+float64 sweep_min_deg
+float64 sweep_max_deg
 ---
 bool ok
 string error
 bool supported
 bool sweep_running
 string sweep_phase
+# Allowed offsets in degrees relative to the Frente preset.
+float64 sweep_allowed_min_deg
+float64 sweep_allowed_max_deg
 int8 fixed_light
 int8 mobile_light
