@@ -15,7 +15,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now salus-host-reboot.socket
 ```
 
-Si el grupo ya existe, reutilizarlo. Configurar el gateway de Cockpit para un único destino SALUS correspondiente a **esta misma Jetson**, con `COCKPIT_ROVER_CONTROL=true` y `COCKPIT_NAVIGATION_ALTERNATIVES` vacío.
+Si el grupo ya existe, reutilizarlo. Configurar el gateway de Cockpit para un único destino SALUS correspondiente a **esta misma Jetson**, con `COCKPIT_NAVIGATION_ALTERNATIVES` vacío. El acceso al reinicio depende de la sesión de administrador y funciona tanto con control directo como con control por instancia.
 
 ## Gateway remoto por SSH
 
