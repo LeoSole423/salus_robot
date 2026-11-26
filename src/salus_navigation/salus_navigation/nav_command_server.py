@@ -412,6 +412,7 @@ class NavCommandServer(Node):
                     DiagnosticStatus.WARN,
                     "GOAL_CANCEL_REQUESTED",
                     "goal cancellation requested by manual takeover",
+                    reason_code="MANUAL_TAKEOVER",
                 )
         with self._lock:
             if self._brake_cancel is not None:

@@ -35,6 +35,8 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("rtk_rtcm_stale_timeout_s", default_value="10.0"),
         DeclareLaunchArgument("waypoints_file", default_value="runtime/web/waypoints.yaml"),
+        DeclareLaunchArgument("history_path", default_value=""),
+        DeclareLaunchArgument("history_robot", default_value="salus"),
         DeclareLaunchArgument("routes_file", default_value="",
                               description="Shared route library; empty uses routes.json beside waypoints_file"),
         Node(
@@ -78,6 +80,8 @@ def generate_launch_description() -> LaunchDescription:
                     "rtk_rtcm_stale_timeout_s"
                 ),
                 "waypoints_file": LaunchConfiguration("waypoints_file"),
+                "history_path": LaunchConfiguration("history_path"),
+                "history_robot": LaunchConfiguration("history_robot"),
                 "routes_file": LaunchConfiguration("routes_file"),
             }],
         ),

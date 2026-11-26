@@ -147,6 +147,8 @@ def generate_launch_description() -> LaunchDescription:
                 "launch_camera": LaunchConfiguration("launch_camera"),
                 "web_ws_port": LaunchConfiguration("web_ws_port"),
                 "web_waypoints_file": LaunchConfiguration("web_waypoints_file"),
+                "web_history_path": PathJoinSubstitution(
+                    [runtime_dir, "web", "operational-history.sqlite"]),
                 "web_telemetry_profile": LaunchConfiguration("web_telemetry_profile"),
                 "camera_presets_file": PathJoinSubstitution([
                     runtime_dir, "camera", "presets.json"

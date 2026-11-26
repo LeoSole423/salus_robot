@@ -228,6 +228,8 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument("web_ws_port", default_value="8766"),
             DeclareLaunchArgument(
+                "web_history_path", default_value="runtime/web/operational-history.sqlite"),
+            DeclareLaunchArgument(
                 "web_waypoints_file", default_value="runtime/web/waypoints.yaml"
             ),
             DeclareLaunchArgument(
@@ -414,6 +416,7 @@ def generate_launch_description() -> LaunchDescription:
                 "web_bridge.launch.py",
                 {
                     "ws_port": web_ws_port,
+                    "history_path": LaunchConfiguration("web_history_path"),
                     "waypoints_file": web_waypoints_file,
                     "telemetry_profile": web_telemetry_profile,
                     "heading_odometry_topic": "/odometry/global",

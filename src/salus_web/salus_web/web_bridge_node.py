@@ -33,6 +33,7 @@ async def _serve(node: CockpitRosGateway) -> None:
         host=str(node.get_parameter("ws_host").value),
         port=int(node.get_parameter("ws_port").value),
         queue_capacity=int(node.get_parameter("client_queue_capacity").value),
+        observe_operator=node.observe_operator_lease,
     )
     node.set_broadcast_callback(server.broadcast_from_thread)
     if bool(node.get_parameter("require_camera_service").value):

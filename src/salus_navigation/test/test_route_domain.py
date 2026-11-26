@@ -591,7 +591,7 @@ def test_rejected_loop_anchor_emits_event_without_dispatching_a_goal():
     route, robot_x, robot_y = _issue_315_capture_route_geometry()
     request = SimpleNamespace(
         loop=True, leg_spacing_m=0.0, chunk_span_m=120.0,
-        chunk_max_waypoints=5, auto_yaw_policy="",
+        chunk_max_waypoints=5, auto_yaw_policy="", parent_patrol_id="",
     )
     job = {
         "epoch": 7,
@@ -627,11 +627,12 @@ def test_rejected_loop_anchor_emits_event_without_dispatching_a_goal():
     assert dispatches == []
 
 
-def test_selected_loop_anchor_emits_segment_reason_before_dispatch():
+@pytest.mark.parametrize("parent_patrol_id", ["", "parent-patrol"])
+def test_selected_loop_anchor_emits_segment_reason_before_dispatch(parent_patrol_id):
     route, robot_x, robot_y = _issue_315_capture_route_geometry()
     request = SimpleNamespace(
         loop=True, leg_spacing_m=0.0, chunk_span_m=120.0,
-        chunk_max_waypoints=5, auto_yaw_policy="",
+        chunk_max_waypoints=5, auto_yaw_policy="", parent_patrol_id=parent_patrol_id,
     )
     job = {
         "epoch": 7,
@@ -673,6 +674,11 @@ def test_selected_loop_anchor_emits_segment_reason_before_dispatch():
     assert events[0][1]["reason"] == "best_forward_segment"
     assert events[1][0][1] == "ROUTE_PREPARATION_COMPLETED"
     assert events[1][1]["preparation_id"] == 7
+    if parent_patrol_id:
+        assert len(events) == 2
+    else:
+        assert events[2][0][1] == "ROUTE_LOOP_STARTED"
+        assert events[2][1]["mission_id"] == fake._mission.mission_id
 
 
 def test_loop_chunk_does_not_contain_a_complete_circuit():

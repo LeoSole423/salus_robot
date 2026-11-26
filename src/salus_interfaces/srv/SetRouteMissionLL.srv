@@ -8,6 +8,7 @@ float64 leg_spacing_m
 float64 chunk_span_m
 uint32 chunk_max_waypoints
 string auto_yaw_policy  # empty/route_tangent=corner bisector; legacy=prior leg headings
+string parent_patrol_id  # empty for routes launched independently
 ---
 bool ok
 string error

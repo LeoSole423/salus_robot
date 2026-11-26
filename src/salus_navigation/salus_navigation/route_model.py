@@ -78,3 +78,9 @@ class RouteMission:
     prepared: PreparedRoute | None = None; phase: RoutePhase = RoutePhase.IDLE
     mission_id: str = ""; target_index: int = 0; chunk_id: int = 0; loop_iteration: int = 0
     reached: int = 0; pause_reason: str = ""; progress: RouteProgress = field(default_factory=RouteProgress)
+
+    parent_patrol_id: str = ""
+
+    @property
+    def standalone_loop(self) -> bool:
+        return bool(self.prepared and self.prepared.loop and not self.parent_patrol_id)

@@ -6,6 +6,16 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  operational_history:
+    source: legacy Cockpit session presentation and canonical SALUS operational signals
+    target: salus_web history and Cockpit history module
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/operational-history.md
+      - src/salus_web/test/test_operational_history.py
+      - tools/smoke_web_cockpit.py
+    note: History starts at activation. Jetson signal presence inspected read-only.
+      Operator acceptance and moving hardware validation are pending.
   advisory_person_watch:
     source: new operator request 2026-11-11
     target: deploy/person_watch and Cockpit person-watch module

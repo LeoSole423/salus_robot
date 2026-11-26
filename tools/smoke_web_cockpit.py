@@ -298,6 +298,22 @@ async def scenario(evidence: dict) -> dict:
         )
         evidence["operations"].append("manual_safe_stop")
 
+        deadline = time.monotonic() + 5.0
+        manual_edges = set()
+        while time.monotonic() < deadline:
+            history = await second.request("history_list", {"category": "mode"})
+            require_ok(history, "history_list")
+            manual_edges = {
+                event["details"].get("enabled") for event in history["items"]
+                if event["code"] == "MANUAL_MODE_CHANGED"
+            }
+            if {"True", "False"} <= manual_edges:
+                break
+            await asyncio.sleep(0.1)
+        if not {"True", "False"} <= manual_edges:
+            raise RuntimeError("History did not persist both manual mode changes")
+        evidence["operations"].append("operational_history_without_lease")
+
         snapshot = None
         deadline = time.monotonic() + 45.0
         while time.monotonic() < deadline:

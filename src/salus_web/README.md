@@ -68,3 +68,11 @@ while that interface is absent; no wildcard bind or navigation wait is introduce
 Other initial bind failures still raise. Closing stops retries and any recovered
 proxy. See `docs/migration-evidence/web-recording-bind-recovery-20261111.md` for
 stationary deployment evidence and rollback.
+
+## Historial operativo
+
+El historial registra cambios de control, patrullas, detenciones e incidentes
+en SQLite cuando `history_path` apunta a una ruta escribible. Cockpit consulta
+`history_list` y `history_patrol` sin adquirir control. El identificador estable
+de la instancia se configura con `history_robot` (por defecto `salus`).
+Ver [señales, tiempos y contrato](../../docs/migration-evidence/intent/operational-history.md).
