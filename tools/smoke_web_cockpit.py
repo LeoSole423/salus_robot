@@ -236,7 +236,7 @@ async def scenario(evidence: dict) -> dict:
                 raise RuntimeError(f"light intent missing: {light}")
             require_ok(await second.request("camera_light", {"lens": lens, "enabled": False}),
                        "camera_light_off_without_lease")
-        # Calibrate a front sector that fits both 90-degree legs in simulation.
+        # Calibrate Frente in the middle of the simulated camera's pan range.
         require_ok(await first.request("camera_ptz_move", {
             "relative": False, "pan_deg": 180.0, "tilt_deg": 0.0, "zoom_level": 1.0,
         }), "camera_sector_center")
@@ -244,7 +244,7 @@ async def scenario(evidence: dict) -> dict:
             "preset": "front", "save_zoom": False,
         }), "camera_sector_front")
         require_ok(await first.request("camera_sweep", {
-            "enabled": True, "sweep_min_deg": -25, "sweep_max_deg": 45,
+            "enabled": True, "sweep_min_deg": -120, "sweep_max_deg": 145,
         }), "camera_sweep")
         require_ok(await second.request("camera_sweep", {"enabled": False}),
                    "camera_sweep_stop_without_lease")

@@ -132,9 +132,16 @@ def test_camera_light_rejects_unknown_lens_and_string_boolean():
 @pytest.mark.parametrize("fields", [
     {"sweep_min_deg": 0},
     {"sweep_min_deg": 15, "sweep_max_deg": 10},
-    {"sweep_min_deg": -91, "sweep_max_deg": 0},
     {"sweep_min_deg": 0, "sweep_max_deg": float("nan")},
 ])
 def test_camera_sweep_rejects_invalid_ranges(fields):
     with pytest.raises(ProtocolError):
         validate_request(parse_request({"op": "camera_sweep", "enabled": True, **fields}))
+
+
+def test_camera_sweep_accepts_offsets_beyond_ninety_degrees():
+    request = validate_request(parse_request({
+        "op": "camera_sweep", "enabled": True,
+        "sweep_min_deg": -120, "sweep_max_deg": 145,
+    }))
+    assert (request.fields["sweep_min_deg"], request.fields["sweep_max_deg"]) == (-120, 145)
