@@ -1,0 +1,14 @@
+[Unit]
+Description=SALUS host reboot socket
+
+[Socket]
+ListenStream=/run/salus-maintenance/reboot.sock
+SocketMode=0660
+SocketGroup=salus-maintenance
+DirectoryMode=0755
+Accept=yes
+MaxConnections=4
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

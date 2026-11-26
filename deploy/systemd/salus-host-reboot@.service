@@ -1,0 +1,14 @@
+[Unit]
+Description=Process a SALUS host reboot request
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/salus-host-reboot.py
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+TimeoutStartSec=8s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
