@@ -515,6 +515,8 @@ class PatrolMissionCoordinator(Node):
         if not self._set_route.service_is_ready():
             machine.pause("route executor unavailable")
             self._last_error = machine.state.pause_reason
+            self._event(DiagnosticStatus.ERROR, "PATROL_PHASE_FAILED", self._last_error,
+                        reason_code="ROUTE_EXECUTOR_UNAVAILABLE")
             return
         phase = machine.state.phase
         self._superseded_route_mission_id = self._route_mission_id
@@ -541,7 +543,7 @@ class PatrolMissionCoordinator(Node):
                     DiagnosticStatus.ERROR,
                     "PATROL_PHASE_FAILED",
                     self._last_error,
-                    phase=phase.value)
+                    phase=phase.value, reason_code="ROUTE_DISPATCH_FAILED")
                 return
             self._event(
                 DiagnosticStatus.OK,
@@ -593,6 +595,8 @@ class PatrolMissionCoordinator(Node):
             elif state.status in ("PAUSED", "ABORTED", "CANCELLED"):
                 machine.pause(f"route executor {state.status.lower()}")
                 self._last_error = machine.state.pause_reason
+                self._event(DiagnosticStatus.WARN, "PATROL_ROUTE_PAUSED", self._last_error,
+                            route_status=state.status, reason_code=state.blocked_reason_code)
 
     def _on_event(self, message):
         if message.component != "route_executor" or message.code != "ROUTE_CHECKPOINT_REACHED":
@@ -618,7 +622,7 @@ class PatrolMissionCoordinator(Node):
                     DiagnosticStatus.OK,
                     "PATROL_LOOP_JOINED",
                     "patrol entered loop",
-                    loop_index=index)
+                    loop_index=index, phase=phase.value)
                 if phase is PatrolPhase.EXIT_LOOP:
                     self._event(
                         DiagnosticStatus.WARN,
@@ -644,6 +648,8 @@ class PatrolMissionCoordinator(Node):
                     self._machine.pause(
                         f"return exit cancellation failed: {exc}")
                     self._last_error = self._machine.state.pause_reason
+                    self._event(DiagnosticStatus.ERROR, "PATROL_PHASE_FAILED", self._last_error,
+                                reason_code="RETURN_EXIT_CANCEL_FAILED")
             return
         with self._lock:
             if self._machine is not None and self._machine.state.phase is PatrolPhase.RETURN_HOME:
@@ -742,6 +748,8 @@ class PatrolMissionCoordinator(Node):
         event.severity, event.component = diagnostic_level(
             severity), "patrol_mission_coordinator"
         event.code, event.message, event.event_id = code, message, self._event_id
+        if self._machine is not None and code != "PATROL_MISSION_REJECTED":
+            details.setdefault("mission_id", self._machine.state.mission_id)
         event.details = [
             KeyValue(
                 key=str(key),

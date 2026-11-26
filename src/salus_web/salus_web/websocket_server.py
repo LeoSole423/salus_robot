@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import json
 import logging
 import math
-from typing import Any, Iterable, Mapping, Protocol
+from typing import Any, Callable, Iterable, Mapping, Protocol
 from urllib.parse import parse_qs, urlsplit
 import uuid
 
@@ -110,12 +110,14 @@ class CockpitWebSocketServer:
         host: str = "0.0.0.0",
         port: int = 8766,
         queue_capacity: int = 64,
+        observe_operator: Callable[[bool, str], None] | None = None,
     ) -> None:
         self._gateway = gateway
         self._lease = lease
         self._host = host
         self._port = port
         self._queue_capacity = queue_capacity
+        self._observe_operator = observe_operator
         self._clients: dict[str, _Client] = {}
         self._server = None
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -285,6 +287,9 @@ class CockpitWebSocketServer:
         coherent state both as `state` and as immediate `nav_telemetry` so
         Cockpit never waits for its next compact timer tick to disable controls.
         """
+        if self._observe_operator is not None:
+            _, reason, owner = self._lock_signature()
+            self._observe_operator(owner, reason)
         state = await self._gateway.initial_state()
         await self.broadcast(state)
         telemetry = dict(state)

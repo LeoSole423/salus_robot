@@ -77,6 +77,7 @@ from .compact_telemetry import (
     normalize_telemetry_profile,
     positive_rate,
 )
+from .operational_history import OperationalHistory
 from .protocol import OperatorRequest, ack
 from .route_repository import RouteRepository, RouteError
 from .waypoint_repository import AtomicWaypointRepository, normalize_document
@@ -297,6 +298,8 @@ class CockpitRosGateway(Node):
         self.declare_parameter("scan_preview_topic", "/scan_preview")
         self.declare_parameter("scan_preview_enabled", True)
         self.declare_parameter("recordings_config", "")
+        self.declare_parameter("history_path", "")
+        self.declare_parameter("history_robot", "salus")
         self.declare_parameter("rtk_sources_config", "")
         self.declare_parameter("rtk_rtcm_stale_timeout_s", 10.0)
         self._service_timeout_s = max(
@@ -365,6 +368,13 @@ class CockpitRosGateway(Node):
         # fallback and must never roll the UI back to an inferred status.
         self._typed_rtk_status_received = False
         self._broadcast: Callable[[dict[str, Any]], None] | None = None
+
+        history_path = str(self.get_parameter("history_path").value)
+        self._history = OperationalHistory(
+            history_path, str(self.get_parameter("history_robot").value), self.get_logger().error,
+        ) if history_path else None
+        if self._history:
+            self.create_timer(5.0, self._history.checkpoint)
 
         self._teleop = self.create_publisher(CmdVelFinal, "/cmd_vel_teleop", 10)
         self.create_subscription(
@@ -552,7 +562,16 @@ class CockpitRosGateway(Node):
     def destroy_node(self):
         if getattr(self, "_recordings", None):
             self._recordings.close()
+        if getattr(self, "_history", None):
+            self._history.close()
         return super().destroy_node()
+
+    def observe_operator_lease(self, owner: bool, reason: str) -> None:
+        if self._history:
+            self._history.observe("operator_lease", owner, "operator_lease", {
+                True: ("OPERATOR_LEASE_ACQUIRED", "mode", 0),
+                False: ("OPERATOR_LEASE_RELEASED", "mode", 0),
+            }, initial=owner, details={"reason_code": reason})
 
     def set_broadcast_callback(
         self, callback: Callable[[dict[str, Any]], None]
@@ -591,10 +610,14 @@ class CockpitRosGateway(Node):
 
     async def dispatch(self, request: OperatorRequest) -> Iterable[dict[str, Any]]:
         try:
+            if request.op in {"history_list", "history_patrol"}:
+                if not self._history:
+                    return [ack(request, ok=False, error="Historial no configurado en el robot")]
+                result = await asyncio.to_thread(self._history.query, request.op, request.fields)
+                return [ack(request, ok=True, **result)]
             if request.op.startswith("recordings_"):
                 if not self._recordings:
                     return [ack(request, ok=False, error="recordings_not_configured")]
-                import asyncio
                 if request.op == "recordings_status":
                     result = await asyncio.to_thread(self._recordings.status)
                 elif request.op == "recordings_list":
@@ -850,6 +873,13 @@ class CockpitRosGateway(Node):
         self._teleop.publish(message)
 
     def _on_nav_telemetry(self, message: NavTelemetry) -> None:
+        if self._history:
+            causes = set()
+            if message.collision_stop_active:
+                causes.add("COLLISION_STOP")
+            if message.failure_code == "SAFETY_SCAN_STALE":
+                causes.add("SAFETY_SCAN_STALE")
+            self._history.observe_navigation_stop(causes)
         values = _message_dict(message)
         with self._lock:
             self._cache.update(values)
@@ -862,6 +892,13 @@ class CockpitRosGateway(Node):
         self._on_cached_telemetry_change()
 
     def _on_nav_event(self, message: NavEvent) -> None:
+        if self._history:
+            severity = message.severity
+            if isinstance(severity, bytes):
+                severity = int.from_bytes(severity, "little")
+            details = {item.key: item.value for item in message.details}
+            details["ros_stamp_ns"] = message.stamp.sec * 10**9 + message.stamp.nanosec
+            self._history.nav_event(message.component, message.code, severity, details)
         payload = _message_dict(message)
         payload["op"] = "nav_event"
         self._emit(payload)
@@ -872,6 +909,18 @@ class CockpitRosGateway(Node):
         for item in values.get("capabilities", []):
             if not isinstance(item, Mapping) or not item.get("capability_id"):
                 continue
+            if self._history and item.get("enabled"):
+                capability = str(item["capability_id"])
+                state = item.get("state")
+                if state in (3, 4, 5, 6, 8):
+                    self._history.observe(
+                        ("capability", capability), state, capability,
+                        {3: ("CAPABILITY_UNAVAILABLE", "fault", 1),
+                         4: ("CAPABILITY_INVALID", "fault", 2),
+                         5: ("CAPABILITY_STALE", "fault", 1),
+                         6: ("CAPABILITY_FAILED", "fault", 2),
+                         8: ("CAPABILITY_READY", "fault", 0)}, initial=state != 8,
+                    )
             projected = dict(item)
             projected["state_label"] = capability_state_label(item.get("state"))
             capabilities[str(item["capability_id"])] = projected
@@ -881,6 +930,32 @@ class CockpitRosGateway(Node):
         self._on_cached_telemetry_change()
 
     def _on_drive_telemetry(self, message: DriveTelemetry) -> None:
+        if self._history:
+            self._history.observe("controller_fresh", message.fresh, "controller", {
+                False: ("CONTROLLER_TELEMETRY_STALE", "fault", 1),
+                True: ("CONTROLLER_TELEMETRY_RECOVERED", "fault", 0),
+            }, initial=not message.fresh)
+            if message.fresh:
+                self._history.observe("rc", message.control_source == "RC", "controller", {
+                    True: ("RC_CONTROL_ACTIVE", "mode", 0),
+                    False: ("RC_CONTROL_RELEASED", "mode", 0),
+                }, initial=message.control_source == "RC")
+                self._history.observe("estop", message.estop, "controller", {
+                    True: ("ESTOP_ACTIVE", "stop", 2),
+                    False: ("ESTOP_CLEARED", "stop", 0),
+                }, initial=message.estop)
+                self._history.observe("brake", message.brake_applied_pct > 0, "controller", {
+                    True: ("BRAKE_APPLIED", "stop", 0),
+                    False: ("BRAKE_RELEASED", "stop", 0),
+                }, initial=message.brake_applied_pct > 0)
+            if message.fresh and message.speed_valid and math.isfinite(message.speed_mps_measured):
+                speed = abs(message.speed_mps_measured)
+                if speed >= 0.10 or speed <= 0.05:
+                    self._history.observe("moving", speed >= 0.10, "controller", {
+                        False: ("VEHICLE_STOP_OBSERVED", "stop", 0),
+                    })
+            else:
+                self._history.observe("moving", None, "controller", {})
         values = _message_dict(message)
         with self._lock:
             self._cache["drive_telemetry"] = values
@@ -890,6 +965,11 @@ class CockpitRosGateway(Node):
             self._on_cached_telemetry_change()
 
     def _on_battery_guard(self, message: BatteryMissionGuard) -> None:
+        if self._history and message.ready and message.fresh:
+            self._history.observe("battery_return", message.return_home_recommended, "battery", {
+                True: ("BATTERY_RETURN_RECOMMENDED", "fault", 1),
+                False: ("BATTERY_RETURN_RECOMMENDATION_CLEARED", "fault", 0),
+            }, initial=message.return_home_recommended)
         with self._lock:
             self._cache.update({
                 "battery_mission_state": message.state,
