@@ -1,0 +1,16 @@
+# Additive camera auxiliary controls. Last acknowledged light intent, not telemetry.
+uint8 STATE=0
+uint8 SWEEP_START=1
+uint8 SWEEP_STOP=2
+uint8 LIGHT=3
+uint8 command
+string lens
+bool enabled
+---
+bool ok
+string error
+bool supported
+bool sweep_running
+string sweep_phase
+int8 fixed_light
+int8 mobile_light

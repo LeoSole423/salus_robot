@@ -112,3 +112,18 @@ def test_camera_mutations_validate_inputs_and_are_controlled() -> None:
     assert is_controlled_operation(status) is False
     with pytest.raises(ProtocolError, match="needs one axis"):
         validate_request(parse_request({"op": "camera_ptz_move", "relative": False}))
+@pytest.mark.parametrize("op", ["camera_sweep", "camera_light"])
+def test_camera_auxiliary_start_requires_control_but_stop_does_not(op):
+    from salus_web.protocol import is_controlled_operation
+    fields = {"lens": "fixed"} if op == "camera_light" else {}
+    assert is_controlled_operation(validate_request(parse_request(
+        {"op": op, "enabled": True, **fields})))
+    assert not is_controlled_operation(validate_request(parse_request(
+        {"op": op, "enabled": False, **fields})))
+
+
+def test_camera_light_rejects_unknown_lens_and_string_boolean():
+    for data in [{"lens": "rear", "enabled": True},
+                 {"lens": "fixed", "enabled": "false"}]:
+        with pytest.raises(ProtocolError):
+            validate_request(parse_request({"op": "camera_light", **data}))

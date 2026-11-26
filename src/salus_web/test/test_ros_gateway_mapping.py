@@ -173,3 +173,13 @@ def test_required_camera_round_trip_precedes_websocket_listen() -> None:
     assert preflight < listen
     assert '"require_camera_service", default_value="false"' in web_launch
     assert '"require_camera_service": launch_camera' in integration
+def test_camera_auxiliary_requests_preserve_lens_and_stop_command():
+    from salus_interfaces.srv import CameraFeatures
+    light = build_ros_request(_request({"op": "camera_light", "lens": "mobile",
+                                        "enabled": True}))
+    assert light.command == CameraFeatures.Request.LIGHT
+    assert light.lens == "mobile" and light.enabled
+    stop = build_ros_request(_request({"op": "camera_sweep", "enabled": False}))
+    assert stop.command == CameraFeatures.Request.SWEEP_STOP
+    state = build_ros_request(_request({"op": "get_camera_features"}))
+    assert state.command == CameraFeatures.Request.STATE
