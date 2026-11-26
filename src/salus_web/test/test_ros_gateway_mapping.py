@@ -181,5 +181,10 @@ def test_camera_auxiliary_requests_preserve_lens_and_stop_command():
     assert light.lens == "mobile" and light.enabled
     stop = build_ros_request(_request({"op": "camera_sweep", "enabled": False}))
     assert stop.command == CameraFeatures.Request.SWEEP_STOP
+    assert not stop.use_sweep_range
+    start = build_ros_request(_request({"op": "camera_sweep", "enabled": True,
+                                       "sweep_min_deg": -25, "sweep_max_deg": 40}))
+    assert start.command == CameraFeatures.Request.SWEEP_START
+    assert start.use_sweep_range and (start.sweep_min_deg, start.sweep_max_deg) == (-25, 40)
     state = build_ros_request(_request({"op": "get_camera_features"}))
     assert state.command == CameraFeatures.Request.STATE

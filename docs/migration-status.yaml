@@ -659,6 +659,7 @@ components:
       - docs/migration-evidence/intent/uniarch-mobile-ptz.md
       - docs/migration-evidence/intent/camera-sweep-lights.md
       - src/salus_hardware/test/test_camera_features.py
+      - src/salus_web/test/test_ros_gateway_mapping.py
       - docs/migration-evidence/uniarch-camera-validation-20261010.md
       - docs/migration-evidence/intent/camera-stream-quality.md
       - docs/migration-evidence/intent/camera-front-low-latency.md

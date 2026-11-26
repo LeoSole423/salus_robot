@@ -243,7 +243,9 @@ async def scenario(evidence: dict) -> dict:
         require_ok(await first.request("camera_ptz_set_preset", {
             "preset": "front", "save_zoom": False,
         }), "camera_sector_front")
-        require_ok(await first.request("camera_sweep", {"enabled": True}), "camera_sweep")
+        require_ok(await first.request("camera_sweep", {
+            "enabled": True, "sweep_min_deg": -25, "sweep_max_deg": 45,
+        }), "camera_sweep")
         require_ok(await second.request("camera_sweep", {"enabled": False}),
                    "camera_sweep_stop_without_lease")
         evidence["operations"].append("camera_features")

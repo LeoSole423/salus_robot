@@ -133,7 +133,8 @@ Use a new presets file when replacing a camera to preserve previous calibration.
 por `salus_camera` y consumido por `salus_web`. Servicio ROS con QoS de servicio
 predeterminado, disponible durante la vida del nodo. Comandos STATE=0,
 SWEEP_START=1, SWEEP_STOP=2, LIGHT=3; lens `fixed`/`mobile`, enabled booleano.
-Respuesta: supported, sweep_running/phase, error y fixed_light/mobile_light
+Respuesta: supported, sweep_running/phase, sweep_allowed_min_deg/max_deg
+(límites relativos al preset Frente), error y fixed_light/mobile_light
 (-1 desconocido, 0 última orden de apagado aceptada, 1 encendido aceptado).
 
 Uniarch: paneo físico izquierdo→derecho, pan máximo acotado a 350°, tilt/zoom
@@ -159,9 +160,12 @@ Cerrar la vista de Cockpit no detiene el recorrido. Velocidad normalizada
 ONVIF 0.65 para paneo; flechas manuales conservan 0.15.
 
 
-Paneo sectorial: Start usa el preset Frente guardado, centra primero y alterna
-Frente+90° (izquierda) / Frente−90° (derecha), conservando tilt y zoom de
-ese preset. No cruza el límite físico: rechaza centros cuyo sector no entre
-en el rango. Recuperación automática: espera 5 s, hasta 3 intentos por sesión,
+Paneo sectorial: Start usa el tilt y el zoom del preset Frente guardado.
+Por defecto alterna entre los extremos disponibles de Frente ±90° dentro
+de los límites físicos. Con `use_sweep_range`, `sweep_min_deg` y
+`sweep_max_deg` definen un intervalo de al menos 2° dentro del sector disponible.
+Los ángulos positivos apuntan a la izquierda. Si Frente queda fuera del intervalo
+elegido, el primer destino es el extremo más cercano a Frente.
+Recuperación automática: espera 5 s, hasta 3 intentos por sesión,
 retoma destino/fase interrumpidos; Stop, PTZ manual y shutdown cancelan la
 espera. Stop fallido cancela recuperación. No se reinicia al arrancar el nodo.
