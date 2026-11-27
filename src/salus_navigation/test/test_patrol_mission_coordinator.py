@@ -1,7 +1,10 @@
 from math import nan
+from threading import RLock
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 from salus_navigation.patrol_mission_coordinator import (
+    PatrolMissionCoordinator,
     patrol_spec_from_request,
     resolved_patrol_spec,
     route_state_belongs_to_dispatch,
@@ -82,3 +85,31 @@ def test_replacement_does_not_adopt_cancelled_route_mission_id():
     assert route_state_belongs_to_dispatch("", "old-route", "new-route")
     assert route_state_belongs_to_dispatch("new-route", "old-route", "new-route")
     assert not route_state_belongs_to_dispatch("new-route", "old-route", "third-route")
+
+def test_cancelled_patrol_cannot_be_started_by_a_late_replacement_callback():
+    coordinator = SimpleNamespace(
+        _lock=RLock(), _preparation_id=7, _preparation_status="cancelled",
+        _start_spec=Mock(), _reject=Mock())
+    future = Mock()
+
+    PatrolMissionCoordinator._finish_replacement(coordinator, future, object(), 7)
+
+    future.result.assert_not_called()
+    coordinator._start_spec.assert_not_called()
+    coordinator._reject.assert_not_called()
+
+
+def test_replacement_does_not_adopt_route_from_the_previous_patrol():
+    machine = SimpleNamespace(state=SimpleNamespace(active=True, mission_id="new"), pause=Mock())
+    coordinator = SimpleNamespace(
+        _lock=RLock(), _machine=machine, _route_mission_id="",
+        _superseded_route_mission_id="", _delegated_preparation_id=8)
+    future = Mock()
+    future.result.return_value = SimpleNamespace(
+        ok=True, preparation_id=8, preparation_rejection="",
+        parent_patrol_id="old", mission_id="old-route", status="PAUSED")
+
+    PatrolMissionCoordinator._on_route_state(coordinator, future)
+
+    machine.pause.assert_not_called()
+    assert coordinator._route_mission_id == ""

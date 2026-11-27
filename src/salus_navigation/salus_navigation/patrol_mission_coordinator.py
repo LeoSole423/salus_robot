@@ -185,9 +185,13 @@ class PatrolMissionCoordinator(Node):
         self._machine = None
         self._spec = None
         self._preparation = None
+        self._preparation_id = 0
+        self._preparation_status = ""
+        self._preparation_rejection = ""
         self._route_mission_id = ""
         self._superseded_route_mission_id = ""
         self._delegated_input_indices = []
+        self._delegated_preparation_id = 0
         self._route_state_future = None
         self._last_status, self._last_error = "IDLE", ""
         self._pose = None
@@ -356,6 +360,10 @@ class PatrolMissionCoordinator(Node):
                 ("loop", spec.loop), ("depart", spec.depart), ("return", spec.returning)):
             points.extend((label, point) for point in route.waypoints)
         with self._lock:
+            self._preparation_id += 1
+            self._preparation_status = "preparing"
+            self._preparation_rejection = ""
+            response.preparation_id = self._preparation_id
             self._preparation = {
                 "spec": spec,
                 "points": points,
@@ -419,6 +427,8 @@ class PatrolMissionCoordinator(Node):
 
     def _reject(self, error):
         self._preparation, self._last_error = None, error
+        self._preparation_status = "rejected"
+        self._preparation_rejection = error
         self._event(DiagnosticStatus.ERROR, "PATROL_MISSION_REJECTED", error)
 
     def _activate_spec(self, spec):
@@ -428,22 +438,27 @@ class PatrolMissionCoordinator(Node):
         if self._machine is not None and self._machine.state.active:
             future = self._cancel_route.call_async(
                 CancelRouteMission.Request())
+            preparation_id = self._preparation_id
             future.add_done_callback(
                 lambda done: self._finish_replacement(
-                    done, spec))
+                    done, spec, preparation_id))
             return
         self._start_spec(spec)
 
-    def _finish_replacement(self, future, spec):
-        try:
-            result = future.result()
-            if result is None or not result.ok:
-                raise RuntimeError(
-                    "empty cancellation response" if result is None else result.error)
-        except Exception as exc:
-            self._reject(f"previous patrol could not be cancelled: {exc}")
-            return
-        self._start_spec(spec)
+    def _finish_replacement(self, future, spec, preparation_id):
+        with self._lock:
+            if (preparation_id != self._preparation_id
+                    or self._preparation_status != "preparing"):
+                return
+            try:
+                result = future.result()
+                if result is None or not result.ok:
+                    raise RuntimeError(
+                        "empty cancellation response" if result is None else result.error)
+            except Exception as exc:
+                self._reject(f"previous patrol could not be cancelled: {exc}")
+                return
+            self._start_spec(spec)
 
     def _start_spec(self, spec):
         mission = PatrolMachine(spec, str(uuid.uuid4()))
@@ -466,8 +481,9 @@ class PatrolMissionCoordinator(Node):
         phase = mission.start(
             at_home=at_home,
             battery_return_latched=battery_decision.latched)
-        self._machine, self._spec, self._route_mission_id = mission, spec, ""
+        self._machine, self._spec = mission, spec
         self._last_status, self._last_error = phase.value, ""
+        self._preparation_status = "accepted"
         self._event(
             DiagnosticStatus.OK,
             "PATROL_MISSION_STARTED",
@@ -522,15 +538,17 @@ class PatrolMissionCoordinator(Node):
         phase = machine.state.phase
         self._superseded_route_mission_id = self._route_mission_id
         self._route_mission_id = ""
+        self._delegated_preparation_id = 0
         future = self._set_route.call_async(request)
         future.add_done_callback(
             lambda done: self._on_route_dispatched(
-                done, phase))
+                done, phase, request.parent_patrol_id))
 
-    def _on_route_dispatched(self, future, phase):
+    def _on_route_dispatched(self, future, phase, patrol_id):
         with self._lock:
             machine = self._machine
-            if machine is None or machine.state.phase is not phase:
+            if (machine is None or machine.state.phase is not phase
+                    or machine.state.mission_id != patrol_id):
                 return
             try:
                 result = future.result()
@@ -546,6 +564,7 @@ class PatrolMissionCoordinator(Node):
                     self._last_error,
                     phase=phase.value, reason_code="ROUTE_DISPATCH_FAILED")
                 return
+            self._delegated_preparation_id = result.preparation_id
             self._event(
                 DiagnosticStatus.OK,
                 "PATROL_PHASE_DISPATCHED",
@@ -574,6 +593,16 @@ class PatrolMissionCoordinator(Node):
                 if state is None or not state.ok:
                     return
             except Exception:
+                return
+            if (self._delegated_preparation_id
+                    and state.preparation_id == self._delegated_preparation_id
+                    and state.preparation_rejection):
+                machine.pause(f"route preparation rejected: {state.preparation_rejection}")
+                self._last_error = machine.state.pause_reason
+                self._event(DiagnosticStatus.WARN, "PATROL_ROUTE_PAUSED", self._last_error,
+                            reason_code=state.preparation_rejection)
+                return
+            if state.parent_patrol_id != machine.state.mission_id:
                 return
             if not route_state_belongs_to_dispatch(
                     self._route_mission_id,
@@ -679,6 +708,8 @@ class PatrolMissionCoordinator(Node):
     def _cancel(self, _request, response):
         with self._lock:
             self._preparation = None
+            if self._preparation_status == "preparing":
+                self._preparation_status = "cancelled"
             machine = self._machine
             self._machine, self._route_mission_id = None, ""
             self._superseded_route_mission_id = ""
@@ -699,6 +730,9 @@ class PatrolMissionCoordinator(Node):
             machine, spec = self._machine, self._spec
             response.ok, response.error = True, self._last_error
             response.active = bool(machine and machine.state.active)
+            response.preparation_id = self._preparation_id
+            response.preparation_status = self._preparation_status
+            response.preparation_rejection = self._preparation_rejection
             response.phase = "idle" if machine is None else machine.state.public_phase
             response.low_battery_active = (
                 False if machine is None else machine.state.low_battery_active)

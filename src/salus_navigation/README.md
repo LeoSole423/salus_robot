@@ -94,6 +94,12 @@ autoridad de velocidad.
   `/battery_mission_guard` tiene precedencia sobre el fallback de
   `/battery_state`; un retorno iniciado queda enclavado hasta HOME o
   cancelación explícita según ADR 0003.
+- El inicio de patrulla devuelve `preparation_id` al encolar la conversión.
+  `get_patrol_mission_state` publica el mismo ID y `preparation_status`
+  (`preparing`, `accepted`, `rejected` o `cancelled`). Una preparación
+  rechazada conserva la misión previa y expone `preparation_rejection`.
+  Cockpit recibe estos campos por el WebSocket de `salus_web` y confirma
+  el inicio con el nuevo `mission_id`. Actualizar juntos backend y Cockpit.
 - Parámetros de batería de patrulla: `battery_guard_topic` (default
   `/battery_mission_guard`), `battery_state_topic` (default `/battery_state`),
   `battery_guard_timeout_s` (3,0 s, finito y positivo) y

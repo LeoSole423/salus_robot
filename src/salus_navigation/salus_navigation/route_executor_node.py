@@ -1294,6 +1294,7 @@ class RouteExecutorNode(Node):
             response.paused = mission.phase == RoutePhase.PAUSED
             response.loop = bool(prepared and prepared.loop)
             response.status, response.mission_id = mission.phase.value, mission.mission_id
+            response.parent_patrol_id = mission.parent_patrol_id
             response.preparation_id = self._preparation_epoch
             response.preparation_rejection = self._preparation_rejection
             response.chunk_id, response.loop_iteration = mission.chunk_id, mission.loop_iteration

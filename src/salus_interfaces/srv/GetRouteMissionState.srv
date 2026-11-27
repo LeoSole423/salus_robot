@@ -11,6 +11,7 @@ int32 return_home_exit_waypoint_index
 string return_home_phase
 bool home_available
 string mission_id
+string parent_patrol_id
 uint32 chunk_id
 uint32 loop_iteration
 uint32 reached_checkpoint_count
