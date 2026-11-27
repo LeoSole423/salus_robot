@@ -166,3 +166,66 @@ def test_controller_flag_with_brake_is_reported_together_without_estop_claim(tmp
     ]
     assert items[0]["details"] == {"brake_pct": "100", "stop_signal": "True"}
     assert items[2]["severity"] == 2
+
+
+def test_checkpoint_history_links_parent_and_keeps_only_recent_gps(tmp_path, monkeypatch):
+    tick = 10.0
+    monkeypatch.setattr(module, "monotonic", lambda: tick)
+    history = OperationalHistory(tmp_path / "history.sqlite", "rover", Mock())
+    try:
+        history.nav_event("patrol_mission_coordinator", "PATROL_MISSION_STARTED", 0,
+                          {"mission_id": "parent", "phase": "PATROL"})
+        history.observe_gps(valid=True, lat=-31, lon=-64, stamp_ns=10_000_000_000)
+        details = {"mission_id": "leg", "parent_patrol_id": "parent", "input_index": "0"}
+        tick = 11.0
+        history.nav_event("route_executor", "ROUTE_CHECKPOINT_REACHED", 0, {
+            **details, "loop_iteration": "0", "ros_stamp_ns": 11_000_000_000,
+        })
+        tick = 13.0
+        history.nav_event("route_executor", "ROUTE_CHECKPOINT_REACHED", 0, {
+            **details, "loop_iteration": "1", "ros_stamp_ns": 13_000_000_000,
+        })
+        history.observe_gps(valid=False, lat=-31, lon=-64, stamp_ns=13_000_000_000)
+        history.nav_event("route_executor", "ROUTE_CHECKPOINT_REACHED", 0, {
+            **details, "mission_id": "unrelated", "parent_patrol_id": "", "loop_iteration": "0",
+        })
+    finally:
+        history.close()
+    activity = history.query("history_list", {})["items"]
+    assert [event["code"] for event in activity] == ["PATROL_MISSION_STARTED"]
+    patrol_id = activity[0]["patrol_id"]
+    detail = history.query("history_patrol", {"patrol_id": patrol_id})
+    first, second = detail["items"][1:]
+    assert first["details"]["gps_lat"] == "-31"
+    assert first["details"]["gps_lon"] == "-64"
+    assert first["details"]["gps_age_s"] == "1.0"
+    assert first["details"]["gps_received_at"]
+    assert first["details"]["route_mission_id"] == "leg"
+    assert second["details"]["loop_iteration"] == "1" and "gps_lat" not in second["details"]
+    unrelated = history.query("history_list", {"category": "waypoint"})["items"][0]
+    assert unrelated["patrol_id"] is None and "gps_lat" not in unrelated["details"]
+
+
+def test_long_patrol_summarizes_repeated_visits_without_hiding_operational_events(tmp_path):
+    history = OperationalHistory(tmp_path / "history.sqlite", "rover", Mock())
+    try:
+        history.nav_event("route_executor", "ROUTE_LOOP_STARTED", 0,
+                          {"mission_id": "loop", "phase": "PATROL"})
+        for lap in range(125):
+            history.nav_event("route_executor", "ROUTE_CHECKPOINT_REACHED", 0,
+                              {"mission_id": "loop", "input_index": "4", "loop_iteration": str(lap)})
+        history.record("controller", "BRAKE_APPLIED", "stop")
+    finally:
+        history.close()
+    patrol_id = history.query("history_list", {"view": "patrols"})["items"][0]["id"]
+    detail = history.query("history_patrol", {"patrol_id": patrol_id, "stream": "operations"})
+    assert [e["code"] for e in detail["items"]] == ["ROUTE_LOOP_STARTED", "BRAKE_APPLIED"]
+    point, = detail["waypoints"]
+    assert point["visit_count"] == 125 and point["details"]["input_index"] == "4"
+    fields = {"patrol_id": patrol_id, "stream": "visits", "through": detail["through"],
+              "route_mission_id": "loop", "input_index": "4"}
+    first = history.query("history_patrol", fields)
+    more = history.query("history_patrol", {**fields, "after": first["next"]})
+    assert len(first["items"]) == 100 and len(more["items"]) == 25
+    export = history.query("history_patrol", {"patrol_id": patrol_id})
+    assert len(export["items"]) == 100 and export["next"]

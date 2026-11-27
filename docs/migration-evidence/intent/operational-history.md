@@ -100,3 +100,22 @@ historial adjunta la señal a la misma fila de freno cuando ambos aparecen
 juntos. Si la señal aparece sin freno aplicado se registra por separado.
 La señal por sí sola no identifica el accionamiento de un pulsador físico.
 Las órdenes de freno manual y la detención medida se registran por separado.
+
+## Llegadas a puntos de la ruta
+
+El gateway registra `ROUTE_CHECKPOINT_REACHED` por punto de entrada y vuelta,
+con el identificador del tramo emitido por el ejecutor. Los tramos internos
+incluyen el ID de la patrulla padre. El registro conserva la llegada aunque
+falte una muestra GPS utilizable. La posición se toma de `NavSatFix` válido
+recibido como máximo dos segundos antes, con su hora UTC de recepción,
+timestamp ROS y antigüedad. Cuando ambos timestamps ROS están disponibles,
+se exige también que la muestra preceda al evento dentro de ese margen.
+La consulta de actividad muestra llegadas con el filtro Puntos alcanzados.
+El detalle y el JSONL incluyen las llegadas asociadas a esa ejecución.
+
+En Cockpit, el detalle agrupa las llegadas por tramo y punto. La consulta
+`history_patrol` con `stream=operations` pagina los eventos operativos y
+devuelve un resumen de puntos en la primera página. `stream=visits` pagina
+las visitas de un punto identificado por `route_mission_id` e
+`input_index`, usando el mismo límite de secuencia. La consulta sin filtro
+conserva la secuencia completa para exportar JSONL.

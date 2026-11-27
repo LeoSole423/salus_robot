@@ -1030,6 +1030,7 @@ class RouteExecutorNode(Node):
         self._mission.reached += 1
         details = {
             "mission_id": self._mission.mission_id,
+            "parent_patrol_id": self._mission.parent_patrol_id,
             "input_index": occurrence.input_index,
             "chunk_id": self._mission.chunk_id,
             "loop_iteration": occurrence.loop_iteration,
