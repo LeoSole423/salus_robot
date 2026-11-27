@@ -17,7 +17,7 @@ from salus_interfaces.msg import (
 )
 from salus_interfaces.srv import (
     CancelPatrolMission, GetPatrolMissionState, GetRouteMissionState,
-    SetPatrolMissionLL,
+    SetManualMode, SetPatrolMissionLL,
 )
 from std_msgs.msg import String
 from smoke_runtime import (
@@ -411,6 +411,7 @@ class Smoke(Node):
             GetRouteMissionState, "/route_executor/get_route_mission_state")
         self.cancel = self.create_client(
             CancelPatrolMission, "/route_executor/cancel_patrol_mission")
+        self.manual = self.create_client(SetManualMode, "/nav_command_server/set_manual_mode")
         self.startup = subscribe_navigation_startup(self)
 
     def _on_plan(self, message):
@@ -510,6 +511,59 @@ def patrol_request(pose, *, home_at_origin):
     request.chunk_span_m = 0.0
     request.chunk_max_waypoints = 0
     return request
+
+
+def verify_patrol_restart(runtime, node, poller, route_poller, stimulate):
+    def submit_patrol(label):
+        request = patrol_request(node.odom[-1].pose.pose, home_at_origin=True)
+        # Use a finite departure so this test can take manual control before loop entry.
+        request.depart_lats = [(request.home_lat + request.loop_lats[0]) / 2]
+        request.depart_lons = [(request.home_lon + request.loop_lons[0]) / 2]
+        result = runtime.call(label, node.set_patrol, request, timeout_s=8.0)
+        if not result.ok or not result.preparation_id:
+            raise RuntimeError(f"{label}: {result.error}")
+        return result.preparation_id
+
+    def preparation_is(preparation_id, status):
+        state = poller.latest
+        return (state is not None and state.preparation_id == preparation_id
+                and state.preparation_status == status)
+
+    first_id = submit_patrol("prepare patrol before manual takeover")
+    runtime.wait(
+        "first preparation accepted and route active",
+        lambda: preparation_is(first_id, "accepted") and poller.latest.active
+        and route_poller.latest is not None and route_poller.latest.active,
+        25.0, stimulate=stimulate)
+    paused_mission_id = poller.latest.mission_id
+    manual = runtime.call("enable manual", node.manual, SetManualMode.Request(enabled=True))
+    if not manual.ok or not manual.enabled_after:
+        raise RuntimeError(f"could not enable manual: {manual.error}")
+    runtime.wait(
+        "manual takeover paused the patrol",
+        lambda: poller.latest is not None and poller.latest.status == "PAUSED"
+        and poller.latest.mission_id == paused_mission_id,
+        12.0, stimulate=stimulate)
+    manual = runtime.call("disable manual", node.manual, SetManualMode.Request(enabled=False))
+    if not manual.ok or manual.enabled_after:
+        raise RuntimeError(f"could not disable manual: {manual.error}")
+
+    replacement_id = submit_patrol("prepare replacement from a pause")
+    runtime.wait(
+        "new preparation activates a different mission",
+        lambda: preparation_is(replacement_id, "accepted") and poller.latest.active
+        and poller.latest.mission_id != paused_mission_id,
+        25.0, stimulate=stimulate)
+
+    cancelled_id = submit_patrol("prepare replacement to cancel")
+    cancelled = runtime.call(
+        "cancel preparation", node.cancel, CancelPatrolMission.Request(), timeout_s=8.0)
+    if not cancelled.ok:
+        raise RuntimeError(f"could not cancel preparation: {cancelled.error}")
+    runtime.wait(
+        "cancelled preparation is idle",
+        lambda: preparation_is(cancelled_id, "cancelled") and poller.latest.status == "IDLE",
+        12.0, stimulate=stimulate)
 
 
 def main():
@@ -680,6 +734,13 @@ def main():
                              node.state.service_is_ready(),
                              node.cancel.service_is_ready()],
             })
+
+        if os.environ.get("SMOKE_PATROL_RESTART_ONLY") == "1":
+            verify_patrol_restart(runtime, node, poller, route_poller, stimulate)
+            runtime.report.evidence = diagnostic_evidence()
+            success = True
+            print("Patrol pause, restart, and cancellation smoke passed")
+            return 0
 
         # A mission accepted while the guard already requests return must stay
         # parked at HOME and must never dispatch its departure/loop.

@@ -5,6 +5,7 @@ cd "${repo_dir}"
 docker compose run --rm \
   -e ROS_DOMAIN_ID="${SMOKE_ROS_DOMAIN_ID:-53}" \
   -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-patrol-battery-$$}" \
+  -e SMOKE_PATROL_RESTART_ONLY="${SMOKE_PATROL_RESTART_ONLY:-0}" \
   -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" \
   -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/direct}" \
   -e SMOKE_ROUTE_EXECUTION_MODE="${SMOKE_ROUTE_EXECUTION_MODE:-adaptive_dense}" \
@@ -18,5 +19,9 @@ docker compose run --rm \
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
   smoke_start_launch patrol_battery "ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true launch_patrol:=true route_execution_mode:=${SMOKE_ROUTE_EXECUTION_MODE} world:=${free_world} patrol_battery_guard_topic:=/smoke/battery_mission_guard patrol_battery_state_topic:=/smoke/battery_state"
   smoke_run patrol_battery_probe "python3 /ros2_ws/tools/smoke_patrol_battery_sim.py"
-  smoke_note "patrol_battery_return_valid"
+  if [[ "${SMOKE_PATROL_RESTART_ONLY}" == "1" ]]; then
+    smoke_note "patrol_restart_valid"
+  else
+    smoke_note "patrol_battery_return_valid"
+  fi
 '

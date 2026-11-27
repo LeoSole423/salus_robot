@@ -22,3 +22,4 @@ bool ok
 string error
 uint32 loop_input_waypoint_count
 uint32 loop_expanded_waypoint_count
+uint32 preparation_id

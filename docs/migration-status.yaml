@@ -560,6 +560,7 @@ components:
       - src/salus_navigation/launch/safety_arbitration_sim.launch.py
       - tools/smoke_safety_sim.py
       - tools/smoke_patrol_battery_sim.py
+      - docs/migration-evidence/intent/restart-paused-missions.md
       - docs/decisions/0003-latched-battery-return-home.md
       - src/salus_navigation/salus_navigation/nav_snapshot_server.py
       - tools/smoke_navigation_snapshot.sh

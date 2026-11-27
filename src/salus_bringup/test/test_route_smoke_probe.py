@@ -83,7 +83,8 @@ def test_route_smoke_has_opt_in_legacy_pair_contract_scenarios():
     assert 'SMOKE_ROUTE_SCENARIO' in source
     assert 'scenario == "loop"' in source
     assert 'scenario == "action"' in source
-    assert 'scenario == "takeover"' in source
+    assert 'scenario in ("takeover", "restart")' in source
+    assert 'scenario == "restart"' in source
     assert 'scenario == "cancel"' in source
     assert 'mission_started_second_loop_or_raise' in source
     assert 'ROUTE_WAYPOINT_ACTION_STARTED' in source

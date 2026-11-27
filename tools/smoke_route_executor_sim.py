@@ -837,7 +837,7 @@ def main():
             predicate = lambda: mission_started_second_loop_or_raise(node, state_poller)
             timeout_s = 120
             description = "route did not enter the second loop iteration"
-        elif scenario in ("takeover", "cancel"):
+        elif scenario in ("takeover", "restart", "cancel"):
             predicate = lambda: (
                 route_event(node, "ROUTE_CHECKPOINT_REACHED", 0) is not None
                 or mission_is_active_or_raise(state_poller) is False
@@ -888,7 +888,7 @@ def main():
                     10,
                     "action checkpoint did not finish",
                 )
-            elif scenario == "takeover":
+            elif scenario in ("takeover", "restart"):
                 wait(
                     node,
                     lambda: route_event(node, "ROUTE_CHECKPOINT_REACHED", 0) is not None,
@@ -965,12 +965,28 @@ def main():
             message.source == CmdVelFinal.SOURCE_AUTO for message in node.final
         ):
             raise RuntimeError("route did not reach command chain")
-        if scenario not in ("action", "takeover", "cancel", "horizon") and any(
+        if scenario not in ("action", "takeover", "restart", "cancel", "horizon") and any(
             message.source == CmdVelFinal.SOURCE_SAFETY
             and message.brake_pct > 0
             for message in node.final
         ):
             raise RuntimeError("route braked between contiguous chunks")
+        if scenario == "restart":
+            paused_id = state.mission_id
+            replacement = call(node, node.set, request_from_pose(node.odom[-1].pose.pose))
+            if not replacement.ok or not replacement.preparation_id:
+                raise RuntimeError(f"replacement route rejected: {replacement.error}")
+            wait(
+                node,
+                lambda: state_poller.latest is not None
+                and state_poller.latest.preparation_id == replacement.preparation_id
+                and state_poller.latest.mission_id != paused_id
+                and mission_is_active_or_raise(state_poller),
+                12,
+                "the paused route was not replaced",
+                stimulate=state_poller.poll,
+            )
+            state = state_poller.latest
         if (not scenario_cancelled and scenario != "takeover"
                 and state.status != "COMPLETED"):
             result = call(node, node.cancel, CancelRouteMission.Request())

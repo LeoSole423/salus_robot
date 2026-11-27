@@ -29,3 +29,6 @@ string[] depart_action_jsons
 float64[] active_lats
 float64[] active_lons
 float64[] active_yaws_deg
+uint32 preparation_id
+string preparation_status
+string preparation_rejection
