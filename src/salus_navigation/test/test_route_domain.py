@@ -889,7 +889,7 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
     fake = SimpleNamespace(
         _chunk=chunk,
         _target_offset=chunk.checkpoint_offsets[-1],
-        _mission=SimpleNamespace(reached=0, mission_id="mission", chunk_id=0, loop_iteration=0),
+        _mission=RouteMission(reached=0, mission_id="mission", parent_patrol_id="parent"),
         _checkpoint_tracker=None,
         _reached_occurrences=set(),
         _event=lambda *args, **kwargs: events.append((args, kwargs)),
@@ -901,6 +901,7 @@ def test_chunk_success_counts_only_original_checkpoints_and_advances_once():
 
     assert fake._mission.reached == 1
     assert [event[1]["input_index"] for event in events] == [1]
+    assert events[0][1]["parent_patrol_id"] == "parent"
     assert len(events) == len(chunk.checkpoint_offsets)
     assert len(events) <= len(chunk.waypoints)
     assert advanced == [True]

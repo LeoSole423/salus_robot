@@ -7,6 +7,7 @@ from threading import BoundedSemaphore, Lock
 from time import monotonic
 
 import json
+import math
 import re
 import sqlite3
 import uuid
@@ -16,11 +17,13 @@ START = {"PATROL_MISSION_STARTED", "ROUTE_LOOP_STARTED"}
 FINISH = {"PATROL_AT_HOME": "home", "PATROL_MISSION_CANCELLED": "cancelled",
           "ROUTE_LOOP_CANCELLED": "cancelled", "ROUTE_LOOP_REPLACED": "replaced",
           "ROUTE_LOOP_COMPLETED": "completed"}
+CHECKPOINT = "ROUTE_CHECKPOINT_REACHED"
 STOP_CODES = {"BRAKE_REQUESTED", "SAFETY_SCAN_STALE", "PATH_HEALTH_STOP",
               "MANUAL_WATCHDOG_STOP", "COLLISION_STOP", "ESTOP_ACTIVE"}
 PUBLIC_DETAILS = {"enabled", "phase", "route_status", "loop_index", "exit_index",
                   "brake_pct", "duration_s", "reason_code", "failure_code", "ros_stamp_ns",
-                  "stop_signal"}
+                  "stop_signal", "input_index", "loop_iteration", "route_mission_id",
+                  "gps_lat", "gps_lon", "gps_received_at", "gps_age_s", "gps_stamp_ns"}
 STATE_EVENTS = {"SAFETY_SCAN_STALE", "PATH_STOP_AND_WAIT", "PATH_HEALTH_STOP"}
 ROUTE_BLOCK_REASONS = {"PLANNER_U_TURN", "PLANNER_LOOP", "MANEUVER_GEOMETRY_INVALID",
                        "NO_VALID_PATH", "NAV_ABORTED"}
@@ -38,6 +41,7 @@ class OperationalHistory:
         self._sampled_stop = set()
         self._path_block = None
         self._drive_stop = None
+        self._gps_sample = None
         self._last_events = {}
         self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="operational-history")
         self._worker.submit(self._initialize)
@@ -86,7 +90,40 @@ class OperationalHistory:
     def close(self):
         self._worker.shutdown(wait=True)
 
+    def observe_gps(self, *, valid, lat, lon, stamp_ns):
+        self._gps_sample = None
+        if valid and math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180:
+            received = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+            self._gps_sample = lat, lon, received, monotonic(), stamp_ns
+
+    def _checkpoint_gps(self, event_stamp):
+        sample = self._gps_sample
+        if sample is None:
+            return {}
+        lat, lon, received, tick, stamp = sample
+        age = monotonic() - tick
+        if stamp > 0 and event_stamp > 0:
+            source_age = (event_stamp - stamp) / 1e9
+            if source_age < 0:
+                return {}
+            age = max(age, source_age)
+        if not 0 <= age <= 2:
+            return {}
+        return {"gps_lat": lat, "gps_lon": lon, "gps_received_at": received,
+                "gps_age_s": round(age, 3), "gps_stamp_ns": stamp}
+
     def nav_event(self, component, code, severity, details):
+        if code == CHECKPOINT and component == "route_executor":
+            route_id = details.get("mission_id")
+            if route_id and "input_index" in details and "loop_iteration" in details:
+                gps = self._checkpoint_gps(int(details.get("ros_stamp_ns", 0)))
+                self.record(component, code, "waypoint", severity, {
+                    "input_index": details["input_index"],
+                    "loop_iteration": details["loop_iteration"],
+                    "ros_stamp_ns": details.get("ros_stamp_ns", 0),
+                    "route_mission_id": route_id, **gps,
+                }, mission_id=details.get("parent_patrol_id") or route_id)
+            return
         if code in STATE_EVENTS:
             return  # Captured as a transition from authoritative navigation telemetry.
         if not (severity >= 1 or code.startswith(("PATROL_", "ROUTE_LOOP_")) or code in
@@ -237,7 +274,7 @@ class OperationalHistory:
                         (patrol_id, self._robot, mission_id or "", timestamp, timestamp if held else None,
                          "held" if held else "active", phase, tick),
                     )
-                elif code == "PATROL_HELD_AT_HOME_LOW_BATTERY" and mission_id and patrol_id is None:
+                elif code in {CHECKPOINT, "PATROL_HELD_AT_HOME_LOW_BATTERY"} and mission_id and patrol_id is None:
                     row = db.execute(
                         "SELECT id FROM patrols WHERE robot=? AND mission_id=? ORDER BY rowid DESC LIMIT 1",
                         (self._robot, mission_id),
@@ -299,9 +336,12 @@ class OperationalHistory:
                     raise ValueError("La fecha debe incluir zona horaria")
                 conditions.append(f"{date}{operator}?")
                 params.append(parsed.astimezone(timezone.utc).isoformat(timespec="milliseconds"))
-        if not patrols and fields.get("category"):
-            conditions.append("category=?")
-            params.append(str(fields["category"])[:30])
+        if not patrols:
+            if fields.get("category"):
+                conditions.append("category=?")
+                params.append(str(fields["category"])[:30])
+            else:
+                conditions.append("category!='waypoint'")
         if fields.get("before") is not None:
             conditions.append(f"{order}<?")
             params.append(self._cursor(fields["before"]))
@@ -331,17 +371,58 @@ class OperationalHistory:
         row = db.execute("SELECT * FROM patrols WHERE robot=? AND id=?", (self._robot, patrol_id)).fetchone()
         if row is None:
             raise ValueError("Patrulla no encontrada")
+        stream = fields.get("stream", "all")
+        if stream not in ("all", "operations", "visits"):
+            raise ValueError("Tipo de historial inválido")
         after = self._cursor(fields.get("after", 0))
-        through = self._cursor(fields.get("through", 2**63 - 1))
-        if after == 0:
+        if "through" in fields:
+            through = self._cursor(fields["through"])
+        else:
             through = db.execute(
                 "SELECT COALESCE(MAX(sequence),0) FROM history_events WHERE robot=? AND patrol_id=?",
                 (self._robot, patrol_id),
             ).fetchone()[0]
+        filters, extra = "", ()
+        if stream == "operations":
+            filters = "AND category!='waypoint'"
+        elif stream == "visits":
+            route, index = fields.get("route_mission_id"), fields.get("input_index")
+            if not isinstance(route, str) or not isinstance(index, str):
+                raise ValueError("Punto inválido")
+            filters = ("AND category='waypoint' AND json_extract(details,'$.route_mission_id')=? "
+                       "AND json_extract(details,'$.input_index')=?")
+            extra = (route, index)
         rows = db.execute(
             "SELECT * FROM history_events WHERE robot=? AND patrol_id=? AND sequence>? AND sequence<=? "
-            "ORDER BY sequence LIMIT 101", (self._robot, patrol_id, after, through),
+            f"{filters} ORDER BY sequence LIMIT 101", (self._robot, patrol_id, after, through, *extra),
         ).fetchall()
-        return {"schema_version": 1, "patrol": self._summary(row),
-                "items": [self._event(event) for event in rows[:100]], "through": through,
-                "next": rows[99]["sequence"] if len(rows) > 100 else None}
+        result = {"schema_version": 1, "patrol": self._summary(row),
+                  "items": [self._event(event) for event in rows[:100]], "through": through,
+                  "next": rows[99]["sequence"] if len(rows) > 100 else None}
+        if stream == "operations" and after == 0:
+            result["waypoints"] = self._waypoint_summary(db, patrol_id, through)
+        return result
+
+    def _waypoint_summary(self, db, patrol_id, through):
+        rows = db.execute("""
+            WITH arrivals AS (
+                SELECT sequence, timestamp, details,
+                    json_extract(details, '$.route_mission_id') AS route_id,
+                    json_extract(details, '$.input_index') AS point_index
+                FROM history_events
+                WHERE robot=? AND patrol_id=? AND sequence<=? AND category='waypoint'
+            ), ranked AS (
+                SELECT *,
+                    COUNT(*) OVER point AS visit_count,
+                    MAX(timestamp) OVER point AS last_at,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY route_id, point_index
+                        ORDER BY (json_extract(details, '$.gps_lat') IS NOT NULL) DESC, sequence DESC
+                    ) AS position_rank
+                FROM arrivals
+                WINDOW point AS (PARTITION BY route_id, point_index)
+            )
+            SELECT sequence, timestamp, details, visit_count, last_at
+            FROM ranked WHERE position_rank=1 ORDER BY route_id, CAST(point_index AS INTEGER)
+            """, (self._robot, patrol_id, through))
+        return [self._event(row) for row in rows]

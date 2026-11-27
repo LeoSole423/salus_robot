@@ -1011,6 +1011,11 @@ class CockpitRosGateway(Node):
             self.get_logger().warning(f"Detection GPS handoff unavailable: {error}", throttle_duration_sec=30.0)
 
     def _on_gps(self, message: NavSatFix) -> None:
+        if self._history:
+            self._history.observe_gps(
+                valid=message.status.status >= 0, lat=message.latitude, lon=message.longitude,
+                stamp_ns=message.header.stamp.sec * 10**9 + message.header.stamp.nanosec,
+            )
         if self._detection_fixes is not None:
             self._detection_fixes.observe(
                 time.time_ns() // 1_000_000, message.status.status, message.latitude, message.longitude
