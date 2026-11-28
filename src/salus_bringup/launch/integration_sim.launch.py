@@ -8,6 +8,8 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _include(package: str, launch_file: str, arguments=None, condition=None):
@@ -71,6 +73,24 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="true"),
+            DeclareLaunchArgument("incident_recording", default_value="false"),
+            DeclareLaunchArgument("recordings_config", default_value=""),
+            DeclareLaunchArgument("incident_root", default_value="runtime/incidents"),
+            DeclareLaunchArgument("incident_context_json", default_value=""),
+            DeclareLaunchArgument("incident_costmap_max_hz", default_value="0.5"),
+            Node(
+                package="salus_incident", executable="incident_recorder",
+                condition=IfCondition(LaunchConfiguration("incident_recording")),
+                output="screen", prefix="ionice -c 3",
+                parameters=[{
+                    "root": LaunchConfiguration("incident_root"),
+                    "context_json": LaunchConfiguration("incident_context_json"),
+                    "use_sim_time": use_sim_time,
+                    "costmap_max_hz": ParameterValue(
+                        LaunchConfiguration("incident_costmap_max_hz"), value_type=float,
+                    ),
+                }],
+            ),
             DeclareLaunchArgument(
                 "vehicle_io_profile",
                 default_value="legacy",
@@ -417,6 +437,8 @@ def generate_launch_description() -> LaunchDescription:
                 {
                     "ws_port": web_ws_port,
                     "history_path": LaunchConfiguration("web_history_path"),
+                    "incident_root": LaunchConfiguration("incident_root"),
+                    "recordings_config": LaunchConfiguration("recordings_config"),
                     "waypoints_file": web_waypoints_file,
                     "telemetry_profile": web_telemetry_profile,
                     "heading_odometry_topic": "/odometry/global",

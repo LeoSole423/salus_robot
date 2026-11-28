@@ -113,6 +113,10 @@ class OperationalHistory:
                 "gps_age_s": round(age, 3), "gps_stamp_ns": stamp}
 
     def nav_event(self, component, code, severity, details):
+        if component == "incident_recorder" and code == "NAVIGATION_INCIDENT":
+            self.record(component, code, "navigation", severity, details,
+                        mission_id=details.get("mission_id") or None)
+            return
         if code == CHECKPOINT and component == "route_executor":
             route_id = details.get("mission_id")
             if route_id and "input_index" in details and "loop_iteration" in details:
@@ -214,8 +218,11 @@ class OperationalHistory:
         if not self._slots.acquire(blocking=False):
             self._fail()
             return
+        public_fields = PUBLIC_DETAILS
+        if component == "incident_recorder" and code == "NAVIGATION_INCIDENT":
+            public_fields = public_fields | {"id", "status", "trigger_ns"}
         safe_details = {key: str(value)[:100] for key, value in (details or {}).items()
-                        if key in PUBLIC_DETAILS}
+                        if key in public_fields}
         with self._lock:
             timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
             self._worker.submit(self._write, timestamp, monotonic(), component[:100], code[:100],
@@ -274,7 +281,7 @@ class OperationalHistory:
                         (patrol_id, self._robot, mission_id or "", timestamp, timestamp if held else None,
                          "held" if held else "active", phase, tick),
                     )
-                elif code in {CHECKPOINT, "PATROL_HELD_AT_HOME_LOW_BATTERY"} and mission_id and patrol_id is None:
+                elif code in {CHECKPOINT, "PATROL_HELD_AT_HOME_LOW_BATTERY", "NAVIGATION_INCIDENT"} and mission_id and patrol_id is None:
                     row = db.execute(
                         "SELECT id FROM patrols WHERE robot=? AND mission_id=? ORDER BY rowid DESC LIMIT 1",
                         (self._robot, mission_id),

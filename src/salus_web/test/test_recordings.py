@@ -154,3 +154,38 @@ def test_proxy_bind_conflict_is_not_silently_hidden(tmp_path, monkeypatch):
         m.start()
     assert error.value.errno == errno.EADDRINUSE
     m.close()
+
+
+def test_incident_download_validates_signature_and_expiry(tmp_path, monkeypatch):
+    import io
+    import shutil
+    import tarfile
+    from urllib.error import HTTPError
+    from urllib.request import urlopen
+
+    capture = "a" * 32
+    folder = tmp_path / "incidents" / capture
+    folder.mkdir(parents=True)
+    (folder / "manifest.json").write_text('{"status":"partial"}')
+    m = manager(tmp_path)
+    m.config.update(bind="127.0.0.1", port=0)
+    monkeypatch.setattr(m, "tick", lambda: None)
+    m.start()
+    try:
+        m.config["public_url"] = f"http://127.0.0.1:{m.server.server_port}"
+        response = m.incident_link(tmp_path, capture)
+        assert response["status"] == "partial"
+        with urlopen(response["url"], timeout=2) as downloaded:
+            with tarfile.open(fileobj=io.BytesIO(downloaded.read())) as archive:
+                assert archive.getnames() == [f"{capture}/manifest.json"]
+        clock = time.time()
+        monkeypatch.setattr(recordings.time, "time", lambda: clock + 301)
+        with pytest.raises(HTTPError) as error:
+            urlopen(response["url"], timeout=2)
+        assert error.value.code == 403
+        shutil.rmtree(folder)
+        assert m.incident_link(tmp_path, capture) == {"status": "expired"}
+        with pytest.raises(ValueError):
+            m.incident_link(tmp_path, "../outside")
+    finally:
+        m.close()

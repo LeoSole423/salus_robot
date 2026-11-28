@@ -20,6 +20,8 @@ docker compose run --rm \
   -e GZ_PARTITION="${SMOKE_GZ_PARTITION:-salus-routes-$$}" \
   -e SMOKE_RUN_TOKEN="${SMOKE_RUN_TOKEN:-direct}" \
   -e SMOKE_RUNTIME_DIR="${SMOKE_RUNTIME_DIR:-/tmp/salus-smoke-runtime/direct}" \
+  -e SMOKE_INCIDENT_RECORDING="${SMOKE_INCIDENT_RECORDING:-false}" \
+  -e SMOKE_INCIDENT_MEASURE="${SMOKE_INCIDENT_MEASURE:-false}" \
   -e SMOKE_ROUTE_SCENARIO="${route_scenario}" \
   -e SMOKE_ROUTE_ACTION_INDEX="${SMOKE_ROUTE_ACTION_INDEX:--1}" \
   -e SMOKE_ROUTE_LEG_SPACING_M="${SMOKE_ROUTE_LEG_SPACING_M:-${default_leg_spacing}}" \
@@ -36,8 +38,12 @@ docker compose run --rm \
   smoke_init routes-free-world
   trap smoke_cleanup EXIT
   free_world="$(ros2 pkg prefix salus_simulation)/share/salus_simulation/worlds/free.world"
-  smoke_start_launch routes "ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true route_execution_mode:=${SMOKE_ROUTE_EXECUTION_MODE} nav_goal_horizon_m:=${SMOKE_NAV_GOAL_HORIZON_M} world:=${free_world}"
-  smoke_run route_executor "python3 /ros2_ws/tools/smoke_route_executor_sim.py"
+  smoke_start_launch routes "ros2 launch salus_bringup integration_sim.launch.py launch_routes:=true route_execution_mode:=${SMOKE_ROUTE_EXECUTION_MODE} nav_goal_horizon_m:=${SMOKE_NAV_GOAL_HORIZON_M} world:=${free_world} incident_recording:=${SMOKE_INCIDENT_RECORDING} incident_root:=${SMOKE_RUNTIME_DIR}/incidents"
+  if [[ "${SMOKE_INCIDENT_MEASURE}" == true ]]; then
+    smoke_run route_executor "python3 /ros2_ws/tools/incident_load_probe.py --output ${SMOKE_ARTIFACT_DIR}/incident_load.json -- python3 /ros2_ws/tools/smoke_route_executor_sim.py"
+  else
+    smoke_run route_executor "python3 /ros2_ws/tools/smoke_route_executor_sim.py"
+  fi
   if [[ "${SMOKE_ROUTE_SCENARIO}" != "takeover" ]]; then
     smoke_run navigation_profiles "python3 /ros2_ws/tools/smoke_navigation_profiles.py"
   else

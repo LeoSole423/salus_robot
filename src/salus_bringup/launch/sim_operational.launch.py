@@ -27,6 +27,9 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="true"),
+        DeclareLaunchArgument("incident_recording", default_value="false"),
+        DeclareLaunchArgument("incident_costmap_max_hz", default_value="0.5"),
+        DeclareLaunchArgument("recordings_config", default_value=""),
         DeclareLaunchArgument(
             "vehicle_io_profile", default_value="legacy",
             description="Vehicle measurement/odometry profile: legacy or canonical.",
@@ -147,6 +150,10 @@ def generate_launch_description() -> LaunchDescription:
                 "launch_camera": LaunchConfiguration("launch_camera"),
                 "web_ws_port": LaunchConfiguration("web_ws_port"),
                 "web_waypoints_file": LaunchConfiguration("web_waypoints_file"),
+                "incident_recording": LaunchConfiguration("incident_recording"),
+                "incident_costmap_max_hz": LaunchConfiguration("incident_costmap_max_hz"),
+                "recordings_config": LaunchConfiguration("recordings_config"),
+                "incident_root": PathJoinSubstitution([runtime_dir, "incidents"]),
                 "web_history_path": PathJoinSubstitution(
                     [runtime_dir, "web", "operational-history.sqlite"]),
                 "web_telemetry_profile": LaunchConfiguration("web_telemetry_profile"),

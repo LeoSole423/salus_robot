@@ -1,0 +1,44 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Fixed Frame: map
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+    - Class: rviz_default_plugins/Path
+      Name: Plan de Nav2
+      Enabled: true
+      Color: 25; 190; 255
+      Topic:
+        Value: /plan
+    - Class: rviz_default_plugins/Path
+      Name: Tramo de misión
+      Enabled: true
+      Color: 70; 220; 100
+      Topic:
+        Value: /route_executor/active_chunk_path
+    - Class: rviz_default_plugins/LaserScan
+      Name: LiDAR
+      Enabled: true
+      Topic:
+        Reliability Policy: Best Effort
+        Value: /scan
+    - Class: rviz_default_plugins/Map
+      Name: Costmap local
+      Enabled: true
+      Alpha: 0.45
+      Color Scheme: costmap
+      Topic:
+        Durability Policy: Volatile
+        Value: /local_costmap/costmap
+      Update Topic:
+        Value: /local_costmap/costmap_updates
+    - Class: rviz_default_plugins/Odometry
+      Name: Odometría global
+      Enabled: true
+      Topic:
+        Value: /odometry/global
