@@ -1,0 +1,54 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "frames": 2903,
+  "bags": [
+    "/bags/salus_nav_loops_20260924T235128Z/bag/bag_0.db3",
+    "/bags/salus_nav_loops_20260924T235727Z/bag/bag_0.db3",
+    "/bags/salus_nav_loops_20260924T235901Z/bag/bag_0.db3"
+  ],
+  "input_points_total": 32152644,
+  "input_points_range": [
+    9774,
+    12292
+  ],
+  "obstacle_points_total": 5920316,
+  "first_semantic_difference": {},
+  "methods": {
+    "actual": {
+      "median_ms": 15.745852,
+      "host_cpu_median_ms": 15.75003,
+      "p95_ms": 18.7836542,
+      "max_ms": 38.328271,
+      "median_speedup": 1.0,
+      "different_output_frames": 0,
+      "different_cdr_byte_frames": 0
+    },
+    "numpy_pack": {
+      "median_ms": 15.307577,
+      "host_cpu_median_ms": 15.31122,
+      "p95_ms": 17.3949261,
+      "max_ms": 48.312475,
+      "median_speedup": 1.0286312458202889,
+      "different_output_frames": 0,
+      "different_cdr_byte_frames": 1480
+    },
+    "cpu_native": {
+      "median_ms": 1.975385,
+      "host_cpu_median_ms": 1.974,
+      "p95_ms": 2.2445286,
+      "max_ms": 5.181747,
+      "median_speedup": 7.971029444893021,
+      "different_output_frames": 0,
+      "different_cdr_byte_frames": 1631
+    },
+    "cuda": {
+      "median_ms": 2.358469,
+      "host_cpu_median_ms": 2.356171,
+      "p95_ms": 2.787182,
+      "max_ms": 4.364801,
+      "median_speedup": 6.6763022961081955,
+      "different_output_frames": 0,
+      "different_cdr_byte_frames": 1643
+    }
+  }
+}
