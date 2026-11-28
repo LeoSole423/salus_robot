@@ -14,6 +14,7 @@ def generate_launch_description() -> LaunchDescription:
                 output="screen",
                 parameters=[
                     {
+                        "native_classifier": True,
                         "input_topic": "/scan_3d",
                         "output_topic": "/obstacles_cloud",
                         "target_frame": "base_footprint",

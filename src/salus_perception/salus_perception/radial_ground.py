@@ -21,7 +21,7 @@ class RadialGroundConfig:
     range_max: float = 20.0
 
 
-def non_ground_points(points: np.ndarray, config: RadialGroundConfig) -> np.ndarray:
+def non_ground_points(points: np.ndarray, config: RadialGroundConfig, *, classifier=None) -> np.ndarray:
     """Return obstacle points; input is XYZ in base_footprint coordinates."""
     if len(points) == 0:
         return points
@@ -39,6 +39,9 @@ def non_ground_points(points: np.ndarray, config: RadialGroundConfig) -> np.ndar
     indices = selected[order]
     sectors = sectors[order]
     breaks = np.flatnonzero(np.diff(sectors)) + 1
+    if classifier is not None:
+        obstacles = classifier(points, radii, indices, breaks, width, config)
+        return np.concatenate((obstacles, invalid)) if len(invalid) else obstacles
     obstacles = []
     local_limit = math.radians(config.local_slope_max_angle_deg)
     global_limit = math.tan(math.radians(config.global_slope_max_angle_deg))

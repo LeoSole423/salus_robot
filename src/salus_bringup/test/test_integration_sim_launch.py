@@ -89,8 +89,8 @@ def test_integrated_simulation_composes_all_migrated_subsystems() -> None:
 
 
 def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
-    perception_setup = (
-        Path(__file__).parents[2] / "salus_perception" / "setup.py"
+    perception_cmake = (
+        Path(__file__).parents[2] / "salus_perception" / "CMakeLists.txt"
     ).read_text(encoding="utf-8")
     diagnostics = (
         Path(__file__).parents[2]
@@ -98,7 +98,7 @@ def test_rviz_diagnostics_asset_is_installed_by_perception_package() -> None:
         / "config"
         / "lidar_diagnostics.rviz"
     ).read_text(encoding="utf-8")
-    assert 'glob("config/*.rviz")' in perception_setup
+    assert 'install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})' in perception_cmake
     for topic in (
         "/scan_3d_raw", "/obstacles_cloud", "/scan_clean",
         "/keepout_filter_mask", "/global_costmap/costmap",

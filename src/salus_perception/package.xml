@@ -3,7 +3,10 @@
   <name>salus_perception</name><version>0.1.0</version>
   <description>Perception algorithms for SALUS.</description>
   <maintainer email="leonel.sole423@gmail.com">SALUS maintainers</maintainer><license>MIT</license>
-  <buildtool_depend>ament_python</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <build_depend>python3-dev</build_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rclpy</depend>
@@ -12,5 +15,5 @@
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
   <test_depend>python3-pytest</test_depend>
-  <export><build_type>ament_python</build_type></export>
+  <export><build_type>ament_cmake</build_type></export>
 </package>
