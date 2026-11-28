@@ -1,0 +1,52 @@
+{
+  "gpu": "Orin",
+  "frames": 24,
+  "bags": [
+    "/bench/salus_nav_loops_20260924T235128Z.db3",
+    "/bench/salus_nav_loops_20260924T235727Z.db3",
+    "/bench/salus_nav_loops_20260924T235901Z.db3"
+  ],
+  "input_points_total": 265086,
+  "input_points_range": [
+    10018,
+    11841
+  ],
+  "obstacle_points_total": 48701,
+  "first_semantic_difference": {},
+  "content_difference_details": [],
+  "methods": {
+    "actual": {
+      "median_ms": 134.000111,
+      "host_cpu_median_ms": 58.606272000000004,
+      "p95_ms": 191.32850714999998,
+      "max_ms": 304.596628,
+      "median_speedup": 1.0,
+      "different_output_frames": 0,
+      "different_order_only_frames": 0,
+      "different_content_frames": 0,
+      "different_cdr_byte_frames": 0
+    },
+    "cpu_native": {
+      "median_ms": 9.799683,
+      "host_cpu_median_ms": 6.770048,
+      "p95_ms": 55.585909699999945,
+      "max_ms": 68.046434,
+      "median_speedup": 13.673923023836588,
+      "different_output_frames": 0,
+      "different_order_only_frames": 0,
+      "different_content_frames": 0,
+      "different_cdr_byte_frames": 20
+    },
+    "cuda_boundary": {
+      "median_ms": 18.360397,
+      "host_cpu_median_ms": 7.909376,
+      "p95_ms": 51.36919974999995,
+      "max_ms": 63.682034,
+      "median_speedup": 7.298323178959584,
+      "different_output_frames": 0,
+      "different_order_only_frames": 0,
+      "different_content_frames": 0,
+      "different_cdr_byte_frames": 23
+    }
+  }
+}

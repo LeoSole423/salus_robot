@@ -1,0 +1,122 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "frames": 770,
+  "bags": [
+    "/bags/salus_nav_loops_20260924T235901Z/bag/bag_0.db3"
+  ],
+  "input_points_total": 8588654,
+  "input_points_range": [
+    9922,
+    12292
+  ],
+  "obstacle_points_total": 1615910,
+  "first_semantic_difference": {
+    "cuda_resident": {
+      "bag": "bag_0.db3",
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 59,
+      "reference_points": 4986,
+      "candidate_points": 4986,
+      "same_obstacle_multiset": true,
+      "same_layout": true
+    }
+  },
+  "content_difference_details": [
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 75,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3496,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 3,
+      "extra_obstacle_points": 0,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    },
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 82,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3399,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 0,
+      "extra_obstacle_points": 1,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    },
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 89,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3410,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 1,
+      "extra_obstacle_points": 0,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    },
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 94,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3487,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 1,
+      "extra_obstacle_points": 0,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    },
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 95,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3281,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 0,
+      "extra_obstacle_points": 2,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    },
+    {
+      "dataset": "salus_nav_loops_20260924T235901Z",
+      "frame": 98,
+      "input_transformed_xyz_differences": 0,
+      "input_radius_differences_in_range": 3428,
+      "input_sector_differences_in_range": 1,
+      "missing_obstacle_points": 0,
+      "extra_obstacle_points": 1,
+      "projected_scan_different_bins": 0,
+      "projected_scan_lost_finite_bins": 0,
+      "projected_scan_max_finite_range_delta_m": 0.0
+    }
+  ],
+  "methods": {
+    "actual": {
+      "median_ms": 15.747584,
+      "host_cpu_median_ms": 15.7461025,
+      "p95_ms": 19.4333283,
+      "max_ms": 33.896237,
+      "median_speedup": 1.0,
+      "different_output_frames": 0,
+      "different_order_only_frames": 0,
+      "different_content_frames": 0,
+      "different_cdr_byte_frames": 0
+    },
+    "cuda_resident": {
+      "median_ms": 1.680523,
+      "host_cpu_median_ms": 1.678931,
+      "p95_ms": 2.0393578,
+      "max_ms": 2.976622,
+      "median_speedup": 9.370644733812034,
+      "different_output_frames": 13,
+      "different_order_only_frames": 7,
+      "different_content_frames": 6,
+      "different_cdr_byte_frames": 709
+    }
+  }
+}
