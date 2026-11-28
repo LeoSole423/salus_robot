@@ -14,6 +14,7 @@ from pathlib import Path
 import secrets
 import shutil
 import subprocess
+import tarfile
 import threading
 import time
 from datetime import datetime, timedelta
@@ -206,6 +207,32 @@ class Recordings:
                     self.ready[path] = False
                     self.errors[path] = "media_service_unavailable"
 
+    @staticmethod
+    def incident_folder(root, incident_id):
+        if not isinstance(incident_id, str) or not re.fullmatch(r"[a-f0-9]{32}", incident_id):
+            raise ValueError("invalid_incident_id")
+        folder = Path(root).resolve() / "incidents" / incident_id
+        if folder.is_symlink():
+            raise ValueError("invalid_incident_directory")
+        return folder
+
+    @classmethod
+    def incident_status(cls, root, incident_id):
+        folder = cls.incident_folder(root, incident_id)
+        try:
+            return json.loads((folder / "manifest.json").read_text())["status"]
+        except FileNotFoundError:
+            return "expired"
+
+    def incident_link(self, root, incident_id):
+        self.incident_root = root
+        status = self.incident_status(root, incident_id)
+        if status not in {"available", "partial"} or self.server is None:
+            return {"status": status}
+        query = urlencode({"incident": incident_id, "expires": int(time.time()) + 300})
+        signature = hmac.new(self.key, query.encode(), hashlib.sha256).hexdigest()
+        return {"status": status, "url": self.config["public_url"] + "/download?" + query + "&sig=" + signature}
+
     def start(self):
         owner = self
 
@@ -226,6 +253,24 @@ class Recordings:
                     if parts.path != "/download" or not separator or not valid or int(fields["expires"][0]) < time.time():
                         self.send_response(403)
                         self.end_headers()
+                        return
+                    if "incident" in fields:
+                        incident_id = fields["incident"][0]
+                        root = owner.incident_root
+                        if owner.incident_status(root, incident_id) not in {"available", "partial"}:
+                            self.send_error(404)
+                            return
+                        folder = owner.incident_folder(root, incident_id)
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/x-tar")
+                        self.send_header("Content-Disposition", f'attachment; filename="salus-{incident_id}.tar"')
+                        self.send_header("Cache-Control", "no-store")
+                        self.send_header("Referrer-Policy", "no-referrer")
+                        self.end_headers()
+                        with tarfile.open(fileobj=self.wfile, mode="w|") as archive:
+                            for file in sorted(folder.rglob("*")):
+                                if file.is_file() and not file.is_symlink():
+                                    archive.add(file, arcname=str(file.relative_to(folder.parent)), recursive=False)
                         return
                     query = {name: fields[name][0] for name in ("path", "start", "duration", "format")}
                     if query["path"] not in CAMERAS.values() or not 0 < float(query["duration"]) <= 600:

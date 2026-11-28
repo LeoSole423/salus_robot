@@ -4,9 +4,12 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _include(package: str, launch_file: str, arguments: dict[str, object]):
@@ -36,6 +39,22 @@ def generate_launch_description() -> LaunchDescription:
     camera_presets_file = LaunchConfiguration("camera_presets_file")
 
     return LaunchDescription([
+        DeclareLaunchArgument("incident_recording", default_value="false"),
+        DeclareLaunchArgument("incident_root", default_value="runtime/incidents"),
+        DeclareLaunchArgument("incident_context_json", default_value=""),
+        DeclareLaunchArgument("incident_costmap_max_hz", default_value="0.5"),
+        Node(
+            package="salus_incident", executable="incident_recorder",
+            condition=IfCondition(LaunchConfiguration("incident_recording")),
+            output="screen", prefix="ionice -c 3",
+            parameters=[{
+                "root": LaunchConfiguration("incident_root"),
+                "context_json": LaunchConfiguration("incident_context_json"),
+                "costmap_max_hz": ParameterValue(
+                    LaunchConfiguration("incident_costmap_max_hz"), value_type=float,
+                ),
+            }],
+        ),
         DeclareLaunchArgument("recordings_config", default_value=""),
         DeclareLaunchArgument("detection_fixes_path", default_value=""),
         DeclareLaunchArgument("fcu_url", default_value="/dev/ttyACM0:921600"),
@@ -132,6 +151,7 @@ def generate_launch_description() -> LaunchDescription:
             "web_bridge.launch.py",
             {
                 "history_path": LaunchConfiguration("web_history_path"),
+                "incident_root": LaunchConfiguration("incident_root"),
                 "routes_file": LaunchConfiguration("web_routes_file"),
                 "gps_fix_topic": web_gps_fix_topic,
                 "heading_odometry_topic": web_heading_odometry_topic,

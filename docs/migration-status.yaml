@@ -6,6 +6,14 @@ allowed_states:
   - parity_passed
   - hardware_validated
 components:
+  navigation_incidents:
+    source: SALUS autonomous steering incident 2026-11-27 21:30 Argentina
+    target: salus_incident capture and replay, salus_web and Cockpit history
+    state: ported
+    evidence:
+      - docs/migration-evidence/intent/navigation-incidents.md
+      - tools/incident_sim_fixture.py
+    note: Optional. Real deployment and Jetson resource acceptance remain pending.
   operational_history:
     source: legacy Cockpit session presentation and canonical SALUS operational signals
     target: salus_web history and Cockpit history module

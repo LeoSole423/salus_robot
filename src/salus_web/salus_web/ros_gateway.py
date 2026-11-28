@@ -300,6 +300,7 @@ class CockpitRosGateway(Node):
         self.declare_parameter("scan_preview_enabled", True)
         self.declare_parameter("recordings_config", "")
         self.declare_parameter("history_path", "")
+        self.declare_parameter("incident_root", "")
         self.declare_parameter("history_robot", "salus")
         self.declare_parameter("rtk_sources_config", "")
         self.declare_parameter("rtk_rtcm_stale_timeout_s", 10.0)
@@ -376,6 +377,10 @@ class CockpitRosGateway(Node):
         ) if history_path else None
         if self._history:
             self.create_timer(5.0, self._history.checkpoint)
+            self.create_subscription(
+                NavEvent, "/salus/incident/events", self._on_nav_event,
+                QoSProfile(depth=20, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+            )
             self.create_subscription(PathHealth, "/path_health", self._on_path_health, 10)
 
         self._teleop = self.create_publisher(CmdVelFinal, "/cmd_vel_teleop", 10)
@@ -616,6 +621,20 @@ class CockpitRosGateway(Node):
                 if not self._history:
                     return [ack(request, ok=False, error="Historial no configurado en el robot")]
                 result = await asyncio.to_thread(self._history.query, request.op, request.fields)
+                return [ack(request, ok=True, **result)]
+            if request.op == "history_incident":
+                root = self.get_parameter("incident_root").value
+                if not self._history or not root:
+                    return [ack(request, ok=False, error="Captura de incidentes no configurada")]
+                incident_id = request.fields.get("incident_id")
+                try:
+                    if self._recordings:
+                        result = await asyncio.to_thread(self._recordings.incident_link, root, incident_id)
+                    else:
+                        status = await asyncio.to_thread(Recordings.incident_status, root, incident_id)
+                        result = {"status": status}
+                except ValueError:
+                    return [ack(request, ok=False, error="ID de incidente inválido")]
                 return [ack(request, ok=True, **result)]
             if request.op.startswith("recordings_"):
                 if not self._recordings:

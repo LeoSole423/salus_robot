@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-mavros \
     ros-humble-mavros-extras \
     ros-humble-mavros-msgs \
+    ros-humble-rosbag2 \
+    ros-humble-rosbag2-storage-default-plugins \
     ros-humble-nav-msgs \
     ros-humble-sensor-msgs \
     ros-humble-std-msgs \

@@ -1,6 +1,12 @@
 schema_version: 1
 project_status: migrating
 packages:
+  salus_incident:
+    owner: navigation_incident_observability
+    build_type: ament_python
+    language: python
+    may_depend_on: [salus_interfaces]
+    status: optional_bounded_sqlite_incident_capture_and_offline_replay
   interfaces:
     owner: legacy_wire_compatibility
     build_type: ament_cmake
@@ -104,4 +110,5 @@ packages:
       - salus_navigation_bt
       - salus_web
       - salus_simulation
+      - salus_incident
     status: operational_sim_profiles_and_read_only_real_observation_with_fail_closed_rtk_pixhawk_profile_pending_delivery_validation

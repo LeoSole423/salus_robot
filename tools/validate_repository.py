@@ -13,7 +13,7 @@ EXPECTED = {
     "salus_localization", "salus_perception", "salus_control",
     "salus_navigation", "salus_navigation_bt", "salus_navigation_costmap", "salus_web",
     "salus_simulation", "salus_bringup",
-    "salus_evaluation",
+    "salus_evaluation", "salus_incident",
 }
 # These packages are deliberately fetched by vcs from upstream.  They are not
 # part of the first-party package set, so validation must accept them when the
