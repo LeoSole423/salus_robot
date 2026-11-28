@@ -39,8 +39,8 @@ packages:
     status: ported_global_simulation_selectable_kinematic_odometry_imu_and_heading_profiles_with_strong_turn_course_gating_sim_compensation_and_real_native_gnss_origin_pending_turn_hardware_validation
   salus_perception:
     owner: perception
-    build_type: ament_python
-    language: python
+    build_type: ament_cmake
+    language: python_cpp
     may_depend_on: [salus_interfaces, salus_description]
     status: ported_3d_simulation_and_scan_preview_pending_rs16_replay
   salus_control:

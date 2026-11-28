@@ -57,3 +57,8 @@ perdidos dentro de la ventana común comparada. La edad p99 de `/scan_clean`
 bajó de 355 a 246 ms frente a una baseline nueva de tamaño similar.
 El perfil desconectado y las pruebas de equivalencia no demuestran por sí solos
 la tasa del pipeline bajo navegación completa.
+
+The real perception launch enables the native C++ radial classifier. The ROS
+adapter still owns cloud decoding, TF, topic QoS and profile parameters.
+The Python classifier remains the default for standalone and simulated nodes.
+See the [offline timing and parity results](../../docs/migration-evidence/lidar-benchmark/README.md).

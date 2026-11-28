@@ -14,6 +14,7 @@ from tf2_ros import Buffer, TransformException, TransformListener
 from .scan_filters import rotate_translate_point, rotate_translate_points
 from .radial_ground import RadialGroundConfig, non_ground_points
 from dataclasses import replace
+from array import array
 
 
 def ground_filter_input_qos() -> QoSProfile:
@@ -55,6 +56,12 @@ class ScanGroundFilter(Node):
         self.config = RadialGroundConfig(**{name: self.get_parameter(name).value for name in RadialGroundConfig.__dataclass_fields__})
         if profile == "rural":
             self.config = replace(self.config, global_slope_max_angle_deg=15.0, local_slope_max_angle_deg=18.0, split_height_distance=0.25)
+        if self.declare_parameter("native_classifier", False).value:
+            from .native_ground import classify
+            self.classifier = classify
+            self.get_logger().info("Using native C++ radial ground classifier")
+        else:
+            self.classifier = None
         input_qos=ground_filter_input_qos()
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self);self.pub=self.create_publisher(PointCloud2,str(self.get_parameter("output_topic").value),qos_profile_sensor_data);self.create_subscription(PointCloud2,str(self.get_parameter("input_topic").value),self.on_cloud,input_qos)
         self.add_on_set_parameters_callback(self.on_parameters)
@@ -88,9 +95,22 @@ class ScanGroundFilter(Node):
             quaternion_xyzw=(rotation.x, rotation.y, rotation.z, rotation.w),
             translation_xyz=(translation.x, translation.y, translation.z),
         )
-        obstacles = non_ground_points(transformed, self.config)
+        classifier = getattr(self, "classifier", None)
+        obstacles = non_ground_points(transformed, self.config, classifier=classifier)
         header=Header();header.stamp=msg.header.stamp;header.frame_id=self.target
-        self.pub.publish(point_cloud2.create_cloud_xyz32(header, obstacles.tolist()))
+        if classifier is None:
+            cloud = point_cloud2.create_cloud_xyz32(header, obstacles.tolist())
+        else:
+            from sensor_msgs.msg import PointField
+            data = array("B")
+            data.frombytes(obstacles.astype("<f4", copy=False).tobytes())
+            cloud = PointCloud2(
+                header=header, height=1, width=len(obstacles), point_step=12,
+                row_step=12 * len(obstacles), data=data, is_dense=False,
+                fields=[PointField(name=name, offset=4 * offset, datatype=PointField.FLOAT32, count=1)
+                        for offset, name in enumerate(("x", "y", "z"), start=0)],
+            )
+        self.pub.publish(cloud)
 def main(args=None)->None:
     rclpy.init(args=args);node=ScanGroundFilter()
     try:rclpy.spin(node)

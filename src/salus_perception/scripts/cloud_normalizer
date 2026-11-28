@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+from salus_perception.cloud_normalizer import main
+
+if __name__ == "__main__":
+    main()
